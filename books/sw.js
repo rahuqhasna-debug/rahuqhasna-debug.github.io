@@ -1,9 +1,10 @@
-// دفتر التسليمات — يخلّي البرنامج يفتح من غير نت
-const CACHE = 'books-v2';
-const FILES = ['./', './index.html', './manifest.json', './icon.svg'];
+// سلاح التلميذ البحيرة — يخلّي البرنامج يفتح من غير نت
+const CACHE = 'books-v3';
+const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
+  // كل ملف لوحده: لو ملف ناقص ما يوقفش الباقي
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => {})))));
   self.skipWaiting();
 });
 
