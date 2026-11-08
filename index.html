@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سلاح التلميذ | تحديث بيانات السادة المعلمين</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap">
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1b2236; --muted:#6b7385; --line:#e4e8f0;
+    --s1:#e53935; --s2:#fb8c00; --s3:#f4b400; --s4:#2e9e57; --s5:#1e88e5; --s6:#7b3fe4;
+    --c:var(--s1); --c-soft:#fdecec;
+    --ok:#1f9d55; --err:#d32f2f;
+    --font:'Cairo', Tahoma, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:620px;margin:0 auto;padding:0 14px 110px}
+
+  /* الهيدر الرسمي */
+  .brand{position:relative;margin:0 -14px 16px;padding:22px 20px 26px;color:#fff;
+    background:linear-gradient(135deg,#1b2236 0%,#2b3556 100%);overflow:hidden}
+  .brand:after{content:"";position:absolute;inset:auto 0 0 0;height:6px;
+    background:linear-gradient(90deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6))}
+  .brand .logo{display:flex;align-items:center;gap:10px}
+  .brand .mark{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px;font-weight:900;
+    background:conic-gradient(from 200deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6),var(--s1));color:#fff;
+    box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  .brand .mark span{background:#1b2236;border-radius:9px;width:38px;height:38px;display:grid;place-items:center}
+  .brand h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.3px}
+  .brand .tag{margin:2px 0 0;font-size:13px;opacity:.8}
+  .brand h2{margin:16px 0 4px;font-size:19px;font-weight:800}
+  .brand p{margin:0;font-size:14px;opacity:.88}
+  .rep-chip{display:inline-block;margin-top:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    padding:2px 12px;border-radius:999px;font-size:13px}
+
+  /* شريط الخطوات */
+  .steps{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0 8px;margin-bottom:6px}
+  .dots{display:flex;gap:6px}
+  .dot{flex:1;height:8px;border-radius:8px;background:var(--line);transition:background .3s}
+  .dot.on{background:var(--dc)}
+  .steplabel{display:flex;justify-content:space-between;margin-top:6px;font-size:13px;color:var(--muted)}
+  .steplabel b{color:var(--c)}
+
+  /* كارت الخطوة */
+  .step{display:none;background:var(--card);border-radius:18px;padding:20px 18px 22px;border-top:6px solid var(--c);
+    box-shadow:0 6px 22px rgba(27,34,54,.07)}
+  .step.active{display:block;animation:in .25s ease}
+  @keyframes in{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .step-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .num{width:40px;height:40px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-weight:900;font-size:18px;flex:none}
+  .step-head h3{margin:0;font-size:20px;font-weight:800}
+  .intro{margin:0 0 6px;color:var(--muted);font-size:14px}
+
+  .q{margin-top:18px}
+  label.t{display:block;font-weight:700;margin-bottom:8px;font-size:15.5px}
+  .req{color:var(--err)}
+  .hint{color:var(--muted);font-size:13px;font-weight:400}
+  input[type=text],input[type=tel],input[type=number],input[type=url],select,textarea{
+    width:100%;padding:13px 14px;border:2px solid var(--line);border-radius:12px;font:inherit;background:#fbfcfe;color:var(--ink);transition:border-color .15s}
+  textarea{min-height:90px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--c);background:#fff}
+  .bad{border-color:var(--err)!important;background:#fff6f6!important}
+
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{position:relative}
+  .opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+  .opt span{display:block;padding:10px 16px;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;user-select:none;font-weight:600;transition:all .15s}
+  .opt input:checked + span{background:var(--c);border-color:var(--c);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+  .opt input:disabled + span{opacity:.35;cursor:not-allowed}
+  .opt input:focus-visible + span{outline:3px solid var(--c);outline-offset:2px}
+  .opts.big .opt{flex:1 1 140px}
+  .opts.big .opt span{text-align:center;padding:14px 10px}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stars{display:flex;gap:4px}
+  .stars button{font-size:40px;line-height:1;background:none;border:0;cursor:pointer;color:#d9dde6;padding:0 2px;transition:transform .1s}
+  .stars button.on{color:#f4b400}
+  .stars button:active{transform:scale(1.15)}
+  .box{border-radius:14px;padding:14px;margin-top:12px;background:var(--c-soft);border:2px dashed var(--c)}
+  .sub{border:2px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:#fbfcfe}
+  .promo{border-radius:16px;padding:16px;margin-bottom:14px;color:#fff;
+    background:linear-gradient(135deg,var(--s6),var(--s5));box-shadow:0 6px 18px rgba(123,63,228,.25)}
+  .promo .big{font-size:19px;font-weight:900}
+  .promo .deal{margin-top:8px;background:rgba(255,255,255,.18);border-radius:10px;padding:8px 12px;font-weight:800}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:13px 18px;font:inherit;font-weight:800;cursor:pointer}
+  .btn-c{background:var(--c);color:#fff}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .status{margin-top:8px;font-size:14px;font-weight:600}
+  .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+  .err{color:var(--err);font-size:13px;font-weight:600;margin-top:6px}
+  .hidden{display:none!important}
+
+  .photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .ph{position:relative;width:96px;height:96px;border-radius:12px;overflow:hidden;border:2px solid var(--line)}
+  .ph img{width:100%;height:100%;object-fit:cover}
+  .ph button{position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:14px}
+  .upload{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:2px dashed var(--c);border-radius:14px;cursor:pointer;color:var(--c);font-weight:800;background:#fff}
+  .upload input{display:none}
+
+  /* أزرار التنقل */
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.96);border-top:1px solid var(--line);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));backdrop-filter:blur(6px)}
+  .nav .in{max-width:620px;margin:0 auto;display:flex;gap:10px}
+  .nav .next{flex:1;background:var(--c);color:#fff;font-size:17px;padding:14px}
+  .nav .prev{background:#eef1f6;color:var(--ink);padding:14px 18px}
+  .formerr{margin-top:12px;padding:10px 12px;border-radius:12px;background:#fff1f1;color:var(--err);font-weight:700;font-size:14px}
+
+  .done{display:none;text-align:center;background:#fff;border-radius:18px;padding:36px 20px;box-shadow:0 6px 22px rgba(27,34,54,.07);
+    border-top:6px solid var(--ok)}
+  .done.active{display:block}
+  .check{width:84px;height:84px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;font-size:44px;color:#fff;
+    background:conic-gradient(var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6),var(--s1))}
+  .check span{width:70px;height:70px;border-radius:50%;background:var(--ok);display:grid;place-items:center}
+  .done h3{font-size:22px;margin:6px 0}
+  .done p{color:var(--muted);margin:4px 0}
+  .loading{text-align:center;padding:40px;color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){.step.active{animation:none}.dot{transition:none}}
+</style>
+</head>
+<body>
+<script type="application/json" id="cfg"></script>
+<div class="wrap">
+  <div class="brand">
+    <div class="logo">
+      <div class="mark"><span>س</span></div>
+      <div><h1>سلاح التلميذ</h1><div class="tag">شريكك في نجاح طلابك</div></div>
+    </div>
+    <h2>تحديث بيانات السادة المعلمين</h2>
+    <p>حرصًا منّا على خدمة حضرتك بشكل أفضل، وتوصيل نسخة الترم التاني في المكان والميعاد المناسب لحضرتك. البيانات دي سرّية ومش هتستخدم غير في التواصل مع حضرتك.</p>
+    <span class="rep-chip hidden" id="repChip"></span>
+  </div>
+
+  <div class="steps" id="stepsBar">
+    <div class="dots" id="dots"></div>
+    <div class="steplabel"><span id="stepName"></span><b id="stepCount"></b></div>
+  </div>
+
+  <div class="loading" id="loading">جاري التحميل...</div>
+
+  <form id="f" novalidate class="hidden">
+    <!-- 1 -->
+    <div class="step" data-color="s1" data-soft="#fdecec" data-name="بيانات حضرتك">
+      <div class="step-head"><div class="num">1</div><h3>بيانات حضرتك</h3></div>
+      <div class="q">
+        <label class="t" for="name">الاسم بالكامل <span class="req">*</span></label>
+        <input type="text" id="name" autocomplete="name" placeholder="مثال: أحمد محمد علي">
+      </div>
+      <div class="q">
+        <label class="t" for="phone">رقم الموبايل <span class="req">*</span></label>
+        <input type="tel" id="phone" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" dir="ltr" style="text-align:right">
+      </div>
+      <div class="q">
+        <label class="t">الرقم ده عليه واتساب؟</label>
+        <div class="opts big">
+          <label class="opt"><input type="radio" name="whatsapp" value="أيوه" checked><span>أيوه</span></label>
+          <label class="opt"><input type="radio" name="whatsapp" value="لأ"><span>لأ</span></label>
+        </div>
+        <div class="sub hidden" id="waBox">
+          <label class="t" for="waNumber">ممكن تكتب لنا رقم الواتساب بتاع حضرتك؟</label>
+          <input type="tel" id="waNumber" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" dir="ltr" style="text-align:right">
+          <div class="hint" style="margin-top:6px">لو حضرتك مش بتستخدم واتساب، سيبها فاضية وكمّل عادي.</div>
+        </div>
+      </div>
+      <div class="q" id="repQ">
+        <label class="t" for="rep">اسم المندوب اللي بيتعامل مع حضرتك <span class="req">*</span></label>
+        <select id="rep"></select>
+      </div>
+      <div class="q">
+        <label class="t" for="markaz">المركز <span class="req">*</span></label>
+        <select id="markaz"></select>
+      </div>
+      <div class="q">
+        <label class="t">حضرتك ساكن في <span class="req">*</span></label>
+        <div class="opts big" id="areaType"></div>
+      </div>
+      <div class="q hidden" id="villageQ">
+        <label class="t" for="village">القرية <span class="req">*</span></label>
+        <select id="village"></select>
+        <input type="text" id="villageOther" class="hidden" placeholder="اكتب اسم القرية" style="margin-top:8px">
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="step" data-color="s2" data-soft="#fff3e3" data-name="شغل حضرتك">
+      <div class="step-head"><div class="num">2</div><h3>شغل حضرتك</h3></div>
+      <div class="q">
+        <label class="t">المادة <span class="req">*</span> <span class="hint">(مادة أو مادتين بالكتير)</span></label>
+        <div class="opts" id="subjects"></div>
+      </div>
+      <div class="q">
+        <label class="t">بتدرّس لأنهي صفوف؟ <span class="req">*</span> <span class="hint">(اختار كل اللي ينطبق)</span></label>
+        <div class="opts" id="grades"><span class="hint">اختار المادة الأول</span></div>
+      </div>
+      <div class="q">
+        <label class="t">حضرتك بتشتغل فين؟ <span class="req">*</span></label>
+        <div class="opts big" id="workplace"></div>
+      </div>
+      <div class="q">
+        <label class="t">بتشتغل حاليًا من أنهي كتاب؟ <span class="req">*</span> <span class="hint">(ممكن أكتر من اختيار)</span></label>
+        <div class="opts" id="books"></div>
+        <div class="sub hidden" id="otherBookBox">
+          <label class="t" for="otherBook">اسم الكتاب التاني</label>
+          <input type="text" id="otherBook" placeholder="اكتب اسم الكتاب">
+          <label class="t" style="margin-top:12px">إيه اللي مميز فيه بالنسبة لحضرتك؟</label>
+          <div class="opts" id="otherWhy"></div>
+          <input type="text" id="otherWhyText" class="hidden" placeholder="اكتب السبب" style="margin-top:8px">
+        </div>
+      </div>
+      <div class="q hidden" id="photoQ">
+        <div class="box">
+          <label class="t">📸 شاركنا صورة لطلبة حضرتك وهم ماسكين كتاب سلاح التلميذ</label>
+          <div class="hint" style="margin-bottom:10px">اختياري — بيسعدنا نشوف طلبتك مع الكتاب، ولحد 3 صور.</div>
+          <label class="upload" id="uploadBtn"><input type="file" id="photoInput" accept="image/*" multiple>＋ اختار صورة</label>
+          <div class="photos" id="photos"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="step" data-color="s3" data-soft="#fff8de" data-name="رأي حضرتك">
+      <div class="step-head"><div class="num">3</div><h3>رأي حضرتك يهمنا</h3></div>
+      <div class="q">
+        <label class="t">إيه رأي حضرتك في المندوب؟ <span class="req">*</span></label>
+        <div class="stars" id="stars" role="radiogroup" aria-label="التقييم من 5"></div>
+        <div class="hint" id="starsLabel">اضغط على النجوم</div>
+      </div>
+      <div class="q">
+        <label class="t">سرعة وصول الكتب لحضرتك كانت إزاي؟</label>
+        <div class="opts" id="speed"></div>
+      </div>
+      <div class="q">
+        <label class="t">واجهت أي مشكلة في الطلب أو التوصيل؟</label>
+        <div class="opts big">
+          <label class="opt"><input type="radio" name="problem" value="لأ، كله تمام" checked><span>لأ، كله تمام</span></label>
+          <label class="opt"><input type="radio" name="problem" value="أيوه"><span>أيوه</span></label>
+        </div>
+        <textarea id="problemDetails" class="hidden" placeholder="احكي لنا حصل إيه عشان نحلّه" style="margin-top:10px"></textarea>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="step" data-color="s4" data-soft="#e7f6ed" data-name="مكان الاستلام">
+      <div class="step-head"><div class="num">4</div><h3>📦 استلام نسخة الترم التاني</h3></div>
+      <p class="intro">هنسلّم حضرتك النسخة في مكان الدرس، فمحتاجين نعرف المكان ومواعيد حضرتك فيه.</p>
+      <div class="q">
+        <label class="t" for="center">اسم السنتر أو مكان الدرس <span class="req">*</span></label>
+        <input type="text" id="center" placeholder="مثال: سنتر النور">
+      </div>
+      <div class="q">
+        <label class="t" for="landmark">علامة مميزة جنب المكان <span class="req">*</span></label>
+        <input type="text" id="landmark" placeholder="مثال: جنب صيدلية النور، الدور التاني">
+      </div>
+      <div class="q">
+        <label class="t">حضرتك بتكون موجود في مكان الدرس أيام إيه؟ <span class="req">*</span></label>
+        <div class="opts" id="days"></div>
+      </div>
+      <div class="q">
+        <label class="t">والساعة كام؟ <span class="req">*</span></label>
+        <div class="row2">
+          <div><span class="hint">من</span><select id="from"></select></div>
+          <div><span class="hint">لحد</span><select id="to"></select></div>
+        </div>
+      </div>
+      <div class="q box">
+        <label class="t">📍 لوكيشن مكان الدرس <span class="req">*</span></label>
+        <p class="hint" style="margin:0 0 10px">لو حضرتك دلوقتي في مكان الدرس، دوس الزرار وافتح الـ GPS. لو مش هناك، الصق لينك اللوكيشن من خرائط جوجل.</p>
+        <button type="button" class="btn btn-c" id="locBtn">📍 ابعت موقعي دلوقتي</button>
+        <div class="status" id="locStatus"></div>
+        <div style="margin-top:12px">
+          <label class="t" for="mapLink" style="font-weight:600">أو الصق لينك اللوكيشن هنا:</label>
+          <input type="url" id="mapLink" placeholder="https://maps.app.goo.gl/..." dir="ltr">
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="step" data-color="s5" data-soft="#e6f1fd" data-name="الترم التاني">
+      <div class="step-head"><div class="num">5</div><h3>الترم التاني</h3></div>
+      <div class="q">
+        <label class="t" for="students">عدد طلبة حضرتك تقريبًا <span class="req">*</span></label>
+        <input type="number" id="students" min="0" max="10000" inputmode="numeric" placeholder="مثال: 80">
+      </div>
+      <div class="q hidden" id="saleQ">
+        <div class="promo" id="promo"></div>
+        <label class="t">حضرتك ناوي تاخد مننا كتب بيع لطلبتك؟ <span class="req">*</span></label>
+        <div class="opts" id="sale"></div>
+        <div class="hidden" id="copiesQ" style="margin-top:12px">
+          <label class="t" for="copies">كام نسخة تقريبًا؟</label>
+          <input type="number" id="copies" min="0" max="10000" inputmode="numeric">
+        </div>
+      </div>
+      <div class="q hidden" id="noSaleNote"><p class="intro">شكرًا لحضرتك، كمّل للخطوة الأخيرة.</p></div>
+    </div>
+
+    <!-- 6 -->
+    <div class="step" data-color="s6" data-soft="#f1eafd" data-name="خطوة أخيرة">
+      <div class="step-head"><div class="num">6</div><h3>خطوة أخيرة</h3></div>
+      <div class="q">
+        <label class="t">تعرف زميل بيدّي <u>دروس خصوصية أو في سنتر</u> ممكن يستفيد من سلاح التلميذ؟</label>
+        <div class="hint" style="margin-bottom:8px">مدرسين الدروس بس، مش مدرسين المدرسة.</div>
+        <div class="opts big">
+          <label class="opt"><input type="radio" name="hasRef" value="لأ" checked><span>لأ</span></label>
+          <label class="opt"><input type="radio" name="hasRef" value="أيوه"><span>أيوه</span></label>
+        </div>
+        <div class="sub hidden" id="refBox">
+          <p class="hint" style="margin:0 0 8px">اكتب بياناته كاملة عشان نوصل له.</p>
+          <label class="t" for="refName">اسمه <span class="req">*</span></label>
+          <input type="text" id="refName">
+          <label class="t" for="refPhone" style="margin-top:12px">رقم موبايله <span class="req">*</span></label>
+          <input type="tel" id="refPhone" inputmode="numeric" maxlength="11" placeholder="01xxxxxxxxx" dir="ltr" style="text-align:right">
+          <label class="t" for="refSubject" style="margin-top:12px">بيدرّس مادة إيه؟ <span class="req">*</span></label>
+          <select id="refSubject"></select>
+          <label class="t" for="refPlace" style="margin-top:12px">بيدّي دروسه فين؟ (اسم السنتر أو المكان) <span class="req">*</span></label>
+          <input type="text" id="refPlace">
+          <label class="t" for="refVillage" style="margin-top:12px">في أنهي بلد؟ <span class="req">*</span></label>
+          <input type="text" id="refVillage">
+        </div>
+      </div>
+      <div class="q">
+        <label class="t" for="notes">إيه أكتر حاجة عجبت حضرتك، وإيه اللي تحب نحسّنه؟</label>
+        <textarea id="notes" placeholder="رأي حضرتك بيفرق معانا"></textarea>
+      </div>
+    </div>
+
+    <div class="formerr hidden" id="formErr"></div>
+  </form>
+
+  <div class="done" id="done">
+    <div class="check"><span>✓</span></div>
+    <h3>شكرًا لحضرتك!</h3>
+    <p id="doneMsg">بيانات حضرتك وصلتنا، والمندوب هيتواصل مع حضرتك قريب.</p>
+    <p style="margin-top:14px;font-weight:800;color:var(--ink)">سلاح التلميذ</p>
+  </div>
+</div>
+
+<div class="nav hidden" id="nav">
+  <div class="in">
+    <button type="button" class="btn prev" id="prevBtn">→ السابق</button>
+    <button type="button" class="btn next" id="nextBtn">التالي ←</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // لينك السكريبت (للنسخة اللي برا جوجل)
+  var API_URL = 'https://script.google.com/macros/s/AKfycbw0yud-_Me7kj998aiUKXrBTauyGJzvfOHJ_wDLp2F6jbw6lpd2jSp_Y3NgIlsy3zjbcQ/exec';
+  var INSIDE_GOOGLE = !!(window.google && google.script && google.script.run);
+
+  function el(id){ return document.getElementById(id); }
+  function boot(CONFIG){
+    try { start(CONFIG); } catch (e) { el('loading').textContent = 'حصلت مشكلة في التحميل، جرّب تفتح اللينك تاني.'; }
+  }
+  var raw = el('cfg').textContent.trim(), cfg = null;
+  try { cfg = JSON.parse(raw); } catch (e) {}
+  if (cfg) boot(cfg);
+  else fetch(API_URL + '?api=config').then(function(r){ return r.json(); }).then(boot)
+    .catch(function(){ el('loading').textContent = 'مش قادرين نوصل للسيرفر. اتأكد من النت وجرّب تاني.'; });
+
+  function start(CONFIG){
+  var REPS = CONFIG.reps, VILLAGES = CONFIG.villages, CODES = CONFIG.repCodes || {};
+  var MAX_PHOTOS = CONFIG.maxPhotos || 3;
+  var urlRep = new URLSearchParams(location.search).get('rep') || '';
+  var REP_PARAM = CONFIG.rep || CODES[urlRep] || urlRep;
+
+  var SUBJECTS = ['عربي','رياضة','علوم','دراسات','انجليزي'];
+  var PRIMARY = ['أولى ابتدائي','تانية ابتدائي','تالتة ابتدائي','رابعة ابتدائي','خامسة ابتدائي','سادسة ابتدائي'];
+  var PREP = ['أولى إعدادي','تانية إعدادي','تالتة إعدادي'];
+  var FROM_FIRST = {'عربي':1,'رياضة':1,'انجليزي':1};
+  var FROM_FOURTH = {'علوم':1,'دراسات':1};
+  var HAS_PREP = {'عربي':1,'رياضة':1,'دراسات':1};
+  var SELAH = 'سلاح التلميذ', NO_BOOK = 'مش بستخدم كتاب خارجي', OTHER_BOOK = 'كتاب تاني';
+  var DISC_EN = 'خصم 30% على كتب الإنجليزي';
+  var DISC_PREP = 'خصم 24.5% على كتب الإعدادي (17.5% + 7% زيادة)';
+
+  function opts(boxId, name, values, type){
+    var box = el(boxId); box.innerHTML = '';
+    values.forEach(function(v, i){
+      var l = document.createElement('label'); l.className = 'opt';
+      var inp = document.createElement('input'); inp.type = type || 'radio'; inp.name = name; inp.value = v; inp.id = name + '_' + i;
+      var s = document.createElement('span'); s.textContent = v;
+      l.appendChild(inp); l.appendChild(s); box.appendChild(l);
+    });
+  }
+  function fillSelect(sel, values, placeholder){
+    sel.innerHTML = '';
+    if (placeholder !== undefined){ var p=document.createElement('option'); p.value=''; p.textContent=placeholder; sel.appendChild(p); }
+    values.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+  }
+  function val(name){ var c=document.querySelector('input[name="'+name+'"]:checked'); return c?c.value:''; }
+  function vals(name){ return Array.prototype.map.call(document.querySelectorAll('input[name="'+name+'"]:checked'), function(c){return c.value;}); }
+  function digits(s){ return String(s||'').replace(/\D/g,''); }
+  function okPhone(p){ return /^01[0-25]\d{8}$/.test(p); }
+
+  // ---- المندوب والمركز والقرية ----
+  var repSel = el('rep'), markazSel = el('markaz'), villageSel = el('village');
+  fillSelect(repSel, Object.keys(REPS), 'اختار المندوب');
+  fillSelect(markazSel, Object.keys(VILLAGES), 'اختار المركز');
+  if (REP_PARAM) {
+    if (!REPS[REP_PARAM]) { var o=document.createElement('option'); o.value=REP_PARAM; o.textContent=REP_PARAM; repSel.appendChild(o); }
+    repSel.value = REP_PARAM;
+    el('repQ').classList.add('hidden');
+    el('repChip').textContent = 'المندوب: ' + REP_PARAM;
+    el('repChip').classList.remove('hidden');
+    if (REPS[REP_PARAM]) markazSel.value = REPS[REP_PARAM];
+  }
+  repSel.addEventListener('change', function(){ if (REPS[repSel.value]) { markazSel.value = REPS[repSel.value]; onMarkaz(); } });
+  function onMarkaz(){
+    var m = markazSel.value;
+    opts('areaType', 'areaType', m ? ['بندر ' + m, 'قرية تابعة لـ ' + m] : []);
+    el('villageQ').classList.add('hidden');
+    var list = (VILLAGES[m] || []).slice().sort(function(a,b){ return a.localeCompare(b,'ar'); });
+    list.push('قريتي مش في القايمة');
+    fillSelect(villageSel, list, 'اختار القرية');
+    el('villageOther').classList.add('hidden');
+  }
+  markazSel.addEventListener('change', onMarkaz);
+  villageSel.addEventListener('change', function(){ el('villageOther').classList.toggle('hidden', villageSel.value !== 'قريتي مش في القايمة'); });
+
+  // ---- المواد والصفوف ----
+  opts('subjects', 'subjects', SUBJECTS, 'checkbox');
+  function allowedGrades(subs){
+    var g = {};
+    subs.forEach(function(s){
+      PRIMARY.forEach(function(p, i){ if (FROM_FIRST[s] || (FROM_FOURTH[s] && i >= 3)) g[p] = 1; });
+      if (HAS_PREP[s]) PREP.forEach(function(p){ g[p] = 1; });
+    });
+    return PRIMARY.concat(PREP).filter(function(x){ return g[x]; });
+  }
+  function onSubjects(){
+    var subs = vals('subjects');
+    el('subjects').querySelectorAll('input').forEach(function(b){ b.disabled = (subs.length >= 2 && !b.checked); });
+    var keep = vals('grades'), allowed = allowedGrades(subs);
+    if (!allowed.length) el('grades').innerHTML = '<span class="hint">اختار المادة الأول</span>';
+    else {
+      opts('grades', 'grades', allowed, 'checkbox');
+      el('grades').querySelectorAll('input').forEach(function(b){ if (keep.indexOf(b.value) >= 0) b.checked = true; });
+    }
+    onSale();
+  }
+  el('subjects').addEventListener('change', onSubjects);
+  fillSelect(el('refSubject'), SUBJECTS, 'اختار المادة');
+  opts('workplace', 'workplace', ['مدرسة بس','دروس بس','مدرسة ودروس']);
+
+  // ---- الكتب والصور ----
+  opts('books', 'books', [SELAH, OTHER_BOOK, NO_BOOK], 'checkbox');
+  opts('otherWhy', 'otherWhy', ['السعر','الشرح','المدرسة أو الطلبة طالبينه','سبب تاني']);
+  el('books').addEventListener('change', function(e){
+    var t = e.target;
+    if (t.checked && t.value === NO_BOOK) el('books').querySelectorAll('input').forEach(function(b){ if (b !== t) b.checked = false; });
+    if (t.checked && t.value !== NO_BOOK) el('books').querySelector('input[value="'+NO_BOOK+'"]').checked = false;
+    var b = vals('books');
+    el('otherBookBox').classList.toggle('hidden', b.indexOf(OTHER_BOOK) < 0);
+    el('photoQ').classList.toggle('hidden', b.indexOf(SELAH) < 0);
+  });
+  el('otherWhy').addEventListener('change', function(){ el('otherWhyText').classList.toggle('hidden', val('otherWhy') !== 'سبب تاني'); });
+
+  var photos = [];
+  function renderPhotos(){
+    var box = el('photos'); box.innerHTML = '';
+    photos.forEach(function(p, i){
+      var d = document.createElement('div'); d.className = 'ph';
+      var img = document.createElement('img'); img.src = 'data:image/jpeg;base64,' + p.data; img.alt = 'صورة ' + (i+1);
+      var x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label','امسح الصورة');
+      x.addEventListener('click', function(){ photos.splice(i,1); renderPhotos(); });
+      d.appendChild(img); d.appendChild(x); box.appendChild(d);
+    });
+    el('uploadBtn').classList.toggle('hidden', photos.length >= MAX_PHOTOS);
+  }
+  function shrink(file){
+    return new Promise(function(res, rej){
+      var r = new FileReader();
+      r.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var max = 1280, w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
+          var c = document.createElement('canvas'); c.width = Math.round(w*k); c.height = Math.round(h*k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/jpeg', 0.78).split(',')[1]);
+        };
+        img.onerror = rej; img.src = r.result;
+      };
+      r.onerror = rej; r.readAsDataURL(file);
+    });
+  }
+  el('photoInput').addEventListener('change', function(e){
+    var files = Array.prototype.slice.call(e.target.files || []).slice(0, MAX_PHOTOS - photos.length);
+    Promise.all(files.map(shrink)).then(function(list){
+      list.forEach(function(d){ photos.push({ data: d, type: 'image/jpeg' }); });
+      renderPhotos();
+    }).catch(function(){ alert('مش قادرين نقرا الصورة دي، جرّب صورة تانية.'); });
+    e.target.value = '';
+  });
+
+  // ---- النجوم ----
+  var rating = 0, starsBox = el('stars');
+  var STAR_TXT = ['','مش كويس','محتاج يتحسن','عادي','كويس','ممتاز 👌'];
+  for (var i=1;i<=5;i++){ (function(n){
+    var b=document.createElement('button'); b.type='button'; b.textContent='★'; b.setAttribute('aria-label', n+' من 5');
+    b.addEventListener('click', function(){ rating=n; starsBox.querySelectorAll('button').forEach(function(x,j){ x.classList.toggle('on', j<n); }); el('starsLabel').textContent = STAR_TXT[n]; });
+    starsBox.appendChild(b);
+  })(i); }
+  opts('speed', 'speed', ['في معاده ⚡','مقبول','اتأخر','موصلش']);
+
+  // ---- الأيام والمواعيد ----
+  opts('days', 'days', ['السبت','الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة'], 'checkbox');
+  var HOURS = [];
+  for (var h=7; h<=23; h++){
+    var hh = h > 12 ? h - 12 : h;
+    HOURS.push(hh + ' ' + (h < 12 ? 'الصبح' : (h < 15 ? 'الضهر' : (h < 18 ? 'العصر' : 'بالليل'))));
+  }
+  fillSelect(el('from'), HOURS, 'اختار'); fillSelect(el('to'), HOURS, 'اختار');
+
+  // ---- البيع ----
+  opts('sale', 'sale', ['أيوه','غالبًا','لسه مش متأكد','لأ']);
+  function saleOffers(){
+    var out = [];
+    if (vals('subjects').indexOf('انجليزي') >= 0) out.push(DISC_EN);
+    if (vals('grades').some(function(g){ return PREP.indexOf(g) >= 0; })) out.push(DISC_PREP);
+    return out;
+  }
+  function onSale(){
+    var offers = saleOffers();
+    el('saleQ').classList.toggle('hidden', !offers.length);
+    el('noSaleNote').classList.toggle('hidden', !!offers.length);
+    var p = el('promo'); p.innerHTML = '';
+    if (offers.length){
+      var a = document.createElement('div'); a.className='big'; a.textContent = '✨ طوّرنا كتب الترم التاني!'; p.appendChild(a);
+      var b = document.createElement('div'); b.textContent = 'المنهج متراجع بالكامل وفيه تعديلات جديدة، والكتاب طالع في أبهى صورة.'; p.appendChild(b);
+      offers.forEach(function(o){ var c=document.createElement('div'); c.className='deal'; c.textContent='🎁 ' + o; p.appendChild(c); });
+    }
+    var s = val('sale');
+    el('copiesQ').classList.toggle('hidden', !(s === 'أيوه' || s === 'غالبًا'));
+  }
+
+  document.addEventListener('change', function(e){
+    var n = e.target.name;
+    if (n === 'whatsapp') el('waBox').classList.toggle('hidden', e.target.value !== 'لأ');
+    if (n === 'areaType') el('villageQ').classList.toggle('hidden', e.target.value.indexOf('قرية') !== 0);
+    if (n === 'problem') el('problemDetails').classList.toggle('hidden', e.target.value !== 'أيوه');
+    if (n === 'hasRef') el('refBox').classList.toggle('hidden', e.target.value !== 'أيوه');
+    if (n === 'grades' || n === 'sale') onSale();
+    if (e.target.classList) e.target.classList.remove('bad');
+  });
+  document.addEventListener('input', function(e){ if (e.target.classList) e.target.classList.remove('bad'); });
+
+  // ---- اللوكيشن ----
+  var loc = null;
+  el('locBtn').addEventListener('click', function(){
+    var st = el('locStatus');
+    if (!navigator.geolocation){ st.className='status err'; st.textContent='الموبايل ده مش بيدعم تحديد الموقع، الصق اللينك تحت.'; return; }
+    st.className='status'; st.textContent='جاري تحديد الموقع... استنى ثواني';
+    el('locBtn').disabled = true;
+    navigator.geolocation.getCurrentPosition(function(p){
+      loc = {lat:p.coords.latitude, lng:p.coords.longitude, acc:Math.round(p.coords.accuracy)};
+      st.className='status ok';
+      st.textContent='✅ تم تسجيل الموقع (الدقة حوالي ' + loc.acc + ' متر)' + (loc.acc > 100 ? ' — لو تقدر افتح الـ GPS ودوس تاني عشان يبقى أدق' : '');
+      el('locBtn').disabled = false; el('locBtn').textContent='📍 حدّث الموقع';
+    }, function(err){
+      el('locBtn').disabled = false; st.className='status err';
+      st.textContent = err.code === 1
+        ? 'لازم توافق إن الموقع يتبعت، أو افتح الـ GPS وجرّب تاني. ممكن كمان تلصق اللينك تحت.'
+        : 'معرفناش نحدد الموقع، اتأكد إن الـ GPS شغال وجرّب تاني، أو الصق اللينك تحت.';
+    }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+  });
+
+  // ---- جمع البيانات ----
+  function collect(){
+    var area = val('areaType'), isVillage = area.indexOf('قرية') === 0, village = '';
+    if (isVillage) village = villageSel.value === 'قريتي مش في القايمة' ? el('villageOther').value.trim() : villageSel.value;
+    var offers = saleOffers(), books = vals('books'), hasOther = books.indexOf(OTHER_BOOK) >= 0;
+    var why = val('otherWhy'); if (why === 'سبب تاني') why = el('otherWhyText').value.trim() || why;
+    var d = {
+      rep: repSel.value, name: el('name').value.trim(), phone: digits(el('phone').value), whatsapp: val('whatsapp'),
+      whatsappNumber: val('whatsapp') === 'لأ' ? digits(el('waNumber').value) : '',
+      markaz: markazSel.value, areaType: isVillage ? 'قرية' : (area ? 'بندر' : ''), village: village,
+      subjects: vals('subjects'), grades: vals('grades'), workplace: val('workplace'),
+      books: books, otherBook: hasOther ? el('otherBook').value.trim() : '', otherWhy: hasOther ? why : '',
+      photos: books.indexOf(SELAH) >= 0 ? photos : [],
+      repRating: rating || '', speed: val('speed'), problem: val('problem'),
+      problemDetails: val('problem') === 'أيوه' ? el('problemDetails').value.trim() : '',
+      center: el('center').value.trim(), landmark: el('landmark').value.trim(), days: vals('days'),
+      from: el('from').value, to: el('to').value,
+      lat: loc?loc.lat:'', lng: loc?loc.lng:'', accuracy: loc?loc.acc:'', mapLink: el('mapLink').value.trim(),
+      students: el('students').value,
+      discount: offers.join(' + '), sale: offers.length ? val('sale') : '',
+      copies: offers.length && !el('copiesQ').classList.contains('hidden') ? el('copies').value : '',
+      notes: el('notes').value.trim(), ref: null
+    };
+    if (val('hasRef') === 'أيوه') d.ref = { name: el('refName').value.trim(), phone: digits(el('refPhone').value),
+      subject: el('refSubject').value, place: el('refPlace').value.trim(), village: el('refVillage').value.trim() };
+    return d;
+  }
+  // كل خطوة: [رسالة، العنصر اللي يتعلّم بالأحمر]
+  function stepProblems(n, d){
+    var p = [];
+    function need(ok, msg, id){ if (!ok) p.push([msg, id]); }
+    if (n === 0){
+      need(d.name, 'اكتب الاسم', 'name');
+      need(okPhone(d.phone), 'رقم الموبايل لازم يكون 11 رقم ويبدأ بـ 01', 'phone');
+      need(!d.whatsappNumber || okPhone(d.whatsappNumber), 'رقم الواتساب لازم يكون 11 رقم ويبدأ بـ 01 (أو سيبه فاضي)', 'waNumber');
+      need(d.rep, 'اختار المندوب', 'rep');
+      need(d.markaz, 'اختار المركز', 'markaz');
+      need(d.areaType, 'اختار بندر ولا قرية', 'areaType');
+      need(d.areaType !== 'قرية' || d.village, 'اختار القرية', villageSel.value ? 'villageOther' : 'village');
+    }
+    if (n === 1){
+      need(d.subjects.length, 'اختار المادة', 'subjects');
+      need(d.grades.length, 'اختار الصفوف', 'grades');
+      need(d.workplace, 'اختار حضرتك بتشتغل فين', 'workplace');
+      need(d.books.length, 'اختار الكتاب اللي بتشتغل منه', 'books');
+    }
+    if (n === 2) need(d.repRating, 'اختار تقييم المندوب بالنجوم', 'stars');
+    if (n === 3){
+      need(d.center, 'اكتب اسم السنتر أو مكان الدرس', 'center');
+      need(d.landmark, 'اكتب علامة مميزة جنب المكان', 'landmark');
+      need(d.days.length, 'اختار أيام الدرس', 'days');
+      need(d.from && d.to, 'اختار مواعيد الدرس', d.from ? 'to' : 'from');
+      need(d.lat || d.mapLink, 'ابعت اللوكيشن أو الصق اللينك', 'mapLink');
+    }
+    if (n === 4){
+      need(d.students !== '', 'اكتب عدد الطلبة تقريبًا', 'students');
+      need(!d.discount || d.sale, 'اختار هتاخد كتب بيع ولا لأ', 'sale');
+    }
+    if (n === 5 && d.ref){
+      need(d.ref.name && d.ref.subject && d.ref.place && d.ref.village, 'كمّل بيانات الزميل', !d.ref.name ? 'refName' : (!d.ref.subject ? 'refSubject' : (!d.ref.place ? 'refPlace' : 'refVillage')));
+      need(okPhone(d.ref.phone), 'رقم الزميل لازم يكون 11 رقم ويبدأ بـ 01', 'refPhone');
+      need(d.ref.phone !== d.phone, 'رقم الزميل مكتوب نفس رقم حضرتك', 'refPhone');
+    }
+    return p;
+  }
+
+  // ---- الخطوات ----
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step')), cur = 0;
+  var dots = el('dots');
+  steps.forEach(function(s){ var d=document.createElement('div'); d.className='dot'; d.style.setProperty('--dc', 'var(--' + s.dataset.color + ')'); dots.appendChild(d); });
+  function show(n){
+    cur = n;
+    steps.forEach(function(s, i){ s.classList.toggle('active', i === n); });
+    var s = steps[n], root = document.documentElement.style;
+    root.setProperty('--c', 'var(--' + s.dataset.color + ')');
+    root.setProperty('--c-soft', s.dataset.soft);
+    dots.querySelectorAll('.dot').forEach(function(d, i){ d.classList.toggle('on', i <= n); });
+    el('stepName').textContent = s.dataset.name;
+    el('stepCount').textContent = 'خطوة ' + (n+1) + ' من ' + steps.length;
+    el('prevBtn').classList.toggle('hidden', n === 0);
+    el('nextBtn').textContent = n === steps.length - 1 ? 'إرسال البيانات ✓' : 'التالي ←';
+    el('formErr').classList.add('hidden');
+    window.scrollTo(0, 0);
+  }
+  function showErrors(p){
+    var fe = el('formErr');
+    fe.textContent = p.map(function(x){ return '• ' + x[0]; }).join('\n');
+    fe.style.whiteSpace = 'pre-line';
+    fe.classList.remove('hidden');
+    p.forEach(function(x){ var t = el(x[1]); if (t) t.classList.add('bad'); });
+    var first = el(p[0][1]); if (first && first.scrollIntoView) first.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  el('prevBtn').addEventListener('click', function(){ if (cur > 0) show(cur - 1); });
+  el('nextBtn').addEventListener('click', function(){
+    var d = collect(), p = stepProblems(cur, d);
+    if (p.length) { showErrors(p); return; }
+    if (cur < steps.length - 1) { show(cur + 1); return; }
+    submit(d);
+  });
+  el('f').addEventListener('submit', function(e){ e.preventDefault(); });
+
+  function submit(d){
+    var btn = el('nextBtn'); btn.disabled = true; btn.textContent = 'جاري الإرسال...';
+    function ok(res){
+      if (res === 'updated') el('doneMsg').textContent = 'بيانات حضرتك اتحدثت، والمندوب هيتواصل مع حضرتك قريب.';
+      el('f').classList.add('hidden'); el('nav').classList.add('hidden'); el('stepsBar').classList.add('hidden');
+      el('done').classList.add('active'); window.scrollTo(0,0);
+    }
+    function fail(msg){
+      btn.disabled = false; btn.textContent = 'إرسال البيانات ✓';
+      var fe = el('formErr'); fe.textContent = 'حصلت مشكلة في الإرسال: ' + (msg || 'جرّب تاني'); fe.classList.remove('hidden');
+    }
+    if (INSIDE_GOOGLE) {
+      google.script.run.withSuccessHandler(ok).withFailureHandler(function(e){ fail(e && e.message); }).submitForm(d);
+    } else {
+      fetch(API_URL, { method: 'POST', body: JSON.stringify({ data: d }) })
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if (j.ok) ok(j.result); else fail(j.error); })
+        .catch(function(){ fail('اتأكد من النت وجرّب تاني'); });
+    }
+  }
+
+  onMarkaz();
+  onSubjects();
+  el('loading').classList.add('hidden');
+  el('f').classList.remove('hidden');
+  el('nav').classList.remove('hidden');
+  show(0);
+  }
+})();
+</script>
+</body>
+</html>
