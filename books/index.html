@@ -141,6 +141,16 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 .sec-t{font-size:16px;margin:0 0 10px}
 .banner{background:var(--bad-soft);color:var(--bad);padding:10px 14px;border-radius:12px;margin-bottom:12px;font-weight:700}
 .hint{font-size:13px;color:var(--muted);margin-top:6px}
+.cls-bar{background:var(--sel);border:1.5px solid color-mix(in srgb,var(--sel-ink) 40%,transparent);border-radius:12px;padding:12px;margin-bottom:12px}
+.cls-bar h3{margin:0 0 8px;font-size:16px;color:var(--sel-ink)}
+.cls-bar .acts{display:flex;gap:8px;flex-wrap:wrap}
+.cls-bar select{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px;font-size:15px;min-width:120px}
+.backup-bar{background:var(--owe-soft);border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.backup-bar .grow{flex:1;font-size:14px;color:var(--owe)}
+.auto-owed{background:color-mix(in srgb,var(--brand-soft) 70%,transparent);border:1px dashed var(--brand);border-radius:12px;padding:12px;margin-bottom:12px}
+.auto-owed h3{margin:0 0 6px;font-size:15px;color:var(--brand)}
+.auto-owed .items{font-size:14px;color:var(--muted)}
+.lock-badge{display:inline-block;background:var(--line);color:var(--muted);border-radius:8px;padding:1px 6px;font-size:11px;margin-inline-start:6px}
 @media (min-width:700px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .tlist{display:grid;grid-template-columns:1fr 1fr}
@@ -173,23 +183,24 @@ const STAGES = {
   m:{name:'إعدادي', grades:3, subjects:['ar','math','stu']}
 };
 const GRADE = ['أولى','تانية','تالتة','رابعة','خامسة','سادسة'];
-const STAGE_TXT = {p:'ابتدائي', m:'إعدادي', pm:'ابتدائي وإعدادي', '':''};
+const STAGE_TXT = {p:'ابتدائي', m:'إعدادي', pm:'ابتدائي وإعدادي', '':'',
+  'p-upper':'صفوف عليا', 'p-lower':'فصل', 'p-upper-m':'صفوف عليا وإعدادي'};
 function bookParts(k){const [st,sb,g]=k.split('-');return {st,sb,g:+g}}
 function bookLabel(k){const {st,sb,g}=bookParts(k);return `${SUBJ[sb]} ${GRADE[g-1]} ${STAGES[st].name}`}
-// العلوم والدراسات في الابتدائي بيبدأوا من رابعة
 const FROM = {'p-sci':4, 'p-stu':4};
 const BOOK_ORDER = [];
 for (const st of ['p','m']) for (const sb of STAGES[st].subjects) for (let g=FROM[st+'-'+sb]||1; g<=STAGES[st].grades; g++) BOOK_ORDER.push(`${st}-${sb}-${g}`);
 const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
 
+
 /* ================= التخزين ================= */
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
-function blank(){return {v:1, rep:'شريف', teachers:[], entries:[]}}
+function blank(){return {v:1, rep:'شريف', teachers:[], entries:[], lastBackup:''}}
 function load(){
   try { const s = localStorage.getItem(KEY); db = s ? JSON.parse(s) : blank(); }
   catch(e){ db = blank(); storageOk = false; }
-  db.teachers ||= []; db.entries ||= []; db.rep ||= 'شريف';
+  db.teachers ||= []; db.entries ||= []; db.rep ||= 'شريف'; db.lastBackup ||= '';
 }
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; }
@@ -222,6 +233,57 @@ function parseSubjects(t){ const n=normText(t), r=[];
 function parseStage(t){ const n=normText(t); return (/ابتدا/.test(n)?'p':'') + (/اعدا/.test(n)?'m':''); }
 const actDate = e => e.s==='d' ? e.dd : e.rd;
 const tById = id => db.teachers.find(t=>t.id===id);
+
+/* ================= التصنيفات ================= */
+const CLS_MAP = {
+  'فصل':       {stages:['p'], gradeRange:{p:[1,3]}, subjects:['ar','math']},
+  'صفوف عليا': {stages:['p'], gradeRange:{p:[4,6]}},
+  'اعدادي':    {stages:['m'], gradeRange:{m:[1,3]}},
+  'إعدادي':    {stages:['m'], gradeRange:{m:[1,3]}},
+  'صفوف عليا واعدادي': {stages:['p','m'], gradeRange:{p:[4,6], m:[1,3]}},
+  'ابتدائي واعدادي':   {stages:['p','m'], gradeRange:{p:[1,6], m:[1,3]}},
+  'ابتدائي وإعدادي':   {stages:['p','m'], gradeRange:{p:[1,6], m:[1,3]}},
+  'ابتدائي':   {stages:['p'], gradeRange:{p:[1,6]}},
+};
+function parseCls(raw){
+  if(!raw) return null;
+  const n = normText(raw);
+  for(const [k,v] of Object.entries(CLS_MAP)){
+    if(normText(k)===n) return v;
+  }
+  if(/فصل/.test(n)) return CLS_MAP['فصل'];
+  if(/صفوف.?عليا/.test(n) && /اعدا/.test(n)) return CLS_MAP['صفوف عليا واعدادي'];
+  if(/صفوف.?عليا/.test(n)) return CLS_MAP['صفوف عليا'];
+  if(/ابتدا/.test(n) && /اعدا/.test(n)) return CLS_MAP['ابتدائي واعدادي'];
+  if(/ابتدا/.test(n)) return CLS_MAP['ابتدائي'];
+  if(/اعدا/.test(n)) return CLS_MAP['اعدادي'];
+  return null;
+}
+function expectedBooks(t){
+  const cls = parseCls(t.cls);
+  if(!cls) return [];
+  const subs = cls.subjects || t.subjects || [];
+  if(!subs.length) return [];
+  const books = [];
+  for(const st of cls.stages){
+    const [gMin, gMax] = cls.gradeRange[st] || [1, STAGES[st].grades];
+    const stSubs = subs.filter(sb => STAGES[st].subjects.includes(sb));
+    for(const sb of stSubs){
+      const from = Math.max(gMin, FROM[st+'-'+sb]||1);
+      for(let g=from; g<=gMax; g++) books.push(`${st}-${sb}-${g}`);
+    }
+  }
+  return books;
+}
+function autoOwed(t){
+  const exp = expectedBooks(t);
+  if(!exp.length) return [];
+  const delivered = new Set();
+  for(const e of db.entries) if(e.t===t.id && e.s==='d') delivered.add(e.b);
+  const alreadyOwed = new Set();
+  for(const e of db.entries) if(e.t===t.id && e.s==='o') alreadyOwed.add(e.b);
+  return exp.filter(k => !delivered.has(k) && !alreadyOwed.has(k));
+}
 
 let toastTimer;
 function toast(msg, undoFn){
@@ -288,8 +350,10 @@ function renderHome(){
   setHeader(`دفتر التسليمات — ${db.rep}`, false);
   const today=dayKey(), st=dayStats(today), ob=owedTotal();
   const banner = storageOk ? '' : '<div class="banner">⚠️ الحفظ على الجهاز مش شغال — اعمل نسخة احتياطية</div>';
+  const daysSinceBackup = db.lastBackup ? Math.floor((Date.now() - new Date(db.lastBackup).getTime()) / 864e5) : 999;
+  const backupBanner = (daysSinceBackup >= 1 && db.entries.length > 0) ? `<div class="backup-bar"><div class="grow">💾 ${daysSinceBackup > 100 ? 'ما عملتش نسخة احتياطية قبل كده!' : `آخر نسخة من ${daysSinceBackup} يوم`} — اعمل نسخة دلوقتي</div><button class="btn sm owe" data-act="backup">💾 نسخة</button></div>` : '';
   if(!db.teachers.length){
-    app.innerHTML = banner + `<div class="card empty">
+    app.innerHTML = banner + backupBanner + `<div class="card empty">
       <div style="font-size:42px">📋</div>
       <p><b>لسه مفيش مدرسين.</b><br>استورد شيت الإكسل بتاع خط السير، أو ضيف مدرس بإيدك.</p>
       <div class="row2" style="max-width:420px;margin:0 auto">
@@ -304,7 +368,7 @@ function renderHome(){
   const planToday=db.teachers.filter(t=>t.plan===today).length;
   const owedT=db.teachers.filter(t=>idx[t.id]?.o).length;
   const chip=(k,txt)=>`<button class="chip ${homeFilter===k?'on':''}" data-act="filter" data-k="${k}">${txt}</button>`;
-  app.innerHTML = banner + `
+  app.innerHTML = banner + backupBanner + `
     <div class="stats">
       <div class="stat"><b>${st.visits}</b><span>زيارة النهارده</span></div>
       <div class="stat"><b>${st.d}</b><span>كتاب اتسلّم النهارده</span></div>
@@ -435,6 +499,39 @@ function renderTeacher(id){
       <button class="btn sm ghost" data-act="edit-teacher">✏️ تعديل</button>
     </div></div>`;
 
+  // تأكيد التخصص
+  const isKashkol = t.cls && /كشكول/i.test(normText(t.cls));
+  const clsInfo = parseCls(t.cls);
+  const needsConfirm = !t.clsConfirmed && (isKashkol || (!clsInfo && t.cls));
+  if(needsConfirm || isKashkol){
+    html += `<div class="cls-bar"><h3>📋 ${isKashkol ? 'مدرس كشكول — حدد تخصصه' : 'التصنيف مش واضح — حدد تخصصه'}</h3>
+      <div class="acts">
+        <select id="cls-change">
+          <option value="">— اختار التصنيف —</option>
+          <option value="فصل">فصل (أولى-تالتة، عربي وحساب)</option>
+          <option value="صفوف عليا">صفوف عليا (رابعة-ستة)</option>
+          <option value="ابتدائي">ابتدائي (أولى-ستة)</option>
+          <option value="إعدادي">إعدادي (أولى-تالتة)</option>
+          <option value="صفوف عليا وإعدادي">صفوف عليا وإعدادي</option>
+          <option value="ابتدائي وإعدادي">ابتدائي وإعدادي</option>
+        </select>
+        <button class="btn sm pri" data-act="confirm-cls">حفظ التصنيف</button>
+        ${!isKashkol && t.cls ? `<button class="btn sm ghost" data-act="keep-cls">مظبوط كده</button>`:''}</div></div>`;
+  } else if(t.cls && !t.clsConfirmed){
+    html += `<div class="cls-bar" style="background:var(--brand-soft);border-color:var(--brand)"><h3 style="color:var(--brand)">📋 التخصص: ${esc(t.cls)} — مظبوط؟</h3>
+      <div class="acts">
+        <button class="btn sm pri" data-act="keep-cls">مظبوط ✅</button>
+        <button class="btn sm ghost" data-act="show-cls-change">تغيير</button></div></div>`;
+  }
+
+  // المستحق التلقائي (بناءً على التصنيف)
+  const autoOwedBooks = t.clsConfirmed ? autoOwed(t) : [];
+  if(autoOwedBooks.length){
+    html += `<div class="auto-owed"><h3>📚 المفروض يستلم كمان (بناءً على تصنيفه)</h3>
+      <div class="items">${autoOwedBooks.map(k=>esc(bookLabel(k))).join('، ')}</div>
+      <button class="btn sm pri" style="margin-top:8px" data-act="add-auto-owed">⏳ سجّلهم مستحق كلهم</button></div>`;
+  }
+
   if(owed.length){
     const tot=owed.reduce((s,e)=>s+e.q,0);
     html += `<div class="warn"><h3>⏳ مستحق له ${tot} كتاب — لسه ما سلّمتوش</h3>
@@ -476,11 +573,13 @@ function renderTeacher(id){
 
   const hist=[...ents].sort((a,b)=>(actDate(b)||'').localeCompare(actDate(a)||''));
   html += `<div class="card"><h3 class="sec-t">🕘 سجل التعاملات (${hist.length})</h3><div class="hist">` +
-    (hist.length ? hist.map(e=>`<div class="hrow"><div class="grow">
+    (hist.length ? hist.map(e=>{
+      const locked = e.s==='d' && e.dd && (Date.now() - new Date(e.dd).getTime()) > 3600000;
+      return `<div class="hrow"><div class="grow">
         ${e.s==='d'?'<span class="pill ok">اتسلّم</span>':'<span class="pill owe">مستحق</span>'}
-        <b>${esc(bookLabel(e.b))}</b>${e.q>1?` × ${e.q}`:''}
+        <b>${esc(bookLabel(e.b))}</b>${e.q>1?` × ${e.q}`:''}${locked?'<span class="lock-badge">🔒</span>':''}
         <div class="small muted">${e.s==='d'?`اتسلّم ${fmtDT(e.dd)}`:''}${e.rd?`${e.s==='d'?' • ':''}اتطلب ${fmtDT(e.rd)}`:''}${e.rep&&e.rep!==db.rep?` • ${esc(e.rep)}`:''}</div></div>
-        <button class="btn sm danger" data-act="del-entry" data-id="${e.id}" title="امسح">🗑️</button></div>`).join('')
+        <button class="btn sm danger" data-act="del-entry" data-id="${e.id}" title="امسح">🗑️</button></div>`}).join('')
       : '<div class="muted">لسه مفيش.</div>') + `</div></div>`;
 
   app.innerHTML = html;
@@ -619,11 +718,15 @@ function teacherForm(t, preset={}){
     <div class="field"><label>رقم التليفون</label><input id="f_phone" inputmode="tel" dir="ltr" value="${esc(t.phone)}"></div>
     <div class="row2"><div class="field"><label>المرحلة</label><select id="f_stage">
       ${[['','—'],['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي']].map(([v,l])=>`<option value="${v}" ${t.stage===v?'selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label>التصنيف</label><select id="f_cls">
+        <option value="">— اختر —</option>
+        ${['فصل','صفوف عليا','ابتدائي','إعدادي','صفوف عليا وإعدادي','ابتدائي وإعدادي','كشكول'].map(v=>`<option ${(t.cls||'')===v?'selected':''}>${v}</option>`).join('')}
+        ${t.cls && !['فصل','صفوف عليا','ابتدائي','إعدادي','صفوف عليا وإعدادي','ابتدائي وإعدادي','كشكول',''].includes(t.cls) ? `<option selected>${esc(t.cls)}</option>` : ''}
+      </select></div>
       <div class="field"><label>المادة</label><input id="f_subj" placeholder="عربي، رياضة…" value="${esc(t.subjectText)}"></div></div>
     <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" value="${esc(t.area)}"></div>
       <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
-    <div class="row2"><div class="field"><label>التصنيف</label><input id="f_cls" value="${esc(t.cls)}"></div>
-      <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div></div>
+    <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div>
     <div class="row2" style="margin-top:6px"><button class="btn pri" id="f_save">حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
     ${isNew?'':'<button class="btn danger" id="f_del" style="width:100%;margin-top:10px">🗑️ امسح المدرس ده وكل تعاملاته</button>'}</div>`;
   document.body.appendChild(m);
@@ -639,7 +742,8 @@ function teacherForm(t, preset={}){
     const subjectText=m.querySelector('#f_subj').value.trim();
     const data={name, phone, stage:m.querySelector('#f_stage').value, subjectText, subjects:parseSubjects(subjectText),
       area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
-      cls:m.querySelector('#f_cls').value.trim(), students:m.querySelector('#f_students').value.trim()};
+      cls:m.querySelector('#f_cls').value, students:m.querySelector('#f_students').value.trim()};
+    if(data.cls && parseCls(data.cls)) data.clsConfirmed = true;
     if(isNew){ const nt={id:uid(), ...data, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
     else { Object.assign(t,data); save(); close(); render(); toast('اتحفظ ✅'); }
   };
@@ -668,7 +772,20 @@ document.addEventListener('click', e=>{
     case 'commit-o': commitSel('o'); break;
     case 'deliver-owed': { const id=el.dataset.id; withUndo('✅ اتسجّل التسليم', ()=>{ const x=db.entries.find(z=>z.id===id); if(x){ x.s='d'; x.dd=new Date().toISOString(); } }); break; }
     case 'deliver-all-owed': { const now=new Date().toISOString(); withUndo('✅ اتسلّم كل المستحق', ()=>{ db.entries.forEach(x=>{ if(x.t===curTeacher && x.s==='o'){ x.s='d'; x.dd=now; } }); }); break; }
-    case 'del-entry': { const id=el.dataset.id; if(confirm('تمسح التعامل ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.entries=db.entries.filter(z=>z.id!==id); }); break; }
+    case 'del-entry': { const id=el.dataset.id; const ent=db.entries.find(z=>z.id===id);
+      if(ent && ent.s==='d' && ent.dd){
+        const age = Date.now() - new Date(ent.dd).getTime();
+        if(age > 3600000 && !confirm('⚠️ الكتاب ده اتسلّم من أكتر من ساعة.\nمتأكد إنك عايز تمسح التسليم ده؟')) break;
+      }
+      if(confirm('تمسح التعامل ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.entries=db.entries.filter(z=>z.id!==id); }); break; }
+    case 'confirm-cls': { const t=tById(curTeacher); if(!t) break; const v=document.querySelector('#cls-change')?.value; if(!v){alert('اختار التصنيف الأول');break;} t.cls=v; t.clsConfirmed=true;
+      const stg=parseCls(v); if(stg){t.stage=stg.stages.join(''); if(stg.subjects) t.subjects=stg.subjects;}
+      save(); render(); toast('✅ التصنيف اتحفظ'); break; }
+    case 'keep-cls': { const t=tById(curTeacher); if(t){t.clsConfirmed=true; save(); render(); toast('✅ التخصص مأكد');} break; }
+    case 'show-cls-change': { const t=tById(curTeacher); if(t){t.clsConfirmed=false; t.cls='كشكول'; save(); render();} break; }
+    case 'add-auto-owed': { const t=tById(curTeacher); if(!t) break; const books=autoOwed(t); if(!books.length) break;
+      withUndo(`⏳ اتسجّل ${books.length} كتاب مستحق تلقائي`, ()=>{ const now=new Date().toISOString();
+        for(const k of books) db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'o', dd:'', rd:now, rep:db.rep}); }); break; }
     case 'edit-teacher': teacherForm(tById(curTeacher)); break;
     case 'new-teacher': e.preventDefault(); teacherForm(null, {name:el.dataset.name||'', phone:el.dataset.phone||''}); break;
     case 'filter': homeFilter=el.dataset.k; renderHome(); break;
@@ -707,8 +824,10 @@ function download(blob, name){
 
 /* ================= نسخة احتياطية ================= */
 function backup(){
-  const blob=new Blob([JSON.stringify({app:'selah-books', ...db, savedAt:new Date().toISOString()})], {type:'application/json'});
+  const now = new Date().toISOString();
+  const blob=new Blob([JSON.stringify({app:'selah-books', ...db, savedAt:now})], {type:'application/json'});
   download(blob, `نسخة-احتياطية-${db.rep}-${dayKey()}.json`);
+  db.lastBackup = now; save();
   toast('⬇️ النسخة نزلت — ابعتها لنفسك على الواتساب');
 }
 $('#fileJson').addEventListener('change', async e=>{
