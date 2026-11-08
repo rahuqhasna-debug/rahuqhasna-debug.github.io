@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f766e">
-<title>دفتر التسليمات</title>
+<title>سلاح التلميذ البحيرة</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{
   --bg:#f3f5f4;--card:#ffffff;--ink:#14201e;--muted:#5d6b68;--line:#dde4e2;
@@ -207,18 +207,51 @@ details.done>summary{cursor:pointer;font-weight:700;color:var(--muted);padding:8
 .srow .step button{width:30px;height:36px;font-size:17px}
 details.others>summary{cursor:pointer;font-weight:700;padding:10px 2px;color:var(--brand)}
 .inv-wrap{position:fixed;inset:0;z-index:55;background:#e5e7eb;overflow:auto;padding:16px 12px 24px}
-.inv{background:#fff;color:#111;max-width:560px;margin:0 auto;border-radius:12px;padding:18px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
-.inv-h{text-align:center;border-bottom:2px solid #0f766e;padding-bottom:8px;margin-bottom:8px}
-.inv-h .brand{font-weight:800;color:#0f766e;font-size:20px}
-.inv-h h2{margin:2px 0;font-size:18px}
-.inv .kv,.inv .tbl th,.inv .tbl td{border-color:#e5e7eb}
+.inv{background:#fff;color:#111;max-width:560px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.inv-h{background:#0f766e;color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px}
+.inv-h .brand{font-weight:800;font-size:21px;flex:1}
+.inv-h h2{margin:0;font-size:17px}
+.inv-h .d{font-size:13px;opacity:.9}
+.inv-b{padding:14px 16px 18px}
+.inv-who{background:#e2f2ef;border-radius:10px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:15px}
+.inv-who span{color:#555}
+.inv .tbl{margin:12px 0;border-radius:8px;overflow:hidden}
+.inv .tbl th{background:#0f766e;color:#fff;font-size:13px;border:0;padding:8px 4px}
+.inv .tbl td{border:0;color:#111}
+.inv .tbl tbody tr:nth-child(even) td{background:#f3f4f6}
+.inv .tbl s{color:#888}
+.inv .kv{border-color:#e5e7eb}
 .inv .kv:first-of-type{border-top:0}
-.inv .tbl th{color:#555}
-.inv .tbl{margin:10px 0}
-.inv .kv.big{font-size:18px}
 .inv-np{text-align:center;color:#b45309;font-weight:700;margin:6px 0}
-.inv-acts{max-width:560px;margin:12px auto 0;display:flex;gap:8px}
-.inv-acts .btn{flex:1;text-align:center;text-decoration:none}
+.inv-due{margin-top:10px;background:#b91c1c;color:#fff;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;font-size:20px;font-weight:800}
+.inv-acts{max-width:560px;margin:12px auto 0;display:flex;flex-wrap:wrap;gap:8px}
+.inv-acts .btn{flex:1 1 40%;text-align:center;text-decoration:none}
+/* اللوجو والتوقيع */
+header.top .logo{width:30px;height:30px;border-radius:7px;background:#fff;object-fit:contain;flex:none}
+.splash{position:fixed;inset:0;z-index:100;background:#fff;color:#0f766e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s}
+.splash img{width:150px;height:150px;object-fit:contain}
+.splash .nm{font-size:22px;font-weight:800}
+.splash .sg{font-size:14px;color:#5d6b68}
+.splash.out{opacity:0;pointer-events:none}
+.sign{text-align:center;color:var(--muted);font-size:13px;margin:18px 0 4px}
+/* ألوان كروت المدرسين */
+.titem.st-part{background:var(--owe-soft);border-color:color-mix(in srgb,var(--owe) 35%,transparent);border-inline-start:5px solid var(--owe)}
+.titem.st-done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent);border-inline-start:5px solid var(--ok)}
+.pill.dup{background:var(--bad-soft);color:var(--bad)}
+.pill.abc{background:var(--sel);color:var(--sel-ink)}
+.dupg{border-top:1px solid var(--line);padding:8px 0}
+.dupg:first-of-type{border-top:0}
+.spec-subs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.spec-subs label{border:1.5px solid var(--line);background:var(--card);border-radius:20px;padding:5px 10px;font-size:14px;cursor:pointer;font-weight:700}
+.spec-subs input{margin:0 0 0 4px;vertical-align:middle}
+details.others-t>summary{cursor:pointer;font-weight:800;padding:12px 2px;color:var(--brand);font-size:15px}
+details.ob{border-top:1px solid var(--line)}
+details.ob>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;padding:8px 0}
+details.ob>summary::-webkit-details-marker{display:none}
+details.ob>summary::after{content:"▾";color:var(--muted);margin-inline-start:6px}
+.ob-t{display:flex;align-items:center;gap:8px;padding:5px 8px 5px 0;font-size:14px}
+.ob-t .grow{flex:1;min-width:0}
+.ob-t .ico{width:32px;height:32px;font-size:15px}
 @media (min-width:700px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .tlist{display:grid;grid-template-columns:1fr 1fr}
@@ -226,7 +259,8 @@ details.others>summary{cursor:pointer;font-weight:700;padding:10px 2px;color:var
 </style>
 </head>
 <body>
-<header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→</button><h1 id="title">دفتر التسليمات</h1><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
+<div class="splash" id="splash"><img src="icon-512.png" alt="" onerror="this.remove()"><div class="nm">سلاح التلميذ البحيرة</div><div class="sg">تصميم وتنفيذ: شريف حشيش</div></div>
+<header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→</button><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
 <main class="wrap" id="app"></main>
 <div class="actbar" id="actbar"><div class="in">
   <button class="btn ok" data-act="commit-d" style="flex:2">✅ سلّمت <span class="n"></span></button>
@@ -268,11 +302,12 @@ const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
 /* ================= التخزين ================= */
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
-function blank(){return {v:1, rep:'شريف', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], lastBackup:''}}
+const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
+function blank(){return {v:1, rep:'', mail:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], lastBackup:''}}
 function load(){
   try { const s = localStorage.getItem(KEY); db = s ? JSON.parse(s) : blank(); }
   catch(e){ db = blank(); storageOk = false; }
-  db.teachers ||= []; db.entries ||= []; db.stock ||= []; db.rep ||= 'شريف'; db.lastBackup ||= '';
+  db.teachers ||= []; db.entries ||= []; db.stock ||= []; db.rep ||= ''; db.mail ||= ''; db.lastBackup ||= '';
   // البيع: sales = طلبات وبيع، payments = دفعات ومرتجعات المدرسين، prices = أسعار الكتب، merchants = بضاعة التجار، merchPays = دفعات التجار
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
 }
@@ -308,6 +343,20 @@ function parseSubjects(t){ const n=normText(t), r=[];
 function parseStage(t){ const n=normText(t); return (/ابتدا/.test(n)?'p':'') + (/اعدا/.test(n)?'m':''); }
 const actDate = e => e.s==='d' ? e.dd : e.rd;
 const tById = id => db.teachers.find(t=>t.id===id);
+/* ================= الأرقام المتكررة ================= */
+let DUPS = new Set();
+function dupGroups(){ const m=new Map(); for(const t of db.teachers) if(t.phone){ if(!m.has(t.phone)) m.set(t.phone,[]); m.get(t.phone).push(t); } return [...m].filter(([,l])=>l.length>1); }
+const isDup = t => !!(t && t.phone && DUPS.has(t.phone));
+function dupBlock(t){
+  if(!isDup(t)) return false;
+  alert('⚠️ الرقم ده متكرر — مش هينفع تسليم أو بيع أو طلب لحد ما تمسح المتكرر.\nهوديك لكارت «الأرقام المتكررة» في الإعدادات.');
+  document.querySelectorAll('.modal').forEach(x=>x.remove());
+  goDups(); return true;
+}
+function goDups(){ if(location.hash!=='#/settings') location.hash='#/settings'; else render();
+  setTimeout(()=>{ const el=document.getElementById('dups'); if(el) el.scrollIntoView({block:'start'}); }, 80); }
+function delTeacherData(id){ db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
+function nameTags(t){ const L=clsLetter(t); return (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':''); }
 
 /* ================= التصنيفات ================= */
 const CLS_MAP = {
@@ -336,8 +385,21 @@ function parseCls(raw){
   if(/اعدا/.test(n)) return CLS_MAP['اعدادي'];
   return null;
 }
+// عمود التصنيف في شيت المندوب فيه A أو B أو C (نوع المدرس)
+function clsLetter(t){ const s=String(t.cls||'').trim().toUpperCase(); return /^[ABC]$/.test(s) ? s : ''; }
+// التخصص: اللي المندوب اختاره (t.spec)، وإلا «كشكول» أو «فصل» لو مكتوبين في أي عمود، وإلا التصنيف لو مفهوم
+function teacherCls(t){
+  if(t.spec){ const c=parseCls(t.spec); if(c) return c; }
+  for(const v of [t.cls, t.subjectText, t.stageText]){ const n=normText(v||'');
+    if(/كشكول/.test(n)) return CLS_MAP['كشكول']; if(/فصل/.test(n)) return CLS_MAP['فصل']; }
+  return clsLetter(t) ? null : parseCls(t.cls);
+}
+// المواد والمراحل بتاعته (للبحث وترتيب الكتب)
+function tSubs(t){ const c=teacherCls(t); return [...new Set([...(c?.subjects||[]), ...(t.subjects||[])])]; }
+function tStages(t){ const c=teacherCls(t); return [...new Set([...(c?.stages||[]), ...(t.stage||'').split('').filter(s=>STAGES[s])])]; }
+function myGroups(t){ return new Set(expectedBooks(t).map(k=>k.split('-').slice(0,2).join('-'))); }
 function expectedBooks(t){
-  let cls = parseCls(t.cls);
+  let cls = teacherCls(t);
   if(!cls){ // مفيش تصنيف واضح → من المرحلة + المادة اللي في الشيت
     const sts=(t.stage||'').split('').filter(s=>STAGES[s]);
     if(!sts.length) return [];
@@ -420,7 +482,7 @@ function dayStats(day){
 
 /* ================= التوجيه ================= */
 let homeFilter = 'all', homeArea = '', homeQuery = '';
-let curTeacher = null, sel = {}, closedGroups = new Set(), openBox = '', forceCls = false;
+let curTeacher = null, sel = {}, closedGroups = new Set(), openBox = '', forceCls = false, othersOpen = false;
 try { closedGroups = new Set(JSON.parse(localStorage.getItem(KEY+'-closed')||'[]')); } catch(e){}
 const app = $('#app');
 
@@ -448,11 +510,13 @@ function render(){
   const h = location.hash.replace(/^#/,'') || '/';
   const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
   ACC = accMap();
+  DUPS = new Set(dupGroups().map(([p])=>p));
+  if(!db.rep || !db.mail) firstRun();
   const po = db.sales.filter(s=>s.st==='order').length; const sbd=$('#salesBadge'); sbd.hidden=!po; sbd.textContent=po;
   const sm = h.match(/^\/sales(?:\/(\w+))?(?:\/(.+))?$/);
   if(sm){ curTeacher=null; sel={}; updateActbar(); renderSales(sm[1]||'', sm[2]?decodeURIComponent(sm[2]):''); setTab('sales'); return; }
   const m = h.match(/^\/t\/(.+)$/);
-  if(m){ const id=decodeURIComponent(m[1]); if(curTeacher!==id){ curTeacher=id; sel={}; openBox=''; forceCls=false; } renderTeacher(id); setTab('home'); }
+  if(m){ const id=decodeURIComponent(m[1]); if(curTeacher!==id){ curTeacher=id; sel={}; openBox=''; forceCls=false; othersOpen=false; } renderTeacher(id); setTab('home'); }
   else { curTeacher=null; sel={}; updateActbar();
     if(h==='/owed'){ renderOwed(); setTab('owed'); }
     else if(h==='/report'){ renderReport(); setTab('report'); }
@@ -464,7 +528,7 @@ window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
 
 /* ================= الرئيسية ================= */
 function renderHome(){
-  setHeader(`دفتر التسليمات — ${db.rep}`, false);
+  setHeader(APP_NAME, false);
   const today=dayKey(), st=dayStats(today), ob=owedTotal();
   const banner = storageOk ? '' : '<div class="banner">⚠️ الحفظ على الجهاز مش شغال — اعمل نسخة احتياطية</div>';
   const backupBanner = backupDue() ? `<div class="backup-bar"><div class="grow">💾 ${!db.lastBackup ? 'ما عملتش نسخة احتياطية قبل كده!' : new Date().getHours()>=20 ? `خلّصت شغل النهارده؟ آخر نسخة ${fmtDT(db.lastBackup)}` : `آخر نسخة ${fmtDT(db.lastBackup)}`} — اعمل نسخة دلوقتي</div><button class="btn sm owe" data-act="backup">💾 نسخة</button></div>` : '';
@@ -491,7 +555,7 @@ function renderHome(){
       <div class="stat"><b style="color:var(--owe)">${ob}</b><span>كتاب عليا (مستحق)</span></div>
     </div>
     <div class="search">
-      <input id="q" type="search" placeholder="🔎 اسم، تليفون، منطقة، أو «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
+      <input id="q" type="search" placeholder="🔎 أي حاجة: اسم، تليفون، قرية، «عربي إعدادي A»، «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button>
     </div>
     <div class="chips">
@@ -512,18 +576,32 @@ function renderHome(){
 }
 const SUBJ_RE=[['ar',/^(ال)?عربي/],['math',/^(ال)?رياض/],['stu',/^(ال)?دراس/],['en',/^(ال)?(انجليز|انجلش|english)/],['sci',/^(ال)?علوم/]];
 const subjOf=w=>{ const m=SUBJ_RE.find(([k,re])=>re.test(w)); return m?m[0]:null; };
+// البحث بأي حاجة: كل الكلمات لازم تتطابق. A/B/C لوحده = التصنيف بس
 function parseQuery(raw){
-  const q={owed:false, subj:null, stage:null, rest:[]};
-  for(const w of normText(raw).split(' ').filter(Boolean)){
+  const q={owed:false, subjs:[], stages:[], letter:'', rest:[]};
+  for(let w of normText(raw).split(' ').filter(Boolean)){
+    if(w.length>2 && w[0]==='و' && (subjOf(w.slice(1)) || /^(ال)?(ابتدا|اعدا)/.test(w.slice(1)))) w=w.slice(1);
     if(/^(ال)?مستحق/.test(w)) q.owed=true;
-    else if(subjOf(w)) q.subj=subjOf(w);
-    else if(/^(ال)?ابتدا/.test(w)) q.stage='p';
-    else if(/^(ال)?اعدا/.test(w)) q.stage='m';
+    else if(subjOf(w)) q.subjs.push(subjOf(w));
+    else if(/^(ال)?ابتدا/.test(w)) q.stages.push('p');
+    else if(/^(ال)?اعدا/.test(w)) q.stages.push('m');
+    else if(/^[abc]$/.test(w)) q.letter=w.toUpperCase();
     else q.rest.push(w);
   }
   return q;
 }
-function owedMatch(e,subj,stage){ if(e.s!=='o') return false; const p=bookParts(e.b); return (!subj||p.sb===subj) && (!stage||p.st===stage); }
+const emptyQ = () => ({owed:false, subjs:[], stages:[], letter:'', rest:[]});
+function teacherHay(t){ return normText([t.name, t.phone, t.area, t.school, t.subjectText, t.stageText, STAGE_TXT[t.stage]||'', t.cls, t.spec,
+  ...tSubs(t).map(s=>SUBJ[s]), ...tStages(t).map(s=>STAGES[s].name)].filter(Boolean).join(' ')); }
+function matchTeacher(t, Q, owedList){
+  if(Q.letter && clsLetter(t)!==Q.letter) return false;
+  if(Q.owed){ const l=owedList || autoOwed(t).map(b=>({b, s:'o'})); if(!l.some(e=>owedMatch(e, Q.subjs, Q.stages))) return false; }
+  else { const ss=tSubs(t), sts=tStages(t); if(!Q.subjs.every(s=>ss.includes(s)) || !Q.stages.every(s=>sts.includes(s))) return false; }
+  if(!Q.rest.length) return true;
+  const h=teacherHay(t), ph=t.phone||'';
+  return Q.rest.every(w=>h.includes(w) || (/^\d{3,}$/.test(w) && ph.includes(w.replace(/^0/,''))));
+}
+function owedMatch(e,subjs,stages){ if(e.s!=='o') return false; const p=bookParts(e.b); return (!subjs?.length||subjs.includes(p.sb)) && (!stages?.length||stages.includes(p.st)); }
 function owedLine(ents){
   const by={}; for(const e of [...ents].sort((a,b)=>bookRank[a.b]-bookRank[b.b])){ (by[bookParts(e.b).sb] ||= []).push(e); }
   return Object.entries(by).map(([sb,l])=>`${SUBJ[sb]}: `+l.map(e=>{const p=bookParts(e.b); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`+(e.q>1?` (${e.q})`:'');}).join('، ')).join(' • ');
@@ -534,8 +612,10 @@ function phoneBtns(t){
 }
 function teacherCard(t, x, extra=''){
   const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
-  return `<div class="titem" data-act="open-t" data-id="${esc(t.id)}">
-    <div class="grow"><div class="nm">${esc(t.name)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
+  // أبيض = ما استلمش، برتقاني = استلم وباقيله، أخضر = خلّص
+  const stc = !x?.d ? '' : x.o ? 'st-part' : 'st-done';
+  return `<div class="titem ${stc}" data-act="open-t" data-id="${esc(t.id)}">
+    <div class="grow"><div class="nm">${esc(t.name)}${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
       <div class="sub">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).join(' • '))}</div>
       ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${extra}</div>
     <div class="side"><div>${badges}</div><div class="icos">${phoneBtns(t)}</div></div></div>`;
@@ -544,7 +624,7 @@ function renderList(){
   const idx=indexEntries(), today=dayKey();
   const raw=homeQuery.trim(); const qd=normPhone(raw).replace(/^0/,'');
   const isNum = raw && /^[\d٠-٩۰-۹\s+\-]+$/.test(raw);
-  const Q = raw && !isNum ? parseQuery(raw) : {owed:false, subj:null, stage:null, rest:[]};
+  const Q = raw && !isNum ? parseQuery(raw) : emptyQ();
   const owedBy={}; for(const e of owedEntries()) (owedBy[e.t] ||= []).push(e);
   const visitedToday=new Set(db.entries.filter(e=>dk(e.dd)===today||dk(e.rd)===today).map(e=>e.t));
   let list=db.teachers.filter(t=>{
@@ -556,11 +636,7 @@ function renderList(){
     if(homeFilter==='none' && x) return false;
     if(!raw) return true;
     if(isNum) return !!qd && (t.phone||'').includes(qd);
-    if(Q.owed){ if(!(owedBy[t.id]||[]).some(e=>owedMatch(e,Q.subj,Q.stage))) return false; }
-    else { if(Q.subj && !t.subjects?.includes(Q.subj)) return false; if(Q.stage && !(t.stage||'').includes(Q.stage)) return false; }
-    if(!Q.rest.length) return true;
-    const n=normText(t.name+' '+(t.area||'')+' '+(t.school||''));
-    return Q.rest.every(w=>n.includes(w));
+    return matchTeacher(t, Q, owedBy[t.id]||[]);
   });
   list.sort((a,b)=>{
     const la=idx[a.id]?.last||'', lb=idx[b.id]?.last||'';
@@ -569,16 +645,16 @@ function renderList(){
   });
   const total=list.length; list=list.slice(0,80);
   const el=$('#tlist');
-  if(!total){ el.innerHTML=`<div class="empty" style="grid-column:1/-1">مفيش نتايج${raw?` لـ «${esc(raw)}»`:''}<br><br><button class="btn" data-act="new-teacher" data-name="${esc(isNum||Q.owed||Q.subj?'':raw)}" data-phone="${esc(isNum?raw:'')}">➕ ضيف مدرس جديد</button></div>`; return; }
+  if(!total){ el.innerHTML=`<div class="empty" style="grid-column:1/-1">مفيش نتايج${raw?` لـ «${esc(raw)}»`:''}<br><br><button class="btn" data-act="new-teacher" data-name="${esc(isNum||Q.owed||Q.subjs.length||Q.stages.length||Q.letter?'':raw)}" data-phone="${esc(isNum?raw:'')}">➕ ضيف مدرس جديد</button></div>`; return; }
   let head='';
   if(raw && !isNum){
     const areaHit = Q.rest.length ? [...new Set(list.map(t=>t.area).filter(a=>a && Q.rest.every(w=>normText(a).includes(w))))] : [];
-    const desc=[Q.owed?'ليهم مستحق':'', Q.subj?SUBJ[Q.subj]:'', Q.stage?STAGES[Q.stage].name:'', areaHit.length===1?`في ${areaHit[0]}`:''].filter(Boolean).join(' ');
+    const desc=[Q.owed?'ليهم مستحق':'', ...Q.subjs.map(s=>SUBJ[s]), ...Q.stages.map(s=>STAGES[s].name), Q.letter?`تصنيف ${Q.letter}`:'', areaHit.length===1?`في ${areaHit[0]}`:''].filter(Boolean).join(' ');
     head=`<div class="lhead">${total} مدرس ${esc(desc)}</div>`;
   }
   const showOwed = Q.owed || homeFilter==='owed';
   el.innerHTML = head + list.map(t=>{
-    const oe = showOwed ? (owedBy[t.id]||[]).filter(e=>owedMatch(e, Q.owed?Q.subj:null, Q.owed?Q.stage:null)) : [];
+    const oe = showOwed ? (owedBy[t.id]||[]).filter(e=>owedMatch(e, Q.owed?Q.subjs:null, Q.owed?Q.stages:null)) : [];
     return teacherCard(t, idx[t.id], oe.length?`<div class="oline">⏳ ${esc(owedLine(oe))}</div>`:'');
   }).join('') + (total>80?`<div class="empty small" style="grid-column:1/-1">ظاهر 80 من ${total} — اكتب في البحث علشان تضيّق</div>`:'');
 }
@@ -596,54 +672,34 @@ function renderTeacher(id){
   const phone=t.phone||'';
   const wa = phone ? 'https://wa.me/2'+phone : '';
 
-  // المراحل: بتاعته الأول
-  const stages = t.stage==='m' ? ['m','p'] : ['p','m'];
-  const myStages = t.stage ? t.stage.split('') : [];
+  const expK=expectedBooks(t);
   let html = `<div class="card thead">
-    <h2>${esc(t.name)}</h2>
+    <h2>${esc(t.name)}${nameTags(t)}</h2>
     <div class="meta">
       ${phone?`<span>📞 <span dir="ltr">${esc(phone)}</span></span>`:''}
       ${t.subjectText?`<span>📚 ${esc(t.subjectText)}</span>`:''}
       ${t.stage?`<span>🏫 ${STAGE_TXT[t.stage]}</span>`:''}
+      ${t.spec?`<span>🎯 ${esc(t.spec)}</span>`:''}
       ${t.area?`<span>📍 ${esc(t.area)}</span>`:''}
       ${t.school?`<span>🏢 ${esc(t.school)}</span>`:''}
-      ${t.cls?`<span class="pill cls">تصنيف ${esc(t.cls)}</span>`:''}
+      ${t.cls&&!clsLetter(t)?`<span class="pill cls">${esc(t.cls)}</span>`:''}
       ${t.students?`<span>👨‍🎓 ${esc(t.students)} طالب</span>`:''}
       ${t.plan?`<span>🗓️ خط السير: ${fmtDay(t.plan)}</span>`:''}
     </div>
     <div class="acts">
       ${phone?`<a class="btn sm" href="tel:${esc(phone)}">📞 اتصال</a><a class="btn sm" href="${wa}" target="_blank" rel="noopener">💬 واتساب</a>`:''}
       <button class="btn sm" data-act="sell-t">🛒 طالب يشتري</button>
+      <button class="btn sm ghost" data-act="show-cls-change">🎯 التخصص</button>
       <button class="btn sm ghost" data-act="edit-teacher">✏️ تعديل</button>
     </div></div>`;
+  if(isDup(t)) html += `<div class="banner">⚠️ الرقم ده متكرر — ممنوع تسليم أو بيع لحد ما تمسح المتكرر. <a href="#" data-act="go-dups">افتح الأرقام المتكررة</a></div>`;
 
-  // تأكيد التخصص
-  const clsInfo = parseCls(t.cls);
-  const needsConfirm = forceCls || (!t.clsConfirmed && t.cls && !clsInfo);
-  if(needsConfirm){
-    html += `<div class="cls-bar"><h3>📋 ${forceCls ? 'اختار التصنيف الصح' : 'التصنيف مش واضح — حدد تخصصه'}</h3>
-      <div class="acts">
-        <select id="cls-change">
-          <option value="">— اختار التصنيف —</option>
-          <option value="فصل">فصل (أولى-تالتة، عربي وحساب)</option>
-          <option value="صفوف عليا">صفوف عليا (رابعة-ستة)</option>
-          <option value="ابتدائي">ابتدائي (أولى-ستة)</option>
-          <option value="إعدادي">إعدادي (أولى-تالتة)</option>
-          <option value="صفوف عليا وإعدادي">صفوف عليا وإعدادي</option>
-          <option value="ابتدائي وإعدادي">ابتدائي وإعدادي</option>
-          <option value="كشكول">كشكول (ابتدائي كله ما عدا الإنجليزي)</option>
-        </select>
-        <button class="btn sm pri" data-act="confirm-cls">حفظ التصنيف</button>
-        ${forceCls ? `<button class="btn sm ghost" data-act="cancel-cls">إلغاء</button>` : t.cls ? `<button class="btn sm ghost" data-act="keep-cls">مظبوط كده</button>`:''}</div></div>`;
-  } else if(t.cls && !t.clsConfirmed){
-    html += `<div class="cls-bar" style="background:var(--brand-soft);border-color:var(--brand)"><h3 style="color:var(--brand)">📋 التخصص: ${esc(t.cls)} — مظبوط؟</h3>
-      <div class="acts">
-        <button class="btn sm pri" data-act="keep-cls">مظبوط ✅</button>
-        <button class="btn sm ghost" data-act="show-cls-change">تغيير</button></div></div>`;
-  }
+  // التخصص: لو مش معروف (مفيش كتب مستحقة) لازم يتحدد قبل التسليم
+  if(forceCls || !expK.length)
+    html += specPicker(t, 'data-act="confirm-cls"', expK.length ? 'حدد تخصص المدرس' : 'التخصص مش معروف — حدد مادته ومرحلته',
+      expK.length ? '<button class="btn sm ghost" data-act="cancel-cls">إلغاء</button>' : '');
 
   // 3 خانات: ليه / سلّمته / باقيله — الدوس يفتح أسامي الكتب
-  const expK=expectedBooks(t);
   const dTot=delivered.reduce((s,[k,v])=>s+v.d,0);
   const names=(items, empty)=> items.length
     ? items.map(([k,n])=>`<span class="bk" style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}${n>1?` (${n})`:''}</span>`).join('، ')
@@ -659,27 +715,27 @@ function renderTeacher(id){
   else if(acc && acc.orders) html += `<button class="mline" data-act="go-orders">🛒 ليه ${acc.orders} طلب مستني</button>`;
 
   html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين دوس «سلّمت». المستحق بيتحسب لوحده من التصنيف أو المرحلة والمادة.</p>`;
-  const left=stockLeft();
-  for(const st of stages){
-    const S=STAGES[st]; const mineStage=myStages.includes(st);
-    const subs=[...S.subjects].sort((a,b)=>(t.subjects?.includes(b)?1:0)-(t.subjects?.includes(a)?1:0));
-    html += `<div class="stage-t">${mineStage?'⭐ ':''}${S.name}</div><div class="subj-grid">`;
-    for(const sb of subs){
-      const gkey=`${st}-${sb}`;
-      const mine = mineStage && t.subjects?.includes(sb);
-      let dSum=0,oSum=0,rows='';
-      for(let g=FROM[st+'-'+sb]||1; g<=S.grades; g++){
-        const k=`${st}-${sb}-${g}`; const b=books[k]||{d:0,o:0};
-        dSum+=b.d; oSum+=b.o; rows += rowHtml(k,b,sel[k]||0, left?left[k]:undefined);
-      }
-      const open = !closedGroups.has(gkey);
-      html += `<details class="subj ${mine?'mine':''}" data-g="${gkey}" style="--sc:var(--c-${sb})" ${open?'open':''}>
-        <summary>${mine?'<span class="star">★</span>':''}<span class="sn">${SUBJ[sb]}</span>
-          ${dSum?`<span class="pill ok">✅ ${dSum}</span>`:''}${oSum?`<span class="pill owe">⏳ ${oSum}</span>`:''}</summary>
-        ${rows}</details>`;
+  // ترتيب الكتب: «⭐ تخصصه» فوق مفتوح (كل مواده في كل مراحله)، وتحته «باقي الكتب» مقفول
+  const left=stockLeft(), mg=myGroups(t);
+  const grp=(st,sb,mine)=>{
+    const gkey=`${st}-${sb}`; let dSum=0,oSum=0,rows='';
+    for(let g=FROM[gkey]||1; g<=STAGES[st].grades; g++){
+      const k=`${gkey}-${g}`; const b=books[k]||{d:0,o:0};
+      dSum+=b.d; oSum+=b.o; rows += rowHtml(k,b,sel[k]||0, left?left[k]:undefined);
     }
-    html += `</div>`;
-  }
+    return `<details class="subj ${mine?'mine':''}" data-g="${gkey}" style="--sc:var(--c-${sb})" ${!closedGroups.has(gkey)?'open':''}>
+      <summary>${mine?'<span class="star">★</span>':''}<span class="sn">${SUBJ[sb]}${mine&&tStages(t).length>1?` <span class="small">${STAGES[st].name}</span>`:''}</span>
+        ${dSum?`<span class="pill ok">✅ ${dSum}</span>`:''}${oSum?`<span class="pill owe">⏳ ${oSum}</span>`:''}</summary>
+      ${rows}</details>`;
+  };
+  const stageBlocks=skip=>['p','m'].map(st=>{ const subs=STAGES[st].subjects.filter(sb=>!skip.has(`${st}-${sb}`));
+    return subs.length ? `<div class="stage-t">${STAGES[st].name}</div><div class="subj-grid">${subs.map(sb=>grp(st,sb,false)).join('')}</div>` : ''; }).join('');
+  if(mg.size){
+    const mineList=['p','m'].flatMap(st=>STAGES[st].subjects.filter(sb=>mg.has(`${st}-${sb}`)).map(sb=>[st,sb]));
+    const restSel=Object.keys(sel).some(k=>!mg.has(k.split('-').slice(0,2).join('-')));
+    html += `<div class="stage-t">⭐ تخصصه</div><div class="subj-grid">${mineList.map(([st,sb])=>grp(st,sb,true)).join('')}</div>
+      <details class="others-t" ${othersOpen||restSel?'open':''}><summary>📚 باقي الكتب</summary>${stageBlocks(mg)}</details>`;
+  } else html += stageBlocks(new Set());
 
   html += `<div class="card" style="margin-top:16px"><h3 class="sec-t">📝 ملاحظات</h3>
     <textarea id="notes" placeholder="مثلاً: عايز كتاب لابنه في رابعة…">${esc(t.notes||'')}</textarea></div>`;
@@ -717,6 +773,28 @@ function renderTeacher(id){
   n.addEventListener('input',()=>{ clearTimeout(nt); nt=setTimeout(()=>{ t.notes=n.value; save(); },400); });
   updateActbar();
 }
+/* --- اختيار التخصص (المادة + المرحلة/التصنيف) --- */
+const SPEC_OPTS=[['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي'],['فصل','فصل (أولى-تالتة، عربي ورياضة)'],['صفوف عليا','صفوف عليا (رابعة-ستة)'],['صفوف عليا وإعدادي','صفوف عليا وإعدادي'],['كشكول','كشكول (ابتدائي كله ما عدا الإنجليزي)']];
+function specPicker(t, saveAttr, title, cancel=''){
+  const cur=t.spec || t.stage || '', subs=t.subjects||[];
+  return `<div class="cls-bar" id="specbar"><h3>📋 ${title}</h3>
+    <div class="spec-subs">${Object.entries(SUBJ).map(([k,v])=>`<label style="color:var(--c-${k})"><input type="checkbox" data-spec-sub="${k}" ${subs.includes(k)?'checked':''}>${v}</label>`).join('')}</div>
+    <div class="acts"><select data-spec-st><option value="">— المرحلة / التصنيف —</option>${SPEC_OPTS.map(([v,l])=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`).join('')}</select>
+      <button class="btn sm pri" ${saveAttr}>حفظ التخصص</button>${cancel}</div>
+    <p class="hint" style="margin-bottom:0">علّم على مادته (أو أكتر) واختار المرحلة. الكشكول والفصل مش محتاجين مادة.</p></div>`;
+}
+function applySpec(t, root){
+  const subs=[...root.querySelectorAll('[data-spec-sub]')].filter(x=>x.checked).map(x=>x.dataset.specSub);
+  const v=root.querySelector('[data-spec-st]').value;
+  if(!v){ alert('اختار المرحلة أو التصنيف'); return false; }
+  const isSt=['p','m','pm'].includes(v), c=isSt?null:parseCls(v);
+  if(!subs.length && !c?.subjects){ alert('علّم على مادة المدرس'); return false; }
+  const ch={stage: isSt ? v : c.stages.join(''), spec: isSt ? '' : v};
+  if(subs.length){ ch.subjects=subs; ch.subjectText=subs.map(s=>SUBJ[s]).join('، '); }
+  if(!expectedBooks({...t, ...ch}).length){ alert('المادة دي مش موجودة في المرحلة دي — راجع الاختيار'); return false; }
+  Object.assign(t, ch); return true;
+}
+function openSpec(){ forceCls=true; render(); setTimeout(()=>{ const b=$('#specbar'); if(b) b.scrollIntoView({block:'center'}); }, 30); }
 function rowHtml(k,b,q,left){
   const {g}=bookParts(k);
   return `<div class="grow-row ${q?'sel':''}" data-k="${k}">
@@ -738,6 +816,9 @@ function updateActbar(){
 function commitSel(status='d'){
   const t=tById(curTeacher); if(!t) return;
   const keys=Object.keys(sel).sort((a,b)=>bookRank[a]-bookRank[b]); if(!keys.length) return;
+  if(dupBlock(t)) return;
+  // قفل: التخصص لازم يبقى معروف. الكتب المتعلّمة بتفضل متعلّمة
+  if(!expectedBooks(t).length){ alert('⚠️ حدد تخصص المدرس الأول'); openSpec(); return; }
   const now=new Date().toISOString(); const n=keys.reduce((s,k)=>s+sel[k],0);
   withUndo(status==='d'?`✅ اتسجّل تسليم ${n} كتاب`:`⏳ اتسجّل ${n} كتاب مستحق`, ()=>{
     for(const k of keys){
@@ -750,11 +831,34 @@ function commitSel(status='d'){
 }
 
 /* ================= اللي عليا ================= */
-let owedSubj='', owedArea='';
+let owedSubj='', owedArea='', owedQuery='';
+// بحث الكتب: «عربي 5» أو «عربي خامسة ابتدائي» أو «خامسة» أو كتابين «عربي 5 رياضة 4»
+const GRADE_RE=[[/^(ال)?(اولي|اول)$/,1],[/^(ال)?(تانيه|ثانيه|تاني|ثاني)$/,2],[/^(ال)?(تالته|ثالثه|تالت|ثالث)$/,3],[/^(ال)?(رابعه|رابع)$/,4],[/^(ال)?(خامسه|خامس)$/,5],[/^(ال)?(سادسه|سادس|سته|ست)$/,6]];
+const gradeOf=w=>{ if(/^[1-6]$/.test(w)) return +w; const m=GRADE_RE.find(([re])=>re.test(w)); return m?m[1]:0; };
+const stageOf=w=>/^(ال)?ابتدا/.test(w)?'p':/^(ال)?اعدا/.test(w)?'m':'';
+function parseBookQuery(raw){
+  const specs=[], rest=[]; let cur=null;
+  const nu=()=>{ cur={sb:'', g:0, st:''}; specs.push(cur); return cur; };
+  for(let w of normText(raw).split(' ').filter(Boolean)){
+    if(w.length>1 && w[0]==='و'){ const r=w.slice(1); if(subjOf(r)||gradeOf(r)||stageOf(r)) w=r; }
+    const sb=subjOf(w), g=gradeOf(w), st=stageOf(w);
+    if(sb){ if(cur && !cur.sb) cur.sb=sb; else nu().sb=sb; }
+    else if(g){ if(cur && !cur.g) cur.g=g; else nu().g=g; }
+    else if(st){ if(cur && !cur.st) cur.st=st; else nu().st=st; }
+    else if(!/^(ال)?صف$/.test(w)) rest.push(w);
+  }
+  return {specs, rest};
+}
+function bookMatch(k, specs){ if(!specs.length) return true; const p=bookParts(k);
+  return specs.some(s=>(!s.sb||p.sb===s.sb) && (!s.g||p.g===s.g) && (!s.st||p.st===s.st)); }
 function owedFiltered(){
+  const BQ=owedQuery.trim() ? parseBookQuery(owedQuery) : {specs:[], rest:[]};
   return owedEntries().filter(e=>{
     if(owedSubj && bookParts(e.b).sb!==owedSubj) return false;
-    if(owedArea){ const t=tById(e.t); if(!t || t.area!==owedArea) return false; }
+    const t=tById(e.t);
+    if(owedArea && (!t || t.area!==owedArea)) return false;
+    if(!bookMatch(e.b, BQ.specs)) return false;
+    if(BQ.rest.length){ if(!t) return false; const h=teacherHay(t); if(!BQ.rest.every(w=>h.includes(w))) return false; }
     return true;
   });
 }
@@ -767,26 +871,38 @@ function renderOwed(){
   const areas=[...new Set(all.map(e=>tById(e.t)?.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   if(owedArea && !areas.includes(owedArea)) owedArea='';
   const chip=(k,txt)=>`<button class="chip ${owedSubj===k?'on':''}" data-act="owed-subj" data-k="${k}">${txt}</button>`;
-  let html=`<div class="chips">${chip('',`الكل (${all.reduce((s,e)=>s+e.q,0)})`)}${['ar','math','stu','en','sci'].filter(sb=>subjCount[sb]).map(sb=>chip(sb,`${SUBJ[sb]} (${subjCount[sb]})`)).join('')}
-    ${areas.length>1?`<select class="area" id="oarea"><option value="">كل المناطق</option>${areas.map(a=>`<option ${a===owedArea?'selected':''}>${esc(a)}</option>`).join('')}</select>`:''}</div>`;
-  const owed=owedFiltered();
-  if(!owed.length){ app.innerHTML=html+'<div class="card empty">مفيش مستحق بالاختيار ده.</div>'; bindOarea(); return; }
+  let html=`<div class="search"><input id="oq" type="search" placeholder="🔎 «عربي 5» أو «عربي خامسة ابتدائي» أو «خامسة»" value="${esc(owedQuery)}" autocomplete="off" enterkeyhint="search"></div>
+    <div class="chips">${chip('',`الكل (${all.reduce((s,e)=>s+e.q,0)})`)}${['ar','math','stu','en','sci'].filter(sb=>subjCount[sb]).map(sb=>chip(sb,`${SUBJ[sb]} (${subjCount[sb]})`)).join('')}
+    ${areas.length>1?`<select class="area" id="oarea"><option value="">كل المناطق</option>${areas.map(a=>`<option ${a===owedArea?'selected':''}>${esc(a)}</option>`).join('')}</select>`:''}</div>
+    <div id="owedBody"></div>`;
+  app.innerHTML=html; bindOarea();
+  const q=$('#oq'); q.addEventListener('input',()=>{ owedQuery=q.value; drawOwedBody(); });
+  drawOwedBody();
+}
+function drawOwedBody(){
+  const box=$('#owedBody'); if(!box) return;
+  const owed=owedFiltered(), searching=!!owedQuery.trim();
+  if(!owed.length){ box.innerHTML=`<div class="card empty">مفيش مستحق ${searching?`لـ «${esc(owedQuery.trim())}»`:'بالاختيار ده'}.</div>`; return; }
   const by={}; for(const e of owed) (by[e.b] ||= []).push(e);
   const keys=Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b]);
   const perT={}; for(const e of owed) (perT[e.t] ||= []).push(e);
-  const tids=Object.keys(perT).filter(id=>tById(id)).sort((a,b)=>{ const A=tById(a), B=tById(b); return (A.area||'').localeCompare(B.area||'','ar') || A.name.localeCompare(B.name,'ar'); });
+  const tsort=(a,b)=>{ const A=tById(a), B=tById(b); return (A.area||'').localeCompare(B.area||'','ar') || A.name.localeCompare(B.name,'ar'); };
+  const tids=Object.keys(perT).filter(id=>tById(id)).sort(tsort);
   const total=owed.reduce((s,e)=>s+e.q,0); const idx=indexEntries();
-  html+=`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b style="color:var(--owe)">${total}</b><span>كتاب لازم يتسلّم</span></div><div class="stat"><b>${tids.length}</b><span>مدرس مستني</span></div></div>
-   <div class="card"><h3 class="sec-t">🚗 تحميل العربية</h3>${keys.map(k=>`<div class="kv"><span>${esc(bookLabel(k))}</span><b>${by[k].reduce((s,e)=>s+e.q,0)} نسخة</b></div>`).join('')}
+  // كل كتاب: تدوس عليه يفتح أسامي المدرسين اللي باقيلهم (اتصال وواتساب)
+  const bookRows=keys.map(k=>{ const ids=[...new Set(by[k].map(e=>e.t))].filter(id=>tById(id)).sort(tsort);
+    return `<details class="ob" ${searching?'open':''}><summary><b style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</b><b>${by[k].reduce((s,e)=>s+e.q,0)} نسخة</b></summary>
+      ${ids.map(id=>{ const t=tById(id); return `<div class="ob-t"><div class="grow"><a href="#/t/${encodeURIComponent(id)}"><b>${esc(t.name)}</b></a> <span class="small muted">${esc(t.area||'')}</span></div><div class="icos">${phoneBtns(t)}</div></div>`; }).join('')}</details>`; }).join('');
+  box.innerHTML=`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b style="color:var(--owe)">${total}</b><span>كتاب لازم يتسلّم</span></div><div class="stat"><b>${tids.length}</b><span>مدرس مستني</span></div></div>
+   <div class="card"><h3 class="sec-t">${searching?'🔎 النتيجة':'🚗 تحميل العربية'}</h3><div class="small muted" style="margin-bottom:4px">دوس على الكتاب يفتح أسامي المدرسين.</div>${bookRows}
    <button class="btn" style="width:100%;margin-top:10px" data-act="copy-owed">📋 انسخ القائمة (للواتساب)</button></div>
-   <h3 class="sec-t" style="margin-top:16px">👥 المدرسين المستنيين (${tids.length})</h3>
-   <div class="tlist">${tids.map(id=>teacherCard(tById(id), idx[id], `<div class="oline">⏳ ${esc(owedLine(perT[id]))}</div>`)).join('')}</div>`;
-  app.innerHTML=html; bindOarea();
+   ${searching?'':`<h3 class="sec-t" style="margin-top:16px">👥 المدرسين المستنيين (${tids.length})</h3>
+   <div class="tlist">${tids.map(id=>teacherCard(tById(id), idx[id], `<div class="oline">⏳ ${esc(owedLine(perT[id]))}</div>`)).join('')}</div>`}`;
 }
 function bindOarea(){ const s=$('#oarea'); if(s) s.addEventListener('change',()=>{ owedArea=s.value; renderOwed(); }); }
 function owedText(){
   const by={}; for(const e of owedFiltered()) by[e.b]=(by[e.b]||0)+e.q;
-  const f=[owedSubj?SUBJ[owedSubj]:'', owedArea?`— ${owedArea}`:''].filter(Boolean).join(' ');
+  const f=[owedSubj?SUBJ[owedSubj]:'', owedQuery.trim()?`«${owedQuery.trim()}»`:'', owedArea?`— ${owedArea}`:''].filter(Boolean).join(' ');
   return `📦 الكتب المستحقة ${f} (${fmtDay(dayKey())}):\n` + Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b]).map(k=>`• ${bookLabel(k)}: ${by[k]}`).join('\n');
 }
 
@@ -842,12 +958,15 @@ function stockCard(){
 }
 function renderSettings(){
   setHeader('⚙️ الإعدادات', false);
-  app.innerHTML=`<div class="card"><h3 class="sec-t">👤 اسم المندوب</h3>
-      <div class="search" style="margin:0"><input id="rep" value="${esc(db.rep)}"><button class="btn pri" data-act="save-rep">حفظ</button></div>
-      <p class="hint">بيتكتب على كل تسليم وفي شيت الإكسل.</p></div>
+  app.innerHTML=`<div class="card"><h3 class="sec-t">👤 المندوب</h3>
+      <div class="field"><label>اسم المندوب</label><input id="rep" value="${esc(db.rep)}"></div>
+      <div class="field"><label>الجيميل (النسخة الاحتياطية بتروح عليه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
+      <button class="btn pri" style="width:100%" data-act="save-rep">حفظ</button>
+      <p class="hint">الاسم بيتكتب على كل تسليم وفي شيت الإكسل والفاتورة.</p></div>
     <div class="card"><h3 class="sec-t">📥 استيراد مدرسين من إكسل</h3>
       <button class="btn pri" style="width:100%" data-act="import-xlsx">اختار شيت الإكسل</button>
-      <p class="hint">بيقرا أعمدة: اسم المدرس، رقم الهاتف، المرحلة، المادة، المنطقة، التصنيف، عدد الطلاب، التاريخ. لو المدرس موجود (نفس رقم التليفون) بيحدّث بياناته بس ومش بيمسح تسليماته.</p></div>
+      <p class="hint">بيقرا أعمدة: اسم المدرس، رقم الهاتف، المرحلة، المادة، المنطقة، التصنيف (A/B/C)، عدد الطلاب، التاريخ. لو المدرس موجود (نفس رقم التليفون) بيحدّث بياناته بس ومش بيمسح تسليماته، ونفس الرقم مرتين في الشيت بيتضاف مرة واحدة.</p></div>
+    ${dupsCard()}
     ${stockCard()}
     ${pricesCard()}
     ${merchCard()}
@@ -858,7 +977,19 @@ function renderSettings(){
       <div class="kv"><span>المدرسين</span><b>${db.teachers.length}</b></div>
       <div class="kv"><span>التعاملات</span><b>${db.entries.length}</b></div>
       <div class="kv"><span>البيع والطلبات</span><b>${db.sales.length}</b></div>
-      <button class="btn danger" style="width:100%;margin-top:12px" data-act="wipe">🗑️ امسح كل البيانات</button></div>`;
+      <button class="btn danger" style="width:100%;margin-top:12px" data-act="wipe">🗑️ امسح كل البيانات</button></div>
+    <div class="sign">${SIGN}</div>`;
+}
+function dupsCard(){
+  const gs=dupGroups();
+  if(!gs.length) return `<div class="card" id="dups"><h3 class="sec-t">📞 أرقام متكررة</h3><div class="ok-t" style="color:var(--ok);font-weight:700">✅ مفيش أرقام متكررة</div></div>`;
+  const ec={}, sc={}; for(const e of db.entries) if(e.s==='d') ec[e.t]=(ec[e.t]||0)+e.q; for(const s of db.sales) sc[s.t]=(sc[s.t]||0)+1;
+  return `<div class="card" id="dups"><h3 class="sec-t">📞 أرقام متكررة (${gs.length})</h3>
+    <p class="hint" style="margin-top:0">المدرس اللي رقمه متكرر ممنوع يتسلّمله أو يتباعله لحد ما تمسح المتكرر.</p>
+    <button class="btn danger" style="width:100%;margin-bottom:8px" data-act="del-dups-all">🗑️ امسح المتكرر كله (يسيب أول واحد من كل رقم)</button>
+    ${gs.map(([p,l])=>`<div class="dupg"><b dir="ltr">📞 ${esc(p)}</b>${l.map((t,i)=>`<div class="hrow"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${i===0?' <span class="pill new">الأول</span>':''}
+      <div class="small muted">${esc(t.area||'—')} • ${ec[t.id]||0} تسليم • ${sc[t.id]||0} بيع/طلب</div></div>
+      <button class="btn sm danger" data-act="del-dup" data-id="${esc(t.id)}" title="امسح">🗑️ امسح</button></div>`).join('')}</div>`).join('')}</div>`;
 }
 
 /* ================= فورم المدرس ================= */
@@ -871,11 +1002,13 @@ function teacherForm(t, preset={}){
     <div class="row2"><div class="field"><label>المرحلة</label><select id="f_stage">
       ${[['','—'],['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي']].map(([v,l])=>`<option value="${v}" ${t.stage===v?'selected':''}>${l}</option>`).join('')}</select></div>
       <div class="field"><label>التصنيف</label><select id="f_cls">
-        <option value="">— اختر —</option>
-        ${['فصل','صفوف عليا','ابتدائي','إعدادي','صفوف عليا وإعدادي','ابتدائي وإعدادي','كشكول'].map(v=>`<option ${(t.cls||'')===v?'selected':''}>${v}</option>`).join('')}
-        ${t.cls && !['فصل','صفوف عليا','ابتدائي','إعدادي','صفوف عليا وإعدادي','ابتدائي وإعدادي','كشكول',''].includes(t.cls) ? `<option selected>${esc(t.cls)}</option>` : ''}
+        <option value="">—</option>
+        ${['A','B','C'].map(v=>`<option ${clsLetter(t)===v?'selected':''}>${v}</option>`).join('')}
+        ${t.cls && !clsLetter(t) ? `<option selected>${esc(t.cls)}</option>` : ''}
       </select></div>
       <div class="field"><label>المادة</label><input id="f_subj" placeholder="عربي، رياضة…" value="${esc(t.subjectText)}"></div></div>
+    <div class="field"><label>التخصص (اختياري)</label><select id="f_spec"><option value="">— حسب المرحلة والمادة —</option>
+      ${['فصل','صفوف عليا','صفوف عليا وإعدادي','كشكول'].map(v=>`<option ${(t.spec||'')===v?'selected':''}>${v}</option>`).join('')}</select></div>
     <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" value="${esc(t.area)}"></div>
       <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
     <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div>
@@ -894,8 +1027,8 @@ function teacherForm(t, preset={}){
     const subjectText=m.querySelector('#f_subj').value.trim();
     const data={name, phone, stage:m.querySelector('#f_stage').value, subjectText, subjects:parseSubjects(subjectText),
       area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
-      cls:m.querySelector('#f_cls').value, students:m.querySelector('#f_students').value.trim()};
-    if(data.cls && parseCls(data.cls)) data.clsConfirmed = true;
+      cls:m.querySelector('#f_cls').value, spec:m.querySelector('#f_spec').value, students:m.querySelector('#f_students').value.trim()};
+    if(data.spec){ const c=parseCls(data.spec); if(c) data.stage=c.stages.join(''); }
     if(isNew){ const nt={id:uid(), ...data, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
     else { Object.assign(t,data); save(); close(); render(); toast('اتحفظ ✅'); }
   };
@@ -904,8 +1037,7 @@ function teacherForm(t, preset={}){
     const n=db.entries.filter(e=>e.t===t.id).length;
     if(!confirm(`متأكد إنك عايز تمسح «${t.name}»${n?` و ${n} تعامل بتوعه`:''}؟`)) return;
     close(); const snap=JSON.stringify(db);
-    db.teachers=db.teachers.filter(x=>x.id!==t.id); db.entries=db.entries.filter(e=>e.t!==t.id);
-    db.sales=db.sales.filter(s=>s.t!==t.id); db.payments=db.payments.filter(p=>p.t!==t.id); save();
+    delTeacherData(t.id); save();
     location.hash='#/'; toast('اتمسح', ()=>{ db=JSON.parse(snap); save(); render(); });
   };
 }
@@ -930,11 +1062,18 @@ document.addEventListener('click', e=>{
         if(age > 3600000 && !confirm('⚠️ الكتاب ده اتسلّم من أكتر من ساعة.\nمتأكد إنك عايز تمسح التسليم ده؟')) break;
       }
       if(confirm('تمسح التعامل ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.entries=db.entries.filter(z=>z.id!==id); }); break; }
-    case 'confirm-cls': { const t=tById(curTeacher); if(!t) break; const v=document.querySelector('#cls-change')?.value; if(!v){alert('اختار التصنيف الأول');break;} t.cls=v; t.clsConfirmed=true;
-      const stg=parseCls(v); if(stg){t.stage=stg.stages.join(''); if(stg.subjects) t.subjects=stg.subjects;}
-      forceCls=false; save(); render(); toast('✅ التصنيف اتحفظ'); break; }
-    case 'keep-cls': { const t=tById(curTeacher); if(t){t.clsConfirmed=true; forceCls=false; save(); render(); toast('✅ التخصص مأكد');} break; }
-    case 'show-cls-change': forceCls=true; render(); break;
+    case 'confirm-cls': { const t=tById(curTeacher); const bar=$('#specbar'); if(!t||!bar) break;
+      if(!applySpec(t, bar)) break;
+      forceCls=false; save(); render(); toast(Object.keys(sel).length ? '✅ التخصص اتحفظ — دوس «سلّمت» تاني' : '✅ التخصص اتحفظ'); break; }
+    case 'show-cls-change': openSpec(); break;
+    case 'go-dups': e.preventDefault(); goDups(); break;
+    case 'del-dup': { const t=tById(el.dataset.id); if(!t) break;
+      const n=db.entries.filter(x=>x.t===t.id).length, s=db.sales.filter(x=>x.t===t.id).length;
+      if(!confirm(`تمسح «${t.name}»${n?` و ${n} تسليم`:''}${s?` و ${s} بيع/طلب`:''}؟`)) break;
+      withUndo(`🗑️ اتمسح ${t.name}`, ()=>delTeacherData(t.id)); break; }
+    case 'del-dups-all': { const ids=dupGroups().flatMap(([,l])=>l.slice(1).map(t=>t.id));
+      if(!ids.length || !confirm(`هيتمسح ${ids.length} مدرس متكرر (وبيفضل أول واحد من كل رقم). أكمل؟`)) break;
+      withUndo(`🗑️ اتمسح ${ids.length} مدرس متكرر`, ()=>ids.forEach(delTeacherData)); break; }
     case 'cancel-cls': forceCls=false; render(); break;
     case 'tbox': { const k=el.dataset.k; openBox = openBox===k ? '' : k;
       document.querySelectorAll('[data-list]').forEach(x=>x.hidden = x.dataset.list!==openBox);
@@ -943,11 +1082,13 @@ document.addEventListener('click', e=>{
     /* البيع */
     case 'sales-tab': salesTab=el.dataset.k; if(location.hash!=='#/sales') location.hash='#/sales'; else render(); break;
     case 'new-sale': saleForm(''); break;
-    case 'sell-t': saleForm(curTeacher); break;
-    case 'edit-order': saleForm('', el.dataset.id); break;
+    case 'sell-t': if(!dupBlock(tById(curTeacher))) saleForm(curTeacher); break;
+    case 'edit-order': { const s=db.sales.find(x=>x.id===el.dataset.id); if(s && !dupBlock(tById(s.t))) saleForm('', s.id); break; }
     case 'go-acc': location.hash='#/sales/acc/'+encodeURIComponent(el.dataset.id); break;
     case 'go-orders': location.hash='#/sales/orders'; break;
     case 'sell-order': { const s=db.sales.find(x=>x.id===el.dataset.id); if(!s||s.st!=='order') break;
+      const ot=tById(s.t); if(dupBlock(ot)) break;
+      if(ot && !expectedBooks(ot).length){ alert('⚠️ حدد تخصص المدرس الأول'); curTeacher=ot.id; forceCls=true; location.hash='#/t/'+encodeURIComponent(ot.id); break; }
       const sh=shortMsg(s.items); if(sh && !confirm(`⚠️ بضاعة التجار مش مكفّية:\n${sh}\n\nتكمل البيع؟`)) break;
       withUndo('✅ اتباع', ()=>{ sellItems(s, lotLeft()); }); showInvoice(s.t); break; }
     case 'cancel-order': { const id=el.dataset.id; if(confirm('تلغي الطلب ده؟')) withUndo('❌ الطلب اتلغى', ()=>{ db.sales=db.sales.filter(s=>s.id!==id); }); break; }
@@ -991,7 +1132,9 @@ document.addEventListener('click', e=>{
       else { const all=db.entries.map(x=>dk(actDate(x))).filter(Boolean).sort(); repFrom=all[0]||dayKey(); }
       renderReport(); break; }
     case 'export': exportExcel(el.dataset.scope==='all'); break;
-    case 'save-rep': { const v=$('#rep').value.trim(); if(v){ db.rep=v; save(); toast('اتحفظ ✅'); } break; }
+    case 'save-rep': { const v=$('#rep').value.trim(), ml=fixMail($('#mail').value);
+      if(!v){ alert('اكتب اسم المندوب'); break; } if(!ml){ alert('اكتب الجيميل صح'); break; }
+      db.rep=v; db.mail=ml; save(); render(); toast('اتحفظ ✅'); break; }
     case 'import-xlsx': e.preventDefault(); $('#fileXlsx').value=''; $('#fileXlsx').click(); break;
     case 'backup': backup(); break;
     case 'restore': e.preventDefault(); $('#fileJson').value=''; $('#fileJson').click(); break;
@@ -1002,7 +1145,8 @@ document.addEventListener('click', e=>{
   }
 });
 document.addEventListener('toggle', e=>{
-  const d=e.target; if(!d.matches || !d.matches('details.subj')) return;
+  const d=e.target; if(d.matches && d.matches('details.others-t')){ othersOpen=d.open; return; }
+  if(!d.matches || !d.matches('details.subj')) return;
   const g=d.dataset.g;
   if(d.open) closedGroups.delete(g); else closedGroups.add(g);
   try { localStorage.setItem(KEY+'-closed', JSON.stringify([...closedGroups])); } catch(e){}
@@ -1018,21 +1162,40 @@ function download(blob, name){
 }
 
 /* ================= نسخة احتياطية ================= */
-const BACKUP_MAIL='rahuqhasna@gmail.com';
+/* ================= أول مرة: اسم المندوب والجيميل ================= */
+function fixMail(v){ v=String(v||'').trim().replace(/\s+/g,'').toLowerCase(); if(!v) return ''; if(!v.includes('@')) v+='@gmail.com'; return /^[^@]+@[^@]+\.[a-z]{2,}$/.test(v) ? v : ''; }
+function firstRun(){
+  if(document.getElementById('firstRun')) return;
+  const m=document.createElement('div'); m.className='modal'; m.id='firstRun'; m.style.zIndex='90';
+  m.innerHTML=`<div class="box" style="text-align:center"><img src="icon-192.png" alt="" style="width:90px;height:90px;object-fit:contain" onerror="this.remove()">
+    <h3 style="margin:8px 0 2px">أهلاً بيك في برنامج ${APP_NAME}</h3><div class="small muted" style="margin-bottom:14px">${SIGN}</div>
+    <div style="text-align:right"><div class="field"><label>اسمك (اسم المندوب)</label><input id="fr_rep" value="${esc(db.rep)}"></div>
+    <div class="field"><label>الجيميل بتاعك (النسخة الاحتياطية بتروح عليه)</label><input id="fr_mail" type="email" dir="ltr" inputmode="email" placeholder="name@gmail.com" value="${esc(db.mail)}"></div></div>
+    <button class="btn pri" id="fr_ok" style="width:100%">يلا نبدأ ✅</button>
+    <p class="hint">تقدر تغيّرهم بعدين من الإعدادات.</p></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#fr_ok').onclick=()=>{
+    const r=m.querySelector('#fr_rep').value.trim(), ml=fixMail(m.querySelector('#fr_mail').value);
+    if(!r){ alert('اكتب اسمك'); return; } if(!ml){ alert('اكتب الجيميل بتاعك صح'); return; }
+    db.rep=r; db.mail=ml; save(); m.remove(); render();
+  };
+}
 async function backup(){
+  if(!db.mail){ firstRun(); return; }
+  const MAIL=db.mail;
   const now = new Date().toISOString();
   const name=`نسخة-احتياطية-${db.rep}-${dayKey()}.json`;
   const json=JSON.stringify({app:'selah-books', ...db, savedAt:now});
-  const subject=`نسخة احتياطية — دفتر التسليمات — ${db.rep} — ${fmtDay(dayKey())}`;
+  const subject=`نسخة احتياطية — ${APP_NAME} — ${db.rep} — ${fmtDay(dayKey())}`;
   const file=new File([json], name, {type:'application/json'});
   const done=()=>{ db.lastBackup = now; save(false); render(); };
   if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{ await navigator.share({files:[file], title:subject, text:`ابعتها على ${BACKUP_MAIL}`}); done(); toast(`✅ اختار Gmail وابعتها على ${BACKUP_MAIL}`); return; }
+    try{ await navigator.share({files:[file], title:subject, text:`ابعتها على ${MAIL}`}); done(); toast(`✅ اختار Gmail وابعتها على ${MAIL}`); return; }
     catch(e){ if(e.name==='AbortError') return; }
   }
   done();
   download(new Blob([json],{type:'application/json'}), name);
-  location.href=`mailto:${BACKUP_MAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent('النسخة الاحتياطية نزلت على الجهاز — ارفقها هنا وابعت.')}`;
+  location.href=`mailto:${MAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent('النسخة الاحتياطية نزلت على الجهاز — ارفقها هنا وابعت.')}`;
   toast('⬇️ النسخة نزلت — ارفقها في الإيميل وابعت');
 }
 $('#fileJson').addEventListener('change', async e=>{
@@ -1043,7 +1206,7 @@ $('#fileJson').addEventListener('change', async e=>{
     const when = d.savedAt ? ` (معمولة ${fmtDT(d.savedAt)})` : '';
     if(!confirm(`النسخة دي${when} فيها ${d.teachers.length} مدرس و ${d.entries.length} تعامل.\n\nهتحل مكان البيانات اللي على الجهاز ده (${db.teachers.length} مدرس و ${db.entries.length} تعامل). أكمل؟`)) return;
     const arr=x=>Array.isArray(x)?x:[];
-    db={v:1, rep:d.rep||db.rep, teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
+    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||''}; save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
@@ -1148,17 +1311,19 @@ $('#fileXlsx').addEventListener('change', async e=>{
     const s=digits(v); let mm=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(mm) return isoDay(+mm[3],+mm[2],+mm[1]);
     mm=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(mm) return isoDay(+mm[1],+mm[2],+mm[3]); return '';
   };
-  let add=0, upd=0; const plan=[];
+  let add=0, upd=0, twice=0; const plan=[], seen=new Map();
   for(const r of data){
     const name=get(r,H.name), phone=normPhone(get(r,H.phone));
-    const subjectText=get(r,H.subject);
-    const rec={name, phone, stage:parseStage(get(r,H.stage)), subjectText, subjects:parseSubjects(subjectText),
+    const subjectText=get(r,H.subject), stageText=get(r,H.stage);
+    const rec={name, phone, stage:parseStage(stageText), stageText, subjectText, subjects:parseSubjects(subjectText),
       area:get(r,H.area), school:get(r,H.school), cls:get(r,H.cls), students:get(r,H.students), plan:parseDate(r[H.date])};
+    // نفس الرقم مرتين في نفس الشيت → يتضاف مرة واحدة (السطر التاني يكمّل الخانات الفاضية بس)
+    if(phone && seen.has(phone)){ const p=seen.get(phone).rec; for(const k of Object.keys(rec)) if(!p[k] || (Array.isArray(p[k]) && !p[k].length)) p[k]=rec[k]; twice++; continue; }
     const ex = phone ? db.teachers.find(t=>t.phone===phone) : db.teachers.find(t=>normText(t.name)===normText(name));
-    plan.push({rec, ex}); ex?upd++:add++;
+    const item={rec, ex}; plan.push(item); if(phone) seen.set(phone, item); ex?upd++:add++;
   }
   if(!plan.length){ alert('الشيت فاضي.'); return; }
-  if(!confirm(`لقيت ${plan.length} مدرس في الشيت:\n• ${add} جديد\n• ${upd} موجودين قبل كده (هتتحدّث بياناتهم بس)\n\nأستوردهم؟`)) return;
+  if(!confirm(`لقيت ${plan.length} مدرس في الشيت:\n• ${add} جديد\n• ${upd} موجودين قبل كده (هتتحدّث بياناتهم بس)${twice?`\n• ${twice} سطر رقمه متكرر في الشيت (اتحسب مرة واحدة)`:''}\n\nأستوردهم؟`)) return;
   for(const {rec,ex} of plan){
     if(ex){ for(const k of Object.keys(rec)) if(rec[k] && (!Array.isArray(rec[k]) || rec[k].length)) ex[k]=rec[k]; }
     else db.teachers.push({id:uid(), ...rec, name:rec.name||rec.phone, notes:'', created:new Date().toISOString()});
@@ -1171,15 +1336,17 @@ const xmlEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':
 function dateSerial(isoStr){ const d=new Date(isoStr); return (Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()) - Date.UTC(1899,11,30))/864e5; }
 function sheetXml(rows, widths, head=0){
   // cell: string | number | {date:iso} ; row[head] = header (bold)
-  const out=rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((c,ci)=>{
+  // row.fill = 'part' (برتقاني) | 'done' (أخضر): الصف كله يتلوّن — styles 4-6 / 7-9
+  const out=rows.map((r,ri)=>{ const f=r.fill==='part'?4:r.fill==='done'?7:0, sa=x=>x==null?'':` s="${x}"`;
+    return `<row r="${ri+1}">`+r.map((c,ci)=>{
     const ref=colName(ci)+(ri+1);
-    if(c===null||c===undefined||c==='') return '';
+    if(c===null||c===undefined||c==='') return f?`<c r="${ref}" s="${f}"/>`:'';
     if(ri===head) return `<c r="${ref}" t="inlineStr" s="1"><is><t>${xmlEsc(c)}</t></is></c>`;
-    if(typeof c==='number') return `<c r="${ref}"><v>${c}</v></c>`;
-    if(c && c.date) return `<c r="${ref}" s="2"><v>${dateSerial(c.date)}</v></c>`;
-    if(c && c.rich) return `<c r="${ref}" t="inlineStr" s="3"><is>${c.rich.map(r=>`<r><rPr>${r.bold?'<b/>':''}<sz val="11"/>${r.color?`<color rgb="FF${r.color}"/>`:''}<rFont val="Calibri"/></rPr><t xml:space="preserve">${xmlEsc(r.t).replace(/\n/g,'&#10;')}</t></r>`).join('')}</is></c>`;
-    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(c)}</t></is></c>`;
-  }).join('')+`</row>`).join('');
+    if(typeof c==='number') return `<c r="${ref}"${sa(f||null)}><v>${c}</v></c>`;
+    if(c && c.date) return `<c r="${ref}" s="${f?f+1:2}"><v>${dateSerial(c.date)}</v></c>`;
+    if(c && c.rich) return `<c r="${ref}" t="inlineStr" s="${f?f+2:3}"><is>${c.rich.map(r=>`<r><rPr>${r.bold?'<b/>':''}<sz val="11"/>${r.color?`<color rgb="FF${r.color}"/>`:''}<rFont val="Calibri"/></rPr><t xml:space="preserve">${xmlEsc(r.t).replace(/\n/g,'&#10;')}</t></r>`).join('')}</is></c>`;
+    return `<c r="${ref}" t="inlineStr"${sa(f||null)}><is><t xml:space="preserve">${xmlEsc(c)}</t></is></c>`;
+  }).join('')+`</row>`; }).join('');
   const cols=widths?`<cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`:'';
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0" rightToLeft="1"><pane ySplit="${head+1}" topLeftCell="A${head+2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${cols}<sheetData>${out}</sheetData>${!head&&rows.length>1&&rows[0].length?`<autoFilter ref="A1:${colName(rows[0].length-1)}${rows.length}"/>`:''}</worksheet>`;
 }
@@ -1189,7 +1356,7 @@ function buildXlsx(sheets){
     {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
     {name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView rightToLeft="1"/></bookViews><sheets>${sheets.map((s,i)=>`<sheet name="${xmlEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${sheets.some(s=>s.rows.length>1&&!s.head)?`<definedNames>${sheets.map((s,i)=>s.rows.length>1&&!s.head?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xmlEsc(s.name)}'!$A$1:$${colName(s.rows[0].length-1)}$${s.rows.length}</definedName>`:'').join('')}</definedNames>`:''}</workbook>`},
     {name:'xl/_rels/workbook.xml.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
-    {name:'xl/styles.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs></styleSheet>`},
+    {name:'xl/styles.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFDE7C4"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD7F5DF"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>${[3,4].map(fi=>`<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>`).join('')}</cellXfs></styleSheet>`},
     ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, data:sheetXml(s.rows, s.widths, s.head||0)}))
   ];
   return zipBlob(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1234,8 +1401,10 @@ function exportExcel(all){
   const s2=[['اسم المدرس','التليفون','المنطقة','مادته','استلم إيه','المستحق','آخر زيارة','ملاحظات']];
   for(const t of [...db.teachers].sort((a,b)=>a.name.localeCompare(b.name,'ar'))){
     const x=idx[t.id]; const bk=x?x.books:{};
-    s2.push([t.name, t.phone||'', t.area||'', t.subjectText||'', richCell(t,bk,'d'), richCell(t,bk,'o'),
-      x&&x.last?{date:x.last}:'', t.notes||'']);
+    const row=[t.name, t.phone||'', t.area||'', t.subjectText||'', richCell(t,bk,'d'), richCell(t,bk,'o'),
+      x&&x.last?{date:x.last}:'', t.notes||''];
+    if(x?.d) row.fill = x.o ? 'part' : 'done';   // لون حالة المدرس: برتقاني باقيله، أخضر خلّص
+    s2.push(row);
   }
   // 3) اللي عليا
   const s3=[['الكتاب','عدد النسخ','عدد المدرسين','المدرسين']]; const by={};
@@ -1548,7 +1717,7 @@ function saleForm(tid, editId){
   const st = {tid: ed ? ed.t : (tid||''), qty:{}};
   if(ed) for(const it of ed.items) st.qty[it.b]=(st.qty[it.b]||0)+it.q;
   const m=document.createElement('div'); m.className='modal';
-  m.innerHTML=`<div class="box"><h3>${ed?'✏️ تعديل الطلب':'🛒 بيع / طلب جديد'}</h3><div id="sf_t"></div><div id="sf_b"></div>
+  m.innerHTML=`<div class="box"><h3>${ed?'✏️ تعديل الطلب':'🛒 بيع / طلب جديد'}</h3><div id="sf_t"></div><div id="sf_spec"></div><div id="sf_b"></div>
     <div class="sale-foot"><div id="sf_tot" class="tot"></div>
       <div class="row2"><button class="btn" data-sf="order">${ed?'💾 حفظ الطلب':'🛒 طلب'}</button><button class="btn ok" data-sf="sell">✅ باع على طول</button></div>
       <button class="btn ghost" data-sf="close" style="width:100%;margin-top:8px">إلغاء</button></div></div>`;
@@ -1564,10 +1733,10 @@ function saleForm(tid, editId){
   };
   const drawRes=raw=>{
     const res=m.querySelector('#sf_res'); raw=raw.trim();
-    const isNum=/^[\d٠-٩۰-۹\s+\-]+$/.test(raw), qd=normPhone(raw).replace(/^0/,''), words=normText(raw).split(' ').filter(Boolean);
-    const hits=!raw ? [] : db.teachers.filter(t=> isNum ? (!!qd && (t.phone||'').includes(qd)) : words.every(w=>normText(t.name).includes(w))).slice(0,8);
+    const isNum=/^[\d٠-٩۰-۹\s+\-]+$/.test(raw), qd=normPhone(raw).replace(/^0/,''), Q=isNum?null:parseQuery(raw);
+    const hits=!raw ? [] : db.teachers.filter(t=> isNum ? (!!qd && (t.phone||'').includes(qd)) : matchTeacher(t, Q)).slice(0,8);
     res.innerHTML=(raw && !hits.length?'<div class="hint" style="margin:0 0 6px">مش لاقيه.</div>':'') +
-      hits.map(t=>`<button class="pick-row" data-sf="pick" data-id="${esc(t.id)}"><b>${esc(t.name)}</b> <span class="small muted">${esc([t.phone,t.area].filter(Boolean).join(' • '))}</span></button>`).join('') +
+      hits.map(t=>`<button class="pick-row" data-sf="pick" data-id="${esc(t.id)}"><b>${esc(t.name)}</b>${nameTags(t)} <span class="small muted">${esc([t.phone,t.area,t.subjectText].filter(Boolean).join(' • '))}</span></button>`).join('') +
       (raw ? `<div class="addnew"><b class="small">➕ ضيفه (لو مش موجود)</b><div class="row2"><input id="sf_nn" placeholder="الاسم" value="${esc(isNum?'':raw)}"><input id="sf_np" inputmode="tel" dir="ltr" placeholder="التليفون" value="${esc(isNum?raw:'')}"></div>
         <button class="btn sm pri" data-sf="addt" style="margin-top:8px">➕ ضيفه</button></div>` : '<div class="hint">اكتب اسم المدرس أو رقمه.</div>');
   };
@@ -1580,7 +1749,7 @@ function saleForm(tid, editId){
   const drawB=()=>{
     const box=m.querySelector('#sf_b'), t=tById(st.tid);
     if(!t){ box.innerHTML=''; drawTot(); return; }
-    const mine=SELL_KEYS.filter(k=>{ const p=bookParts(k); return (!t.stage || t.stage.includes(p.st)) && (t.subjects||[]).includes(p.sb); });
+    const mg=myGroups(t), mine=SELL_KEYS.filter(k=>mg.has(k.split('-').slice(0,2).join('-')));
     const others=SELL_KEYS.filter(k=>!mine.includes(k));
     const left=lotLeft();
     const row=k=>{ const p=priceOf(k), av=merchAvail(k,left), q=st.qty[k]||'';
@@ -1589,17 +1758,23 @@ function saleForm(tid, editId){
         <div class="small muted">📦 ${av.length?'من '+av.map(([n,c])=>`${esc(n)} ${c}`).join(' + '):'مفيش عند التجار'}</div></div>
         <div class="step"><button data-sf="dec" data-k="${k}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-k="${k}" value="${q}"><button class="plus" data-sf="inc" data-k="${k}" aria-label="زوّد">+</button></div></div>`; };
     box.innerHTML = mine.length
-      ? `<div class="stage-t">⭐ كتب تخصصه</div>${mine.map(row).join('')}<details class="others" ${others.some(k=>st.qty[k])?'open':''}><summary>كتب تانية (${others.length})</summary>${others.map(row).join('')}</details>`
+      ? `<div class="stage-t">⭐ تخصصه</div>${mine.map(row).join('')}<details class="others" ${others.some(k=>st.qty[k])?'open':''}><summary>📚 باقي الكتب (${others.length})</summary>${others.map(row).join('')}</details>`
       : `<div class="stage-t">الكتب</div>${SELL_KEYS.map(row).join('')}`;
     drawTot();
   };
   const setQ=(k,q)=>{ q=Math.max(0,Math.min(9999,q||0)); if(q) st.qty[k]=q; else delete st.qty[k];
     const r=m.querySelector(`.srow[data-k="${k}"]`); if(r){ r.classList.toggle('sel',!!q); const i=r.querySelector('.qin'); if(document.activeElement!==i) i.value=q||''; }
     drawTot(); };
+  const drawSpec=t=>{ const box=m.querySelector('#sf_spec');
+    box.innerHTML = t ? specPicker(t, 'data-sf="spec-save"', 'حدد تخصص المدرس الأول') : '';
+    if(t) box.scrollIntoView({block:'start'}); };
   m.addEventListener('input', e=>{ const i=e.target.closest('.qin'); if(i) setQ(i.dataset.k, parseInt(digits(i.value).replace(/\D/g,''),10)); });
   const save1=(sell)=>{
     const t=tById(st.tid); if(!t){ alert('اختار المدرس الأول'); return; }
     const its=items(); if(!its.length){ alert('اكتب عدد الكتب الأول'); return; }
+    if(dupBlock(t)) return;
+    // قفل: التخصص لازم يبقى معروف — الأعداد اللي اتكتبت بتفضل زي ما هي
+    if(!expectedBooks(t).length){ alert('⚠️ حدد تخصص المدرس الأول'); drawSpec(t); return; }
     if(sell){ const sh=shortMsg(its); if(sh && !confirm(`⚠️ بضاعة التجار مش مكفّية:\n${sh}\n\nتكمل البيع؟`)) return; }
     const n=its.reduce((s,x)=>s+x.q,0);
     close();
@@ -1617,8 +1792,10 @@ function saleForm(tid, editId){
     if(a==='close') close();
     else if(a==='inc') setQ(k,(st.qty[k]||0)+1);
     else if(a==='dec') setQ(k,(st.qty[k]||0)-1);
-    else if(a==='pick'){ st.tid=b.dataset.id; drawT(); drawB(); }
-    else if(a==='chg'){ st.tid=''; drawT(); drawB(); }
+    else if(a==='pick'){ if(dupBlock(tById(b.dataset.id))) return; st.tid=b.dataset.id; drawT(); drawB(); }
+    else if(a==='chg'){ st.tid=''; drawSpec(null); drawT(); drawB(); }
+    else if(a==='spec-save'){ const t=tById(st.tid); if(!t || !applySpec(t, m.querySelector('#specbar'))) return;
+      save(); drawSpec(null); drawT(); drawB(); toast('✅ التخصص اتحفظ — كمّل'); }
     else if(a==='addt'){
       const name=m.querySelector('#sf_nn').value.trim(), phone=normPhone(m.querySelector('#sf_np').value);
       if(!name){ alert('اكتب اسم المدرس'); return; }
@@ -1641,20 +1818,112 @@ function showInvoice(tid){
   for(const s of db.sales) if(s.st==='sold' && s.t===tid) for(const it of s.items){
     const key=it.b+'|'+it.pre+'|'+it.post; if(!rows.has(key)) rows.set(key,{b:it.b, pre:it.pre, post:it.post, q:0}); rows.get(key).q+=it.q; }
   const list=[...rows.values()].sort(byRank);
-  const msg=`🧾 فاتورة بيع — سلاح التلميذ\nالتاريخ: ${fmtDay(dayKey())}\nالمندوب: ${db.rep}\nالمدرس: ${t.name}\n\n` +
+  const day=fmtDay(dayKey());
+  const msg=`🧾 فاتورة بيع — سلاح التلميذ\nالتاريخ: ${day}\nالمندوب: ${db.rep}\nالمدرس: ${t.name}\n\n` +
     list.map(r=>`• ${bookLabel(r.b)} × ${r.q}`+(r.post!=null?` × ${fmtN(r.post)} = ${fmtM(r.q*r.post)}`:' (السعر لسه ما اتحددش)')).join('\n') +
     `\n\nالإجمالي: ${fmtM(a.bought)}${a.noPrice?' (فيه كتب السعر لسه ما اتحددش)':''}\nالمدفوع: ${fmtM(a.paid)}\nالمرتجع: ${fmtM(a.ret)}\nالباقي عليك: ${fmtM(a.owe)}`;
+  const C=k=>'#'+SUBJ_COLOR[bookParts(k).sb];
   const m=document.createElement('div'); m.className='inv-wrap';
-  m.innerHTML=`<div class="inv"><div class="inv-h"><div class="brand">سلاح التلميذ</div><h2>فاتورة بيع</h2><div class="small">${fmtDay(dayKey())}</div></div>
-    <div class="kv"><span>المندوب</span><b>${esc(db.rep)}</b></div><div class="kv"><span>المدرس</span><b>${esc(t.name)}</b></div>
+  m.innerHTML=`<div class="inv"><div class="inv-h"><div class="brand">سلاح التلميذ</div><div style="text-align:left"><h2>فاتورة بيع</h2><div class="d">${day}</div></div></div>
+    <div class="inv-b"><div class="inv-who"><div><span>المندوب: </span><b>${esc(db.rep)}</b></div><div><span>المدرس: </span><b>${esc(t.name)}</b></div></div>
     <div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>العدد</th><th>السعر قبل</th><th>السعر بعد</th><th>الإجمالي</th></tr></thead><tbody>
-    ${list.map(r=>`<tr><td>${esc(bookLabel(r.b))}</td><td>${r.q}</td><td>${r.pre!=null?`<s>${fmtN(r.pre)}</s>`:'—'}</td><td>${r.post!=null?fmtN(r.post):'—'}</td><td>${r.post!=null?fmtN(r.q*r.post):'—'}</td></tr>`).join('') || '<tr><td colspan="5">مفيش بيع.</td></tr>'}</tbody></table></div>
+    ${list.map(r=>`<tr><td><b style="color:${C(r.b)}">${esc(bookLabel(r.b))}</b></td><td>${r.q}</td><td>${r.pre!=null?`<s>${fmtN(r.pre)}</s>`:'—'}</td><td>${r.post!=null?fmtN(r.post):'—'}</td><td><b>${r.post!=null?fmtN(r.q*r.post):'—'}</b></td></tr>`).join('') || '<tr><td colspan="5">مفيش بيع.</td></tr>'}</tbody></table></div>
     ${a.noPrice?'<div class="inv-np">السعر لسه ما اتحددش</div>':''}
-    <div class="kv"><span>الإجمالي</span><b>${fmtM(a.bought)}</b></div><div class="kv"><span>المدفوع</span><b>${fmtM(a.paid)}</b></div>
-    <div class="kv"><span>المرتجع</span><b>${fmtM(a.ret)}</b></div><div class="kv big"><span>الباقي عليه</span><b style="color:#b91c1c">${fmtM(a.owe)}</b></div></div>
-    <div class="inv-acts"><a class="btn ok" href="${esc(waLink(t.phone, msg))}" target="_blank" rel="noopener">💬 ابعت واتساب</a><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
+    <div class="kv"><span>الإجمالي</span><b>${fmtM(a.bought)}</b></div><div class="kv"><span>المدفوع</span><b style="color:#15803d">${fmtM(a.paid)}</b></div>
+    <div class="kv"><span>المرتجع</span><b style="color:#ea580c">${fmtM(a.ret)}</b></div>
+    <div class="inv-due"><span>الباقي عليه</span><span>${fmtM(a.owe)}</span></div></div></div>
+    <div class="inv-acts"><button class="btn pri" data-inv="img">📷 ابعت صورة</button><button class="btn pri" data-inv="pdf">📄 ابعت PDF</button>
+      <a class="btn ok" href="${esc(waLink(t.phone, msg))}" target="_blank" rel="noopener">💬 واتساب (كلام)</a><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
   document.body.appendChild(m);
   m.querySelector('[data-inv="close"]').onclick=()=>m.remove();
+  const data={t, a, list, day}, base=`فاتورة-${t.name}-${dayKey()}`.replace(/[\\/:*?"<>|]/g,'');
+  m.querySelector('[data-inv="img"]').onclick=async()=>{
+    const cv=invoiceCanvas(data); const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92));
+    shareFile(blob, base+'.jpg', 'image/jpeg', `فاتورة ${t.name}`);
+  };
+  m.querySelector('[data-inv="pdf"]').onclick=async()=>{
+    const cv=invoiceCanvas(data); const jb=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92));
+    const pdf=pdfFromJpeg(new Uint8Array(await jb.arrayBuffer()), cv.width, cv.height);
+    shareFile(pdf, base+'.pdf', 'application/pdf', `فاتورة ${t.name}`);
+  };
+}
+// المشاركة (واتساب وغيره) من قايمة المشاركة، ولو مش متاحة ينزّل الملف
+async function shareFile(blob, name, type, title){
+  const file=new File([blob], name, {type});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title}); return; }catch(e){ if(e.name==='AbortError') return; }
+  }
+  download(blob, name); toast('⬇️ الملف نزل');
+}
+// رسم الفاتورة على canvas (من غير مكتبات، عربي من اليمين للشمال)
+function invoiceCanvas({t, a, list, day}){
+  const W=720, S=2, P=24, FF='"Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",Arial,sans-serif';
+  const RH=40, rowsN=Math.max(1,list.length);
+  const H = 96 + 16 + 56 + 16 + 40 + rowsN*RH + 16 + (a.noPrice?32:0) + 3*38 + 70 + P;
+  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+  const x=cv.getContext('2d'); x.scale(S,S); x.direction='rtl'; x.textBaseline='middle';
+  const font=(sz,b)=>x.font=`${b?'bold ':''}${sz}px ${FF}`;
+  const text=(s,px,py,{sz=16,b=false,c='#111',al='right'}={})=>{ font(sz,b); x.fillStyle=c; x.textAlign=al; x.fillText(s,px,py); return x.measureText(s).width; };
+  const rr=(px,py,w,h,r,c)=>{ x.fillStyle=c; x.beginPath(); x.moveTo(px+r,py); x.arcTo(px+w,py,px+w,py+h,r); x.arcTo(px+w,py+h,px,py+h,r); x.arcTo(px,py+h,px,py,r); x.arcTo(px,py,px+w,py,r); x.closePath(); x.fill(); };
+  x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+  // الشريط اللي فوق
+  x.fillStyle='#0f766e'; x.fillRect(0,0,W,96);
+  text('سلاح التلميذ', W-P, 40, {sz:30, b:true, c:'#fff'});
+  text('البحيرة', W-P, 74, {sz:15, c:'#d1fae5'});
+  text('فاتورة بيع', P, 38, {sz:24, b:true, c:'#fff', al:'left'});
+  text(day, P, 72, {sz:16, c:'#d1fae5', al:'left'});
+  let y=96+16;
+  // المندوب والمدرس
+  rr(P,y,W-2*P,56,10,'#e2f2ef');
+  let w=text('المندوب: ', W-P-14, y+28, {sz:16, c:'#555'}); text(db.rep, W-P-14-w, y+28, {sz:17, b:true});
+  w=text('المدرس: ', W/2-6, y+28, {sz:16, c:'#555'}); text(t.name, W/2-6-w, y+28, {sz:17, b:true});
+  y+=56+16;
+  // الجدول: الكتاب | العدد | قبل | بعد | الإجمالي (من اليمين)
+  const cols=[['الكتاب',260],['العدد',70],['السعر قبل',105],['السعر بعد',105],['الإجمالي',W-2*P-540]];
+  const cx=[]; let cr=W-P; for(const [,cw] of cols){ cx.push([cr, cr-cw]); cr-=cw; }
+  const mid=i=>(cx[i][0]+cx[i][1])/2;
+  x.fillStyle='#0f766e'; x.fillRect(P,y,W-2*P,40);
+  cols.forEach(([h],i)=>text(h, i===0?cx[0][0]-10:mid(i), y+20, {sz:15, b:true, c:'#fff', al:i===0?'right':'center'}));
+  y+=40;
+  if(!list.length){ text('مفيش بيع.', W/2, y+RH/2, {al:'center', c:'#555'}); y+=RH; }
+  list.forEach((r,i)=>{
+    x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,RH);
+    const cy=y+RH/2;
+    text(bookLabel(r.b), cx[0][0]-10, cy, {sz:16, b:true, c:'#'+SUBJ_COLOR[bookParts(r.b).sb]});
+    text(String(r.q), mid(1), cy, {sz:16, al:'center'});
+    if(r.pre!=null){ const s=fmtN(r.pre), pw=text(s, mid(2), cy, {sz:15, c:'#888', al:'center'}); x.strokeStyle='#888'; x.lineWidth=1.5; x.beginPath(); x.moveTo(mid(2)-pw/2-2,cy); x.lineTo(mid(2)+pw/2+2,cy); x.stroke(); }
+    else text('—', mid(2), cy, {al:'center', c:'#888'});
+    text(r.post!=null?fmtN(r.post):'—', mid(3), cy, {sz:16, al:'center'});
+    text(r.post!=null?fmtN(r.q*r.post):'—', mid(4), cy, {sz:16, b:true, al:'center'});
+    y+=RH;
+  });
+  y+=16;
+  if(a.noPrice){ text('السعر لسه ما اتحددش', W/2, y+12, {sz:16, b:true, c:'#b45309', al:'center'}); y+=32; }
+  for(const [l,v,c] of [['الإجمالي',a.bought,'#111'],['المدفوع',a.paid,'#15803d'],['المرتجع',a.ret,'#ea580c']]){
+    text(l, W-P-6, y+19, {sz:17, c:'#333'}); text(fmtM(v), P+6, y+19, {sz:18, b:true, c, al:'left'});
+    x.fillStyle='#e5e7eb'; x.fillRect(P,y+37,W-2*P,1); y+=38;
+  }
+  y+=10;
+  rr(P,y,W-2*P,56,10,'#b91c1c');
+  text('الباقي عليه', W-P-16, y+28, {sz:22, b:true, c:'#fff'}); text(fmtM(a.owe), P+16, y+28, {sz:24, b:true, c:'#fff', al:'left'});
+  return cv;
+}
+// PDF بسيط فيه صورة JPEG واحدة (مكتوب يدوي من غير مكتبة)
+function pdfFromJpeg(jpg, iw, ih){
+  const enc=new TextEncoder(), parts=[], offs=[]; let len=0;
+  const put=d=>{ const u=typeof d==='string'?enc.encode(d):d; parts.push(u); len+=u.length; };
+  const pw=595, ph=Math.round(595*ih/iw*100)/100;
+  const content=`q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
+  put('%PDF-1.4\n');
+  const obj=(n,body)=>{ offs[n]=len; put(`${n} 0 obj\n`); for(const b of body) put(b); put('\nendobj\n'); };
+  obj(1,['<< /Type /Catalog /Pages 2 0 R >>']);
+  obj(2,['<< /Type /Pages /Kids [3 0 R] /Count 1 >>']);
+  obj(3,[`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`]);
+  obj(4,[`<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`, jpg, '\nendstream']);
+  obj(5,[`<< /Length ${content.length} >>\nstream\n${content}\nendstream`]);
+  const xref=len;
+  put(`xref\n0 6\n0000000000 65535 f \n${[1,2,3,4,5].map(n=>String(offs[n]).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, {type:'application/pdf'});
 }
 
 /* --- دفعة / مرتجع --- */
@@ -1679,30 +1948,57 @@ function retForm(tid){
   for(const l of lines) by[l.it.b]=(by[l.it.b]||0)+l.left;
   const ks=Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b]);
   if(!ks.length){ alert('مفيش كتب اشتراها علشان يرجّعها.'); return; }
+  // سعر الواحد للعرض: سعر آخر بيع للكتاب ده
+  const unit={}; for(const l of lines) if(l.it.post!=null && (!unit[l.it.b] || (l.s.sd||'')>unit[l.it.b].sd)) unit[l.it.b]={p:l.it.post, sd:l.s.sd||''};
+  const rq={};
   const m=document.createElement('div'); m.className='modal';
   m.innerHTML=`<div class="box"><h3>↩️ مرتجع من ${esc(t.name)}</h3>
-    <div class="field"><label>الكتاب</label><select id="r_b">${ks.map(k=>`<option value="${k}">${esc(bookLabel(k))} (معاه ${by[k]})</option>`).join('')}</select></div>
-    <div class="row2"><div class="field"><label>العدد</label><input id="r_q" inputmode="numeric" value="1"></div><div class="field"><label>التاريخ</label><input id="r_d" type="date" value="${dayKey()}"></div></div>
-    <p class="hint" style="margin-top:0">الكتب بترجع لبضاعة نفس التاجر اللي اتباعت منه.</p>
-    <div class="row2"><button class="btn pri" id="r_ok">حفظ</button><button class="btn ghost" id="r_x">إلغاء</button></div></div>`;
+    <p class="hint" style="margin:0 0 6px">اكتب عدد المرتجع قدام الكتب اللي رجّعها بس، وسيب الباقي فاضي.</p>
+    <div class="srow" style="border-top:0;font-size:13px;color:var(--muted);font-weight:700"><div class="grow">الكتاب — خد</div><div>المرتجع</div></div>
+    ${ks.map(k=>`<div class="srow" data-k="${k}"><div class="grow"><b style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</b>
+        <div class="small">خد <b>${by[k]}</b>${unit[k]?` <span class="muted">• ${fmtN(unit[k].p)} ج للواحد</span>`:''}</div></div>
+      <div class="step"><button data-rf="dec" data-k="${k}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-k="${k}"><button class="plus" data-rf="inc" data-k="${k}" aria-label="زوّد">+</button></div></div>`).join('')}
+    <div class="sale-foot"><div id="r_tot" class="tot"></div>
+      <div class="field"><label>التاريخ</label><input id="r_d" type="date" value="${dayKey()}"></div>
+      <p class="hint" style="margin-top:0">الكتب بترجع لبضاعة نفس التاجر اللي اتباعت منه.</p>
+      <div class="row2"><button class="btn pri" id="r_ok">💾 حفظ المرتجع</button><button class="btn ghost" id="r_x">إلغاء</button></div></div></div>`;
   document.body.appendChild(m);
   const close=()=>m.remove();
-  m.addEventListener('click',e=>{ if(e.target===m) close(); });
+  const drawTot=()=>{
+    let n=0, v=0, miss=false, over=false;
+    for(const k of ks){ const q=rq[k]||0; if(!q) continue; n+=q; if(q>by[k]) over=true; if(unit[k]) v+=q*unit[k].p; else miss=true; }
+    m.querySelector('#r_tot').innerHTML = n
+      ? `↩️ مرتجع <b>${n}</b> كتاب${v?` — <b>${fmtM(v)}</b>`:''}${miss?' <span class="small muted">(فيه كتب سعرها لسه ما اتحددش)</span>':''}${over?'<div class="small" style="color:var(--bad)">⚠️ فيه كتاب المرتجع بتاعه أكتر من اللي خده</div>':''}`
+      : '<span class="muted">اكتب عدد المرتجع قدام الكتب</span>';
+  };
+  const setQ=(k,q)=>{ q=Math.max(0,Math.min(9999,q||0)); if(q) rq[k]=q; else delete rq[k];
+    const r=m.querySelector(`.srow[data-k="${k}"]`); if(r){ r.classList.toggle('sel',!!q); const i=r.querySelector('.qin'); if(document.activeElement!==i) i.value=q||''; i.style.borderColor=q>by[k]?'var(--bad)':''; }
+    drawTot(); };
+  m.addEventListener('input', e=>{ const i=e.target.closest('.qin'); if(i) setQ(i.dataset.k, parseInt(digits(i.value).replace(/\D/g,''),10)); });
+  m.addEventListener('click', e=>{
+    if(e.target===m){ close(); return; }
+    const b=e.target.closest('[data-rf]'); if(!b) return;
+    const k=b.dataset.k; setQ(k,(rq[k]||0)+(b.dataset.rf==='inc'?1:-1));
+  });
   m.querySelector('#r_x').onclick=close;
   m.querySelector('#r_ok').onclick=()=>{
-    const b=m.querySelector('#r_b').value, q=parseInt(digits(m.querySelector('#r_q').value).replace(/\D/g,''),10);
-    if(!q || q<1){ alert('اكتب العدد'); return; }
-    if(q>by[b]){ alert(`ده اشترى ${by[b]} بس من الكتاب ده.`); return; }
-    const d=pickDate(m.querySelector('#r_d').value); close();
-    withUndo(`↩️ اتسجّل مرتجع ${q} ${bookLabel(b)}`, ()=>{
-      const parts=[]; let need=q;
-      for(const l of retLines(tid).filter(l=>l.it.b===b).sort((x,y)=>(y.s.sd||'').localeCompare(x.s.sd||''))){
-        if(!need) break; const n=Math.min(need,l.left);
-        parts.push({sale:l.s.id, i:l.i, q:n, lots:retLots(tid, l.s, l.i, n)}); need-=n;
+    const pick=ks.filter(k=>rq[k]>0);
+    if(!pick.length){ alert('اكتب عدد المرتجع قدام الكتاب الأول'); return; }
+    const over=pick.filter(k=>rq[k]>by[k]);
+    if(over.length){ alert('المرتجع أكتر من اللي خده في:\n'+over.map(k=>`• ${bookLabel(k)}: خد ${by[k]} بس`).join('\n')); return; }
+    const d=pickDate(m.querySelector('#r_d').value), n=pick.reduce((s,k)=>s+rq[k],0); close();
+    withUndo(`↩️ اتسجّل مرتجع ${n} كتاب`, ()=>{
+      for(const b of pick){
+        const parts=[]; let need=rq[b];
+        for(const l of retLines(tid).filter(l=>l.it.b===b).sort((x,y)=>(y.s.sd||'').localeCompare(x.s.sd||''))){
+          if(!need) break; const q=Math.min(need,l.left);
+          parts.push({sale:l.s.id, i:l.i, q, lots:retLots(tid, l.s, l.i, q)}); need-=q;
+        }
+        db.payments.push({id:uid(), k:'ret', t:tid, b, q:rq[b], d, parts});
       }
-      db.payments.push({id:uid(), k:'ret', t:tid, b, q, d, parts});
     });
   };
+  drawTot();
 }
 
 /* --- الإعدادات: الأسعار وبضاعة التجار --- */
@@ -1806,6 +2102,8 @@ $('#fileMerch').addEventListener('change', async e=>{
 });
 
 render();
+// شاشة الفتح: ثانية واحدة (اللوجو والتوقيع)
+setTimeout(()=>{ const s=$('#splash'); if(s){ s.classList.add('out'); setTimeout(()=>s.remove(), 400); } }, 1000);
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
