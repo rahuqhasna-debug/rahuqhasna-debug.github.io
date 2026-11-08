@@ -1,701 +1,1812 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<base target="_top">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>سلاح التلميذ | تحديث بيانات السادة المعلمين</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>دفتر التسليمات</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <style>
-  :root{
-    --bg:#f4f6fb; --card:#ffffff; --ink:#1b2236; --muted:#6b7385; --line:#e4e8f0;
-    --s1:#e53935; --s2:#fb8c00; --s3:#f4b400; --s4:#2e9e57; --s5:#1e88e5; --s6:#7b3fe4;
-    --c:var(--s1); --c-soft:#fdecec;
-    --ok:#1f9d55; --err:#d32f2f;
-    --font:'Cairo', Tahoma, 'Segoe UI', sans-serif;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65;-webkit-tap-highlight-color:transparent}
-  .wrap{max-width:620px;margin:0 auto;padding:0 14px 110px}
-
-  /* الهيدر الرسمي */
-  .brand{position:relative;margin:0 -14px 16px;padding:22px 20px 26px;color:#fff;
-    background:linear-gradient(135deg,#1b2236 0%,#2b3556 100%);overflow:hidden}
-  .brand:after{content:"";position:absolute;inset:auto 0 0 0;height:6px;
-    background:linear-gradient(90deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6))}
-  .brand .logo{display:flex;align-items:center;gap:10px}
-  .brand .mark{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px;font-weight:900;
-    background:conic-gradient(from 200deg,var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6),var(--s1));color:#fff;
-    box-shadow:0 4px 14px rgba(0,0,0,.25)}
-  .brand .mark span{background:#1b2236;border-radius:9px;width:38px;height:38px;display:grid;place-items:center}
-  .brand h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.3px}
-  .brand .tag{margin:2px 0 0;font-size:13px;opacity:.8}
-  .brand h2{margin:16px 0 4px;font-size:19px;font-weight:800}
-  .brand p{margin:0;font-size:14px;opacity:.88}
-  .rep-chip{display:inline-block;margin-top:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
-    padding:2px 12px;border-radius:999px;font-size:13px}
-
-  /* شريط الخطوات */
-  .steps{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0 8px;margin-bottom:6px}
-  .dots{display:flex;gap:6px}
-  .dot{flex:1;height:8px;border-radius:8px;background:var(--line);transition:background .3s}
-  .dot.on{background:var(--dc)}
-  .steplabel{display:flex;justify-content:space-between;margin-top:6px;font-size:13px;color:var(--muted)}
-  .steplabel b{color:var(--c)}
-
-  /* كارت الخطوة */
-  .step{display:none;background:var(--card);border-radius:18px;padding:20px 18px 22px;border-top:6px solid var(--c);
-    box-shadow:0 6px 22px rgba(27,34,54,.07)}
-  .step.active{display:block;animation:in .25s ease}
-  @keyframes in{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .step-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-  .num{width:40px;height:40px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-weight:900;font-size:18px;flex:none}
-  .step-head h3{margin:0;font-size:20px;font-weight:800}
-  .intro{margin:0 0 6px;color:var(--muted);font-size:14px}
-
-  .q{margin-top:18px}
-  label.t{display:block;font-weight:700;margin-bottom:8px;font-size:15.5px}
-  .req{color:var(--err)}
-  .hint{color:var(--muted);font-size:13px;font-weight:400}
-  input[type=text],input[type=tel],input[type=number],input[type=url],select,textarea{
-    width:100%;padding:13px 14px;border:2px solid var(--line);border-radius:12px;font:inherit;background:#fbfcfe;color:var(--ink);transition:border-color .15s}
-  textarea{min-height:90px;resize:vertical}
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--c);background:#fff}
-  .bad{border-color:var(--err)!important;background:#fff6f6!important}
-
-  .opts{display:flex;flex-wrap:wrap;gap:8px}
-  .opt{position:relative}
-  .opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
-  .opt span{display:block;padding:10px 16px;border:2px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;user-select:none;font-weight:600;transition:all .15s}
-  .opt input:checked + span{background:var(--c);border-color:var(--c);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.12)}
-  .opt input:disabled + span{opacity:.35;cursor:not-allowed}
-  .opt input:focus-visible + span{outline:3px solid var(--c);outline-offset:2px}
-  .opts.big .opt{flex:1 1 140px}
-  .opts.big .opt span{text-align:center;padding:14px 10px}
-
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .stars{display:flex;gap:4px}
-  .stars button{font-size:40px;line-height:1;background:none;border:0;cursor:pointer;color:#d9dde6;padding:0 2px;transition:transform .1s}
-  .stars button.on{color:#f4b400}
-  .stars button:active{transform:scale(1.15)}
-  .box{border-radius:14px;padding:14px;margin-top:12px;background:var(--c-soft);border:2px dashed var(--c)}
-  .sub{border:2px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:#fbfcfe}
-  .promo{border-radius:16px;padding:16px;margin-bottom:14px;color:#fff;
-    background:linear-gradient(135deg,var(--s6),var(--s5));box-shadow:0 6px 18px rgba(123,63,228,.25)}
-  .promo .big{font-size:19px;font-weight:900}
-  .promo .deal{margin-top:8px;background:rgba(255,255,255,.18);border-radius:10px;padding:8px 12px;font-weight:800}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:13px 18px;font:inherit;font-weight:800;cursor:pointer}
-  .btn-c{background:var(--c);color:#fff}
-  .btn:disabled{opacity:.6;cursor:wait}
-  .status{margin-top:8px;font-size:14px;font-weight:600}
-  .status.ok{color:var(--ok)} .status.err{color:var(--err)}
-  .err{color:var(--err);font-size:13px;font-weight:600;margin-top:6px}
-  .hidden{display:none!important}
-
-  .photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  .ph{position:relative;width:96px;height:96px;border-radius:12px;overflow:hidden;border:2px solid var(--line)}
-  .ph img{width:100%;height:100%;object-fit:cover}
-  .ph button{position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:14px}
-  .upload{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:2px dashed var(--c);border-radius:14px;cursor:pointer;color:var(--c);font-weight:800;background:#fff}
-  .upload input{display:none}
-
-  /* أزرار التنقل */
-  .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(255,255,255,.96);border-top:1px solid var(--line);
-    padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));backdrop-filter:blur(6px)}
-  .nav .in{max-width:620px;margin:0 auto;display:flex;gap:10px}
-  .nav .next{flex:1;background:var(--c);color:#fff;font-size:17px;padding:14px}
-  .nav .prev{background:#eef1f6;color:var(--ink);padding:14px 18px}
-  .formerr{margin-top:12px;padding:10px 12px;border-radius:12px;background:#fff1f1;color:var(--err);font-weight:700;font-size:14px}
-
-  .done{display:none;text-align:center;background:#fff;border-radius:18px;padding:36px 20px;box-shadow:0 6px 22px rgba(27,34,54,.07);
-    border-top:6px solid var(--ok)}
-  .done.active{display:block}
-  .check{width:84px;height:84px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;font-size:44px;color:#fff;
-    background:conic-gradient(var(--s1),var(--s2),var(--s3),var(--s4),var(--s5),var(--s6),var(--s1))}
-  .check span{width:70px;height:70px;border-radius:50%;background:var(--ok);display:grid;place-items:center}
-  .done h3{font-size:22px;margin:6px 0}
-  .done p{color:var(--muted);margin:4px 0}
-  .loading{text-align:center;padding:40px;color:var(--muted)}
-  @media (prefers-reduced-motion:reduce){.step.active{animation:none}.dot{transition:none}}
+:root{
+  --bg:#f3f5f4;--card:#ffffff;--ink:#14201e;--muted:#5d6b68;--line:#dde4e2;
+  --brand:#0f766e;--brand-ink:#ffffff;--brand-soft:#e2f2ef;
+  --ok:#15803d;--ok-soft:#e4f4e9;--owe:#b45309;--owe-soft:#fdf0dc;--bad:#b91c1c;--bad-soft:#fde7e7;
+  --sel:#dbeafe;--sel-ink:#1d4ed8;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 10px rgba(0,0,0,.04);
+  --c-ar:#1D4ED8;--c-math:#15803D;--c-stu:#92400E;--c-en:#7E22CE;--c-sci:#EA580C;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;
+  --brand:#2dd4bf;--brand-ink:#04201c;--brand-soft:#11322e;
+  --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
+  --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none;
+  --c-ar:#60a5fa;--c-math:#4ade80;--c-stu:#d6a35c;--c-en:#c084fc;--c-sci:#fb923c}}
+:root[data-theme="dark"]{
+  --bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;
+  --brand:#2dd4bf;--brand-ink:#04201c;--brand-soft:#11322e;
+  --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
+  --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none;
+  --c-ar:#60a5fa;--c-math:#4ade80;--c-stu:#d6a35c;--c-en:#c084fc;--c-sci:#fb923c}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",Arial,sans-serif;font-size:16px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+.wrap{max-width:860px;margin:0 auto;padding:12px 16px 120px}
+header.top{position:sticky;top:0;z-index:20;background:var(--brand);color:var(--brand-ink)}
+header.top .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-btn{flex:none;border:0;border-radius:10px;padding:5px 10px;background:rgba(255,255,255,.18);color:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+.bk-btn.due{background:var(--owe);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+header.top .back{background:none;border:0;color:inherit;font-size:22px;padding:2px 6px;cursor:pointer}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs a{flex:1;max-width:215px;text-align:center;padding:8px 4px 9px;text-decoration:none;color:var(--muted);font-size:13px;position:relative}
+nav.tabs a .i{display:block;font-size:20px;line-height:1.2}
+nav.tabs a.on{color:var(--brand);font-weight:700}
+nav.tabs .badge{position:absolute;top:3px;right:calc(50% - 22px);background:var(--owe);color:#fff;border-radius:10px;font-size:11px;padding:0 6px;min-width:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 12px;box-shadow:var(--shadow)}
+.search{display:flex;gap:8px;margin-bottom:10px}
+.search input{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font-size:17px}
+.search input:focus{outline:none;border-color:var(--brand)}
+.btn{border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--brand-soft);color:var(--brand);font-weight:700;white-space:nowrap}
+.btn.pri{background:var(--brand);color:var(--brand-ink)}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.owe{background:var(--owe);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn.sm{padding:6px 12px;font-size:14px;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.chip{flex:none;border:1.5px solid var(--line);background:var(--card);border-radius:20px;padding:6px 12px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:700}
+select.area{border:1.5px solid var(--line);background:var(--card);border-radius:20px;padding:6px 10px;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px}
+.stat span{font-size:12px;color:var(--muted)}
+.tlist{display:flex;flex-direction:column;gap:8px}
+.titem{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-decoration:none;color:inherit}
+.titem:active{background:var(--brand-soft)}
+.titem .nm{font-weight:700}
+.titem .sub{font-size:13px;color:var(--muted)}
+.titem .grow{flex:1;min-width:0}
+.pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.owe{background:var(--owe-soft);color:var(--owe)}
+.pill.new{background:var(--line);color:var(--muted)}
+.pill.cls{background:var(--brand-soft);color:var(--brand)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:24px 8px}
+.thead h2{margin:0 0 4px;font-size:21px}
+.thead .meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:14px;color:var(--muted)}
+.thead .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.warn{border-radius:12px;padding:12px;margin-bottom:12px;background:var(--owe-soft);border:1px solid color-mix(in srgb,var(--owe) 35%,transparent)}
+.warn h3{margin:0 0 8px;font-size:16px;color:var(--owe)}
+.orow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed color-mix(in srgb,var(--owe) 30%,transparent)}
+.orow:first-of-type{border-top:0}
+.orow .grow{flex:1}
+.got{border-radius:12px;padding:12px;margin-bottom:12px;background:var(--ok-soft)}
+.got h3{margin:0 0 6px;font-size:15px;color:var(--ok)}
+.stage-t{font-size:15px;font-weight:800;margin:18px 2px 8px;color:var(--muted)}
+.subj-grid{columns:165px;column-gap:8px}
+details.subj{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0 0 8px;break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid}
+details.subj>summary .sn,details.subj .lbl b{color:var(--sc)}
+.pill.stk{background:var(--line);color:var(--muted)}
+.pill.stk.neg{background:var(--bad-soft);color:var(--bad)}
+.tbox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.tbox .stat{cursor:pointer;font:inherit;color:inherit}
+.tbox .stat span{font-size:14px;font-weight:700}
+.tbox .stat.on{border-color:var(--brand);background:var(--brand-soft)}
+.blist{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px;line-height:1.9}
+.bk{font-weight:700}
+.stk-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.stk-row .grow{flex:1;min-width:0;font-weight:700;font-size:14px}
+.stk-row input{width:64px;padding:7px 8px;border-radius:9px;border:1.5px solid var(--line);background:var(--card);text-align:center}
+details.stk>summary{cursor:pointer;font-weight:700;padding:8px 0;color:var(--brand)}
+details.subj>summary{list-style:none;cursor:pointer;padding:10px 10px;display:flex;align-items:center;gap:4px;font-weight:700;white-space:nowrap}
+details.subj>summary .pill{font-size:11px;padding:0 5px}
+details.subj>summary::-webkit-details-marker{display:none}
+details.subj>summary::after{content:"▾";margin-inline-start:auto;color:var(--muted);transition:transform .15s}
+details.subj[open]>summary::after{transform:rotate(180deg)}
+details.subj.mine>summary{background:var(--brand-soft)}
+.star{font-size:12px;color:var(--brand)}
+.grow-row{display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid var(--line);min-height:50px}
+.grow-row.sel{background:var(--sel)}
+.grow-row .lbl{flex:1;min-width:0;cursor:pointer;user-select:none;line-height:1.25}
+.grow-row .lbl b{font-size:15px;display:block}
+.grow-row .lbl .pill{font-size:11px;padding:0 5px}
+.step{display:flex;align-items:center;gap:2px;flex:none}
+.step button{width:34px;height:36px;border-radius:9px;border:1.5px solid var(--line);background:var(--card);font-size:19px;cursor:pointer;line-height:1;padding:0}
+.step button.plus{border-color:var(--brand);color:var(--brand)}
+.step .q{min-width:20px;text-align:center;font-weight:800;font-size:17px}
+.titem{cursor:pointer}
+.titem .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.icos{display:flex;gap:6px}
+.ico{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:var(--brand-soft);text-decoration:none;font-size:18px}
+.oline{font-size:13px;color:var(--owe);font-weight:700;margin-top:3px}
+.lhead{grid-column:1/-1;font-weight:700;color:var(--muted);font-size:14px;margin:2px 2px 0}
+.grow-row.sel .q{color:var(--sel-ink)}
+.actbar{position:fixed;left:0;right:0;bottom:62px;z-index:25;display:none;padding:0 12px}
+.actbar.show{display:block}
+.actbar .in{max-width:836px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:10px;display:flex;gap:8px;align-items:center}
+.actbar .btn{flex:1;padding:13px 8px}
+.hist{font-size:14px}
+.hrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line)}
+.hrow:first-child{border-top:0}
+.hrow .grow{flex:1}
+textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);padding:8px 10px;resize:vertical}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:3px}
+.field input,.field select{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--card)}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.modal .box{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px}
+@media (min-width:700px){.modal{align-items:center}.modal .box{border-radius:18px}}
+.modal h3{margin:0 0 12px}
+.row2{display:flex;gap:8px}
+.row2>*{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;z-index:60;background:#1f2937;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
+.toast button{background:none;border:0;color:#7dd3fc;font-weight:700;cursor:pointer}
+.oblock{margin-bottom:10px}
+.oblock .hd{display:flex;align-items:center;gap:8px;font-weight:700}
+.oblock .hd .grow{flex:1}
+.oblock ul{margin:6px 0 0;padding:0 18px 0 0}
+.oblock li{padding:2px 0}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)}
+.kv:first-child{border-top:0}
+.sec-t{font-size:16px;margin:0 0 10px}
+.banner{background:var(--bad-soft);color:var(--bad);padding:10px 14px;border-radius:12px;margin-bottom:12px;font-weight:700}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+.cls-bar{background:var(--sel);border:1.5px solid color-mix(in srgb,var(--sel-ink) 40%,transparent);border-radius:12px;padding:12px;margin-bottom:12px}
+.cls-bar h3{margin:0 0 8px;font-size:16px;color:var(--sel-ink)}
+.cls-bar .acts{display:flex;gap:8px;flex-wrap:wrap}
+.cls-bar select{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px;font-size:15px;min-width:120px}
+.backup-bar{background:var(--owe-soft);border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.backup-bar .grow{flex:1;font-size:14px;color:var(--owe)}
+.auto-owed{background:color-mix(in srgb,var(--brand-soft) 70%,transparent);border:1px dashed var(--brand);border-radius:12px;padding:12px;margin-bottom:12px}
+.auto-owed h3{margin:0 0 6px;font-size:15px;color:var(--brand)}
+.auto-owed .items{font-size:14px;color:var(--muted)}
+.lock-badge{display:inline-block;background:var(--line);color:var(--muted);border-radius:8px;padding:1px 6px;font-size:11px;margin-inline-start:6px}
+/* البيع والتجار */
+.scard .hd{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:4px}
+.scard .hd a{color:inherit;text-decoration:none}
+.scard .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.scard .acts .btn{text-decoration:none}
+.scard .tot{margin-top:6px;font-size:15px}
+.scard.focus{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand)}
+.mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-top:6px}
+.mgrid div{background:var(--bg);border-radius:10px;padding:6px 2px}
+.mgrid span{display:block;font-size:12px;color:var(--muted)}
+.mgrid b{font-size:14px}
+.sumline{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:16px}
+details.mcard>summary{list-style:none;cursor:pointer}
+details.mcard>summary::-webkit-details-marker{display:none}
+details.mcard h4{margin:12px 0 4px;font-size:15px}
+details.done>summary{cursor:pointer;font-weight:700;color:var(--muted);padding:8px 2px}
+.tscroll{overflow-x:auto;margin-top:10px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
+.tbl th{color:var(--muted);font-weight:700;font-size:12px}
+.tbl td:first-child,.tbl th:first-child{text-align:right}
+.mline{display:block;width:100%;text-align:right;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:700;cursor:pointer}
+.pill.sale{background:var(--sel);color:var(--sel-ink)}
+.pill.money{background:var(--bad-soft);color:var(--bad)}
+.sale-foot{position:sticky;bottom:-16px;background:var(--card);border-top:1px solid var(--line);padding:10px 0 4px;margin-top:10px}
+.sale-foot .tot{margin-bottom:8px;font-size:16px}
+.pick{display:flex;align-items:center;gap:8px;background:var(--brand-soft);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.pick .grow{flex:1;min-width:0}
+.pick-row{display:block;width:100%;text-align:right;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer}
+.addnew{border:1px dashed var(--line);border-radius:12px;padding:10px;margin-top:6px}
+.addnew input{min-width:0;width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);margin-top:6px}
+.srow{display:flex;align-items:center;gap:6px;padding:8px 4px;border-top:1px solid var(--line)}
+.srow.sel{background:var(--sel)}
+.srow .grow{flex:1;min-width:0;line-height:1.35}
+.step .qin{width:48px;height:36px;text-align:center;border-radius:9px;border:1.5px solid var(--line);background:var(--card);font-weight:800;font-size:17px;padding:0}
+.srow .step button{width:30px;height:36px;font-size:17px}
+details.others>summary{cursor:pointer;font-weight:700;padding:10px 2px;color:var(--brand)}
+.inv-wrap{position:fixed;inset:0;z-index:55;background:#e5e7eb;overflow:auto;padding:16px 12px 24px}
+.inv{background:#fff;color:#111;max-width:560px;margin:0 auto;border-radius:12px;padding:18px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.inv-h{text-align:center;border-bottom:2px solid #0f766e;padding-bottom:8px;margin-bottom:8px}
+.inv-h .brand{font-weight:800;color:#0f766e;font-size:20px}
+.inv-h h2{margin:2px 0;font-size:18px}
+.inv .kv,.inv .tbl th,.inv .tbl td{border-color:#e5e7eb}
+.inv .kv:first-of-type{border-top:0}
+.inv .tbl th{color:#555}
+.inv .tbl{margin:10px 0}
+.inv .kv.big{font-size:18px}
+.inv-np{text-align:center;color:#b45309;font-weight:700;margin:6px 0}
+.inv-acts{max-width:560px;margin:12px auto 0;display:flex;gap:8px}
+.inv-acts .btn{flex:1;text-align:center;text-decoration:none}
+@media (min-width:700px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .tlist{display:grid;grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
-<script type="application/json" id="cfg"></script>
-<div class="wrap">
-  <div class="brand">
-    <div class="logo">
-      <div class="mark"><span>س</span></div>
-      <div><h1>سلاح التلميذ</h1><div class="tag">شريكك في نجاح طلابك</div></div>
-    </div>
-    <h2>تحديث بيانات السادة المعلمين</h2>
-    <p>حرصًا منّا على خدمة حضرتك بشكل أفضل، وتوصيل نسخة الترم التاني في المكان والميعاد المناسب لحضرتك. البيانات دي سرّية ومش هتستخدم غير في التواصل مع حضرتك.</p>
-    <span class="rep-chip hidden" id="repChip"></span>
-  </div>
-
-  <div class="steps" id="stepsBar">
-    <div class="dots" id="dots"></div>
-    <div class="steplabel"><span id="stepName"></span><b id="stepCount"></b></div>
-  </div>
-
-  <div class="loading" id="loading">جاري التحميل...</div>
-
-  <form id="f" novalidate class="hidden">
-    <!-- 1 -->
-    <div class="step" data-color="s1" data-soft="#fdecec" data-name="بيانات حضرتك">
-      <div class="step-head"><div class="num">1</div><h3>بيانات حضرتك</h3></div>
-      <div class="q">
-        <label class="t" for="name">الاسم بالكامل <span class="req">*</span></label>
-        <input type="text" id="name" autocomplete="name" placeholder="مثال: أحمد محمد علي">
-      </div>
-      <div class="q">
-        <label class="t" for="phone">رقم الموبايل <span class="req">*</span></label>
-        <input type="tel" id="phone" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" dir="ltr" style="text-align:right">
-      </div>
-      <div class="q">
-        <label class="t">الرقم ده عليه واتساب؟</label>
-        <div class="opts big">
-          <label class="opt"><input type="radio" name="whatsapp" value="أيوه" checked><span>أيوه</span></label>
-          <label class="opt"><input type="radio" name="whatsapp" value="لأ"><span>لأ</span></label>
-        </div>
-        <div class="sub hidden" id="waBox">
-          <label class="t" for="waNumber">ممكن تكتب لنا رقم الواتساب بتاع حضرتك؟</label>
-          <input type="tel" id="waNumber" inputmode="numeric" placeholder="01xxxxxxxxx" maxlength="11" dir="ltr" style="text-align:right">
-          <div class="hint" style="margin-top:6px">لو حضرتك مش بتستخدم واتساب، سيبها فاضية وكمّل عادي.</div>
-        </div>
-      </div>
-      <div class="q" id="repQ">
-        <label class="t" for="rep">اسم المندوب اللي بيتعامل مع حضرتك <span class="req">*</span></label>
-        <select id="rep"></select>
-      </div>
-      <div class="q">
-        <label class="t" for="markaz">المركز <span class="req">*</span></label>
-        <select id="markaz"></select>
-      </div>
-      <div class="q">
-        <label class="t">حضرتك ساكن في <span class="req">*</span></label>
-        <div class="opts big" id="areaType"></div>
-      </div>
-      <div class="q hidden" id="villageQ">
-        <label class="t" for="village">القرية <span class="req">*</span></label>
-        <select id="village"></select>
-        <input type="text" id="villageOther" class="hidden" placeholder="اكتب اسم القرية" style="margin-top:8px">
-      </div>
-    </div>
-
-    <!-- 2 -->
-    <div class="step" data-color="s2" data-soft="#fff3e3" data-name="شغل حضرتك">
-      <div class="step-head"><div class="num">2</div><h3>شغل حضرتك</h3></div>
-      <div class="q">
-        <label class="t">المادة <span class="req">*</span> <span class="hint">(مادة أو مادتين بالكتير)</span></label>
-        <div class="opts" id="subjects"></div>
-      </div>
-      <div class="q">
-        <label class="t">بتدرّس لأنهي صفوف؟ <span class="req">*</span> <span class="hint">(اختار كل اللي ينطبق)</span></label>
-        <div class="opts" id="grades"><span class="hint">اختار المادة الأول</span></div>
-      </div>
-      <div class="q">
-        <label class="t">حضرتك بتشتغل فين؟ <span class="req">*</span></label>
-        <div class="opts big" id="workplace"></div>
-      </div>
-      <div class="q">
-        <label class="t">بتشتغل حاليًا من أنهي كتاب؟ <span class="req">*</span> <span class="hint">(ممكن أكتر من اختيار)</span></label>
-        <div class="opts" id="books"></div>
-        <div class="sub hidden" id="otherBookBox">
-          <label class="t" for="otherBook">اسم الكتاب التاني</label>
-          <input type="text" id="otherBook" placeholder="اكتب اسم الكتاب">
-          <label class="t" style="margin-top:12px">إيه اللي مميز فيه بالنسبة لحضرتك؟</label>
-          <div class="opts" id="otherWhy"></div>
-          <input type="text" id="otherWhyText" class="hidden" placeholder="اكتب السبب" style="margin-top:8px">
-        </div>
-      </div>
-      <div class="q hidden" id="photoQ">
-        <div class="box">
-          <label class="t">📸 شاركنا صورة لطلبة حضرتك وهم ماسكين كتاب سلاح التلميذ</label>
-          <div class="hint" style="margin-bottom:10px">اختياري — بيسعدنا نشوف طلبتك مع الكتاب، ولحد 3 صور.</div>
-          <label class="upload" id="uploadBtn"><input type="file" id="photoInput" accept="image/*" multiple>＋ اختار صورة</label>
-          <div class="photos" id="photos"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3 -->
-    <div class="step" data-color="s3" data-soft="#fff8de" data-name="رأي حضرتك">
-      <div class="step-head"><div class="num">3</div><h3>رأي حضرتك يهمنا</h3></div>
-      <div class="q">
-        <label class="t">إيه رأي حضرتك في المندوب؟ <span class="req">*</span></label>
-        <div class="stars" id="stars" role="radiogroup" aria-label="التقييم من 5"></div>
-        <div class="hint" id="starsLabel">اضغط على النجوم</div>
-      </div>
-      <div class="q">
-        <label class="t">سرعة وصول الكتب لحضرتك كانت إزاي؟</label>
-        <div class="opts" id="speed"></div>
-      </div>
-      <div class="q">
-        <label class="t">واجهت أي مشكلة في الطلب أو التوصيل؟</label>
-        <div class="opts big">
-          <label class="opt"><input type="radio" name="problem" value="لأ، كله تمام" checked><span>لأ، كله تمام</span></label>
-          <label class="opt"><input type="radio" name="problem" value="أيوه"><span>أيوه</span></label>
-        </div>
-        <textarea id="problemDetails" class="hidden" placeholder="احكي لنا حصل إيه عشان نحلّه" style="margin-top:10px"></textarea>
-      </div>
-    </div>
-
-    <!-- 4 -->
-    <div class="step" data-color="s4" data-soft="#e7f6ed" data-name="مكان الاستلام">
-      <div class="step-head"><div class="num">4</div><h3>📦 استلام نسخة الترم التاني</h3></div>
-      <p class="intro">هنسلّم حضرتك النسخة في مكان الدرس، فمحتاجين نعرف المكان ومواعيد حضرتك فيه.</p>
-      <div class="q">
-        <label class="t" for="center">اسم السنتر أو مكان الدرس <span class="req">*</span></label>
-        <input type="text" id="center" placeholder="مثال: سنتر النور">
-      </div>
-      <div class="q">
-        <label class="t" for="landmark">علامة مميزة جنب المكان <span class="req">*</span></label>
-        <input type="text" id="landmark" placeholder="مثال: جنب صيدلية النور، الدور التاني">
-      </div>
-      <div class="q">
-        <label class="t">حضرتك بتكون موجود في مكان الدرس أيام إيه؟ <span class="req">*</span></label>
-        <div class="opts" id="days"></div>
-      </div>
-      <div class="q">
-        <label class="t">والساعة كام؟ <span class="req">*</span></label>
-        <div class="row2">
-          <div><span class="hint">من</span><select id="from"></select></div>
-          <div><span class="hint">لحد</span><select id="to"></select></div>
-        </div>
-      </div>
-      <div class="q box">
-        <label class="t">📍 لوكيشن مكان الدرس <span class="req">*</span></label>
-        <p class="hint" style="margin:0 0 10px">لو حضرتك دلوقتي في مكان الدرس، دوس الزرار وافتح الـ GPS. لو مش هناك، الصق لينك اللوكيشن من خرائط جوجل.</p>
-        <button type="button" class="btn btn-c" id="locBtn">📍 ابعت موقعي دلوقتي</button>
-        <div class="status" id="locStatus"></div>
-        <div style="margin-top:12px">
-          <label class="t" for="mapLink" style="font-weight:600">أو الصق لينك اللوكيشن هنا:</label>
-          <input type="url" id="mapLink" placeholder="https://maps.app.goo.gl/..." dir="ltr">
-        </div>
-      </div>
-    </div>
-
-    <!-- 5 -->
-    <div class="step" data-color="s5" data-soft="#e6f1fd" data-name="الترم التاني">
-      <div class="step-head"><div class="num">5</div><h3>الترم التاني</h3></div>
-      <div class="q">
-        <label class="t" for="students">عدد طلبة حضرتك تقريبًا <span class="req">*</span></label>
-        <input type="number" id="students" min="0" max="10000" inputmode="numeric" placeholder="مثال: 80">
-      </div>
-      <div class="q hidden" id="saleQ">
-        <div class="promo" id="promo"></div>
-        <label class="t">حضرتك ناوي تاخد مننا كتب بيع لطلبتك؟ <span class="req">*</span></label>
-        <div class="opts" id="sale"></div>
-        <div class="hidden" id="copiesQ" style="margin-top:12px">
-          <label class="t" for="copies">كام نسخة تقريبًا؟</label>
-          <input type="number" id="copies" min="0" max="10000" inputmode="numeric">
-        </div>
-      </div>
-      <div class="q hidden" id="noSaleNote"><p class="intro">شكرًا لحضرتك، كمّل للخطوة الأخيرة.</p></div>
-    </div>
-
-    <!-- 6 -->
-    <div class="step" data-color="s6" data-soft="#f1eafd" data-name="خطوة أخيرة">
-      <div class="step-head"><div class="num">6</div><h3>خطوة أخيرة</h3></div>
-      <div class="q">
-        <label class="t">تعرف زميل بيدّي <u>دروس خصوصية أو في سنتر</u> ممكن يستفيد من سلاح التلميذ؟</label>
-        <div class="hint" style="margin-bottom:8px">مدرسين الدروس بس، مش مدرسين المدرسة.</div>
-        <div class="opts big">
-          <label class="opt"><input type="radio" name="hasRef" value="لأ" checked><span>لأ</span></label>
-          <label class="opt"><input type="radio" name="hasRef" value="أيوه"><span>أيوه</span></label>
-        </div>
-        <div class="sub hidden" id="refBox">
-          <p class="hint" style="margin:0 0 8px">اكتب بياناته كاملة عشان نوصل له.</p>
-          <label class="t" for="refName">اسمه <span class="req">*</span></label>
-          <input type="text" id="refName">
-          <label class="t" for="refPhone" style="margin-top:12px">رقم موبايله <span class="req">*</span></label>
-          <input type="tel" id="refPhone" inputmode="numeric" maxlength="11" placeholder="01xxxxxxxxx" dir="ltr" style="text-align:right">
-          <label class="t" for="refSubject" style="margin-top:12px">بيدرّس مادة إيه؟ <span class="req">*</span></label>
-          <select id="refSubject"></select>
-          <label class="t" for="refPlace" style="margin-top:12px">بيدّي دروسه فين؟ (اسم السنتر أو المكان) <span class="req">*</span></label>
-          <input type="text" id="refPlace">
-          <label class="t" for="refVillage" style="margin-top:12px">في أنهي بلد؟ <span class="req">*</span></label>
-          <input type="text" id="refVillage">
-        </div>
-      </div>
-      <div class="q">
-        <label class="t" for="notes">إيه أكتر حاجة عجبت حضرتك، وإيه اللي تحب نحسّنه؟</label>
-        <textarea id="notes" placeholder="رأي حضرتك بيفرق معانا"></textarea>
-      </div>
-    </div>
-
-    <div class="formerr hidden" id="formErr"></div>
-  </form>
-
-  <div class="done" id="done">
-    <div class="check"><span>✓</span></div>
-    <h3>شكرًا لحضرتك!</h3>
-    <p id="doneMsg">بيانات حضرتك وصلتنا، والمندوب هيتواصل مع حضرتك قريب.</p>
-    <p style="margin-top:14px;font-weight:800;color:var(--ink)">سلاح التلميذ</p>
-  </div>
-</div>
-
-<div class="nav hidden" id="nav">
-  <div class="in">
-    <button type="button" class="btn prev" id="prevBtn">→ السابق</button>
-    <button type="button" class="btn next" id="nextBtn">التالي ←</button>
-  </div>
-</div>
+<header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→</button><h1 id="title">دفتر التسليمات</h1><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
+<main class="wrap" id="app"></main>
+<div class="actbar" id="actbar"><div class="in">
+  <button class="btn ok" data-act="commit-d" style="flex:2">✅ سلّمت <span class="n"></span></button>
+  <button class="btn ghost sm" data-act="clear-sel" aria-label="إلغاء">✕</button>
+</div></div>
+<nav class="tabs" id="tabs">
+  <a href="#/" data-tab="home"><span class="i">🏠</span>المدرسين</a>
+  <a href="#/owed" data-tab="owed"><span class="i">📦</span>اللي عليا<span class="badge" id="owedBadge" hidden></span></a>
+  <a href="#/report" data-tab="report"><span class="i">📊</span>التقارير</a>
+  <a href="#/sales" data-tab="sales"><span class="i">💰</span>البيع<span class="badge" id="salesBadge" hidden></span></a>
+  <a href="#/settings" data-tab="settings"><span class="i">⚙️</span>الإعدادات</a>
+</nav>
+<input type="file" id="fileXlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
+<input type="file" id="fileStock" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<input type="file" id="filePrice" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<input type="file" id="fileMerch" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 
 <script>
-(function(){
-  // لينك السكريبت (للنسخة اللي برا جوجل)
-  var API_URL = 'https://script.google.com/macros/s/AKfycbw0yud-_Me7kj998aiUKXrBTauyGJzvfOHJ_wDLp2F6jbw6lpd2jSp_Y3NgIlsy3zjbcQ/exec';
-  var INSIDE_GOOGLE = !!(window.google && google.script && google.script.run);
+"use strict";
+/* ================= الكتب ================= */
+const SUBJ = {ar:'عربي', math:'رياضة', en:'إنجليزي', sci:'علوم', stu:'دراسات'};
+const SUBJ_COLOR = {ar:'1D4ED8', math:'15803D', stu:'92400E', en:'7E22CE', sci:'EA580C'};
+const STAGES = {
+  p:{name:'ابتدائي', grades:6, subjects:['ar','math','stu','en','sci']},
+  m:{name:'إعدادي', grades:3, subjects:['ar','math','stu']}
+};
+const GRADE = ['أولى','تانية','تالتة','رابعة','خامسة','سادسة'];
+const STAGE_TXT = {p:'ابتدائي', m:'إعدادي', pm:'ابتدائي وإعدادي', '':'',
+  'p-upper':'صفوف عليا', 'p-lower':'فصل', 'p-upper-m':'صفوف عليا وإعدادي'};
+function bookParts(k){const [st,sb,g]=k.split('-');return {st,sb,g:+g}}
+function bookLabel(k){const {st,sb,g}=bookParts(k);return `${SUBJ[sb]} ${GRADE[g-1]} ${STAGES[st].name}`}
+const FROM = {'p-sci':4, 'p-stu':4};
+const BOOK_ORDER = [];
+for (const st of ['p','m']) for (const sb of STAGES[st].subjects) for (let g=FROM[st+'-'+sb]||1; g<=STAGES[st].grades; g++) BOOK_ORDER.push(`${st}-${sb}-${g}`);
+const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
 
-  function el(id){ return document.getElementById(id); }
-  function boot(CONFIG){
-    try { start(CONFIG); } catch (e) { el('loading').textContent = 'حصلت مشكلة في التحميل، جرّب تفتح اللينك تاني.'; }
+
+/* ================= التخزين ================= */
+const KEY = 'selah-books-v1';
+let db, storageOk = true;
+function blank(){return {v:1, rep:'شريف', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], lastBackup:''}}
+function load(){
+  try { const s = localStorage.getItem(KEY); db = s ? JSON.parse(s) : blank(); }
+  catch(e){ db = blank(); storageOk = false; }
+  db.teachers ||= []; db.entries ||= []; db.stock ||= []; db.rep ||= 'شريف'; db.lastBackup ||= '';
+  // البيع: sales = طلبات وبيع، payments = دفعات ومرتجعات المدرسين، prices = أسعار الكتب، merchants = بضاعة التجار، merchPays = دفعات التجار
+  db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
+}
+function save(changed=true){
+  if(changed) db.lastChange = new Date().toISOString();
+  try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; }
+  catch(e){ storageOk = false; alert('⚠️ مش قادر أحفظ البيانات على الجهاز ده. اعمل نسخة احتياطية حالاً من الإعدادات.'); }
+}
+load();
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+
+/* ================= أدوات ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const pad = n => String(n).padStart(2,'0');
+const dayKey = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dk = isoStr => isoStr ? dayKey(new Date(isoStr)) : '';
+const isoDay = (y,m,d) => `${y}-${pad(m)}-${pad(d)}`;
+function fmtDay(k){ if(!k) return ''; const [y,m,d]=k.split('-'); return `${+d}/${+m}/${y}`; }
+function timeStr(d){ let h=d.getHours(); const ap=h<12?'ص':'م'; h=h%12||12; return `${h}:${pad(d.getMinutes())} ${ap}`; }
+function fmtDT(isoStr){ if(!isoStr) return ''; const d=new Date(isoStr); const k=dayKey(d);
+  const t=dayKey(); const y=dayKey(new Date(Date.now()-864e5));
+  const day = k===t ? 'النهارده' : k===y ? 'امبارح' : `${d.getDate()}/${d.getMonth()+1}`;
+  return `${day} ${timeStr(d)}`; }
+const AR_DIG='٠١٢٣٤٥٦٧٨٩', FA_DIG='۰۱۲۳۴۵۶۷۸۹';
+const digits = s => String(s ?? '').replace(/[٠-٩]/g,d=>AR_DIG.indexOf(d)).replace(/[۰-۹]/g,d=>FA_DIG.indexOf(d));
+function normPhone(s){ let p = digits(s).replace(/\D/g,''); if(p.length===12 && p.startsWith('20')) p=p.slice(2); if(p.length===10 && p[0]==='1') p='0'+p; return p; }
+function normText(s){ return digits(s).toLowerCase().replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[ً-ْـ]/g,'').replace(/\s+/g,' ').trim(); }
+function parseSubjects(t){ const n=normText(t), r=[];
+  if(/عربي/.test(n)) r.push('ar'); if(/رياض/.test(n)) r.push('math'); if(/انجليز|english/.test(n)) r.push('en');
+  if(/علوم/.test(n)) r.push('sci'); if(/دراس/.test(n)) r.push('stu'); return r; }
+function parseStage(t){ const n=normText(t); return (/ابتدا/.test(n)?'p':'') + (/اعدا/.test(n)?'m':''); }
+const actDate = e => e.s==='d' ? e.dd : e.rd;
+const tById = id => db.teachers.find(t=>t.id===id);
+
+/* ================= التصنيفات ================= */
+const CLS_MAP = {
+  'فصل':       {stages:['p'], gradeRange:{p:[1,3]}, subjects:['ar','math']},
+  'صفوف عليا': {stages:['p'], gradeRange:{p:[4,6]}},
+  'اعدادي':    {stages:['m'], gradeRange:{m:[1,3]}},
+  'إعدادي':    {stages:['m'], gradeRange:{m:[1,3]}},
+  'صفوف عليا واعدادي': {stages:['p','m'], gradeRange:{p:[4,6], m:[1,3]}},
+  'ابتدائي واعدادي':   {stages:['p','m'], gradeRange:{p:[1,6], m:[1,3]}},
+  'ابتدائي وإعدادي':   {stages:['p','m'], gradeRange:{p:[1,6], m:[1,3]}},
+  'ابتدائي':   {stages:['p'], gradeRange:{p:[1,6]}},
+  'كشكول':     {stages:['p'], gradeRange:{p:[1,6]}, subjects:['ar','math','stu','sci']},
+};
+function parseCls(raw){
+  if(!raw) return null;
+  const n = normText(raw);
+  for(const [k,v] of Object.entries(CLS_MAP)){
+    if(normText(k)===n) return v;
   }
-  var raw = el('cfg').textContent.trim(), cfg = null;
-  try { cfg = JSON.parse(raw); } catch (e) {}
-  if (cfg) boot(cfg);
-  else fetch(API_URL + '?api=config').then(function(r){ return r.json(); }).then(boot)
-    .catch(function(){ el('loading').textContent = 'مش قادرين نوصل للسيرفر. اتأكد من النت وجرّب تاني.'; });
+  if(/كشكول/.test(n)) return CLS_MAP['كشكول'];
+  if(/فصل/.test(n)) return CLS_MAP['فصل'];
+  if(/صفوف.?عليا/.test(n) && /اعدا/.test(n)) return CLS_MAP['صفوف عليا واعدادي'];
+  if(/صفوف.?عليا/.test(n)) return CLS_MAP['صفوف عليا'];
+  if(/ابتدا/.test(n) && /اعدا/.test(n)) return CLS_MAP['ابتدائي واعدادي'];
+  if(/ابتدا/.test(n)) return CLS_MAP['ابتدائي'];
+  if(/اعدا/.test(n)) return CLS_MAP['اعدادي'];
+  return null;
+}
+function expectedBooks(t){
+  let cls = parseCls(t.cls);
+  if(!cls){ // مفيش تصنيف واضح → من المرحلة + المادة اللي في الشيت
+    const sts=(t.stage||'').split('').filter(s=>STAGES[s]);
+    if(!sts.length) return [];
+    cls={stages:sts, gradeRange:{}};
+  }
+  const subs = cls.subjects || t.subjects || [];
+  if(!subs.length) return [];
+  const books = [];
+  for(const st of cls.stages){
+    const [gMin, gMax] = cls.gradeRange[st] || [1, STAGES[st].grades];
+    const stSubs = subs.filter(sb => STAGES[st].subjects.includes(sb));
+    for(const sb of stSubs){
+      const from = Math.max(gMin, FROM[st+'-'+sb]||1);
+      for(let g=from; g<=gMax; g++) books.push(`${st}-${sb}-${g}`);
+    }
+  }
+  return books;
+}
+function autoOwed(t){
+  const exp = expectedBooks(t);
+  if(!exp.length) return [];
+  const delivered = new Set();
+  for(const e of db.entries) if(e.t===t.id && e.s==='d') delivered.add(e.b);
+  return exp.filter(k => !delivered.has(k));
+}
+function owedEntries(){
+  const r=[]; for(const t of db.teachers) for(const k of autoOwed(t)) r.push({id:'', t:t.id, b:k, q:1, s:'o', dd:'', rd:''});
+  return r;
+}
 
-  function start(CONFIG){
-  var REPS = CONFIG.reps, VILLAGES = CONFIG.villages, CODES = CONFIG.repCodes || {};
-  var MAX_PHOTOS = CONFIG.maxPhotos || 3;
-  var urlRep = new URLSearchParams(location.search).get('rep') || '';
-  var REP_PARAM = CONFIG.rep || CODES[urlRep] || urlRep;
+/* ================= المخزون ================= */
+function stockMap(){ const m={}; for(const s of db.stock) m[s.b]=(m[s.b]||0)+s.q; return m; }
+function deliveredMap(){ const m={}; for(const e of db.entries) if(e.s==='d') m[e.b]=(m[e.b]||0)+e.q; return m; }
+function stockLeft(){
+  if(!db.stock.length) return null;
+  const r=stockMap(), d=deliveredMap(), o={};
+  for(const k of BOOK_ORDER) o[k]=(r[k]||0)-(d[k]||0);
+  return o;
+}
+function parseGrade(v){
+  const s=normText(String(v??'')); const m=s.match(/\d+/); if(m) return +m[0];
+  for(const [re,n] of [[/اول/,1],[/تان|ثان/,2],[/تالت|ثالث/,3],[/رابع/,4],[/خامس/,5],[/سادس|سته|ست/,6]]) if(re.test(s)) return n;
+  return 0;
+}
 
-  var SUBJECTS = ['عربي','رياضة','علوم','دراسات','انجليزي'];
-  var PRIMARY = ['أولى ابتدائي','تانية ابتدائي','تالتة ابتدائي','رابعة ابتدائي','خامسة ابتدائي','سادسة ابتدائي'];
-  var PREP = ['أولى إعدادي','تانية إعدادي','تالتة إعدادي'];
-  var FROM_FIRST = {'عربي':1,'رياضة':1,'انجليزي':1};
-  var FROM_FOURTH = {'علوم':1,'دراسات':1};
-  var HAS_PREP = {'عربي':1,'رياضة':1,'دراسات':1};
-  var SELAH = 'سلاح التلميذ', NO_BOOK = 'مش بستخدم كتاب خارجي', OTHER_BOOK = 'كتاب تاني';
-  var DISC_EN = 'خصم 30% على كتب الإنجليزي';
-  var DISC_PREP = 'خصم 24.5% على كتب الإعدادي (17.5% + 7% زيادة)';
+let toastTimer;
+function toast(msg, undoFn){
+  document.querySelectorAll('.toast').forEach(x=>x.remove()); clearTimeout(toastTimer);
+  const el=document.createElement('div'); el.className='toast';
+  el.innerHTML=`<span>${esc(msg)}</span>` + (undoFn?'<button>تراجع</button>':'');
+  if(undoFn) el.querySelector('button').onclick=()=>{undoFn(); el.remove();};
+  document.body.appendChild(el); toastTimer=setTimeout(()=>el.remove(), undoFn?6000:2500);
+}
+function withUndo(msg, fn){
+  const snap = JSON.stringify(db);
+  fn(); save(); render();
+  toast(msg, ()=>{ db = JSON.parse(snap); save(); render(); toast('اتلغى ↩️'); });
+}
 
-  function opts(boxId, name, values, type){
-    var box = el(boxId); box.innerHTML = '';
-    values.forEach(function(v, i){
-      var l = document.createElement('label'); l.className = 'opt';
-      var inp = document.createElement('input'); inp.type = type || 'radio'; inp.name = name; inp.value = v; inp.id = name + '_' + i;
-      var s = document.createElement('span'); s.textContent = v;
-      l.appendChild(inp); l.appendChild(s); box.appendChild(l);
+/* ================= حسابات ================= */
+function indexEntries(){
+  const idx = {};
+  for(const e of [...db.entries.filter(e=>e.s==='d'), ...owedEntries()]){
+    const x = idx[e.t] ||= {d:0, o:0, last:'', books:{}};
+    const b = x.books[e.b] ||= {d:0,o:0};
+    if(e.s==='d'){x.d+=e.q; b.d+=e.q;} else {x.o+=e.q; b.o+=e.q;}
+    const a = actDate(e); if(a > x.last) x.last = a;
+  }
+  return idx;
+}
+function owedTotal(){ return owedEntries().length; }
+function dayStats(day){
+  const visits=new Set(); let d=0,o=0;
+  for(const e of db.entries){
+    if(e.s==='d' && dk(e.dd)===day){ d+=e.q; visits.add(e.t); }
+    if(e.rd && dk(e.rd)===day){ o+=e.q; visits.add(e.t); }
+  }
+  return {visits:visits.size, d, o};
+}
+
+/* ================= التوجيه ================= */
+let homeFilter = 'all', homeArea = '', homeQuery = '';
+let curTeacher = null, sel = {}, closedGroups = new Set(), openBox = '', forceCls = false;
+try { closedGroups = new Set(JSON.parse(localStorage.getItem(KEY+'-closed')||'[]')); } catch(e){}
+const app = $('#app');
+
+function setHeader(title, back){
+  $('#title').textContent = title;
+  const b=$('#backBtn'); b.hidden=!back; b.onclick = back ? ()=>{ history.length>1 ? history.back() : (location.hash='#/'); } : null;
+}
+function setTab(t){ document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on', a.dataset.tab===t)); }
+// النسخة الاحتياطية: تفكير كل 3 ساعات (لو فيه تعديل من آخر نسخة)، وبعد 8 بالليل لو فيه أي تعديل
+function backupDue(){
+  if(!db.entries.length && !db.stock.length && !db.sales.length && !db.merchants.length) return false;
+  if(db.lastBackup && (db.lastChange||'') <= db.lastBackup) return false;
+  if(!db.lastBackup) return true;
+  const hrs=(Date.now()-new Date(db.lastBackup).getTime())/36e5;
+  return hrs>=3 || new Date().getHours()>=20;
+}
+function updateBkBtn(){
+  const b=$('#bkBtn'), due=backupDue();
+  b.classList.toggle('due', due); b.textContent = due ? '💾 اعمل نسخة' : '💾';
+  b.title = db.lastBackup ? `آخر نسخة ${fmtDT(db.lastBackup)}` : 'ما عملتش نسخة لسه';
+}
+setInterval(updateBkBtn, 60000);
+function render(){
+  updateBkBtn();
+  const h = location.hash.replace(/^#/,'') || '/';
+  const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
+  ACC = accMap();
+  const po = db.sales.filter(s=>s.st==='order').length; const sbd=$('#salesBadge'); sbd.hidden=!po; sbd.textContent=po;
+  const sm = h.match(/^\/sales(?:\/(\w+))?(?:\/(.+))?$/);
+  if(sm){ curTeacher=null; sel={}; updateActbar(); renderSales(sm[1]||'', sm[2]?decodeURIComponent(sm[2]):''); setTab('sales'); return; }
+  const m = h.match(/^\/t\/(.+)$/);
+  if(m){ const id=decodeURIComponent(m[1]); if(curTeacher!==id){ curTeacher=id; sel={}; openBox=''; forceCls=false; } renderTeacher(id); setTab('home'); }
+  else { curTeacher=null; sel={}; updateActbar();
+    if(h==='/owed'){ renderOwed(); setTab('owed'); }
+    else if(h==='/report'){ renderReport(); setTab('report'); }
+    else if(h==='/settings'){ renderSettings(); setTab('settings'); }
+    else { renderHome(); setTab('home'); }
+  }
+}
+window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
+
+/* ================= الرئيسية ================= */
+function renderHome(){
+  setHeader(`دفتر التسليمات — ${db.rep}`, false);
+  const today=dayKey(), st=dayStats(today), ob=owedTotal();
+  const banner = storageOk ? '' : '<div class="banner">⚠️ الحفظ على الجهاز مش شغال — اعمل نسخة احتياطية</div>';
+  const backupBanner = backupDue() ? `<div class="backup-bar"><div class="grow">💾 ${!db.lastBackup ? 'ما عملتش نسخة احتياطية قبل كده!' : new Date().getHours()>=20 ? `خلّصت شغل النهارده؟ آخر نسخة ${fmtDT(db.lastBackup)}` : `آخر نسخة ${fmtDT(db.lastBackup)}`} — اعمل نسخة دلوقتي</div><button class="btn sm owe" data-act="backup">💾 نسخة</button></div>` : '';
+  if(!db.teachers.length){
+    app.innerHTML = banner + backupBanner + `<div class="card empty">
+      <div style="font-size:42px">📋</div>
+      <p><b>لسه مفيش مدرسين.</b><br>استورد شيت الإكسل بتاع خط السير، أو ضيف مدرس بإيدك.</p>
+      <div class="row2" style="max-width:420px;margin:0 auto">
+        <button class="btn pri" data-act="import-xlsx">📥 استورد شيت إكسل</button>
+        <button class="btn" data-act="new-teacher">➕ مدرس جديد</button>
+      </div>
+      <p class="hint">عندك نسخة احتياطية من جهاز تاني؟ <a href="#" data-act="restore">رجّعها من هنا</a></p></div>`;
+    return;
+  }
+  const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const idx=indexEntries();
+  const planToday=db.teachers.filter(t=>t.plan===today).length;
+  const owedT=db.teachers.filter(t=>idx[t.id]?.o).length;
+  const chip=(k,txt)=>`<button class="chip ${homeFilter===k?'on':''}" data-act="filter" data-k="${k}">${txt}</button>`;
+  app.innerHTML = banner + backupBanner + `
+    <div class="stats">
+      <div class="stat"><b>${st.visits}</b><span>زيارة النهارده</span></div>
+      <div class="stat"><b>${st.d}</b><span>كتاب اتسلّم النهارده</span></div>
+      <div class="stat"><b style="color:var(--owe)">${ob}</b><span>كتاب عليا (مستحق)</span></div>
+    </div>
+    <div class="search">
+      <input id="q" type="search" placeholder="🔎 اسم، تليفون، منطقة، أو «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
+      <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button>
+    </div>
+    <div class="chips">
+      ${chip('all',`الكل (${db.teachers.length})`)}
+      ${planToday?chip('plan',`خط سير النهارده (${planToday})`):''}
+      ${chip('owed',`ليهم مستحق (${owedT})`)}
+      ${chip('today',`اتزاروا النهارده (${st.visits})`)}
+      ${chip('none','ما استلموش لسه')}
+      ${areas.length>1?`<select class="area" id="area"><option value="">كل المناطق</option>${areas.map(a=>`<option ${a===homeArea?'selected':''}>${esc(a)}</option>`).join('')}</select>`:''}
+    </div>
+    <div class="tlist" id="tlist"></div>`;
+  const q=$('#q');
+  q.addEventListener('input',()=>{homeQuery=q.value; renderList();});
+  q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=document.querySelector('#tlist .titem'); if(f) location.hash='#/t/'+encodeURIComponent(f.dataset.id); }});
+  const ar=$('#area'); if(ar) ar.addEventListener('change',()=>{homeArea=ar.value; renderList();});
+  if(matchMedia('(min-width:700px)').matches) q.focus();
+  renderList();
+}
+const SUBJ_RE=[['ar',/^(ال)?عربي/],['math',/^(ال)?رياض/],['stu',/^(ال)?دراس/],['en',/^(ال)?(انجليز|انجلش|english)/],['sci',/^(ال)?علوم/]];
+const subjOf=w=>{ const m=SUBJ_RE.find(([k,re])=>re.test(w)); return m?m[0]:null; };
+function parseQuery(raw){
+  const q={owed:false, subj:null, stage:null, rest:[]};
+  for(const w of normText(raw).split(' ').filter(Boolean)){
+    if(/^(ال)?مستحق/.test(w)) q.owed=true;
+    else if(subjOf(w)) q.subj=subjOf(w);
+    else if(/^(ال)?ابتدا/.test(w)) q.stage='p';
+    else if(/^(ال)?اعدا/.test(w)) q.stage='m';
+    else q.rest.push(w);
+  }
+  return q;
+}
+function owedMatch(e,subj,stage){ if(e.s!=='o') return false; const p=bookParts(e.b); return (!subj||p.sb===subj) && (!stage||p.st===stage); }
+function owedLine(ents){
+  const by={}; for(const e of [...ents].sort((a,b)=>bookRank[a.b]-bookRank[b.b])){ (by[bookParts(e.b).sb] ||= []).push(e); }
+  return Object.entries(by).map(([sb,l])=>`${SUBJ[sb]}: `+l.map(e=>{const p=bookParts(e.b); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`+(e.q>1?` (${e.q})`:'');}).join('، ')).join(' • ');
+}
+function phoneBtns(t){
+  if(!t.phone) return '';
+  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico" data-act="noop" href="https://wa.me/2${esc(t.phone)}" target="_blank" rel="noopener" title="واتساب">💬</a>`;
+}
+function teacherCard(t, x, extra=''){
+  const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
+  return `<div class="titem" data-act="open-t" data-id="${esc(t.id)}">
+    <div class="grow"><div class="nm">${esc(t.name)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
+      <div class="sub">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).join(' • '))}</div>
+      ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${extra}</div>
+    <div class="side"><div>${badges}</div><div class="icos">${phoneBtns(t)}</div></div></div>`;
+}
+function renderList(){
+  const idx=indexEntries(), today=dayKey();
+  const raw=homeQuery.trim(); const qd=normPhone(raw).replace(/^0/,'');
+  const isNum = raw && /^[\d٠-٩۰-۹\s+\-]+$/.test(raw);
+  const Q = raw && !isNum ? parseQuery(raw) : {owed:false, subj:null, stage:null, rest:[]};
+  const owedBy={}; for(const e of owedEntries()) (owedBy[e.t] ||= []).push(e);
+  const visitedToday=new Set(db.entries.filter(e=>dk(e.dd)===today||dk(e.rd)===today).map(e=>e.t));
+  let list=db.teachers.filter(t=>{
+    if(homeArea && t.area!==homeArea) return false;
+    const x=idx[t.id];
+    if(homeFilter==='plan' && t.plan!==today) return false;
+    if(homeFilter==='owed' && !x?.o) return false;
+    if(homeFilter==='today' && !visitedToday.has(t.id)) return false;
+    if(homeFilter==='none' && x) return false;
+    if(!raw) return true;
+    if(isNum) return !!qd && (t.phone||'').includes(qd);
+    if(Q.owed){ if(!(owedBy[t.id]||[]).some(e=>owedMatch(e,Q.subj,Q.stage))) return false; }
+    else { if(Q.subj && !t.subjects?.includes(Q.subj)) return false; if(Q.stage && !(t.stage||'').includes(Q.stage)) return false; }
+    if(!Q.rest.length) return true;
+    const n=normText(t.name+' '+(t.area||'')+' '+(t.school||''));
+    return Q.rest.every(w=>n.includes(w));
+  });
+  list.sort((a,b)=>{
+    const la=idx[a.id]?.last||'', lb=idx[b.id]?.last||'';
+    if(homeFilter==='all' && !raw && la!==lb) return lb.localeCompare(la);
+    return a.name.localeCompare(b.name,'ar');
+  });
+  const total=list.length; list=list.slice(0,80);
+  const el=$('#tlist');
+  if(!total){ el.innerHTML=`<div class="empty" style="grid-column:1/-1">مفيش نتايج${raw?` لـ «${esc(raw)}»`:''}<br><br><button class="btn" data-act="new-teacher" data-name="${esc(isNum||Q.owed||Q.subj?'':raw)}" data-phone="${esc(isNum?raw:'')}">➕ ضيف مدرس جديد</button></div>`; return; }
+  let head='';
+  if(raw && !isNum){
+    const areaHit = Q.rest.length ? [...new Set(list.map(t=>t.area).filter(a=>a && Q.rest.every(w=>normText(a).includes(w))))] : [];
+    const desc=[Q.owed?'ليهم مستحق':'', Q.subj?SUBJ[Q.subj]:'', Q.stage?STAGES[Q.stage].name:'', areaHit.length===1?`في ${areaHit[0]}`:''].filter(Boolean).join(' ');
+    head=`<div class="lhead">${total} مدرس ${esc(desc)}</div>`;
+  }
+  const showOwed = Q.owed || homeFilter==='owed';
+  el.innerHTML = head + list.map(t=>{
+    const oe = showOwed ? (owedBy[t.id]||[]).filter(e=>owedMatch(e, Q.owed?Q.subj:null, Q.owed?Q.stage:null)) : [];
+    return teacherCard(t, idx[t.id], oe.length?`<div class="oline">⏳ ${esc(owedLine(oe))}</div>`:'');
+  }).join('') + (total>80?`<div class="empty small" style="grid-column:1/-1">ظاهر 80 من ${total} — اكتب في البحث علشان تضيّق</div>`:'');
+}
+
+/* ================= صفحة المدرس ================= */
+function renderTeacher(id){
+  const t=tById(id);
+  if(!t){ setHeader('مش لاقي المدرس', true); app.innerHTML='<div class="empty">المدرس ده مش موجود. <a href="#/">ارجع للرئيسية</a></div>'; return; }
+  setHeader(t.name, true);
+  const ents=db.entries.filter(e=>e.t===id && e.s==='d');
+  const owed=autoOwed(t).map(k=>({b:k,q:1}));
+  const books={}; for(const e of ents){ const b=books[e.b] ||= {d:0,o:0}; b.d+=e.q; }
+  for(const e of owed){ (books[e.b] ||= {d:0,o:0}).o=1; }
+  const delivered=Object.entries(books).filter(([k,v])=>v.d).sort((a,b)=>bookRank[a[0]]-bookRank[b[0]]);
+  const phone=t.phone||'';
+  const wa = phone ? 'https://wa.me/2'+phone : '';
+
+  // المراحل: بتاعته الأول
+  const stages = t.stage==='m' ? ['m','p'] : ['p','m'];
+  const myStages = t.stage ? t.stage.split('') : [];
+  let html = `<div class="card thead">
+    <h2>${esc(t.name)}</h2>
+    <div class="meta">
+      ${phone?`<span>📞 <span dir="ltr">${esc(phone)}</span></span>`:''}
+      ${t.subjectText?`<span>📚 ${esc(t.subjectText)}</span>`:''}
+      ${t.stage?`<span>🏫 ${STAGE_TXT[t.stage]}</span>`:''}
+      ${t.area?`<span>📍 ${esc(t.area)}</span>`:''}
+      ${t.school?`<span>🏢 ${esc(t.school)}</span>`:''}
+      ${t.cls?`<span class="pill cls">تصنيف ${esc(t.cls)}</span>`:''}
+      ${t.students?`<span>👨‍🎓 ${esc(t.students)} طالب</span>`:''}
+      ${t.plan?`<span>🗓️ خط السير: ${fmtDay(t.plan)}</span>`:''}
+    </div>
+    <div class="acts">
+      ${phone?`<a class="btn sm" href="tel:${esc(phone)}">📞 اتصال</a><a class="btn sm" href="${wa}" target="_blank" rel="noopener">💬 واتساب</a>`:''}
+      <button class="btn sm" data-act="sell-t">🛒 طالب يشتري</button>
+      <button class="btn sm ghost" data-act="edit-teacher">✏️ تعديل</button>
+    </div></div>`;
+
+  // تأكيد التخصص
+  const clsInfo = parseCls(t.cls);
+  const needsConfirm = forceCls || (!t.clsConfirmed && t.cls && !clsInfo);
+  if(needsConfirm){
+    html += `<div class="cls-bar"><h3>📋 ${forceCls ? 'اختار التصنيف الصح' : 'التصنيف مش واضح — حدد تخصصه'}</h3>
+      <div class="acts">
+        <select id="cls-change">
+          <option value="">— اختار التصنيف —</option>
+          <option value="فصل">فصل (أولى-تالتة، عربي وحساب)</option>
+          <option value="صفوف عليا">صفوف عليا (رابعة-ستة)</option>
+          <option value="ابتدائي">ابتدائي (أولى-ستة)</option>
+          <option value="إعدادي">إعدادي (أولى-تالتة)</option>
+          <option value="صفوف عليا وإعدادي">صفوف عليا وإعدادي</option>
+          <option value="ابتدائي وإعدادي">ابتدائي وإعدادي</option>
+          <option value="كشكول">كشكول (ابتدائي كله ما عدا الإنجليزي)</option>
+        </select>
+        <button class="btn sm pri" data-act="confirm-cls">حفظ التصنيف</button>
+        ${forceCls ? `<button class="btn sm ghost" data-act="cancel-cls">إلغاء</button>` : t.cls ? `<button class="btn sm ghost" data-act="keep-cls">مظبوط كده</button>`:''}</div></div>`;
+  } else if(t.cls && !t.clsConfirmed){
+    html += `<div class="cls-bar" style="background:var(--brand-soft);border-color:var(--brand)"><h3 style="color:var(--brand)">📋 التخصص: ${esc(t.cls)} — مظبوط؟</h3>
+      <div class="acts">
+        <button class="btn sm pri" data-act="keep-cls">مظبوط ✅</button>
+        <button class="btn sm ghost" data-act="show-cls-change">تغيير</button></div></div>`;
+  }
+
+  // 3 خانات: ليه / سلّمته / باقيله — الدوس يفتح أسامي الكتب
+  const expK=expectedBooks(t);
+  const dTot=delivered.reduce((s,[k,v])=>s+v.d,0);
+  const names=(items, empty)=> items.length
+    ? items.map(([k,n])=>`<span class="bk" style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}${n>1?` (${n})`:''}</span>`).join('، ')
+    : `<span class="muted">${empty}</span>`;
+  const boxes=[
+    ['exp','ليه',expK.length,'',names(expK.map(k=>[k,1]), 'مش عارف أحسب المستحق — حدد التصنيف أو المرحلة والمادة')],
+    ['d','سلّمته',dTot,'var(--ok)',names(delivered.map(([k,v])=>[k,v.d]), 'ما استلمش أي كتاب لسه')],
+    ['o','باقيله',owed.length,'var(--owe)',names(owed.map(e=>[e.b,1]), expK.length?'🎉 خد كل كتبه':'—')]];
+  html += `<div class="tbox">${boxes.map(([k,l,n,c])=>`<button class="stat ${openBox===k?'on':''}" data-act="tbox" data-k="${k}"><span>${l}</span><b${c?` style="color:${c}"`:''}>${n}</b></button>`).join('')}</div>
+    ${boxes.map(([k,,,,list])=>`<div class="blist" data-list="${k}" ${openBox===k?'':'hidden'}>${list}</div>`).join('')}`;
+  const acc=ACC[id];
+  if(acc && acc.sold) html += `<button class="mline" data-act="go-acc" data-id="${esc(id)}">💰 اشترى ${fmtM(acc.bought)} — دفع ${fmtM(acc.paid)} — عليه <span style="color:${acc.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(acc.owe)}</span>${acc.noPrice?' <span class="small muted">(فيه أسعار لسه ما اتحددتش)</span>':''}${acc.orders?` • 🛒 ${acc.orders} طلب مستني`:''}</button>`;
+  else if(acc && acc.orders) html += `<button class="mline" data-act="go-orders">🛒 ليه ${acc.orders} طلب مستني</button>`;
+
+  html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين دوس «سلّمت». المستحق بيتحسب لوحده من التصنيف أو المرحلة والمادة.</p>`;
+  const left=stockLeft();
+  for(const st of stages){
+    const S=STAGES[st]; const mineStage=myStages.includes(st);
+    const subs=[...S.subjects].sort((a,b)=>(t.subjects?.includes(b)?1:0)-(t.subjects?.includes(a)?1:0));
+    html += `<div class="stage-t">${mineStage?'⭐ ':''}${S.name}</div><div class="subj-grid">`;
+    for(const sb of subs){
+      const gkey=`${st}-${sb}`;
+      const mine = mineStage && t.subjects?.includes(sb);
+      let dSum=0,oSum=0,rows='';
+      for(let g=FROM[st+'-'+sb]||1; g<=S.grades; g++){
+        const k=`${st}-${sb}-${g}`; const b=books[k]||{d:0,o:0};
+        dSum+=b.d; oSum+=b.o; rows += rowHtml(k,b,sel[k]||0, left?left[k]:undefined);
+      }
+      const open = !closedGroups.has(gkey);
+      html += `<details class="subj ${mine?'mine':''}" data-g="${gkey}" style="--sc:var(--c-${sb})" ${open?'open':''}>
+        <summary>${mine?'<span class="star">★</span>':''}<span class="sn">${SUBJ[sb]}</span>
+          ${dSum?`<span class="pill ok">✅ ${dSum}</span>`:''}${oSum?`<span class="pill owe">⏳ ${oSum}</span>`:''}</summary>
+        ${rows}</details>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div class="card" style="margin-top:16px"><h3 class="sec-t">📝 ملاحظات</h3>
+    <textarea id="notes" placeholder="مثلاً: عايز كتاب لابنه في رابعة…">${esc(t.notes||'')}</textarea></div>`;
+
+  // سجل التعاملات: التسليمات + البيع والطلبات + الدفعات والمرتجعات
+  const ev=ents.map(e=>{
+      const locked = e.s==='d' && e.dd && (Date.now() - new Date(e.dd).getTime()) > 3600000;
+      return {d:actDate(e)||'', h:`<div class="hrow"><div class="grow">
+        ${e.s==='d'?'<span class="pill ok">اتسلّم</span>':'<span class="pill owe">مستحق</span>'}
+        <b>${esc(bookLabel(e.b))}</b>${e.q>1?` × ${e.q}`:''}${locked?'<span class="lock-badge">🔒</span>':''}
+        <div class="small muted">${e.s==='d'?`اتسلّم ${fmtDT(e.dd)}`:''}${e.rd?`${e.s==='d'?' • ':''}اتطلب ${fmtDT(e.rd)}`:''}${e.rep&&e.rep!==db.rep?` • ${esc(e.rep)}`:''}</div></div>
+        <button class="btn sm danger" data-act="del-entry" data-id="${e.id}" title="امسح">🗑️</button></div>`}; });
+  const SI=saleIdx();
+  for(const s of db.sales){ if(s.t!==id) continue;
+    if(s.st==='sold'){ const v=s.items.reduce((a,it)=>a+(it.post==null?0:it.q*it.post),0), miss=s.items.some(it=>it.post==null);
+      ev.push({d:s.sd||s.d, h:`<div class="hrow"><div class="grow"><span class="pill sale">💰 بيع</span> ${itemsLine(s.items)}
+        <div class="small muted">${fmtDT(s.sd||s.d)} • ${miss?'السعر لسه ما اتحددش':fmtM(v)}</div></div>
+        <button class="btn sm danger" data-act="del-sale" data-id="${s.id}" title="امسح">🗑️</button></div>`}); }
+    else if(s.st==='order') ev.push({d:s.d, h:`<div class="hrow"><div class="grow"><span class="pill owe">🛒 طلب</span> ${itemsLine(s.items)}
+        <div class="small muted">اتطلب ${fmtDT(s.d)}</div></div></div>`});
+  }
+  for(const p of db.payments){ if(p.t!==id) continue;
+    ev.push({d:p.d, h:`<div class="hrow"><div class="grow">${p.k==='pay'
+      ? `<span class="pill ok">💵 دفع</span> <b>${fmtM(p.amt)}</b>`
+      : `<span class="pill new">↩️ مرتجع</span> <b>${esc(bookLabel(p.b))}</b> × ${p.q} <span class="small muted">(${fmtM(retVal(p,SI))})</span>`}
+      <div class="small muted">${fmtDT(p.d)}</div></div>
+      <button class="btn sm danger" data-act="del-pay" data-id="${p.id}" title="امسح">🗑️</button></div>`});
+  }
+  ev.sort((a,b)=>b.d.localeCompare(a.d));
+  html += `<div class="card"><h3 class="sec-t">🕘 سجل التعاملات (${ev.length})</h3><div class="hist">` +
+    (ev.length ? ev.map(x=>x.h).join('') : '<div class="muted">لسه مفيش.</div>') + `</div></div>`;
+
+  app.innerHTML = html;
+  const n=$('#notes'); let nt;
+  n.addEventListener('input',()=>{ clearTimeout(nt); nt=setTimeout(()=>{ t.notes=n.value; save(); },400); });
+  updateActbar();
+}
+function rowHtml(k,b,q,left){
+  const {g}=bookParts(k);
+  return `<div class="grow-row ${q?'sel':''}" data-k="${k}">
+    <div class="lbl" data-act="inc" data-k="${k}"><b>${GRADE[g-1]}</b>${b.d?`<span class="pill ok">✅ ${b.d}</span> `:''}${b.o?`<span class="pill owe">⏳ ${b.o}</span> `:''}${left!==undefined?`<span class="pill stk ${left<=0?'neg':''}">📦 فاضل ${left}</span>`:''}</div>
+    <div class="step"><button data-act="dec" data-k="${k}" aria-label="أقل">−</button><span class="q">${q||''}</span><button class="plus" data-act="inc" data-k="${k}" aria-label="زوّد">+</button></div></div>`;
+}
+function bumpSel(k,d){
+  const q=Math.max(0,Math.min(50,(sel[k]||0)+d));
+  if(q) sel[k]=q; else delete sel[k];
+  const row=document.querySelector(`.grow-row[data-k="${k}"]`);
+  if(row){ row.classList.toggle('sel',!!q); row.querySelector('.q').textContent=q||''; }
+  updateActbar();
+}
+function updateActbar(){
+  const n=Object.values(sel).reduce((a,b)=>a+b,0);
+  const bar=$('#actbar'); bar.classList.toggle('show', !!(n && curTeacher));
+  bar.querySelectorAll('.n').forEach(x=>x.textContent=n?`(${n})`:'');
+}
+function commitSel(status='d'){
+  const t=tById(curTeacher); if(!t) return;
+  const keys=Object.keys(sel).sort((a,b)=>bookRank[a]-bookRank[b]); if(!keys.length) return;
+  const now=new Date().toISOString(); const n=keys.reduce((s,k)=>s+sel[k],0);
+  withUndo(status==='d'?`✅ اتسجّل تسليم ${n} كتاب`:`⏳ اتسجّل ${n} كتاب مستحق`, ()=>{
+    for(const k of keys){
+      db.entries.push(status==='d'
+        ? {id:uid(), t:t.id, b:k, q:sel[k], s:'d', dd:now, rd:'', rep:db.rep}
+        : {id:uid(), t:t.id, b:k, q:sel[k], s:'o', dd:'', rd:now, rep:db.rep});
+    }
+    sel={};
+  });
+}
+
+/* ================= اللي عليا ================= */
+let owedSubj='', owedArea='';
+function owedFiltered(){
+  return owedEntries().filter(e=>{
+    if(owedSubj && bookParts(e.b).sb!==owedSubj) return false;
+    if(owedArea){ const t=tById(e.t); if(!t || t.area!==owedArea) return false; }
+    return true;
+  });
+}
+function renderOwed(){
+  setHeader('📦 اللي عليا (المستحق)', false);
+  const all=owedEntries();
+  if(!all.length){ app.innerHTML='<div class="card empty"><div style="font-size:42px">🎉</div><b>مفيش ولا كتاب مستحق عليك.</b></div>'; return; }
+  const subjCount={}; for(const e of all){ const sb=bookParts(e.b).sb; subjCount[sb]=(subjCount[sb]||0)+e.q; }
+  if(owedSubj && !subjCount[owedSubj]) owedSubj='';
+  const areas=[...new Set(all.map(e=>tById(e.t)?.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  if(owedArea && !areas.includes(owedArea)) owedArea='';
+  const chip=(k,txt)=>`<button class="chip ${owedSubj===k?'on':''}" data-act="owed-subj" data-k="${k}">${txt}</button>`;
+  let html=`<div class="chips">${chip('',`الكل (${all.reduce((s,e)=>s+e.q,0)})`)}${['ar','math','stu','en','sci'].filter(sb=>subjCount[sb]).map(sb=>chip(sb,`${SUBJ[sb]} (${subjCount[sb]})`)).join('')}
+    ${areas.length>1?`<select class="area" id="oarea"><option value="">كل المناطق</option>${areas.map(a=>`<option ${a===owedArea?'selected':''}>${esc(a)}</option>`).join('')}</select>`:''}</div>`;
+  const owed=owedFiltered();
+  if(!owed.length){ app.innerHTML=html+'<div class="card empty">مفيش مستحق بالاختيار ده.</div>'; bindOarea(); return; }
+  const by={}; for(const e of owed) (by[e.b] ||= []).push(e);
+  const keys=Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b]);
+  const perT={}; for(const e of owed) (perT[e.t] ||= []).push(e);
+  const tids=Object.keys(perT).filter(id=>tById(id)).sort((a,b)=>{ const A=tById(a), B=tById(b); return (A.area||'').localeCompare(B.area||'','ar') || A.name.localeCompare(B.name,'ar'); });
+  const total=owed.reduce((s,e)=>s+e.q,0); const idx=indexEntries();
+  html+=`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><b style="color:var(--owe)">${total}</b><span>كتاب لازم يتسلّم</span></div><div class="stat"><b>${tids.length}</b><span>مدرس مستني</span></div></div>
+   <div class="card"><h3 class="sec-t">🚗 تحميل العربية</h3>${keys.map(k=>`<div class="kv"><span>${esc(bookLabel(k))}</span><b>${by[k].reduce((s,e)=>s+e.q,0)} نسخة</b></div>`).join('')}
+   <button class="btn" style="width:100%;margin-top:10px" data-act="copy-owed">📋 انسخ القائمة (للواتساب)</button></div>
+   <h3 class="sec-t" style="margin-top:16px">👥 المدرسين المستنيين (${tids.length})</h3>
+   <div class="tlist">${tids.map(id=>teacherCard(tById(id), idx[id], `<div class="oline">⏳ ${esc(owedLine(perT[id]))}</div>`)).join('')}</div>`;
+  app.innerHTML=html; bindOarea();
+}
+function bindOarea(){ const s=$('#oarea'); if(s) s.addEventListener('change',()=>{ owedArea=s.value; renderOwed(); }); }
+function owedText(){
+  const by={}; for(const e of owedFiltered()) by[e.b]=(by[e.b]||0)+e.q;
+  const f=[owedSubj?SUBJ[owedSubj]:'', owedArea?`— ${owedArea}`:''].filter(Boolean).join(' ');
+  return `📦 الكتب المستحقة ${f} (${fmtDay(dayKey())}):\n` + Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b]).map(k=>`• ${bookLabel(k)}: ${by[k]}`).join('\n');
+}
+
+/* ================= التقارير ================= */
+let repFrom=dayKey(), repTo=dayKey();
+function renderReport(){
+  setHeader('📊 التقارير والإكسل', false);
+  const inRange=k=>k && k>=repFrom && k<=repTo;
+  const days={};
+  for(const e of db.entries){
+    if(e.s==='d' && inRange(dk(e.dd))){ const x=days[dk(e.dd)] ||= {v:new Set(),d:0,o:0}; x.d+=e.q; x.v.add(e.t); }
+    if(e.rd && inRange(dk(e.rd))){ const x=days[dk(e.rd)] ||= {v:new Set(),d:0,o:0}; x.o+=e.q; x.v.add(e.t); }
+  }
+  const dkeys=Object.keys(days).sort().reverse();
+  const tv=dkeys.reduce((s,k)=>s+days[k].v.size,0), td=dkeys.reduce((s,k)=>s+days[k].d,0), to=dkeys.reduce((s,k)=>s+days[k].o,0);
+  app.innerHTML=`<div class="card">
+    <div class="row2"><div class="field"><label>من</label><input type="date" id="rf" value="${repFrom}"></div><div class="field"><label>لحد</label><input type="date" id="rt" value="${repTo}"></div></div>
+    <div class="chips" style="margin:0">
+      <button class="chip" data-act="range" data-r="today">النهارده</button>
+      <button class="chip" data-act="range" data-r="week">آخر 7 أيام</button>
+      <button class="chip" data-act="range" data-r="month">الشهر ده</button>
+      <button class="chip" data-act="range" data-r="all">من الأول</button>
+    </div></div>
+    <div class="stats"><div class="stat"><b>${tv}</b><span>زيارة</span></div><div class="stat"><b>${td}</b><span>كتاب اتسلّم</span></div><div class="stat"><b>${to}</b><span>مستحق اتسجّل</span></div></div>
+    <div class="card"><h3 class="sec-t">📅 يوم بيوم</h3>${dkeys.length?dkeys.map(k=>`<div class="kv"><span>${fmtDay(k)}</span><span class="small">${days[k].v.size} زيارة • ✅ ${days[k].d} • ⏳ ${days[k].o}</span></div>`).join(''):'<div class="muted">مفيش تعاملات في الفترة دي.</div>'}</div>
+    <div class="card"><h3 class="sec-t">📗 شيت إكسل</h3>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-scope="range">⬇️ إكسل للفترة دي</button>
+      <button class="btn" style="width:100%" data-act="export" data-scope="all">⬇️ إكسل بكل حاجة من الأول</button>
+      <p class="hint">الشيت فيه: <b>المدرسين</b> (كل مدرس في صف واحد: خلية «استلم إيه» وخلية «المستحق»، كل مادة في سطر بلونها، واللي خد أكتر من كتاب بالأحمر) • التعاملات بالتاريخ والوقت • اللي عليا • ملخص يومي • البيع • حسابات المدرسين • دفعات ومرتجعات • طلبات مستنية • حسابات التجار • دفعات التجار.</p></div>
+    <div class="card"><h3 class="sec-t">📋 جرد المخزن</h3>
+      <button class="btn pri" style="width:100%" data-act="jard">📋 شيت الجرد</button>
+      <p class="hint">بنفس شكل شيت جرد الشركة: الباقي معاك من كل كتاب (اللي استلمته من المخزن − اللي سلّمته) مقسوم ربط وفرط. أكتشف والكوبونات فاضيين تكتبهم بإيدك.</p></div>`;
+  $('#rf').addEventListener('change',e=>{repFrom=e.target.value||dayKey(); renderReport();});
+  $('#rt').addEventListener('change',e=>{repTo=e.target.value||dayKey(); renderReport();});
+}
+
+/* ================= الإعدادات ================= */
+function stockCard(){
+  const rec=stockMap(), dl=deliveredMap();
+  const recT=db.stock.reduce((s,x)=>s+x.q,0);
+  const leftT=BOOK_ORDER.reduce((s,k)=>s+(rec[k]||0)-(dl[k]||0),0);
+  const hist=[...db.stock].sort((a,b)=>(b.d||'').localeCompare(a.d||''));
+  return `<div class="card"><h3 class="sec-t">📦 الكتب اللي استلمتها من المخزن</h3>
+    ${db.stock.length?`<div class="kv"><span>استلمت من المخزن</span><b>${recT}</b></div><div class="kv"><span>فاضل معاك (بعد التسليمات)</span><b>${leftT}</b></div>`:''}
+    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="stock-xlsx">📥 ارفع شيت</button><button class="btn" data-act="stock-template">⬇️ شيت فاضي للملء</button></div>
+    <p class="hint">الشيت أعمدته: المادة، الصف، المرحلة، العدد. نزّل الشيت الفاضي، اكتب العدد، وارفعه. أو اكتب العدد بإيدك تحت — كل استلام بيتجمع على اللي قبله.</p>
+    <details class="stk"><summary>✍️ اكتب العدد بإيدك قدام كل كتاب</summary>
+      ${BOOK_ORDER.map(k=>{ const r=rec[k]||0, l=r-(dl[k]||0); return `<div class="stk-row"><span class="grow" style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</span><span class="small muted">استلمت ${r} • فاضل ${l}</span><input inputmode="numeric" data-stk="${k}" placeholder="+"></div>`; }).join('')}
+      <button class="btn ok" style="width:100%;margin-top:10px" data-act="stock-add">➕ ضيف للمخزون</button>
+    </details>
+    ${hist.length?`<details class="stk"><summary>🕘 سجل الاستلام (${hist.length})</summary>${hist.map(s=>`<div class="hrow"><div class="grow"><b style="color:var(--c-${bookParts(s.b).sb})">${esc(bookLabel(s.b))}</b> × ${s.q}<div class="small muted">${fmtDT(s.d)}</div></div><button class="btn sm danger" data-act="del-stock" data-id="${s.id}" title="امسح">🗑️</button></div>`).join('')}</details>`:''}
+  </div>`;
+}
+function renderSettings(){
+  setHeader('⚙️ الإعدادات', false);
+  app.innerHTML=`<div class="card"><h3 class="sec-t">👤 اسم المندوب</h3>
+      <div class="search" style="margin:0"><input id="rep" value="${esc(db.rep)}"><button class="btn pri" data-act="save-rep">حفظ</button></div>
+      <p class="hint">بيتكتب على كل تسليم وفي شيت الإكسل.</p></div>
+    <div class="card"><h3 class="sec-t">📥 استيراد مدرسين من إكسل</h3>
+      <button class="btn pri" style="width:100%" data-act="import-xlsx">اختار شيت الإكسل</button>
+      <p class="hint">بيقرا أعمدة: اسم المدرس، رقم الهاتف، المرحلة، المادة، المنطقة، التصنيف، عدد الطلاب، التاريخ. لو المدرس موجود (نفس رقم التليفون) بيحدّث بياناته بس ومش بيمسح تسليماته.</p></div>
+    ${stockCard()}
+    ${pricesCard()}
+    ${merchCard()}
+    <div class="card"><h3 class="sec-t">💾 نسخة احتياطية / نقل لجهاز تاني</h3>
+      <div class="row2"><button class="btn pri" data-act="backup">⬇️ اعمل نسخة</button><button class="btn" data-act="restore">⬆️ رجّع نسخة</button></div>
+      <p class="hint">البيانات محفوظة على الجهاز ده بس. اعمل نسخة كل كام يوم وابعتها لنفسك على الواتساب أو الدرايف. علشان تنقل للكمبيوتر أو الموبايل: اعمل نسخة هنا، وافتح البرنامج على الجهاز التاني ودوس «رجّع نسخة».</p></div>
+    <div class="card"><h3 class="sec-t">ℹ️ البيانات</h3>
+      <div class="kv"><span>المدرسين</span><b>${db.teachers.length}</b></div>
+      <div class="kv"><span>التعاملات</span><b>${db.entries.length}</b></div>
+      <div class="kv"><span>البيع والطلبات</span><b>${db.sales.length}</b></div>
+      <button class="btn danger" style="width:100%;margin-top:12px" data-act="wipe">🗑️ امسح كل البيانات</button></div>`;
+}
+
+/* ================= فورم المدرس ================= */
+function teacherForm(t, preset={}){
+  const isNew=!t; t = t || {name:preset.name||'', phone:preset.phone||'', stage:'', subjectText:'', area:'', school:'', cls:'', students:''};
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>${isNew?'➕ مدرس جديد':'✏️ تعديل بيانات المدرس'}</h3>
+    <div class="field"><label>الاسم *</label><input id="f_name" value="${esc(t.name)}"></div>
+    <div class="field"><label>رقم التليفون</label><input id="f_phone" inputmode="tel" dir="ltr" value="${esc(t.phone)}"></div>
+    <div class="row2"><div class="field"><label>المرحلة</label><select id="f_stage">
+      ${[['','—'],['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي']].map(([v,l])=>`<option value="${v}" ${t.stage===v?'selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label>التصنيف</label><select id="f_cls">
+        <option value="">— اختر —</option>
+        ${['فصل','صفوف عليا','ابتدائي','إعدادي','صفوف عليا وإعدادي','ابتدائي وإعدادي','كشكول'].map(v=>`<option ${(t.cls||'')===v?'selected':''}>${v}</option>`).join('')}
+        ${t.cls && !['فصل','صفوف عليا','ابتدائي','إعدادي','صفوف عليا وإعدادي','ابتدائي وإعدادي','كشكول',''].includes(t.cls) ? `<option selected>${esc(t.cls)}</option>` : ''}
+      </select></div>
+      <div class="field"><label>المادة</label><input id="f_subj" placeholder="عربي، رياضة…" value="${esc(t.subjectText)}"></div></div>
+    <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" value="${esc(t.area)}"></div>
+      <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
+    <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div>
+    <div class="row2" style="margin-top:6px"><button class="btn pri" id="f_save">حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
+    ${isNew?'':'<button class="btn danger" id="f_del" style="width:100%;margin-top:10px">🗑️ امسح المدرس ده وكل تعاملاته</button>'}</div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  m.addEventListener('click',e=>{ if(e.target===m) close(); });
+  m.querySelector('#f_cancel').onclick=close;
+  setTimeout(()=>m.querySelector(isNew&&preset.phone?'#f_name':'#f_name').focus(),50);
+  m.querySelector('#f_save').onclick=()=>{
+    const name=m.querySelector('#f_name').value.trim(); if(!name){ alert('اكتب اسم المدرس'); return; }
+    const phone=normPhone(m.querySelector('#f_phone').value);
+    const dup = phone && db.teachers.find(x=>x.phone===phone && x.id!==t.id);
+    if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تفتح حسابه؟`)){ close(); location.hash='#/t/'+encodeURIComponent(dup.id); } return; }
+    const subjectText=m.querySelector('#f_subj').value.trim();
+    const data={name, phone, stage:m.querySelector('#f_stage').value, subjectText, subjects:parseSubjects(subjectText),
+      area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
+      cls:m.querySelector('#f_cls').value, students:m.querySelector('#f_students').value.trim()};
+    if(data.cls && parseCls(data.cls)) data.clsConfirmed = true;
+    if(isNew){ const nt={id:uid(), ...data, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
+    else { Object.assign(t,data); save(); close(); render(); toast('اتحفظ ✅'); }
+  };
+  const del=m.querySelector('#f_del');
+  if(del) del.onclick=()=>{
+    const n=db.entries.filter(e=>e.t===t.id).length;
+    if(!confirm(`متأكد إنك عايز تمسح «${t.name}»${n?` و ${n} تعامل بتوعه`:''}؟`)) return;
+    close(); const snap=JSON.stringify(db);
+    db.teachers=db.teachers.filter(x=>x.id!==t.id); db.entries=db.entries.filter(e=>e.t!==t.id);
+    db.sales=db.sales.filter(s=>s.t!==t.id); db.payments=db.payments.filter(p=>p.t!==t.id); save();
+    location.hash='#/'; toast('اتمسح', ()=>{ db=JSON.parse(snap); save(); render(); });
+  };
+}
+
+/* ================= أزرار عامة ================= */
+document.addEventListener('click', e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const a=el.dataset.act;
+  switch(a){
+    case 'noop': break;
+    case 'open-t': location.hash='#/t/'+encodeURIComponent(el.dataset.id); break;
+    case 'owed-subj': owedSubj=el.dataset.k; renderOwed(); break;
+    case 'inc': bumpSel(el.dataset.k, 1); break;
+    case 'dec': bumpSel(el.dataset.k, -1); break;
+    case 'clear-sel': sel={}; document.querySelectorAll('.grow-row.sel').forEach(r=>{r.classList.remove('sel'); r.querySelector('.q').textContent='';}); updateActbar(); break;
+    case 'commit-d': commitSel('d'); break;
+    case 'deliver-owed': { const k=el.dataset.k, t=tById(curTeacher); if(!t) break; withUndo('✅ اتسجّل التسليم', ()=>{ db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'d', dd:new Date().toISOString(), rd:'', rep:db.rep}); }); break; }
+    case 'deliver-all-owed': { const t=tById(curTeacher); if(!t) break; const now=new Date().toISOString(); const ks=autoOwed(t); withUndo(`✅ اتسلّم ${ks.length} كتاب`, ()=>{ for(const k of ks) db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'d', dd:now, rd:'', rep:db.rep}); }); break; }
+    case 'del-entry': { const id=el.dataset.id; const ent=db.entries.find(z=>z.id===id);
+      if(ent && ent.s==='d' && ent.dd){
+        const age = Date.now() - new Date(ent.dd).getTime();
+        if(age > 3600000 && !confirm('⚠️ الكتاب ده اتسلّم من أكتر من ساعة.\nمتأكد إنك عايز تمسح التسليم ده؟')) break;
+      }
+      if(confirm('تمسح التعامل ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.entries=db.entries.filter(z=>z.id!==id); }); break; }
+    case 'confirm-cls': { const t=tById(curTeacher); if(!t) break; const v=document.querySelector('#cls-change')?.value; if(!v){alert('اختار التصنيف الأول');break;} t.cls=v; t.clsConfirmed=true;
+      const stg=parseCls(v); if(stg){t.stage=stg.stages.join(''); if(stg.subjects) t.subjects=stg.subjects;}
+      forceCls=false; save(); render(); toast('✅ التصنيف اتحفظ'); break; }
+    case 'keep-cls': { const t=tById(curTeacher); if(t){t.clsConfirmed=true; forceCls=false; save(); render(); toast('✅ التخصص مأكد');} break; }
+    case 'show-cls-change': forceCls=true; render(); break;
+    case 'cancel-cls': forceCls=false; render(); break;
+    case 'tbox': { const k=el.dataset.k; openBox = openBox===k ? '' : k;
+      document.querySelectorAll('[data-list]').forEach(x=>x.hidden = x.dataset.list!==openBox);
+      document.querySelectorAll('[data-act="tbox"]').forEach(x=>x.classList.toggle('on', x.dataset.k===openBox)); break; }
+    case 'jard': exportJard(); break;
+    /* البيع */
+    case 'sales-tab': salesTab=el.dataset.k; if(location.hash!=='#/sales') location.hash='#/sales'; else render(); break;
+    case 'new-sale': saleForm(''); break;
+    case 'sell-t': saleForm(curTeacher); break;
+    case 'edit-order': saleForm('', el.dataset.id); break;
+    case 'go-acc': location.hash='#/sales/acc/'+encodeURIComponent(el.dataset.id); break;
+    case 'go-orders': location.hash='#/sales/orders'; break;
+    case 'sell-order': { const s=db.sales.find(x=>x.id===el.dataset.id); if(!s||s.st!=='order') break;
+      const sh=shortMsg(s.items); if(sh && !confirm(`⚠️ بضاعة التجار مش مكفّية:\n${sh}\n\nتكمل البيع؟`)) break;
+      withUndo('✅ اتباع', ()=>{ sellItems(s, lotLeft()); }); showInvoice(s.t); break; }
+    case 'cancel-order': { const id=el.dataset.id; if(confirm('تلغي الطلب ده؟')) withUndo('❌ الطلب اتلغى', ()=>{ db.sales=db.sales.filter(s=>s.id!==id); }); break; }
+    case 'invoice': showInvoice(el.dataset.id); break;
+    case 'pay': { const t=tById(el.dataset.id); if(!t) break;
+      amtModal('💵 دفعة من '+esc(t.name), `<div class="hint" style="margin:0 0 8px">عليه دلوقتي: <b>${fmtM(ACC[t.id]?.owe||0)}</b></div>`, (amt,d)=>
+        withUndo(`💵 اتسجّلت دفعة ${fmtM(amt)}`, ()=>{ db.payments.push({id:uid(), k:'pay', t:t.id, amt, d}); })); break; }
+    case 'ret': retForm(el.dataset.id); break;
+    case 'mpay': { const nm=el.dataset.m; const x=merchSum().find(z=>z.name===nm);
+      amtModal('💵 دفعت لـ '+esc(nm), `<div class="hint" style="margin:0 0 8px">عليك له دلوقتي: <b>${fmtM(x?x.owe:0)}</b></div>`, (amt,d)=>
+        withUndo(`💵 اتسجّل إنك دفعت ${fmtM(amt)} لـ ${nm}`, ()=>{ db.merchPays.push({id:uid(), m:nm, amt, d}); })); break; }
+    case 'del-mpay': { const id=el.dataset.id; if(confirm('تمسح الدفعة دي؟')) withUndo('اتمسح 🗑️', ()=>{ db.merchPays=db.merchPays.filter(p=>p.id!==id); }); break; }
+    case 'del-pay': { const id=el.dataset.id; if(confirm('تمسحها؟')) withUndo('اتمسح 🗑️', ()=>{ db.payments=db.payments.filter(p=>p.id!==id); }); break; }
+    case 'del-sale': { const id=el.dataset.id;
+      if(db.payments.some(p=>p.k==='ret' && (p.parts||[]).some(x=>x.sale===id))){ alert('البيع ده عليه مرتجع — امسح المرتجع الأول.'); break; }
+      if(confirm('تمسح البيع ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.sales=db.sales.filter(s=>s.id!==id); }); break; }
+    case 'price-xlsx': $('#filePrice').value=''; $('#filePrice').click(); break;
+    case 'price-template': priceTemplate(); break;
+    case 'merch-xlsx': $('#fileMerch').value=''; $('#fileMerch').click(); break;
+    case 'merch-template': merchTemplate(); break;
+    case 'del-lot': { const id=el.dataset.id;
+      if(db.sales.some(s=>s.items.some(it=>(it.src||[]).some(x=>x.lot===id)))){ alert('اتباع من البضاعة دي — مش هينفع تتمسح.'); break; }
+      if(confirm('تمسح السطر ده من بضاعة التاجر؟')) withUndo('اتمسح 🗑️', ()=>{ db.merchants=db.merchants.filter(l=>l.id!==id); }); break; }
+    case 'stock-xlsx': $('#fileStock').value=''; $('#fileStock').click(); break;
+    case 'stock-template': stockTemplate(); break;
+    case 'stock-add': { const now=new Date().toISOString(), add=[];
+      document.querySelectorAll('[data-stk]').forEach(i=>{ const n=parseInt(digits(i.value).replace(/[^\d-]/g,''),10); if(n) add.push({id:uid(), b:i.dataset.stk, q:n, d:now}); });
+      if(!add.length){ alert('اكتب العدد قدام الكتب اللي استلمتها الأول'); break; }
+      withUndo(`📦 اتضاف ${add.reduce((s,x)=>s+x.q,0)} كتاب للمخزون`, ()=>{ db.stock.push(...add); }); break; }
+    case 'del-stock': { const id=el.dataset.id; if(confirm('تمسح الاستلام ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.stock=db.stock.filter(s=>s.id!==id); }); break; }
+    case 'add-auto-owed': { const t=tById(curTeacher); if(!t) break; const books=autoOwed(t); if(!books.length) break;
+      withUndo(`⏳ اتسجّل ${books.length} كتاب مستحق تلقائي`, ()=>{ const now=new Date().toISOString();
+        for(const k of books) db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'o', dd:'', rd:now, rep:db.rep}); }); break; }
+    case 'edit-teacher': teacherForm(tById(curTeacher)); break;
+    case 'new-teacher': e.preventDefault(); teacherForm(null, {name:el.dataset.name||'', phone:el.dataset.phone||''}); break;
+    case 'filter': homeFilter=el.dataset.k; renderHome(); break;
+    case 'copy-owed': copyText(owedText()); break;
+    case 'range': { const r=el.dataset.r, d=new Date(); repTo=dayKey();
+      if(r==='today') repFrom=dayKey(); else if(r==='week') repFrom=dayKey(new Date(Date.now()-6*864e5));
+      else if(r==='month') repFrom=isoDay(d.getFullYear(), d.getMonth()+1, 1);
+      else { const all=db.entries.map(x=>dk(actDate(x))).filter(Boolean).sort(); repFrom=all[0]||dayKey(); }
+      renderReport(); break; }
+    case 'export': exportExcel(el.dataset.scope==='all'); break;
+    case 'save-rep': { const v=$('#rep').value.trim(); if(v){ db.rep=v; save(); toast('اتحفظ ✅'); } break; }
+    case 'import-xlsx': e.preventDefault(); $('#fileXlsx').value=''; $('#fileXlsx').click(); break;
+    case 'backup': backup(); break;
+    case 'restore': e.preventDefault(); $('#fileJson').value=''; $('#fileJson').click(); break;
+    case 'wipe': {
+      const ans=prompt('ده هيمسح كل المدرسين وكل التسليمات من الجهاز ده.\nاعمل نسخة احتياطية الأول!\n\nلو متأكد اكتب كلمة: امسح');
+      if(ans && ans.trim()==='امسح'){ db=blank(); save(); location.hash='#/'; render(); toast('اتمسح كل حاجة'); }
+      break; }
+  }
+});
+document.addEventListener('toggle', e=>{
+  const d=e.target; if(!d.matches || !d.matches('details.subj')) return;
+  const g=d.dataset.g;
+  if(d.open) closedGroups.delete(g); else closedGroups.add(g);
+  try { localStorage.setItem(KEY+'-closed', JSON.stringify([...closedGroups])); } catch(e){}
+}, true);
+function copyText(s){
+  const done=()=>toast('اتنسخت 📋 — الصقها في الواتساب');
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(s).then(done, ()=>fallback()); else fallback();
+  function fallback(){ const ta=document.createElement('textarea'); ta.value=s; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); done();}catch(e){ alert(s); } ta.remove(); }
+}
+function download(blob, name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+
+/* ================= نسخة احتياطية ================= */
+const BACKUP_MAIL='rahuqhasna@gmail.com';
+async function backup(){
+  const now = new Date().toISOString();
+  const name=`نسخة-احتياطية-${db.rep}-${dayKey()}.json`;
+  const json=JSON.stringify({app:'selah-books', ...db, savedAt:now});
+  const subject=`نسخة احتياطية — دفتر التسليمات — ${db.rep} — ${fmtDay(dayKey())}`;
+  const file=new File([json], name, {type:'application/json'});
+  const done=()=>{ db.lastBackup = now; save(false); render(); };
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:subject, text:`ابعتها على ${BACKUP_MAIL}`}); done(); toast(`✅ اختار Gmail وابعتها على ${BACKUP_MAIL}`); return; }
+    catch(e){ if(e.name==='AbortError') return; }
+  }
+  done();
+  download(new Blob([json],{type:'application/json'}), name);
+  location.href=`mailto:${BACKUP_MAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent('النسخة الاحتياطية نزلت على الجهاز — ارفقها هنا وابعت.')}`;
+  toast('⬇️ النسخة نزلت — ارفقها في الإيميل وابعت');
+}
+$('#fileJson').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const d=JSON.parse(await f.text());
+    if(!Array.isArray(d.teachers) || !Array.isArray(d.entries)) throw new Error('bad');
+    const when = d.savedAt ? ` (معمولة ${fmtDT(d.savedAt)})` : '';
+    if(!confirm(`النسخة دي${when} فيها ${d.teachers.length} مدرس و ${d.entries.length} تعامل.\n\nهتحل مكان البيانات اللي على الجهاز ده (${db.teachers.length} مدرس و ${db.entries.length} تعامل). أكمل؟`)) return;
+    const arr=x=>Array.isArray(x)?x:[];
+    db={v:1, rep:d.rep||db.rep, teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
+      sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
+      merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||''}; save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
+  }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
+});
+
+/* ================= ZIP / XLSX ================= */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+function zipBlob(files, type){
+  const enc=new TextEncoder(), parts=[], cd=[]; let off=0;
+  for(const f of files){
+    const nm=enc.encode(f.name), d=typeof f.data==='string'?enc.encode(f.data):f.data, crc=crc32(d);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(8,0,true);
+    lh.setUint16(10,0,true); lh.setUint16(12,0x21,true); lh.setUint32(14,crc,true); lh.setUint32(18,d.length,true);
+    lh.setUint32(22,d.length,true); lh.setUint16(26,nm.length,true); lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer), nm, d);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true);
+    ch.setUint16(10,0,true); ch.setUint16(12,0,true); ch.setUint16(14,0x21,true); ch.setUint32(16,crc,true);
+    ch.setUint32(20,d.length,true); ch.setUint32(24,d.length,true); ch.setUint16(28,nm.length,true); ch.setUint32(42,off,true);
+    cd.push(new Uint8Array(ch.buffer), nm);
+    off+=30+nm.length+d.length;
+  }
+  const cdSize=cd.reduce((a,b)=>a+b.length,0), e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true); e.setUint32(12,cdSize,true); e.setUint32(16,off,true);
+  return new Blob([...parts, ...cd, new Uint8Array(e.buffer)], {type});
+}
+async function unzip(buf){
+  const u=new Uint8Array(buf), v=new DataView(buf); let e=-1;
+  for(let i=u.length-22;i>=Math.max(0,u.length-65558);i--){ if(v.getUint32(i,true)===0x06054b50){e=i;break;} }
+  if(e<0) throw new Error('not a zip');
+  const n=v.getUint16(e+10,true); let p=v.getUint32(e+16,true); const files={}; const td=new TextDecoder();
+  for(let i=0;i<n;i++){
+    const method=v.getUint16(p+10,true), csize=v.getUint32(p+20,true), nl=v.getUint16(p+28,true), xl=v.getUint16(p+30,true), cl=v.getUint16(p+32,true), lo=v.getUint32(p+42,true);
+    const name=td.decode(u.subarray(p+46,p+46+nl)); p+=46+nl+xl+cl;
+    const start=lo+30+v.getUint16(lo+26,true)+v.getUint16(lo+28,true);
+    files[name]={method, data:u.subarray(start,start+csize)};
+  }
+  return { async text(name){ const f=files[name]; if(!f) return null; let d=f.data;
+    if(f.method===8){ if(typeof DecompressionStream==='undefined') throw new Error('old browser');
+      d=new Uint8Array(await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
+    return td.decode(d); } };
+}
+function colIdx(s){ let n=0; for(const ch of s) n=n*26+(ch.charCodeAt(0)-64); return n-1; }
+function colName(i){ let s=''; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; }
+async function readXlsx(file){
+  const z=await unzip(await file.arrayBuffer()), P=new DOMParser(), X='application/xml';
+  let ss=[]; const ssT=await z.text('xl/sharedStrings.xml');
+  if(ssT){ const d=P.parseFromString(ssT,X); ss=[...d.getElementsByTagName('si')].map(si=>[...si.getElementsByTagName('t')].filter(t=>t.parentNode.nodeName!=='rPh').map(t=>t.textContent).join('')); }
+  let path='xl/worksheets/sheet1.xml';
+  const wb=await z.text('xl/workbook.xml'), rels=await z.text('xl/_rels/workbook.xml.rels');
+  if(wb && rels){
+    const s=P.parseFromString(wb,X).getElementsByTagName('sheet')[0];
+    const rid=s && (s.getAttribute('r:id') || s.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id'));
+    const rel=[...P.parseFromString(rels,X).getElementsByTagName('Relationship')].find(r=>r.getAttribute('Id')===rid);
+    if(rel){ const t=rel.getAttribute('Target'); path = t.startsWith('/') ? t.slice(1) : 'xl/'+t.replace(/^\.\//,''); }
+  }
+  const sx=await z.text(path); if(!sx) throw new Error('no sheet');
+  const rows=[];
+  for(const row of P.parseFromString(sx,X).getElementsByTagName('row')){
+    const arr=[];
+    for(const c of row.getElementsByTagName('c')){
+      const ref=c.getAttribute('r'); const ci = ref ? colIdx(ref.replace(/\d+/g,'')) : arr.length;
+      const t=c.getAttribute('t'), vEl=c.getElementsByTagName('v')[0]; let val;
+      if(t==='s') val = vEl ? ss[+vEl.textContent] : '';
+      else if(t==='inlineStr') val=[...c.getElementsByTagName('t')].map(x=>x.textContent).join('');
+      else if(vEl){ const tx=vEl.textContent; val = (t==='str'||t==='b'||t==='e'||isNaN(+tx)) ? tx : +tx; }
+      if(val!==undefined && val!=='') arr[ci]=typeof val==='string'?val.trim():val;
+    }
+    rows.push(arr);
+  }
+  return rows;
+}
+function detectHeader(rows){
+  for(let i=0;i<Math.min(15,rows.length);i++){
+    const h=[...(rows[i]||[])].map(x=>normText(x??''));
+    const find=re=>h.findIndex(x=>x && re.test(x));
+    let name=h.findIndex(x=>x && /اسم/.test(x) && /(مدرس|معلم)/.test(x) && !/مدرسه/.test(x));
+    if(name<0) name=h.findIndex(x=>/^(الاسم|اسم|المدرس|المعلم|اسم المدرس)$/.test(x));
+    const phone=find(/هاتف|تليفون|موبايل|محمول|جوال|تلفون|رقم/);
+    if(name>=0) return {row:i, name, phone, stage:find(/ابتدا|اعدا|مرحله/), subject:find(/ماده|المواد|تخصص/),
+      area:find(/منطقه|قريه/), school:find(/مدرسه/), cls:find(/تصنيف/), students:find(/طلاب/), date:find(/تاريخ/)};
+  }
+  return null;
+}
+function serialToParts(v){ const d=new Date(Math.round((v-25569)*864e5)); return [d.getUTCFullYear(), d.getUTCMonth()+1, d.getUTCDate()]; }
+$('#fileXlsx').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  let rows; try{ rows=await readXlsx(f); }catch(err){ alert('مش قادر أقرا الملف ده. اتأكد إنه شيت إكسل (.xlsx).'); return; }
+  const H=detectHeader(rows);
+  if(!H){ alert('مش لاقي عمود «اسم المدرس» في الشيت.'); return; }
+  const data=rows.slice(H.row+1).filter(r=>r && (r[H.name] || (H.phone>=0 && r[H.phone])));
+  const get=(r,i)=> i>=0 && r[i]!==undefined ? String(r[i]).trim() : '';
+  // التاريخ: إكسل أحياناً بيقلب اليوم والشهر (1/11 بيبقى 11 يناير). لو كل التواريخ الرقمية نفس اليوم وشهور مختلفة → اقلبهم
+  let swap=false;
+  if(H.date>=0){ const nums=data.map(r=>r[H.date]).filter(v=>typeof v==='number' && v>20000 && v<80000).map(serialToParts);
+    if(nums.length>2 && new Set(nums.map(p=>p[2])).size===1 && new Set(nums.map(p=>p[1])).size>2) swap=true; }
+  const parseDate=v=>{
+    if(v===undefined||v==='') return '';
+    if(typeof v==='number' && v>20000 && v<80000){ let [y,m,d]=serialToParts(v); if(swap) [m,d]=[d,m]; return isoDay(y,m,d); }
+    const s=digits(v); let mm=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(mm) return isoDay(+mm[3],+mm[2],+mm[1]);
+    mm=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(mm) return isoDay(+mm[1],+mm[2],+mm[3]); return '';
+  };
+  let add=0, upd=0; const plan=[];
+  for(const r of data){
+    const name=get(r,H.name), phone=normPhone(get(r,H.phone));
+    const subjectText=get(r,H.subject);
+    const rec={name, phone, stage:parseStage(get(r,H.stage)), subjectText, subjects:parseSubjects(subjectText),
+      area:get(r,H.area), school:get(r,H.school), cls:get(r,H.cls), students:get(r,H.students), plan:parseDate(r[H.date])};
+    const ex = phone ? db.teachers.find(t=>t.phone===phone) : db.teachers.find(t=>normText(t.name)===normText(name));
+    plan.push({rec, ex}); ex?upd++:add++;
+  }
+  if(!plan.length){ alert('الشيت فاضي.'); return; }
+  if(!confirm(`لقيت ${plan.length} مدرس في الشيت:\n• ${add} جديد\n• ${upd} موجودين قبل كده (هتتحدّث بياناتهم بس)\n\nأستوردهم؟`)) return;
+  for(const {rec,ex} of plan){
+    if(ex){ for(const k of Object.keys(rec)) if(rec[k] && (!Array.isArray(rec[k]) || rec[k].length)) ex[k]=rec[k]; }
+    else db.teachers.push({id:uid(), ...rec, name:rec.name||rec.phone, notes:'', created:new Date().toISOString()});
+  }
+  save(); location.hash='#/'; homeFilter='all'; render(); toast(`✅ اتستورد ${plan.length} مدرس`);
+});
+
+/* ================= تصدير إكسل ================= */
+const xmlEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+function dateSerial(isoStr){ const d=new Date(isoStr); return (Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()) - Date.UTC(1899,11,30))/864e5; }
+function sheetXml(rows, widths, head=0){
+  // cell: string | number | {date:iso} ; row[head] = header (bold)
+  const out=rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((c,ci)=>{
+    const ref=colName(ci)+(ri+1);
+    if(c===null||c===undefined||c==='') return '';
+    if(ri===head) return `<c r="${ref}" t="inlineStr" s="1"><is><t>${xmlEsc(c)}</t></is></c>`;
+    if(typeof c==='number') return `<c r="${ref}"><v>${c}</v></c>`;
+    if(c && c.date) return `<c r="${ref}" s="2"><v>${dateSerial(c.date)}</v></c>`;
+    if(c && c.rich) return `<c r="${ref}" t="inlineStr" s="3"><is>${c.rich.map(r=>`<r><rPr>${r.bold?'<b/>':''}<sz val="11"/>${r.color?`<color rgb="FF${r.color}"/>`:''}<rFont val="Calibri"/></rPr><t xml:space="preserve">${xmlEsc(r.t).replace(/\n/g,'&#10;')}</t></r>`).join('')}</is></c>`;
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(c)}</t></is></c>`;
+  }).join('')+`</row>`).join('');
+  const cols=widths?`<cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`:'';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0" rightToLeft="1"><pane ySplit="${head+1}" topLeftCell="A${head+2}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${cols}<sheetData>${out}</sheetData>${!head&&rows.length>1&&rows[0].length?`<autoFilter ref="A1:${colName(rows[0].length-1)}${rows.length}"/>`:''}</worksheet>`;
+}
+function buildXlsx(sheets){
+  const files=[
+    {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
+    {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView rightToLeft="1"/></bookViews><sheets>${sheets.map((s,i)=>`<sheet name="${xmlEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${sheets.some(s=>s.rows.length>1&&!s.head)?`<definedNames>${sheets.map((s,i)=>s.rows.length>1&&!s.head?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xmlEsc(s.name)}'!$A$1:$${colName(s.rows[0].length-1)}$${s.rows.length}</definedName>`:'').join('')}</definedNames>`:''}</workbook>`},
+    {name:'xl/_rels/workbook.xml.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:'xl/styles.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs></styleSheet>`},
+    ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, data:sheetXml(s.rows, s.widths, s.head||0)}))
+  ];
+  return zipBlob(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+function exportExcel(all){
+  const inRange = k => all || (k && k>=repFrom && k<=repTo);
+  const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t]));
+  // 1) التعاملات
+  const ents=db.entries.filter(e=>inRange(dk(actDate(e))) || (e.rd && inRange(dk(e.rd))))
+    .sort((a,b)=>(actDate(a)||'').localeCompare(actDate(b)||''));
+  const s1=[['التاريخ','الوقت','المندوب','اسم المدرس','التليفون','المنطقة','الكتاب','المادة','المرحلة','الصف','العدد','الحالة','تاريخ الطلب','تاريخ التسليم']];
+  for(const e of ents){ const t=tmap[e.t]||{}; const {st,sb,g}=bookParts(e.b); const a=actDate(e);
+    s1.push([{date:a}, timeStr(new Date(a)), e.rep||db.rep, t.name||'؟', t.phone||'', t.area||'', bookLabel(e.b), SUBJ[sb], STAGES[st].name, GRADE[g-1], e.q,
+      e.s==='d'?'اتسلّم':'مستحق (لسه)', e.rd?{date:e.rd}:'', e.dd?{date:e.dd}:'']); }
+  // 2) المدرسين
+  const idx=indexEntries();
+  const SC=['ar','math','stu','en','sci'];
+  const cnt=n=> n===1?'كتاب' : n===2?'كتابين' : n<=10?`${n} كتب` : `${n} كتاب`;
+  const MANY_COLOR='DC2626';
+  // خلية واحدة ملوّنة: كل مادة في سطر بلونها، مادة المدرس الأول، والعدد الأكتر من 1 بالأحمر العريض
+  const richCell=(t, books, f)=>{
+    const order=[...(t.subjects||[]).filter(s=>SC.includes(s)), ...SC.filter(s=>!(t.subjects||[]).includes(s))];
+    const runs=[];
+    for(const sb of order){
+      const items=[];
+      for(const st of ['p','m']){
+        if(!STAGES[st].subjects.includes(sb)) continue;
+        for(let g=FROM[st+'-'+sb]||1; g<=STAGES[st].grades; g++){ const n=books[`${st}-${sb}-${g}`]?.[f]||0;
+          if(n) items.push({label:`${SUBJ[sb]} ${GRADE[g-1]}${st==='m'?' إعدادي':''}: `, n}); }
+      }
+      if(!items.length) continue;
+      if(runs.length) runs.push({t:'\n'});
+      const c=SUBJ_COLOR[sb];
+      items.forEach((it,i)=>{
+        if(i) runs.push({t:'، ', color:c});
+        runs.push({t:it.label, color:c});
+        runs.push(it.n>1 ? {t:cnt(it.n), color:MANY_COLOR, bold:true} : {t:cnt(it.n), color:c});
+      });
+    }
+    return runs.length ? {rich:runs} : '';
+  };
+  const s2=[['اسم المدرس','التليفون','المنطقة','مادته','استلم إيه','المستحق','آخر زيارة','ملاحظات']];
+  for(const t of [...db.teachers].sort((a,b)=>a.name.localeCompare(b.name,'ar'))){
+    const x=idx[t.id]; const bk=x?x.books:{};
+    s2.push([t.name, t.phone||'', t.area||'', t.subjectText||'', richCell(t,bk,'d'), richCell(t,bk,'o'),
+      x&&x.last?{date:x.last}:'', t.notes||'']);
+  }
+  // 3) اللي عليا
+  const s3=[['الكتاب','عدد النسخ','عدد المدرسين','المدرسين']]; const by={};
+  for(const e of owedEntries()) (by[e.b] ||= []).push(e);
+  for(const k of Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b])){ const l=by[k];
+    s3.push([bookLabel(k), l.reduce((s,e)=>s+e.q,0), new Set(l.map(e=>e.t)).size, l.map(e=>(tmap[e.t]?.name||'؟')+(e.q>1?` (${e.q})`:'')).join('، ')]); }
+  // 4) ملخص يومي
+  const days={};
+  for(const e of db.entries){
+    if(e.s==='d' && inRange(dk(e.dd))){ const x=days[dk(e.dd)] ||= {v:new Set(),d:0,o:0}; x.d+=e.q; x.v.add(e.t); }
+    if(e.rd && inRange(dk(e.rd))){ const x=days[dk(e.rd)] ||= {v:new Set(),d:0,o:0}; x.o+=e.q; x.v.add(e.t); }
+  }
+  const s4=[['التاريخ','عدد الزيارات','كتب اتسلّمت','مستحقات اتسجّلت']];
+  for(const k of Object.keys(days).sort()) s4.push([{date:k+'T12:00:00'}, days[k].v.size, days[k].d, days[k].o]);
+  // 5) البيع
+  const inR=iso=>inRange(dk(iso));
+  const SI=saleIdx(), lotById=Object.fromEntries(db.merchants.map(l=>[l.id,l]));
+  const s5=[['التاريخ','المدرس','التليفون','الكتاب','العدد','التاجر','السعر قبل','السعر بعد','الإجمالي']];
+  for(const s of db.sales.filter(s=>s.st==='sold' && inR(s.sd)).sort((a,b)=>a.sd.localeCompare(b.sd))){ const t=tmap[s.t]||{};
+    for(const it of s.items){ const srcs=(it.src&&it.src.length)?it.src:[{lot:null,q:it.q}];
+      for(const x of srcs) s5.push([{date:s.sd}, t.name||'؟', t.phone||'', bookLabel(it.b), x.q, x.lot?(lotById[x.lot]?.m||'؟'):'—',
+        it.pre??'', it.post??'', it.post!=null?r2(x.q*it.post):'']); } }
+  // 6) حسابات المدرسين
+  const acc=accMap(); const s6=[['المدرس','التليفون','اشترى','دفع','رجّع','عليه']]; const T=[0,0,0,0];
+  for(const [id,a] of Object.entries(acc).filter(([,a])=>a.sold||a.paid).sort((x,y)=>(tmap[x[0]]?.name||'').localeCompare(tmap[y[0]]?.name||'','ar'))){
+    const t=tmap[id]||{}; s6.push([t.name||'؟', t.phone||'', r2(a.bought), r2(a.paid), r2(a.ret), a.owe]);
+    T[0]+=a.bought; T[1]+=a.paid; T[2]+=a.ret; T[3]+=a.owe; }
+  s6.push(['الإجمالي','',r2(T[0]),r2(T[1]),r2(T[2]),r2(T[3])]);
+  // 7) دفعات ومرتجعات المدرسين
+  const s7=[['التاريخ','المدرس','النوع','المبلغ','الكتاب','العدد']];
+  for(const p of db.payments.filter(p=>inR(p.d)).sort((a,b)=>a.d.localeCompare(b.d))){ const t=tmap[p.t]||{};
+    s7.push(p.k==='pay' ? [{date:p.d}, t.name||'؟', 'دفعة', r2(p.amt), '', ''] : [{date:p.d}, t.name||'؟', 'مرتجع', r2(retVal(p,SI)), bookLabel(p.b), p.q]); }
+  // 8) طلبات مستنية
+  const s8=[['تاريخ الطلب','المدرس','التليفون','الكتاب','العدد','السعر بعد الخصم','الإجمالي']];
+  for(const s of db.sales.filter(s=>s.st==='order').sort((a,b)=>a.d.localeCompare(b.d))){ const t=tmap[s.t]||{};
+    for(const it of s.items){ const p=priceOf(it.b); s8.push([{date:s.d}, t.name||'؟', t.phone||'', bookLabel(it.b), it.q, p?p.post:'', p?r2(it.q*p.post):'']); } }
+  // 9) حسابات التجار
+  const s9=[['التاجر','الصنف','العدد','السعر','الإجمالي','المدفوع','الباقي عليك','الفاضل من بضاعته']];
+  for(const x of merchSum()){
+    for(const r of [...x.rows.values()].sort((a,b)=>bookRank[a.b]-bookRank[b.b])) s9.push([x.name, bookLabel(r.b), r.q, r.p??'', r.p!=null?r2(r.q*r.p):'', '', '', r.left]);
+    s9.push([x.name, 'الإجمالي', x.q, '', r2(x.total), r2(x.paid), x.owe, x.left]); }
+  // 10) دفعات التجار
+  const s10=[['التاريخ','التاجر','المبلغ']];
+  for(const p of [...db.merchPays].sort((a,b)=>a.d.localeCompare(b.d))) s10.push([{date:p.d}, p.m, r2(p.amt)]);
+  const blob=buildXlsx([
+    {name:'المدرسين', rows:s2, widths:[22,14,14,12,75,50,12,30]},
+    {name:'التعاملات', rows:s1, widths:[12,10,12,22,14,14,24,10,10,8,7,12,13,13]},
+    {name:'اللي عليا', rows:s3, widths:[26,10,12,60]},
+    {name:'ملخص يومي', rows:s4, widths:[13,13,13,15]},
+    {name:'البيع', rows:s5, widths:[12,22,14,24,8,14,11,11,12]},
+    {name:'حسابات المدرسين', rows:s6, widths:[22,14,12,12,12,12]},
+    {name:'دفعات ومرتجعات', rows:s7, widths:[12,22,10,12,24,8]},
+    {name:'طلبات مستنية', rows:s8, widths:[12,22,14,24,8,14,12]},
+    {name:'حسابات التجار', rows:s9, widths:[16,24,8,10,12,12,13,16]},
+    {name:'دفعات التجار', rows:s10, widths:[12,16,12]}
+  ]);
+  const nm = all ? `تسليمات-${db.rep}-لحد-${dayKey()}.xlsx` : (repFrom===repTo ? `تسليمات-${db.rep}-${repFrom}.xlsx` : `تسليمات-${db.rep}-من-${repFrom}-لحد-${repTo}.xlsx`);
+  download(blob, nm); toast('⬇️ شيت الإكسل نزل');
+}
+
+/* ================= المخزون: شيت ================= */
+function stockTemplate(){
+  const rows=[['المادة','الصف','المرحلة','العدد'], ...BOOK_ORDER.map(k=>{ const {st,sb,g}=bookParts(k); return [SUBJ[sb], g, STAGES[st].name, '']; })];
+  download(buildXlsx([{name:'استلام المخزن', rows, widths:[14,8,12,10]}]), 'شيت-استلام-المخزن.xlsx');
+  toast('⬇️ الشيت الفاضي نزل — اكتب العدد وارفعه');
+}
+$('#fileStock').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  let rows; try{ rows=await readXlsx(f); }catch(err){ alert('مش قادر أقرا الملف ده. اتأكد إنه شيت إكسل (.xlsx).'); return; }
+  let H=null;
+  for(let i=0;i<Math.min(15,rows.length);i++){
+    const h=[...(rows[i]||[])].map(x=>normText(x??'')); const fi=re=>h.findIndex(x=>x && re.test(x));
+    const sb=fi(/ماده/), g=fi(/صف/), q=fi(/عدد|كميه/);
+    if(sb>=0 && g>=0 && q>=0){ H={row:i, sb, g, q, st:fi(/مرحله/)}; break; }
+  }
+  if(!H){ alert('مش لاقي أعمدة: المادة، الصف، العدد'); return; }
+  const now=new Date().toISOString(), add=[]; let bad=0;
+  for(const r of rows.slice(H.row+1)){
+    if(!r) continue;
+    const q=parseInt(digits(r[H.q]??'').replace(/[^\d-]/g,''),10); if(!q) continue;
+    const sb=parseSubjects(String(r[H.sb]??''))[0], g=parseGrade(r[H.g]);
+    const st=((H.st>=0?parseStage(String(r[H.st]??'')):'') || parseStage(String(r[H.g]??'')) || 'p')[0];
+    const k=`${st}-${sb}-${g}`;
+    if(!sb || bookRank[k]===undefined){ bad++; continue; }
+    add.push({id:uid(), b:k, q, d:now});
+  }
+  if(!add.length){ alert('مفيش أعداد في الشيت.'); return; }
+  const tot=add.reduce((s,x)=>s+x.q,0);
+  if(!confirm(`لقيت ${tot} كتاب (${add.length} صنف)${bad?`\n⚠️ و ${bad} سطر مش فاهمه (هيتساب)`:''}.\n\nأضيفهم للمخزون؟`)) return;
+  withUndo(`📦 اتضاف ${tot} كتاب للمخزون`, ()=>{ db.stock.push(...add); });
+});
+
+/* ================= شيت الجرد ================= */
+function exportJard(){
+  if(!db.stock.length && !confirm('لسه ما سجّلتش أي كتب استلمتها من المخزن، فالجرد هيطلع أصفار. تكمل؟')) return;
+  const left=stockLeft()||{}, L=k=>Math.max(0, left[k]||0);
+  const rg=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+  const R=[]; // [الاسم, مفتاح الكتاب أو null, الربطة]
+  const add=(pre,sb,st,gs,size)=>{ for(const g of gs) R.push([`${pre} ${g}${st==='p'?'ب':'ع'}`, sb?`${st}-${sb}-${g}`:null, size]); };
+  add('سلاح عربى','ar','p',rg(1,6),20);
+  add('سلاح أكتشف',null,'p',rg(1,3),20);
+  add('سلاح رياضة','math','p',rg(1,6),20);
+  add('سلاح انجليزى','en','p',rg(1,6),20);
+  add('سلاح علوم','sci','p',rg(4,6),20);
+  add('سلاح دراسات','stu','p',rg(4,6),20);
+  add('ملحق عربى','ar','p',rg(2,6),40);
+  add('ملحق رياضة','math','p',[4],40);
+  add('ملحق انجليزى','en','p',rg(1,6),40);
+  for(const [pre,size] of [['سلاح',20],['ملحق',40],['مفكرة',40]])
+    for(const [sb,n] of [['ar','عربى'],['math','رياضة'],['stu','دراسات']]) add(`${pre} ${n}`,sb,'m',rg(1,3),size);
+  add('بوستر دراسات','stu','m',rg(1,3),40);
+  R.push(['كوبون 1&2&3',null,0], ['كوبون 4&5&6',null,0]);
+  const d=new Date(), DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const rows=[['اسم المحافظة','البحيرة'], ['التاريخ',{date:d.toISOString()}], ['اليوم',DAYS[d.getDay()]], ['اسم المندوب',db.rep], [],
+    ['الصنف','جرد ربط','جرد فرط','الاجمالى']];
+  for(const [nm,k,size] of R){
+    const label=nm+' ﺣ1';
+    if(!k){ rows.push([label]); continue; }
+    const n=L(k); rows.push([label, Math.floor(n/size), n%size, n]);
+  }
+  download(buildXlsx([{name:'جرد', rows, widths:[26,12,12,12], head:5}]), `جرد-مخزن-${db.rep}-${dayKey()}.xlsx`);
+  toast('⬇️ شيت الجرد نزل');
+}
+
+/* ================= البيع والتجار ================= */
+// البيع: إنجليزي ابتدائي 1-6، وإعدادي (عربي ورياضة ودراسات 1-3). الخصم: إنجليزي 30%، إعدادي 24.5%
+const SELL_KEYS = BOOK_ORDER.filter(k=>{ const {st,sb}=bookParts(k); return st==='m' || sb==='en'; });
+const isSell = k => SELL_KEYS.includes(k);
+const discOf = k => bookParts(k).st==='m' ? 0.245 : 0.30;
+const r2 = n => Math.round(n*100)/100;
+const fmtN = n => r2(n).toLocaleString('en-US',{maximumFractionDigits:2});
+const fmtM = n => fmtN(n)+' ج';
+const byRank = (a,b)=>bookRank[a.b]-bookRank[b.b];
+let ACC = {}, salesTab = 'orders';
+function parseNum(v){
+  if(v===undefined || v===null || v==='') return null;
+  if(typeof v==='number') return v;
+  const s=digits(v).replace(/٫/g,'.').replace(/[,،]/g,'').replace(/[^\d.\-]/g,'');
+  if(!s) return null; const n=parseFloat(s); return isNaN(n)?null:n;
+}
+function priceOf(k){
+  const p=db.prices[k]; if(!p) return null;
+  const post = p.post!=null ? p.post : p.pre!=null ? r2(p.pre*(1-discOf(k))) : null;
+  return post==null ? null : {pre:p.pre??null, post};
+}
+// أول سعر يترفع: البيع اللي اتسجل من غير سعر، وبضاعة التجار اللي من غير سعر
+function fillPrices(){
+  for(const s of db.sales) if(s.st==='sold') for(const it of s.items) if(it.post==null){ const p=priceOf(it.b); if(p){ it.pre=p.pre; it.post=p.post; } }
+  for(const l of db.merchants) if(l.p==null){ const p=priceOf(l.b); if(p) l.p=p.post; }
+}
+const saleIdx = () => Object.fromEntries(db.sales.map(s=>[s.id,s]));
+function itemsLine(items){
+  return [...items].sort(byRank).map(it=>`<span class="bk" style="color:var(--c-${bookParts(it.b).sb})">${esc(bookLabel(it.b))}</span> × ${it.q}`).join('، ');
+}
+const waLink = (phone, text) => `https://wa.me/${phone?'2'+phone:''}?text=${encodeURIComponent(text)}`;
+const pickDate = v => (!v || v===dayKey()) ? new Date().toISOString() : new Date(v+'T12:00:00').toISOString();
+
+/* --- بضاعة التجار: أول دخل أول خرج --- */
+function lotUsed(){
+  const u={};
+  for(const s of db.sales) if(s.st==='sold') for(const it of s.items) for(const x of it.src||[]) if(x.lot) u[x.lot]=(u[x.lot]||0)+x.q;
+  for(const p of db.payments) if(p.k==='ret') for(const pt of p.parts||[]) for(const x of pt.lots||[]) if(x.lot) u[x.lot]=(u[x.lot]||0)-x.q;
+  return u;
+}
+function lotLeft(){ const u=lotUsed(), o={}; for(const l of db.merchants) o[l.id]=l.q-(u[l.id]||0); return o; }
+function merchAvail(k, left){
+  const by=new Map();
+  for(const l of db.merchants) if(l.b===k && left[l.id]>0) by.set(l.m, (by.get(l.m)||0)+left[l.id]);
+  return [...by];
+}
+function allocate(k, q, left){
+  const src=[];
+  for(const l of db.merchants){
+    if(!q) break; if(l.b!==k || left[l.id]<=0) continue;
+    const n=Math.min(q, left[l.id]); src.push({lot:l.id, q:n}); left[l.id]-=n; q-=n;
+  }
+  if(q) src.push({lot:null, q});
+  return src;
+}
+function shortMsg(items){
+  if(!db.merchants.length) return '';
+  const left=lotLeft(), out=[];
+  for(const it of items){ const a=merchAvail(it.b,left).reduce((s,[,n])=>s+n,0); if(it.q>a) out.push(`• ${bookLabel(it.b)}: عايز ${it.q} والموجود ${a}`); }
+  return out.join('\n');
+}
+// يحوّل الطلب لبيع: السعر وقتها يتحفظ + كل سطر يتقسم على التجار
+function sellItems(s, left){
+  for(const it of s.items){ const p=priceOf(it.b); it.pre=p?p.pre:null; it.post=p?p.post:null; it.src=allocate(it.b, it.q, left); }
+  s.st='sold'; s.sd=new Date().toISOString();
+}
+function merchSum(){
+  const left=lotLeft(), m=new Map();
+  const g=name=>{ if(!m.has(name)) m.set(name,{name, q:0, total:0, paid:0, left:0, owe:0, noPrice:false, rows:new Map(), pays:[]}); return m.get(name); };
+  for(const l of db.merchants){
+    const x=g(l.m), lf=Math.max(0,left[l.id]);
+    x.q+=l.q; x.left+=lf; if(l.p==null) x.noPrice=true; else x.total+=l.q*l.p;
+    const rk=l.b+'|'+(l.p??'');
+    if(!x.rows.has(rk)) x.rows.set(rk,{b:l.b, p:l.p, q:0, left:0});
+    const r=x.rows.get(rk); r.q+=l.q; r.left+=lf;
+  }
+  for(const p of db.merchPays){ const x=g(p.m); x.paid+=p.amt; x.pays.push(p); }
+  for(const x of m.values()) x.owe=r2(x.total-x.paid);
+  return [...m.values()];
+}
+
+/* --- حسابات المدرسين --- */
+function retVal(r, S){ let v=0; for(const pt of r.parts||[]){ const it=S[pt.sale]?.items[pt.i]; if(it && it.post!=null) v+=pt.q*it.post; } return v; }
+function accMap(){
+  const S=saleIdx(), m={};
+  const g=id=>m[id] ||= {bought:0, n:0, paid:0, ret:0, owe:0, noPrice:false, orders:0, sold:false};
+  for(const s of db.sales){
+    if(s.st==='order'){ g(s.t).orders++; continue; }
+    if(s.st!=='sold') continue;
+    const a=g(s.t); a.sold=true;
+    for(const it of s.items){ a.n+=it.q; if(it.post==null) a.noPrice=true; else a.bought+=it.q*it.post; }
+  }
+  for(const p of db.payments){ const a=g(p.t); if(p.k==='pay') a.paid+=p.amt; else if(p.k==='ret') a.ret+=retVal(p,S); }
+  for(const a of Object.values(m)) a.owe=r2(a.bought-a.paid-a.ret);
+  return m;
+}
+// سطور البيع اللي لسه ممكن يترجع منها
+function retLines(tid){
+  const done={};
+  for(const p of db.payments) if(p.k==='ret' && p.t===tid) for(const pt of p.parts||[]){ const key=pt.sale+':'+pt.i; done[key]=(done[key]||0)+pt.q; }
+  const lines=[];
+  for(const s of db.sales) if(s.st==='sold' && s.t===tid) s.items.forEach((it,i)=>{ const left=it.q-(done[s.id+':'+i]||0); if(left>0) lines.push({s, it, i, left}); });
+  return lines;
+}
+// المرتجع يرجع لنفس التاجر اللي اتباع منه
+function retLots(tid, s, i, q){
+  const prior={};
+  for(const p of db.payments) if(p.k==='ret' && p.t===tid) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) for(const x of pt.lots||[]) prior[x.lot]=(prior[x.lot]||0)+x.q;
+  const out=[];
+  for(const x of [...(s.items[i].src||[])].reverse()){
+    if(!q) break; const can=x.q-(prior[x.lot]||0); if(can<=0) continue;
+    const n=Math.min(q,can); out.push({lot:x.lot, q:n}); prior[x.lot]=(prior[x.lot]||0)+n; q-=n;
+  }
+  if(q) out.push({lot:null, q});
+  return out;
+}
+
+/* --- صفحة البيع --- */
+function renderSales(sub, focus){
+  setHeader('💰 البيع', false);
+  if(['orders','acc','merch'].includes(sub)) salesTab=sub;
+  const orders=db.sales.filter(s=>s.st==='order').sort((a,b)=>b.d.localeCompare(a.d));
+  const tab=(k,txt)=>`<button class="chip ${salesTab===k?'on':''}" data-act="sales-tab" data-k="${k}">${txt}</button>`;
+  let html=`<button class="btn pri" data-act="new-sale" style="width:100%;font-size:18px;padding:14px;margin-bottom:12px">➕ بيع / طلب جديد</button>
+    <div class="chips">${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('acc','🧾 حسابات المدرسين')}${tab('merch','🏪 التجار')}</div>`;
+  if(salesTab==='orders') html+=ordersHtml(orders);
+  else if(salesTab==='acc') html+=accHtml();
+  else html+=merchHtml();
+  app.innerHTML=html;
+  if(focus) setTimeout(()=>{ const el=document.getElementById('acc-'+focus); if(!el) return;
+    const d=el.closest('details'); if(d) d.open=true; el.classList.add('focus'); el.scrollIntoView({block:'center'}); }, 30);
+}
+function orderTotal(s){
+  let tot=0, n=0, miss=false;
+  for(const it of s.items){ n+=it.q; const p=priceOf(it.b); if(!p) miss=true; else tot+=it.q*p.post; }
+  return {tot, n, miss};
+}
+function orderMsg(s){
+  const t=tById(s.t)||{}, o=orderTotal(s);
+  return `أهلاً أستاذ ${t.name||''} 👋\nطلبك من سلاح التلميذ:\n` +
+    [...s.items].sort(byRank).map(it=>{ const p=priceOf(it.b); return `• ${bookLabel(it.b)} × ${it.q}`+(p?` = ${fmtM(it.q*p.post)}`:''); }).join('\n') +
+    `\n\nالإجمالي: ${o.miss?'السعر لسه ما اتحددش':fmtM(o.tot)+' بعد الخصم'}\n— ${db.rep}`;
+}
+function ordersHtml(orders){
+  if(!orders.length) return '<div class="card empty">مفيش طلبات مستنية.</div>';
+  return orders.map(s=>{ const t=tById(s.t)||{name:'؟',phone:''}, o=orderTotal(s);
+    return `<div class="card scard"><div class="hd">${t.id?`<a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>`:'<b>؟</b>'}<span class="small muted">${fmtDT(s.d)}</span></div>
+      <div class="small">${itemsLine(s.items)}</div>
+      <div class="tot">${o.n} كتاب — ${o.miss?'<span class="muted">السعر لسه ما اتحددش</span>':`<b>${fmtM(o.tot)}</b> <span class="small muted">بعد الخصم</span>`}</div>
+      <div class="acts">${t.phone?`<a class="btn sm" href="tel:${esc(t.phone)}">📞</a>`:''}<a class="btn sm" href="${esc(waLink(t.phone, orderMsg(s)))}" target="_blank" rel="noopener">💬 واتساب</a>
+        <button class="btn sm ghost" data-act="edit-order" data-id="${s.id}">✏️ تعديل</button>
+        <button class="btn sm ok" data-act="sell-order" data-id="${s.id}">✅ اتأكد واتباع</button>
+        <button class="btn sm danger" data-act="cancel-order" data-id="${s.id}">❌ لغى</button></div></div>`; }).join('');
+}
+function accHtml(){
+  const list=Object.entries(ACC).filter(([id,a])=>(a.sold||a.paid) && tById(id)).map(([id,a])=>({t:tById(id), a}));
+  if(!list.length) return '<div class="card empty">لسه ما بعتش لحد.</div>';
+  const out=list.reduce((s,x)=>s+Math.max(0,x.a.owe),0);
+  const isOpen=x=>x.a.owe>0 || x.a.noPrice;
+  const open=list.filter(isOpen).sort((A,B)=>B.a.owe-A.a.owe), done=list.filter(x=>!isOpen(x)).sort((A,B)=>A.t.name.localeCompare(B.t.name,'ar'));
+  const card=({t,a})=>`<div class="card scard" id="acc-${esc(t.id)}"><div class="hd"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${t.phone?`<a class="ico" href="tel:${esc(t.phone)}">📞</a>`:''}</div>
+    <div class="mgrid"><div><span>اشترى</span><b>${fmtM(a.bought)}</b></div><div><span>دفع</span><b style="color:var(--ok)">${fmtM(a.paid)}</b></div>
+      <div><span>رجّع</span><b>${fmtM(a.ret)}</b></div><div><span>عليه</span><b style="color:${a.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(a.owe)}</b></div></div>
+    ${a.noPrice?'<div class="small muted" style="margin-top:6px">⚠️ فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}
+    <div class="acts"><button class="btn sm" data-act="invoice" data-id="${esc(t.id)}">🧾 الفاتورة</button><button class="btn sm ok" data-act="pay" data-id="${esc(t.id)}">💵 دفعة</button><button class="btn sm ghost" data-act="ret" data-id="${esc(t.id)}">↩️ مرتجع</button></div></div>`;
+  return `<div class="sumline">برة عند المدرسين <b style="color:var(--bad)">${fmtM(out)}</b></div>` + open.map(card).join('') +
+    (done.length?`<details class="done"><summary>✅ خلّصوا (${done.length})</summary>${done.map(card).join('')}</details>`:'');
+}
+function merchHtml(){
+  const ms=merchSum();
+  if(!ms.length) return '<div class="card empty">لسه ما رفعتش بضاعة تجار.<br><br><a class="btn" href="#/settings">🏪 ارفع فاتورة تاجر من الإعدادات</a></div>';
+  const tot=ms.reduce((s,x)=>s+Math.max(0,x.owe),0);
+  return `<div class="sumline">عليك للتجار كلهم <b style="color:var(--bad)">${fmtM(tot)}</b></div>` + ms.map(x=>`<details class="card scard mcard"><summary>
+      <div class="hd"><b>🏪 ${esc(x.name)}</b><span class="small muted">▾</span></div>
+      <div class="small">خدت ${x.q} كتاب بـ ${fmtM(x.total)}${x.noPrice?' (فيه أسعار ناقصة)':''} • دفعت ${fmtM(x.paid)} • عليك <b style="color:${x.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(x.owe)}</b></div></summary>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>الصنف</th><th>خدت</th><th>سعر الواحد</th><th>الإجمالي</th><th>فاضل</th></tr></thead><tbody>
+      ${[...x.rows.values()].sort(byRank).map(r=>`<tr><td>${esc(bookLabel(r.b))}</td><td>${r.q}</td><td>${r.p==null?'—':fmtN(r.p)}</td><td>${r.p==null?'—':fmtN(r.q*r.p)}</td><td>${r.left}</td></tr>`).join('')}</tbody></table></div>
+    <h4>💵 الدفعات</h4>
+    ${x.pays.length?[...x.pays].sort((a,b)=>b.d.localeCompare(a.d)).map(p=>`<div class="hrow"><div class="grow">${fmtDay(dk(p.d))}</div><b>${fmtM(p.amt)}</b><button class="btn sm danger" data-act="del-mpay" data-id="${p.id}" title="امسح">🗑️</button></div>`).join(''):'<div class="muted small">لسه ما دفعتلوش.</div>'}
+    <button class="btn ok" style="width:100%;margin-top:8px" data-act="mpay" data-m="${esc(x.name)}">💵 دفعتله</button></details>`).join('');
+}
+
+/* --- شاشة بيع / طلب جديد --- */
+function saleForm(tid, editId){
+  const ed = editId ? db.sales.find(s=>s.id===editId && s.st==='order') : null;
+  const st = {tid: ed ? ed.t : (tid||''), qty:{}};
+  if(ed) for(const it of ed.items) st.qty[it.b]=(st.qty[it.b]||0)+it.q;
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>${ed?'✏️ تعديل الطلب':'🛒 بيع / طلب جديد'}</h3><div id="sf_t"></div><div id="sf_b"></div>
+    <div class="sale-foot"><div id="sf_tot" class="tot"></div>
+      <div class="row2"><button class="btn" data-sf="order">${ed?'💾 حفظ الطلب':'🛒 طلب'}</button><button class="btn ok" data-sf="sell">✅ باع على طول</button></div>
+      <button class="btn ghost" data-sf="close" style="width:100%;margin-top:8px">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  const items=()=>SELL_KEYS.filter(k=>st.qty[k]>0).map(k=>({b:k, q:st.qty[k]}));
+  const drawTot=()=>{
+    let n=0, tot=0, miss=false;
+    for(const it of items()){ n+=it.q; const p=priceOf(it.b); if(!p) miss=true; else tot+=it.q*p.post; }
+    m.querySelector('#sf_tot').innerHTML = n
+      ? `<b>${n}</b> كتاب — ${miss ? (tot?`<b>${fmtM(tot)}</b> + كتب لسه سعرها ما اتحددش`:'<span class="muted">السعر لسه ما اتحددش</span>') : `<b>${fmtM(tot)}</b> <span class="small muted">بعد الخصم</span>`}`
+      : '<span class="muted">اكتب العدد قدام الكتب</span>';
+  };
+  const drawRes=raw=>{
+    const res=m.querySelector('#sf_res'); raw=raw.trim();
+    const isNum=/^[\d٠-٩۰-۹\s+\-]+$/.test(raw), qd=normPhone(raw).replace(/^0/,''), words=normText(raw).split(' ').filter(Boolean);
+    const hits=!raw ? [] : db.teachers.filter(t=> isNum ? (!!qd && (t.phone||'').includes(qd)) : words.every(w=>normText(t.name).includes(w))).slice(0,8);
+    res.innerHTML=(raw && !hits.length?'<div class="hint" style="margin:0 0 6px">مش لاقيه.</div>':'') +
+      hits.map(t=>`<button class="pick-row" data-sf="pick" data-id="${esc(t.id)}"><b>${esc(t.name)}</b> <span class="small muted">${esc([t.phone,t.area].filter(Boolean).join(' • '))}</span></button>`).join('') +
+      (raw ? `<div class="addnew"><b class="small">➕ ضيفه (لو مش موجود)</b><div class="row2"><input id="sf_nn" placeholder="الاسم" value="${esc(isNum?'':raw)}"><input id="sf_np" inputmode="tel" dir="ltr" placeholder="التليفون" value="${esc(isNum?raw:'')}"></div>
+        <button class="btn sm pri" data-sf="addt" style="margin-top:8px">➕ ضيفه</button></div>` : '<div class="hint">اكتب اسم المدرس أو رقمه.</div>');
+  };
+  const drawT=()=>{
+    const box=m.querySelector('#sf_t'), t=tById(st.tid);
+    if(t){ box.innerHTML=`<div class="pick"><div class="grow"><b>${esc(t.name)}</b><div class="small muted">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.phone].filter(Boolean).join(' • '))}</div></div>${ed?'':'<button class="btn sm ghost" data-sf="chg">تغيير</button>'}</div>`; return; }
+    box.innerHTML=`<div class="search" style="margin:0 0 6px"><input id="sf_q" type="search" placeholder="🔎 اسم المدرس أو التليفون" autocomplete="off"></div><div id="sf_res"></div>`;
+    const q=box.querySelector('#sf_q'); q.addEventListener('input',()=>drawRes(q.value)); drawRes(''); setTimeout(()=>q.focus(),50);
+  };
+  const drawB=()=>{
+    const box=m.querySelector('#sf_b'), t=tById(st.tid);
+    if(!t){ box.innerHTML=''; drawTot(); return; }
+    const mine=SELL_KEYS.filter(k=>{ const p=bookParts(k); return (!t.stage || t.stage.includes(p.st)) && (t.subjects||[]).includes(p.sb); });
+    const others=SELL_KEYS.filter(k=>!mine.includes(k));
+    const left=lotLeft();
+    const row=k=>{ const p=priceOf(k), av=merchAvail(k,left), q=st.qty[k]||'';
+      return `<div class="srow ${q?'sel':''}" data-k="${k}"><div class="grow"><b style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</b>
+        <div class="small">${p?`${p.pre!=null?`<s class="muted">${fmtN(p.pre)}</s> ← `:''}<b>${fmtN(p.post)} ج</b>`:'<span class="muted">السعر —</span>'}</div>
+        <div class="small muted">📦 ${av.length?'من '+av.map(([n,c])=>`${esc(n)} ${c}`).join(' + '):'مفيش عند التجار'}</div></div>
+        <div class="step"><button data-sf="dec" data-k="${k}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-k="${k}" value="${q}"><button class="plus" data-sf="inc" data-k="${k}" aria-label="زوّد">+</button></div></div>`; };
+    box.innerHTML = mine.length
+      ? `<div class="stage-t">⭐ كتب تخصصه</div>${mine.map(row).join('')}<details class="others" ${others.some(k=>st.qty[k])?'open':''}><summary>كتب تانية (${others.length})</summary>${others.map(row).join('')}</details>`
+      : `<div class="stage-t">الكتب</div>${SELL_KEYS.map(row).join('')}`;
+    drawTot();
+  };
+  const setQ=(k,q)=>{ q=Math.max(0,Math.min(9999,q||0)); if(q) st.qty[k]=q; else delete st.qty[k];
+    const r=m.querySelector(`.srow[data-k="${k}"]`); if(r){ r.classList.toggle('sel',!!q); const i=r.querySelector('.qin'); if(document.activeElement!==i) i.value=q||''; }
+    drawTot(); };
+  m.addEventListener('input', e=>{ const i=e.target.closest('.qin'); if(i) setQ(i.dataset.k, parseInt(digits(i.value).replace(/\D/g,''),10)); });
+  const save1=(sell)=>{
+    const t=tById(st.tid); if(!t){ alert('اختار المدرس الأول'); return; }
+    const its=items(); if(!its.length){ alert('اكتب عدد الكتب الأول'); return; }
+    if(sell){ const sh=shortMsg(its); if(sh && !confirm(`⚠️ بضاعة التجار مش مكفّية:\n${sh}\n\nتكمل البيع؟`)) return; }
+    const n=its.reduce((s,x)=>s+x.q,0);
+    close();
+    withUndo(sell ? `✅ اتباع ${n} كتاب لـ ${t.name}` : (ed ? '💾 الطلب اتعدّل' : `🛒 اتسجّل طلب ${n} كتاب`), ()=>{
+      let s = ed;
+      if(s) s.items=its; else { s={id:uid(), t:t.id, st:'order', d:new Date().toISOString(), items:its, rep:db.rep}; db.sales.push(s); }
+      if(sell) sellItems(s, lotLeft());
     });
-  }
-  function fillSelect(sel, values, placeholder){
-    sel.innerHTML = '';
-    if (placeholder !== undefined){ var p=document.createElement('option'); p.value=''; p.textContent=placeholder; sel.appendChild(p); }
-    values.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
-  }
-  function val(name){ var c=document.querySelector('input[name="'+name+'"]:checked'); return c?c.value:''; }
-  function vals(name){ return Array.prototype.map.call(document.querySelectorAll('input[name="'+name+'"]:checked'), function(c){return c.value;}); }
-  function digits(s){ return String(s||'').replace(/\D/g,''); }
-  function okPhone(p){ return /^01[0-25]\d{8}$/.test(p); }
+    if(sell) showInvoice(t.id);
+  };
+  m.addEventListener('click', e=>{
+    if(e.target===m){ close(); return; }
+    const b=e.target.closest('[data-sf]'); if(!b) return;
+    const a=b.dataset.sf, k=b.dataset.k;
+    if(a==='close') close();
+    else if(a==='inc') setQ(k,(st.qty[k]||0)+1);
+    else if(a==='dec') setQ(k,(st.qty[k]||0)-1);
+    else if(a==='pick'){ st.tid=b.dataset.id; drawT(); drawB(); }
+    else if(a==='chg'){ st.tid=''; drawT(); drawB(); }
+    else if(a==='addt'){
+      const name=m.querySelector('#sf_nn').value.trim(), phone=normPhone(m.querySelector('#sf_np').value);
+      if(!name){ alert('اكتب اسم المدرس'); return; }
+      const dup=phone && db.teachers.find(x=>x.phone===phone);
+      if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تختاره؟`)){ st.tid=dup.id; drawT(); drawB(); } return; }
+      const nt={id:uid(), name, phone, stage:'', subjectText:'', subjects:[], area:'', school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
+      db.teachers.push(nt); save(); st.tid=nt.id; drawT(); drawB(); toast(`➕ اتضاف ${name}`);
+    }
+    else if(a==='order') save1(false);
+    else if(a==='sell') save1(true);
+  });
+  drawT(); drawB();
+}
 
-  // ---- المندوب والمركز والقرية ----
-  var repSel = el('rep'), markazSel = el('markaz'), villageSel = el('village');
-  fillSelect(repSel, Object.keys(REPS), 'اختار المندوب');
-  fillSelect(markazSel, Object.keys(VILLAGES), 'اختار المركز');
-  if (REP_PARAM) {
-    if (!REPS[REP_PARAM]) { var o=document.createElement('option'); o.value=REP_PARAM; o.textContent=REP_PARAM; repSel.appendChild(o); }
-    repSel.value = REP_PARAM;
-    el('repQ').classList.add('hidden');
-    el('repChip').textContent = 'المندوب: ' + REP_PARAM;
-    el('repChip').classList.remove('hidden');
-    if (REPS[REP_PARAM]) markazSel.value = REPS[REP_PARAM];
-  }
-  repSel.addEventListener('change', function(){ if (REPS[repSel.value]) { markazSel.value = REPS[repSel.value]; onMarkaz(); } });
-  function onMarkaz(){
-    var m = markazSel.value;
-    opts('areaType', 'areaType', m ? ['بندر ' + m, 'قرية تابعة لـ ' + m] : []);
-    el('villageQ').classList.add('hidden');
-    var list = (VILLAGES[m] || []).slice().sort(function(a,b){ return a.localeCompare(b,'ar'); });
-    list.push('قريتي مش في القايمة');
-    fillSelect(villageSel, list, 'اختار القرية');
-    el('villageOther').classList.add('hidden');
-  }
-  markazSel.addEventListener('change', onMarkaz);
-  villageSel.addEventListener('change', function(){ el('villageOther').classList.toggle('hidden', villageSel.value !== 'قريتي مش في القايمة'); });
+/* --- الفاتورة --- */
+function showInvoice(tid){
+  const t=tById(tid); if(!t) return;
+  const a=accMap()[tid] || {bought:0, paid:0, ret:0, owe:0, noPrice:false};
+  const rows=new Map();
+  for(const s of db.sales) if(s.st==='sold' && s.t===tid) for(const it of s.items){
+    const key=it.b+'|'+it.pre+'|'+it.post; if(!rows.has(key)) rows.set(key,{b:it.b, pre:it.pre, post:it.post, q:0}); rows.get(key).q+=it.q; }
+  const list=[...rows.values()].sort(byRank);
+  const msg=`🧾 فاتورة بيع — سلاح التلميذ\nالتاريخ: ${fmtDay(dayKey())}\nالمندوب: ${db.rep}\nالمدرس: ${t.name}\n\n` +
+    list.map(r=>`• ${bookLabel(r.b)} × ${r.q}`+(r.post!=null?` × ${fmtN(r.post)} = ${fmtM(r.q*r.post)}`:' (السعر لسه ما اتحددش)')).join('\n') +
+    `\n\nالإجمالي: ${fmtM(a.bought)}${a.noPrice?' (فيه كتب السعر لسه ما اتحددش)':''}\nالمدفوع: ${fmtM(a.paid)}\nالمرتجع: ${fmtM(a.ret)}\nالباقي عليك: ${fmtM(a.owe)}`;
+  const m=document.createElement('div'); m.className='inv-wrap';
+  m.innerHTML=`<div class="inv"><div class="inv-h"><div class="brand">سلاح التلميذ</div><h2>فاتورة بيع</h2><div class="small">${fmtDay(dayKey())}</div></div>
+    <div class="kv"><span>المندوب</span><b>${esc(db.rep)}</b></div><div class="kv"><span>المدرس</span><b>${esc(t.name)}</b></div>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>العدد</th><th>السعر قبل</th><th>السعر بعد</th><th>الإجمالي</th></tr></thead><tbody>
+    ${list.map(r=>`<tr><td>${esc(bookLabel(r.b))}</td><td>${r.q}</td><td>${r.pre!=null?`<s>${fmtN(r.pre)}</s>`:'—'}</td><td>${r.post!=null?fmtN(r.post):'—'}</td><td>${r.post!=null?fmtN(r.q*r.post):'—'}</td></tr>`).join('') || '<tr><td colspan="5">مفيش بيع.</td></tr>'}</tbody></table></div>
+    ${a.noPrice?'<div class="inv-np">السعر لسه ما اتحددش</div>':''}
+    <div class="kv"><span>الإجمالي</span><b>${fmtM(a.bought)}</b></div><div class="kv"><span>المدفوع</span><b>${fmtM(a.paid)}</b></div>
+    <div class="kv"><span>المرتجع</span><b>${fmtM(a.ret)}</b></div><div class="kv big"><span>الباقي عليه</span><b style="color:#b91c1c">${fmtM(a.owe)}</b></div></div>
+    <div class="inv-acts"><a class="btn ok" href="${esc(waLink(t.phone, msg))}" target="_blank" rel="noopener">💬 ابعت واتساب</a><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
+  document.body.appendChild(m);
+  m.querySelector('[data-inv="close"]').onclick=()=>m.remove();
+}
 
-  // ---- المواد والصفوف ----
-  opts('subjects', 'subjects', SUBJECTS, 'checkbox');
-  function allowedGrades(subs){
-    var g = {};
-    subs.forEach(function(s){
-      PRIMARY.forEach(function(p, i){ if (FROM_FIRST[s] || (FROM_FOURTH[s] && i >= 3)) g[p] = 1; });
-      if (HAS_PREP[s]) PREP.forEach(function(p){ g[p] = 1; });
+/* --- دفعة / مرتجع --- */
+function amtModal(title, sub, cb){
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>${title}</h3>${sub}
+    <div class="row2"><div class="field"><label>المبلغ</label><input id="p_amt" inputmode="decimal"></div><div class="field"><label>التاريخ</label><input id="p_d" type="date" value="${dayKey()}"></div></div>
+    <div class="row2"><button class="btn pri" id="p_ok">حفظ</button><button class="btn ghost" id="p_x">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  m.addEventListener('click',e=>{ if(e.target===m) close(); });
+  m.querySelector('#p_x').onclick=close;
+  setTimeout(()=>m.querySelector('#p_amt').focus(),50);
+  m.querySelector('#p_ok').onclick=()=>{
+    const amt=parseNum(m.querySelector('#p_amt').value); if(!amt || amt<=0){ alert('اكتب المبلغ'); return; }
+    const d=pickDate(m.querySelector('#p_d').value); close(); cb(r2(amt), d);
+  };
+}
+function retForm(tid){
+  const t=tById(tid); if(!t) return;
+  const lines=retLines(tid), by={};
+  for(const l of lines) by[l.it.b]=(by[l.it.b]||0)+l.left;
+  const ks=Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b]);
+  if(!ks.length){ alert('مفيش كتب اشتراها علشان يرجّعها.'); return; }
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>↩️ مرتجع من ${esc(t.name)}</h3>
+    <div class="field"><label>الكتاب</label><select id="r_b">${ks.map(k=>`<option value="${k}">${esc(bookLabel(k))} (معاه ${by[k]})</option>`).join('')}</select></div>
+    <div class="row2"><div class="field"><label>العدد</label><input id="r_q" inputmode="numeric" value="1"></div><div class="field"><label>التاريخ</label><input id="r_d" type="date" value="${dayKey()}"></div></div>
+    <p class="hint" style="margin-top:0">الكتب بترجع لبضاعة نفس التاجر اللي اتباعت منه.</p>
+    <div class="row2"><button class="btn pri" id="r_ok">حفظ</button><button class="btn ghost" id="r_x">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  m.addEventListener('click',e=>{ if(e.target===m) close(); });
+  m.querySelector('#r_x').onclick=close;
+  m.querySelector('#r_ok').onclick=()=>{
+    const b=m.querySelector('#r_b').value, q=parseInt(digits(m.querySelector('#r_q').value).replace(/\D/g,''),10);
+    if(!q || q<1){ alert('اكتب العدد'); return; }
+    if(q>by[b]){ alert(`ده اشترى ${by[b]} بس من الكتاب ده.`); return; }
+    const d=pickDate(m.querySelector('#r_d').value); close();
+    withUndo(`↩️ اتسجّل مرتجع ${q} ${bookLabel(b)}`, ()=>{
+      const parts=[]; let need=q;
+      for(const l of retLines(tid).filter(l=>l.it.b===b).sort((x,y)=>(y.s.sd||'').localeCompare(x.s.sd||''))){
+        if(!need) break; const n=Math.min(need,l.left);
+        parts.push({sale:l.s.id, i:l.i, q:n, lots:retLots(tid, l.s, l.i, n)}); need-=n;
+      }
+      db.payments.push({id:uid(), k:'ret', t:tid, b, q, d, parts});
     });
-    return PRIMARY.concat(PREP).filter(function(x){ return g[x]; });
-  }
-  function onSubjects(){
-    var subs = vals('subjects');
-    el('subjects').querySelectorAll('input').forEach(function(b){ b.disabled = (subs.length >= 2 && !b.checked); });
-    var keep = vals('grades'), allowed = allowedGrades(subs);
-    if (!allowed.length) el('grades').innerHTML = '<span class="hint">اختار المادة الأول</span>';
-    else {
-      opts('grades', 'grades', allowed, 'checkbox');
-      el('grades').querySelectorAll('input').forEach(function(b){ if (keep.indexOf(b.value) >= 0) b.checked = true; });
-    }
-    onSale();
-  }
-  el('subjects').addEventListener('change', onSubjects);
-  fillSelect(el('refSubject'), SUBJECTS, 'اختار المادة');
-  opts('workplace', 'workplace', ['مدرسة بس','دروس بس','مدرسة ودروس']);
+  };
+}
 
-  // ---- الكتب والصور ----
-  opts('books', 'books', [SELAH, OTHER_BOOK, NO_BOOK], 'checkbox');
-  opts('otherWhy', 'otherWhy', ['السعر','الشرح','المدرسة أو الطلبة طالبينه','سبب تاني']);
-  el('books').addEventListener('change', function(e){
-    var t = e.target;
-    if (t.checked && t.value === NO_BOOK) el('books').querySelectorAll('input').forEach(function(b){ if (b !== t) b.checked = false; });
-    if (t.checked && t.value !== NO_BOOK) el('books').querySelector('input[value="'+NO_BOOK+'"]').checked = false;
-    var b = vals('books');
-    el('otherBookBox').classList.toggle('hidden', b.indexOf(OTHER_BOOK) < 0);
-    el('photoQ').classList.toggle('hidden', b.indexOf(SELAH) < 0);
-  });
-  el('otherWhy').addEventListener('change', function(){ el('otherWhyText').classList.toggle('hidden', val('otherWhy') !== 'سبب تاني'); });
-
-  var photos = [];
-  function renderPhotos(){
-    var box = el('photos'); box.innerHTML = '';
-    photos.forEach(function(p, i){
-      var d = document.createElement('div'); d.className = 'ph';
-      var img = document.createElement('img'); img.src = 'data:image/jpeg;base64,' + p.data; img.alt = 'صورة ' + (i+1);
-      var x = document.createElement('button'); x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label','امسح الصورة');
-      x.addEventListener('click', function(){ photos.splice(i,1); renderPhotos(); });
-      d.appendChild(img); d.appendChild(x); box.appendChild(d);
-    });
-    el('uploadBtn').classList.toggle('hidden', photos.length >= MAX_PHOTOS);
+/* --- الإعدادات: الأسعار وبضاعة التجار --- */
+function pricesCard(){
+  const n=SELL_KEYS.filter(k=>priceOf(k)).length;
+  return `<div class="card"><h3 class="sec-t">💲 أسعار الكتب</h3>
+    <div class="kv"><span>كتب ليها سعر</span><b>${n} من ${SELL_KEYS.length}</b></div>
+    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="price-xlsx">📥 ارفع شيت الأسعار</button><button class="btn" data-act="price-template">⬇️ شيت فاضي</button></div>
+    <p class="hint">أعمدته: المادة، الصف، المرحلة، السعر قبل الخصم، السعر بعد الخصم. لو «بعد الخصم» فاضي البرنامج بيحسبه (إنجليزي 30%، إعدادي 24.5%). البيع اللي اتأكد بيفضل بسعره وقتها، والطلبات بتاخد السعر الجديد.</p>
+    ${n?`<details class="stk"><summary>👀 الأسعار الحالية</summary>${SELL_KEYS.map(k=>{ const p=priceOf(k);
+      return `<div class="kv"><span style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</span><span>${p?`${p.pre!=null?`<s class="muted">${fmtN(p.pre)}</s> ← `:''}<b>${fmtN(p.post)}</b>`:'—'}</span></div>`; }).join('')}</details>`:''}</div>`;
+}
+function merchCard(){
+  const ms=merchSum();
+  return `<div class="card"><h3 class="sec-t">🏪 بضاعة التجار</h3>
+    ${ms.map(x=>`<div class="kv"><span>${esc(x.name)}</span><span class="small">خدت ${x.q} • فاضل ${x.left}</span></div>`).join('')}
+    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="merch-xlsx">📥 ارفع فاتورة تاجر</button><button class="btn" data-act="merch-template">⬇️ شيت فاضي</button></div>
+    <p class="hint">الشيت فيه الكتب في الصفوف، ولكل تاجر عمودين: «محمود عدد» و«محمود سعر». اكتب اسم التاجر مكان «تاجر 1» (ينفع تكتب الاسم بس). لو السعر فاضي بياخد السعر بعد الخصم من شيت الأسعار. كل شيت بيترفع بيتجمع على اللي قبله، والبيع بياخد من الأقدم الأول.</p>
+    ${db.merchants.length?`<details class="stk"><summary>🕘 سجل البضاعة (${db.merchants.length})</summary>${[...db.merchants].reverse().map(l=>`<div class="hrow"><div class="grow"><b>${esc(l.m)}</b> — <span style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</span> × ${l.q}${l.p!=null?` بـ ${fmtN(l.p)}`:''}<div class="small muted">${fmtDT(l.d)}</div></div><button class="btn sm danger" data-act="del-lot" data-id="${l.id}" title="امسح">🗑️</button></div>`).join('')}</details>`:''}</div>`;
+}
+const sellRow = k => { const {st,sb,g}=bookParts(k); return [SUBJ[sb], g, STAGES[st].name]; };
+function priceTemplate(){
+  const rows=[['المادة','الصف','المرحلة','السعر قبل الخصم','السعر بعد الخصم'], ...SELL_KEYS.map(k=>{ const p=db.prices[k]||{}; return [...sellRow(k), p.pre??'', p.post??'']; })];
+  download(buildXlsx([{name:'الأسعار', rows, widths:[14,8,12,16,16]}]), 'شيت-أسعار-الكتب.xlsx');
+  toast('⬇️ شيت الأسعار نزل — اكتب الأسعار وارفعه');
+}
+function merchTemplate(){
+  const names=[...new Set(db.merchants.map(l=>l.m))]; if(!names.length) names.push('تاجر 1','تاجر 2');
+  const rows=[['المادة','الصف','المرحلة', ...names.flatMap(n=>[`${n} عدد`,`${n} سعر`])], ...SELL_KEYS.map(k=>[...sellRow(k), ...names.flatMap(()=>['',''])])];
+  download(buildXlsx([{name:'بضاعة التجار', rows, widths:[14,8,12, ...names.flatMap(()=>[14,14])]}]), 'شيت-بضاعة-التجار.xlsx');
+  toast('⬇️ الشيت نزل — اكتب اسم التاجر والعدد والسعر وارفعه');
+}
+function rowBook(sbv, gv, stv){
+  const sb=parseSubjects(String(sbv??''))[0], g=parseGrade(gv); if(!sb || !g) return null;
+  const st=(parseStage(String(stv??'')) || parseStage(String(gv??'')) || (sb==='en'?'p':'m'))[0];
+  const k=`${st}-${sb}-${g}`; return bookRank[k]===undefined ? null : k;
+}
+function findHead(rows, need){
+  for(let i=0;i<Math.min(15,rows.length);i++){
+    const h=[...(rows[i]||[])].map(x=>normText(x??'')); const fi=re=>h.findIndex(x=>x && re.test(x));
+    const H={row:i, h, sb:fi(/ماده/), g:fi(/صف/), st:fi(/مرحله/)};
+    if(H.sb>=0 && H.g>=0 && need(H, fi)) return H;
   }
-  function shrink(file){
-    return new Promise(function(res, rej){
-      var r = new FileReader();
-      r.onload = function(){
-        var img = new Image();
-        img.onload = function(){
-          var max = 1280, w = img.width, h = img.height, k = Math.min(1, max / Math.max(w, h));
-          var c = document.createElement('canvas'); c.width = Math.round(w*k); c.height = Math.round(h*k);
-          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-          res(c.toDataURL('image/jpeg', 0.78).split(',')[1]);
-        };
-        img.onerror = rej; img.src = r.result;
-      };
-      r.onerror = rej; r.readAsDataURL(file);
-    });
+  return null;
+}
+$('#filePrice').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  let rows; try{ rows=await readXlsx(f); }catch(err){ alert('مش قادر أقرا الملف ده. اتأكد إنه شيت إكسل (.xlsx).'); return; }
+  const H=findHead(rows, (H,fi)=>{ H.pre=fi(/قبل/); H.post=fi(/بعد/); return H.pre>=0 || H.post>=0; });
+  if(!H){ alert('مش لاقي أعمدة: المادة، الصف، السعر قبل الخصم / بعد الخصم'); return; }
+  const upd={}; let bad=0;
+  for(const r of rows.slice(H.row+1)){
+    if(!r) continue;
+    const pre=H.pre>=0?parseNum(r[H.pre]):null, post=H.post>=0?parseNum(r[H.post]):null;
+    if(pre==null && post==null) continue;
+    const k=rowBook(r[H.sb], r[H.g], H.st>=0?r[H.st]:'');
+    if(!k || !isSell(k)){ bad++; continue; }
+    upd[k]={pre, post};
   }
-  el('photoInput').addEventListener('change', function(e){
-    var files = Array.prototype.slice.call(e.target.files || []).slice(0, MAX_PHOTOS - photos.length);
-    Promise.all(files.map(shrink)).then(function(list){
-      list.forEach(function(d){ photos.push({ data: d, type: 'image/jpeg' }); });
-      renderPhotos();
-    }).catch(function(){ alert('مش قادرين نقرا الصورة دي، جرّب صورة تانية.'); });
-    e.target.value = '';
-  });
-
-  // ---- النجوم ----
-  var rating = 0, starsBox = el('stars');
-  var STAR_TXT = ['','مش كويس','محتاج يتحسن','عادي','كويس','ممتاز 👌'];
-  for (var i=1;i<=5;i++){ (function(n){
-    var b=document.createElement('button'); b.type='button'; b.textContent='★'; b.setAttribute('aria-label', n+' من 5');
-    b.addEventListener('click', function(){ rating=n; starsBox.querySelectorAll('button').forEach(function(x,j){ x.classList.toggle('on', j<n); }); el('starsLabel').textContent = STAR_TXT[n]; });
-    starsBox.appendChild(b);
-  })(i); }
-  opts('speed', 'speed', ['في معاده ⚡','مقبول','اتأخر','موصلش']);
-
-  // ---- الأيام والمواعيد ----
-  opts('days', 'days', ['السبت','الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة'], 'checkbox');
-  var HOURS = [];
-  for (var h=7; h<=23; h++){
-    var hh = h > 12 ? h - 12 : h;
-    HOURS.push(hh + ' ' + (h < 12 ? 'الصبح' : (h < 15 ? 'الضهر' : (h < 18 ? 'العصر' : 'بالليل'))));
+  const n=Object.keys(upd).length;
+  if(!n){ alert('مفيش أسعار في الشيت.'); return; }
+  if(!confirm(`لقيت أسعار ${n} كتاب${bad?`\n⚠️ و ${bad} سطر مش فاهمه (هيتساب)`:''}.\n\nأحفظها؟`)) return;
+  withUndo(`💲 اتحفظت أسعار ${n} كتاب`, ()=>{ Object.assign(db.prices, upd); fillPrices(); });
+});
+$('#fileMerch').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  let rows; try{ rows=await readXlsx(f); }catch(err){ alert('مش قادر أقرا الملف ده. اتأكد إنه شيت إكسل (.xlsx).'); return; }
+  const H=findHead(rows, ()=>true);
+  if(!H){ alert('مش لاقي أعمدة: المادة، الصف'); return; }
+  // أعمدة التجار بالترتيب. بيقبل «محمود عدد» و«محمود سعر»، أو «محمود» بس:
+  // العمود اللي فيه «سعر» = سعر التاجر اللي قبله، وأي عمود تاني = عدد تاجر (واسم التاجر مكرر مرتين = التاني سعر)
+  const raw=rows[H.row]||[], ms=[], byN={}, fixed=new Set([H.sb, H.g, H.st]); let last=null;
+  for(let i=0;i<raw.length;i++){
+    const n=H.h[i]||''; if(fixed.has(i) || !n || /اجمالي|ملاحظ|صنف|كتاب/.test(n)) continue;
+    const isP=/سعر/.test(n), isQ=/عدد|كميه/.test(n);
+    const name=String(raw[i]).replace(/(ال)?(عدد|سعر|كمية|كميه)/g,' ').replace(/[\-–_:()]/g,' ').replace(/\s+/g,' ').trim();
+    const key=normText(name);
+    let mc = key ? byN[key] : null;
+    if(isP){ const tgt=mc||last; if(tgt && tgt.p<0) tgt.p=i; continue; }
+    if(mc && !isQ && mc.q>=0 && mc.p<0){ mc.p=i; continue; }
+    if(!key) continue;
+    if(!mc){ mc=byN[key]={name, q:-1, p:-1}; ms.push(mc); }
+    if(mc.q<0) mc.q=i;
+    last=mc;
   }
-  fillSelect(el('from'), HOURS, 'اختار'); fillSelect(el('to'), HOURS, 'اختار');
-
-  // ---- البيع ----
-  opts('sale', 'sale', ['أيوه','غالبًا','لسه مش متأكد','لأ']);
-  function saleOffers(){
-    var out = [];
-    if (vals('subjects').indexOf('انجليزي') >= 0) out.push(DISC_EN);
-    if (vals('grades').some(function(g){ return PREP.indexOf(g) >= 0; })) out.push(DISC_PREP);
-    return out;
-  }
-  function onSale(){
-    var offers = saleOffers();
-    el('saleQ').classList.toggle('hidden', !offers.length);
-    el('noSaleNote').classList.toggle('hidden', !!offers.length);
-    var p = el('promo'); p.innerHTML = '';
-    if (offers.length){
-      var a = document.createElement('div'); a.className='big'; a.textContent = '✨ طوّرنا كتب الترم التاني!'; p.appendChild(a);
-      var b = document.createElement('div'); b.textContent = 'المنهج متراجع بالكامل وفيه تعديلات جديدة، والكتاب طالع في أبهى صورة.'; p.appendChild(b);
-      offers.forEach(function(o){ var c=document.createElement('div'); c.className='deal'; c.textContent='🎁 ' + o; p.appendChild(c); });
-    }
-    var s = val('sale');
-    el('copiesQ').classList.toggle('hidden', !(s === 'أيوه' || s === 'غالبًا'));
-  }
-
-  document.addEventListener('change', function(e){
-    var n = e.target.name;
-    if (n === 'whatsapp') el('waBox').classList.toggle('hidden', e.target.value !== 'لأ');
-    if (n === 'areaType') el('villageQ').classList.toggle('hidden', e.target.value.indexOf('قرية') !== 0);
-    if (n === 'problem') el('problemDetails').classList.toggle('hidden', e.target.value !== 'أيوه');
-    if (n === 'hasRef') el('refBox').classList.toggle('hidden', e.target.value !== 'أيوه');
-    if (n === 'grades' || n === 'sale') onSale();
-    if (e.target.classList) e.target.classList.remove('bad');
-  });
-  document.addEventListener('input', function(e){ if (e.target.classList) e.target.classList.remove('bad'); });
-
-  // ---- اللوكيشن ----
-  var loc = null;
-  el('locBtn').addEventListener('click', function(){
-    var st = el('locStatus');
-    if (!navigator.geolocation){ st.className='status err'; st.textContent='الموبايل ده مش بيدعم تحديد الموقع، الصق اللينك تحت.'; return; }
-    st.className='status'; st.textContent='جاري تحديد الموقع... استنى ثواني';
-    el('locBtn').disabled = true;
-    navigator.geolocation.getCurrentPosition(function(p){
-      loc = {lat:p.coords.latitude, lng:p.coords.longitude, acc:Math.round(p.coords.accuracy)};
-      st.className='status ok';
-      st.textContent='✅ تم تسجيل الموقع (الدقة حوالي ' + loc.acc + ' متر)' + (loc.acc > 100 ? ' — لو تقدر افتح الـ GPS ودوس تاني عشان يبقى أدق' : '');
-      el('locBtn').disabled = false; el('locBtn').textContent='📍 حدّث الموقع';
-    }, function(err){
-      el('locBtn').disabled = false; st.className='status err';
-      st.textContent = err.code === 1
-        ? 'لازم توافق إن الموقع يتبعت، أو افتح الـ GPS وجرّب تاني. ممكن كمان تلصق اللينك تحت.'
-        : 'معرفناش نحدد الموقع، اتأكد إن الـ GPS شغال وجرّب تاني، أو الصق اللينك تحت.';
-    }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
-  });
-
-  // ---- جمع البيانات ----
-  function collect(){
-    var area = val('areaType'), isVillage = area.indexOf('قرية') === 0, village = '';
-    if (isVillage) village = villageSel.value === 'قريتي مش في القايمة' ? el('villageOther').value.trim() : villageSel.value;
-    var offers = saleOffers(), books = vals('books'), hasOther = books.indexOf(OTHER_BOOK) >= 0;
-    var why = val('otherWhy'); if (why === 'سبب تاني') why = el('otherWhyText').value.trim() || why;
-    var d = {
-      rep: repSel.value, name: el('name').value.trim(), phone: digits(el('phone').value), whatsapp: val('whatsapp'),
-      whatsappNumber: val('whatsapp') === 'لأ' ? digits(el('waNumber').value) : '',
-      markaz: markazSel.value, areaType: isVillage ? 'قرية' : (area ? 'بندر' : ''), village: village,
-      subjects: vals('subjects'), grades: vals('grades'), workplace: val('workplace'),
-      books: books, otherBook: hasOther ? el('otherBook').value.trim() : '', otherWhy: hasOther ? why : '',
-      photos: books.indexOf(SELAH) >= 0 ? photos : [],
-      repRating: rating || '', speed: val('speed'), problem: val('problem'),
-      problemDetails: val('problem') === 'أيوه' ? el('problemDetails').value.trim() : '',
-      center: el('center').value.trim(), landmark: el('landmark').value.trim(), days: vals('days'),
-      from: el('from').value, to: el('to').value,
-      lat: loc?loc.lat:'', lng: loc?loc.lng:'', accuracy: loc?loc.acc:'', mapLink: el('mapLink').value.trim(),
-      students: el('students').value,
-      discount: offers.join(' + '), sale: offers.length ? val('sale') : '',
-      copies: offers.length && !el('copiesQ').classList.contains('hidden') ? el('copies').value : '',
-      notes: el('notes').value.trim(), ref: null
-    };
-    if (val('hasRef') === 'أيوه') d.ref = { name: el('refName').value.trim(), phone: digits(el('refPhone').value),
-      subject: el('refSubject').value, place: el('refPlace').value.trim(), village: el('refVillage').value.trim() };
-    return d;
-  }
-  // كل خطوة: [رسالة، العنصر اللي يتعلّم بالأحمر]
-  function stepProblems(n, d){
-    var p = [];
-    function need(ok, msg, id){ if (!ok) p.push([msg, id]); }
-    if (n === 0){
-      need(d.name, 'اكتب الاسم', 'name');
-      need(okPhone(d.phone), 'رقم الموبايل لازم يكون 11 رقم ويبدأ بـ 01', 'phone');
-      need(!d.whatsappNumber || okPhone(d.whatsappNumber), 'رقم الواتساب لازم يكون 11 رقم ويبدأ بـ 01 (أو سيبه فاضي)', 'waNumber');
-      need(d.rep, 'اختار المندوب', 'rep');
-      need(d.markaz, 'اختار المركز', 'markaz');
-      need(d.areaType, 'اختار بندر ولا قرية', 'areaType');
-      need(d.areaType !== 'قرية' || d.village, 'اختار القرية', villageSel.value ? 'villageOther' : 'village');
-    }
-    if (n === 1){
-      need(d.subjects.length, 'اختار المادة', 'subjects');
-      need(d.grades.length, 'اختار الصفوف', 'grades');
-      need(d.workplace, 'اختار حضرتك بتشتغل فين', 'workplace');
-      need(d.books.length, 'اختار الكتاب اللي بتشتغل منه', 'books');
-    }
-    if (n === 2) need(d.repRating, 'اختار تقييم المندوب بالنجوم', 'stars');
-    if (n === 3){
-      need(d.center, 'اكتب اسم السنتر أو مكان الدرس', 'center');
-      need(d.landmark, 'اكتب علامة مميزة جنب المكان', 'landmark');
-      need(d.days.length, 'اختار أيام الدرس', 'days');
-      need(d.from && d.to, 'اختار مواعيد الدرس', d.from ? 'to' : 'from');
-      need(d.lat || d.mapLink, 'ابعت اللوكيشن أو الصق اللينك', 'mapLink');
-    }
-    if (n === 4){
-      need(d.students !== '', 'اكتب عدد الطلبة تقريبًا', 'students');
-      need(!d.discount || d.sale, 'اختار هتاخد كتب بيع ولا لأ', 'sale');
-    }
-    if (n === 5 && d.ref){
-      need(d.ref.name && d.ref.subject && d.ref.place && d.ref.village, 'كمّل بيانات الزميل', !d.ref.name ? 'refName' : (!d.ref.subject ? 'refSubject' : (!d.ref.place ? 'refPlace' : 'refVillage')));
-      need(okPhone(d.ref.phone), 'رقم الزميل لازم يكون 11 رقم ويبدأ بـ 01', 'refPhone');
-      need(d.ref.phone !== d.phone, 'رقم الزميل مكتوب نفس رقم حضرتك', 'refPhone');
-    }
-    return p;
-  }
-
-  // ---- الخطوات ----
-  var steps = Array.prototype.slice.call(document.querySelectorAll('.step')), cur = 0;
-  var dots = el('dots');
-  steps.forEach(function(s){ var d=document.createElement('div'); d.className='dot'; d.style.setProperty('--dc', 'var(--' + s.dataset.color + ')'); dots.appendChild(d); });
-  function show(n){
-    cur = n;
-    steps.forEach(function(s, i){ s.classList.toggle('active', i === n); });
-    var s = steps[n], root = document.documentElement.style;
-    root.setProperty('--c', 'var(--' + s.dataset.color + ')');
-    root.setProperty('--c-soft', s.dataset.soft);
-    dots.querySelectorAll('.dot').forEach(function(d, i){ d.classList.toggle('on', i <= n); });
-    el('stepName').textContent = s.dataset.name;
-    el('stepCount').textContent = 'خطوة ' + (n+1) + ' من ' + steps.length;
-    el('prevBtn').classList.toggle('hidden', n === 0);
-    el('nextBtn').textContent = n === steps.length - 1 ? 'إرسال البيانات ✓' : 'التالي ←';
-    el('formErr').classList.add('hidden');
-    window.scrollTo(0, 0);
-  }
-  function showErrors(p){
-    var fe = el('formErr');
-    fe.textContent = p.map(function(x){ return '• ' + x[0]; }).join('\n');
-    fe.style.whiteSpace = 'pre-line';
-    fe.classList.remove('hidden');
-    p.forEach(function(x){ var t = el(x[1]); if (t) t.classList.add('bad'); });
-    var first = el(p[0][1]); if (first && first.scrollIntoView) first.scrollIntoView({behavior:'smooth', block:'center'});
-  }
-  el('prevBtn').addEventListener('click', function(){ if (cur > 0) show(cur - 1); });
-  el('nextBtn').addEventListener('click', function(){
-    var d = collect(), p = stepProblems(cur, d);
-    if (p.length) { showErrors(p); return; }
-    if (cur < steps.length - 1) { show(cur + 1); return; }
-    submit(d);
-  });
-  el('f').addEventListener('submit', function(e){ e.preventDefault(); });
-
-  function submit(d){
-    var btn = el('nextBtn'); btn.disabled = true; btn.textContent = 'جاري الإرسال...';
-    function ok(res){
-      if (res === 'updated') el('doneMsg').textContent = 'بيانات حضرتك اتحدثت، والمندوب هيتواصل مع حضرتك قريب.';
-      el('f').classList.add('hidden'); el('nav').classList.add('hidden'); el('stepsBar').classList.add('hidden');
-      el('done').classList.add('active'); window.scrollTo(0,0);
-    }
-    function fail(msg){
-      btn.disabled = false; btn.textContent = 'إرسال البيانات ✓';
-      var fe = el('formErr'); fe.textContent = 'حصلت مشكلة في الإرسال: ' + (msg || 'جرّب تاني'); fe.classList.remove('hidden');
-    }
-    if (INSIDE_GOOGLE) {
-      google.script.run.withSuccessHandler(ok).withFailureHandler(function(e){ fail(e && e.message); }).submitForm(d);
-    } else {
-      fetch(API_URL, { method: 'POST', body: JSON.stringify({ data: d }) })
-        .then(function(r){ return r.json(); })
-        .then(function(j){ if (j.ok) ok(j.result); else fail(j.error); })
-        .catch(function(){ fail('اتأكد من النت وجرّب تاني'); });
+  const now=new Date().toISOString(), add=[]; let bad=0;
+  for(const mc of ms.filter(x=>x.q>=0)){
+    for(const r of rows.slice(H.row+1)){
+      if(!r) continue;
+      const q=parseInt(digits(r[mc.q]??'').replace(/[^\d]/g,''),10); if(!q) continue;
+      const k=rowBook(r[H.sb], r[H.g], H.st>=0?r[H.st]:'');
+      if(!k || !isSell(k)){ bad++; continue; }
+      let p=mc.p>=0?parseNum(r[mc.p]):null; if(p==null) p=priceOf(k)?.post ?? null;
+      add.push({id:uid(), m:mc.name, b:k, q, p, d:now});
     }
   }
+  if(!add.length){ alert('مفيش أعداد في الشيت.'); return; }
+  const sum={}; for(const l of add) sum[l.m]=(sum[l.m]||0)+l.q;
+  if(!confirm(`لقيت:\n${Object.entries(sum).map(([n,q])=>`• ${n}: ${q} كتاب`).join('\n')}${bad?`\n⚠️ و ${bad} سطر مش فاهمه (هيتساب)`:''}\n\nأضيفهم لبضاعة التجار؟`)) return;
+  withUndo(`🏪 اتضاف ${add.reduce((s,l)=>s+l.q,0)} كتاب لبضاعة التجار`, ()=>{ db.merchants.push(...add); });
+});
 
-  onMarkaz();
-  onSubjects();
-  el('loading').classList.add('hidden');
-  el('f').classList.remove('hidden');
-  el('nav').classList.remove('hidden');
-  show(0);
-  }
-})();
+render();
+if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>
