@@ -1720,7 +1720,7 @@ function merchCard(){
   return `<div class="card"><h3 class="sec-t">🏪 بضاعة التجار</h3>
     ${ms.map(x=>`<div class="kv"><span>${esc(x.name)}</span><span class="small">خدت ${x.q} • فاضل ${x.left}</span></div>`).join('')}
     <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="merch-xlsx">📥 ارفع فاتورة تاجر</button><button class="btn" data-act="merch-template">⬇️ شيت فاضي</button></div>
-    <p class="hint">الشيت فيه الكتب في الصفوف، ولكل تاجر عمودين: «محمود عدد» و«محمود سعر». غيّر اسم التاجر في العناوين. لو السعر فاضي بياخد السعر بعد الخصم من شيت الأسعار. كل شيت بيترفع بيتجمع على اللي قبله، والبيع بياخد من الأقدم الأول.</p>
+    <p class="hint">الشيت فيه الكتب في الصفوف، ولكل تاجر عمودين: «محمود عدد» و«محمود سعر». اكتب اسم التاجر مكان «تاجر 1» (ينفع تكتب الاسم بس). لو السعر فاضي بياخد السعر بعد الخصم من شيت الأسعار. كل شيت بيترفع بيتجمع على اللي قبله، والبيع بياخد من الأقدم الأول.</p>
     ${db.merchants.length?`<details class="stk"><summary>🕘 سجل البضاعة (${db.merchants.length})</summary>${[...db.merchants].reverse().map(l=>`<div class="hrow"><div class="grow"><b>${esc(l.m)}</b> — <span style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</span> × ${l.q}${l.p!=null?` بـ ${fmtN(l.p)}`:''}<div class="small muted">${fmtDT(l.d)}</div></div><button class="btn sm danger" data-act="del-lot" data-id="${l.id}" title="امسح">🗑️</button></div>`).join('')}</details>`:''}</div>`;
 }
 const sellRow = k => { const {st,sb,g}=bookParts(k); return [SUBJ[sb], g, STAGES[st].name]; };
@@ -1770,16 +1770,24 @@ $('#filePrice').addEventListener('change', async e=>{
 $('#fileMerch').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   let rows; try{ rows=await readXlsx(f); }catch(err){ alert('مش قادر أقرا الملف ده. اتأكد إنه شيت إكسل (.xlsx).'); return; }
-  const H=findHead(rows, H=>H.h.some(x=>/(عدد|العدد)$/.test(x)));
-  if(!H){ alert('مش لاقي أعمدة: المادة، الصف، و«اسم التاجر عدد»'); return; }
-  // أعمدة التجار بالترتيب: «محمود عدد» و«محمود سعر»
-  const raw=rows[H.row], ms=[], byN={};
-  raw.forEach((cell,i)=>{
-    const n=H.h[i]||''; const mm=n.match(/^(.*?)\s*(العدد|عدد|السعر|سعر)$/); if(!mm) return;
-    const name=String(cell).replace(/\s*(العدد|عدد|السعر|سعر)\s*$/,'').trim(); const key=normText(name); if(!key) return;
-    if(!byN[key]){ byN[key]={name, q:-1, p:-1}; ms.push(byN[key]); }
-    if(/عدد/.test(mm[2])) byN[key].q=i; else byN[key].p=i;
-  });
+  const H=findHead(rows, ()=>true);
+  if(!H){ alert('مش لاقي أعمدة: المادة، الصف'); return; }
+  // أعمدة التجار بالترتيب. بيقبل «محمود عدد» و«محمود سعر»، أو «محمود» بس:
+  // العمود اللي فيه «سعر» = سعر التاجر اللي قبله، وأي عمود تاني = عدد تاجر (واسم التاجر مكرر مرتين = التاني سعر)
+  const raw=rows[H.row]||[], ms=[], byN={}, fixed=new Set([H.sb, H.g, H.st]); let last=null;
+  for(let i=0;i<raw.length;i++){
+    const n=H.h[i]||''; if(fixed.has(i) || !n || /اجمالي|ملاحظ|صنف|كتاب/.test(n)) continue;
+    const isP=/سعر/.test(n), isQ=/عدد|كميه/.test(n);
+    const name=String(raw[i]).replace(/(ال)?(عدد|سعر|كمية|كميه)/g,' ').replace(/[\-–_:()]/g,' ').replace(/\s+/g,' ').trim();
+    const key=normText(name);
+    let mc = key ? byN[key] : null;
+    if(isP){ const tgt=mc||last; if(tgt && tgt.p<0) tgt.p=i; continue; }
+    if(mc && !isQ && mc.q>=0 && mc.p<0){ mc.p=i; continue; }
+    if(!key) continue;
+    if(!mc){ mc=byN[key]={name, q:-1, p:-1}; ms.push(mc); }
+    if(mc.q<0) mc.q=i;
+    last=mc;
+  }
   const now=new Date().toISOString(), add=[]; let bad=0;
   for(const mc of ms.filter(x=>x.q>=0)){
     for(const r of rows.slice(H.row+1)){
