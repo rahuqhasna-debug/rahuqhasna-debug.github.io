@@ -239,6 +239,11 @@ header.top .logo{width:30px;height:30px;border-radius:7px;background:#fff;object
 .titem.st-done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent);border-inline-start:5px solid var(--ok)}
 .pill.dup{background:var(--bad-soft);color:var(--bad)}
 .pill.abc{background:var(--sel);color:var(--sel-ink)}
+.pill.nw{background:#ede9fe;color:#6d28d9}
+.titem.is-new{border-inline-end:5px solid #7c3aed}
+.ddrow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line);font-size:15px}
+.ddrow:first-child{border-top:0}
+.ddrow input{width:20px;height:20px;flex:none}
 .dupg{border-top:1px solid var(--line);padding:8px 0}
 .dupg:first-of-type{border-top:0}
 .spec-subs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
@@ -303,13 +308,39 @@ const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
 const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
-function blank(){return {v:1, rep:'', mail:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], lastBackup:''}}
+function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], lastBackup:''}}
+/* ================= الإدارات التعليمية والقرى (البحيرة) =================
+   كل إدارة: [قرى وبنادر]. القايمة دي اتراجعت مع شريف قبل ما تتحط. */
+const IDARAT = {
+  "دمنهور": ["دمنهور","قراقص","أفلاقة","البرنوجي","الشوكة","الصفاصيف","العمرية","بسطرة","حفص","دسونس أم دينار","دنشال","زاوية غزال","زرقون","زهرة البحرية","سنطيس","سنهور","شرنوب","طرابنبا","قابيل","منية بني موسى","منية عطية","نديبة","المخايض","العوجا","كفر بني هلال","أبعادية دمنهور","البساتين","زهرة القبلية","منشأة الخزان","الحمامية","المنشية الإبراهيمية","عزب الأوقاف","عزب قابيل","عزبة الأبريقجي","عزبة الدرويش","عزبة السرو","عزبة السلانكي","عزبة بدر الدين","عزبة بسطرة","عزبة حسين عمرو","عزبة سليم طوبجيان","عزبة طرابنبا","عزبة محمد عوض","كفر الحمايدة","كفر سنطيس","منشأة الحبشي","منشأة المطران","منشأة حمور","منشأة سعيد طوسون","منشأة غربال","منشأة نصار","منشية الأوقاف","عزب سكندية","عزب شبرا دمنهور","عزب قرطسا وطاموس","عزب نقرها","منشأة راغب","منشأة محمد الوكيل"],
+  "كفر الدوار": ["كفر الدوار","أبيس المستجدة","الكريون","لوقين","البسلقون","البيضا","التمامة","الكنايس","الصير","الخضرة","الطرح","العالي","العرقوب","الملقة","الوسطانية","زهرة","سيدي غازي","صيرة","عزب دفشو","قومبانية أبو قير","قومبانية لوقين","كنج عثمان","كوم إشو","كوم الطرفاية","معمل الزجاج","منشأة الهلباوي","منشأة بولين","منشأة عامر","منشأة يونس","النشو البحري","كوم البركة","كوم دفشو","أبيس 1","أبيس 3","أبيس 4","أبيس 5","أبيس 6","الأمراء","منشأة بلبع"],
+  "رشيد": ["رشيد","ديبي","إدفينا","الجدية","الحماد","محلة الأمير","الشماسمة","برج رشيد","الكوم","الساحل","العامرية الشرقية","العامرية","منشية علوان","الملقة","التفتيش","الجديدة","سيدي عمر"],
+  "إدكو": ["إدكو","المعدية","منشية دبونو"],
+  "أبو المطامير": ["أبو المطامير","تروجي","النمرية","زاوية سالم","زاوية صقر","أبو المطامير البحرية","الغيتة","المهدية","النجيلي وأولاد الشيخ","كوم الفرج","كوم حفين","منشأة ثروت","منشأة جناكليس","الياسينية","القطاع الشمالي","قطاع غرب النوبارية","كوم القدح","منشأة علوية"],
+  "أبو حمص": ["أبو حمص","بطورس","القروي","برسيق","بسنتاواي","بلقطر","سحالي","قافلة","كفر حصام","محلة كيل","النخلة البحرية","دسونس الحلفاية","ديرامس","زاوية نعيم","كوم القناطر","الراهب","الصخرة","الغابة","بركة غطاس","روضة خيري","أبو الخذر","الجرادات","الجرن","الحرفة","الرزقة","الزيني","عزب أمين سيد أحمد","منشأة دميسنا","بلقطر الغربية","طلمبات حلق الجمل","منشأة الوكيل","الشهيد جواد حسني"],
+  "الدلنجات": ["الدلنجات","درشاي","أطلميس","إبيا الحمراء","الحجر المحروق","المسين","الوفائية","زاوية أبو شوشة","زهور الأمراء","قمحة","كوم زمران","أبو صمادة","جزائر عيسى","رزفة","طيبة","زمران النخل","لحيمر","أبو مسعود","أبو سعيفة","البستان","الخليلية","العلامية","اليوسيفية","زاوية حمور","زاوية مسلم","عزب شركة الاتحاد","عزبة الطيرية","عزبة القاسي مطرود","عزبة المنشاوي اللحلاح","عزبة سعد داود","عزبة يوسف حمزة","كفر لحيمر","محمود أبو وافية الكبيرة","منشأة أبو وافية","منشأة بشارة","المنشية الجديدة","قرى الخريجين","منشأة فاضل"],
+  "المحمودية": ["المحمودية","فزارة","فيشا بلخة","العطف","دسيا الكنايس","سرنباي","سنابادة","منشأة أريمون","ديروط","منية السعيد","اللوية","سيدي عقبة","كفر نكلا","القصر","عزب بسنتاواي","كفر إمليط","كفر الرحمانية","نظارة الروضة","نظارة السعيدية","نظارة المسعدة"],
+  "الرحمانية": ["الرحمانية","درشابة","أبو خراش","الأشراك","القهوقية","بويط","سماديس","سمخراط","كفر غنيم","محلة ثابت","محلة داود","منية سلامة","الكفر الجديد","نظارة بويط","عزبة جرجس نخلة","عزبة كفر غنيم","كفر الشيخ حسن","نظارة الإنشاء","نظارة المنشية","نظارة المنيا","نظارة سماديس","الأبريقجي","عزبة البكوات","عزبة حسن قبودان","عزبة المجد","كفر محلة داود"],
+  "إيتاي البارود": ["إيتاي البارود","أرمانية","النقراش","برقامة","رمسيس","شبرا النونة","نكلا العنب","إمليط","البهي","الضهرية","النبيرة","تلبانة","جبارس القبلية","جعيف","جنبواي","حوض فارس","خمارة","دقدوقة","دميسنا","ششت الأنعام","شنديد","صافية","صفط الحرية","صفط خالد","قادوس","قليشان","كنيسة الضهرية","محلة عبيد","معنيا","أشليمة","العوامر","ظهر التمساح","كفر مساعد","منية بني منصور","إبراك حمام","الخوالد","الشعيرة","كفر الحاجة","كفر الشيخ مخلوف","كفر عوانة","أثريات فاضل","الإبراهيمية","التوفيقية","الحوتة","الدرملية","الروقة","العيون","جبارس البحرية","حصة الضهرية","ربع شنديد","زبيدة","عزبة حوض فارس","عزبة طلعت","عزبة يوسف العسكري","كفر أبو مندور","كفر السقا","كفر الغابة","كفر خليفة","كفر عسكر شنديد","كفر عسكر صفط","كفور السوالم بحري","كفور السوالم قبلي","منشأة الصيرفي","راضي","منشأة النصر"],
+  "حوش عيسى": ["حوش عيسى","أبو الشقاف","القرنين","الكوم الأخضر","الأبقعين","كفر الواق","الرزيمات","حرارة","منشأة خياط","الكردود","الحرفة صالح المديني","الستمائة","شلتوت","قرى الخريجين"],
+  "شبراخيت": ["شبراخيت","أم حكيم","أورين","إمري","أبتوك","أبو السحما","أبو درة","أبو منجوج","أبو يحيى","اسمانية","الدفراوي","شبراريس","فرنوى","كنيسة أورين","لقانة","محلة بشر","محلة صا","محلة فرنوى","محلة نصر","الإصلاب","جزيرة نكلا","كفر الدفراوي","كفر السابي","كفر مستنان","محلة قيس","كفر خضير","الربدان","المناشلة","زمزم","عزبة إبراهيم أغا","عزبة الأشراك","عزبة الجوخدار","عزبة الشماشرجي","عزبة الكنيسة","عزبة بشارة حنا","عزبة حسين الديب","عزبة سعادة","عزبة فتح الله الجزار","عزبة فرنوى","عزبة كفر السابي","عزبة يعقوب","عزبة يوسف كمال","كفر الصناديدي","كفر عثمان","كفر قشاش","منشأة أبو حنا","منشية أوقاف لقانة","منشية حمادة","منشأة رزافة"],
+  "كوم حمادة": ["كوم حمادة","أبسوم الغربية","بيبان","خربتا","دست الأشراف","دمتيوه","شبرا أوسيم","أبو الخاوي","البلاكوس","الحدين","الزعفراني","الصواف","الطيرية","القلاوات","النقيدي","بولين الفوايد","تلبقا","خنيزة","دمشلي","زاوية البحر","زاوية مبارك","سرسيقة","سلامون","شابور","صفط العنب","علقام","كفر غانم","كوم شريك","محلة أحمد","مغنين","ميت يزيد","نتما","واقد","أبيوقا","بريم","البريجات","الطود","مليحة بريم","إبراهيمية مهنا","أبسوم الشرقية","زاوية خنيزة","كفر العيص","كفر بولين","كفر دمتيوه","كفر زيادة","كفر سلامون","كفر غرين","كفر مجاهد","منشأة أبو رية","منشأة الشوربجي","منشأة راضي","منشأة علي مهنا","النجيلة","الإيمان 1","الإيمان 2","الإيمان 3","الداخلي","السخنة","عبد المجيد موسى","عرب الدالي","عزبة حسن على حمزة","قرى الخريجين","مصطفى كامل"],
+  "بدر": ["بدر","أبو بكر الصديق","أحمد عرابي","أم صابر","التل الكبير","الخرطوم","العزيمة","الفالوجا","الكفاح","المجد","المعركة","النجاح","بغداد","حراء","خالد بن الوليد","صلاح الدين","عبد الحميد أبو زيد","عبد السلام عارف","عثمان بن عفان","علي بن أبي طالب","عمر بن الخطاب","عمر شاهين","عمر مكرم","عين جالوت","فلسطين","نبيل الوقاد"],
+  "وادي النطرون": ["وادي النطرون","النوبارية الجديدة","الجعار","الحمراء","بني سلامة","كفر داود"],
+  "النوبارية": ["النوبارية الجديدة","قطاع غرب النوبارية","الصديق"],
+};
+const IDARA_LIST = Object.keys(IDARAT);
+const villages = () => IDARAT[db?.idara] || [];
+const isNewArea = a => !!String(a||'').trim() && villages().length>0 && !villages().some(v=>normText(v)===normText(a));
+const vlist = id => `<datalist id="${id}">${villages().map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
+const idaraSelect = (id, cur) => `<select id="${id}"><option value="">— اختار الإدارة —</option>${IDARA_LIST.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
 function load(){
   try { const s = localStorage.getItem(KEY); db = s ? JSON.parse(s) : blank(); }
   catch(e){ db = blank(); storageOk = false; }
   db.teachers ||= []; db.entries ||= []; db.stock ||= []; db.rep ||= ''; db.mail ||= ''; db.lastBackup ||= '';
   // البيع: sales = طلبات وبيع، payments = دفعات ومرتجعات المدرسين، prices = أسعار الكتب، merchants = بضاعة التجار، merchPays = دفعات التجار
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
+  db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
 }
 function save(changed=true){
   if(changed) db.lastChange = new Date().toISOString();
@@ -356,7 +387,7 @@ function dupBlock(t){
 function goDups(){ if(location.hash!=='#/settings') location.hash='#/settings'; else render();
   setTimeout(()=>{ const el=document.getElementById('dups'); if(el) el.scrollIntoView({block:'start'}); }, 80); }
 function delTeacherData(id){ db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
-function nameTags(t){ const L=clsLetter(t); return (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':''); }
+function nameTags(t){ const L=clsLetter(t); return (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':'') + (t.isNew?' <span class="pill nw">🆕 مدرس جديد — مطلوب إضافته</span>':''); }
 
 /* ================= التصنيفات ================= */
 const CLS_MAP = {
@@ -511,7 +542,7 @@ function render(){
   const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
   ACC = accMap();
   DUPS = new Set(dupGroups().map(([p])=>p));
-  if(!db.rep || !db.mail) firstRun();
+  if(!db.rep || !db.mail || (IDARA_LIST.length && !db.idara)) firstRun();
   const po = db.sales.filter(s=>s.st==='order').length; const sbd=$('#salesBadge'); sbd.hidden=!po; sbd.textContent=po;
   const sm = h.match(/^\/sales(?:\/(\w+))?(?:\/(.+))?$/);
   if(sm){ curTeacher=null; sel={}; updateActbar(); renderSales(sm[1]||'', sm[2]?decodeURIComponent(sm[2]):''); setTab('sales'); return; }
@@ -614,7 +645,7 @@ function teacherCard(t, x, extra=''){
   const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
   // أبيض = ما استلمش، برتقاني = استلم وباقيله، أخضر = خلّص
   const stc = !x?.d ? '' : x.o ? 'st-part' : 'st-done';
-  return `<div class="titem ${stc}" data-act="open-t" data-id="${esc(t.id)}">
+  return `<div class="titem ${stc}${t.isNew?' is-new':''}" data-act="open-t" data-id="${esc(t.id)}">
     <div class="grow"><div class="nm">${esc(t.name)}${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
       <div class="sub">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).join(' • '))}</div>
       ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${extra}</div>
@@ -928,6 +959,7 @@ function renderReport(){
     </div></div>
     <div class="stats"><div class="stat"><b>${tv}</b><span>زيارة</span></div><div class="stat"><b>${td}</b><span>كتاب اتسلّم</span></div><div class="stat"><b>${to}</b><span>مستحق اتسجّل</span></div></div>
     <div class="card"><h3 class="sec-t">📅 يوم بيوم</h3>${dkeys.length?dkeys.map(k=>`<div class="kv"><span>${fmtDay(k)}</span><span class="small">${days[k].v.size} زيارة • ✅ ${days[k].d} • ⏳ ${days[k].o}</span></div>`).join(''):'<div class="muted">مفيش تعاملات في الفترة دي.</div>'}</div>
+    ${delDaysCard()}
     <div class="card"><h3 class="sec-t">📗 شيت إكسل</h3>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-scope="range">⬇️ إكسل للفترة دي</button>
       <button class="btn" style="width:100%" data-act="export" data-scope="all">⬇️ إكسل بكل حاجة من الأول</button>
@@ -937,6 +969,59 @@ function renderReport(){
       <p class="hint">بنفس شكل شيت جرد الشركة: الباقي معاك من كل كتاب (اللي استلمته من المخزن − اللي سلّمته) مقسوم ربط وفرط. أكتشف والكوبونات فاضيين تكتبهم بإيدك.</p></div>`;
   $('#rf').addEventListener('change',e=>{repFrom=e.target.value||dayKey(); renderReport();});
   $('#rt').addEventListener('change',e=>{repTo=e.target.value||dayKey(); renderReport();});
+  app.querySelectorAll('[data-dd]').forEach(cb=>cb.addEventListener('change',()=>{ cb.checked?delDays.add(cb.dataset.dd):delDays.delete(cb.dataset.dd); ddSum(); }));
+  ddSum();
+}
+/* --- شيت «الكتب اللي اتسلّمت» بالأيام (التسليم للمدرسين بس) --- */
+let delDays=new Set();
+const DAY_NM=['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+const dayName=k=>DAY_NM[new Date(k+'T12:00:00').getDay()];
+const dShort=k=>{ const [,m,d]=k.split('-'); return `${+d}/${+m}`; };
+function delByDay(){ const m={}; for(const e of db.entries) if(e.s==='d' && e.dd){ const x=m[dk(e.dd)] ||= {n:0, b:{}}; x.n+=e.q; x.b[e.b]=(x.b[e.b]||0)+e.q; } return m; }
+function delDaysCard(){
+  const D=delByDay(), ks=Object.keys(D).sort().reverse();
+  for(const k of [...delDays]) if(!D[k]) delDays.delete(k);
+  const h='<h3 class="sec-t">📚 الكتب اللي اتسلّمت بالأيام</h3>';
+  if(!ks.length) return `<div class="card">${h}<div class="muted">لسه مفيش تسليمات.</div></div>`;
+  const q=(r,t)=>`<button class="chip" data-act="dd-q" data-r="${r}">${t}</button>`;
+  return `<div class="card">${h}
+    <div class="chips" style="margin:0 0 6px">${q('today','النهارده')}${q('week','آخر 7 أيام')}${q('month','الشهر ده')}${q('clear','امسح الاختيار')}</div>
+    <div style="max-height:320px;overflow:auto">${ks.map(k=>`<label class="ddrow"><input type="checkbox" data-dd="${k}" ${delDays.has(k)?'checked':''}><span class="grow">${dayName(k)} ${dShort(k)}</span><b>${D[k].n} كتاب</b></label>`).join('')}</div>
+    <div id="ddsum" class="tot" style="margin:8px 0"></div>
+    <button class="btn pri" style="width:100%" data-act="dd-xlsx">📚 نزّل الشيت</button>
+    <p class="hint">الكتب اللي اتسلّمت للمدرسين بس. الشيت فيه كل المواد وكل الصفوف (حتى لو صفر)، وكل يوم مختار في عمود لوحده + الإجمالي.</p></div>`;
+}
+function ddSum(){ const el=$('#ddsum'); if(!el) return; const D=delByDay(), n=[...delDays].reduce((s,k)=>s+(D[k]?.n||0),0);
+  el.innerHTML = delDays.size ? `تم اختيار <b>${delDays.size}</b> ${delDays.size===1?'يوم':'أيام'} — <b>${n}</b> كتاب` : '<span class="muted">اختار يوم أو أكتر</span>'; }
+function ddQuick(r){
+  const D=delByDay(), t=dayKey(), d=new Date();
+  const from = r==='today' ? t : r==='week' ? dayKey(new Date(Date.now()-6*864e5)) : r==='month' ? isoDay(d.getFullYear(), d.getMonth()+1, 1) : null;
+  delDays = new Set(from ? Object.keys(D).filter(k=>k>=from && k<=t) : []);
+  app.querySelectorAll('[data-dd]').forEach(cb=>cb.checked=delDays.has(cb.dataset.dd)); ddSum();
+  if(from && !delDays.size) toast('مفيش تسليمات في الفترة دي');
+}
+const SUBJ_ALL={ar:'العربي', math:'الرياضة', stu:'الدراسات', sci:'العلوم', en:'الإنجليزي'};
+function delSheetOf(days){
+  const D=delByDay(); days=[...days].filter(k=>D[k]).sort();
+  if(!days.length) return null;
+  const hd=days.map(k=>`${dayName(k)} ${dShort(k)}`), sum=a=>a.reduce((x,y)=>x+y,0);
+  const rows=[[`المندوب: ${db.rep}`], [`الإدارة: ${db.idara||'—'}`], ['الأيام: '+hd.join('، ')], [], ['الكتاب', ...hd, 'الإجمالي']];
+  const grand=days.map(()=>0), B=(t,c)=>({rich:[{t:String(t), bold:true, color:c}]});
+  for(const sb of ['ar','math','stu','sci','en']){
+    const ks=BOOK_ORDER.filter(k=>bookParts(k).sb===sb); if(!ks.length) continue;
+    const sub=days.map(()=>0);
+    for(const k of ks){ const v=days.map(d=>D[d].b[k]||0); v.forEach((n,i)=>sub[i]+=n); rows.push([bookLabel(k), ...v, sum(v)]); }
+    const c=SUBJ_COLOR[sb]; rows.push([B('إجمالي '+SUBJ_ALL[sb], c), ...sub.map(n=>B(n,c)), B(sum(sub),c)]);
+    sub.forEach((n,i)=>grand[i]+=n);
+  }
+  rows.push([B('الإجمالي الكلي'), ...grand.map(n=>B(n)), B(sum(grand))]);
+  return {name:'الكتب اللي اتسلّمت', rows, head:4, widths:[28, ...days.map(()=>14), 12]};
+}
+function exportDelDays(){
+  if(!delDays.size){ alert('اختار يوم أو أكتر الأول'); return; }
+  const sh=delSheetOf(delDays); if(!sh) return;
+  const ks=[...delDays].sort();
+  download(buildXlsx([sh]), `الكتب-اللي-اتسلمت-${db.rep}-${ks[0]}${ks.length>1?'-لحد-'+ks[ks.length-1]:''}.xlsx`); toast('⬇️ الشيت نزل');
 }
 
 /* ================= الإعدادات ================= */
@@ -961,6 +1046,7 @@ function renderSettings(){
   app.innerHTML=`<div class="card"><h3 class="sec-t">👤 المندوب</h3>
       <div class="field"><label>اسم المندوب</label><input id="rep" value="${esc(db.rep)}"></div>
       <div class="field"><label>الجيميل (النسخة الاحتياطية بتروح عليه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
+      ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية${db.idara?` (${villages().length} قرية وبندر)`:''}</label>${idaraSelect('idara', db.idara)}</div>`:''}
       <button class="btn pri" style="width:100%" data-act="save-rep">حفظ</button>
       <p class="hint">الاسم بيتكتب على كل تسليم وفي شيت الإكسل والفاتورة.</p></div>
     <div class="card"><h3 class="sec-t">📥 استيراد مدرسين من إكسل</h3>
@@ -1009,7 +1095,7 @@ function teacherForm(t, preset={}){
       <div class="field"><label>المادة</label><input id="f_subj" placeholder="عربي، رياضة…" value="${esc(t.subjectText)}"></div></div>
     <div class="field"><label>التخصص (اختياري)</label><select id="f_spec"><option value="">— حسب المرحلة والمادة —</option>
       ${['فصل','صفوف عليا','صفوف عليا وإعدادي','كشكول'].map(v=>`<option ${(t.spec||'')===v?'selected':''}>${v}</option>`).join('')}</select></div>
-    <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" value="${esc(t.area)}"></div>
+    <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" list="vl_f" autocomplete="off" placeholder="${villages().length?'اختار أو اكتب':''}" value="${esc(t.area)}">${vlist('vl_f')}</div>
       <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
     <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div>
     <div class="row2" style="margin-top:6px"><button class="btn pri" id="f_save">حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
@@ -1029,7 +1115,8 @@ function teacherForm(t, preset={}){
       area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
       cls:m.querySelector('#f_cls').value, spec:m.querySelector('#f_spec').value, students:m.querySelector('#f_students').value.trim()};
     if(data.spec){ const c=parseCls(data.spec); if(c) data.stage=c.stages.join(''); }
-    if(isNew){ const nt={id:uid(), ...data, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
+    data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
+    if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
     else { Object.assign(t,data); save(); close(); render(); toast('اتحفظ ✅'); }
   };
   const del=m.querySelector('#f_del');
@@ -1100,6 +1187,8 @@ document.addEventListener('click', e=>{
     case 'mpay': { const nm=el.dataset.m; const x=merchSum().find(z=>z.name===nm);
       amtModal('💵 دفعت لـ '+esc(nm), `<div class="hint" style="margin:0 0 8px">عليك له دلوقتي: <b>${fmtM(x?x.owe:0)}</b></div>`, (amt,d)=>
         withUndo(`💵 اتسجّل إنك دفعت ${fmtM(amt)} لـ ${nm}`, ()=>{ db.merchPays.push({id:uid(), m:nm, amt, d}); })); break; }
+    case 'mret': mretForm(el.dataset.m); break;
+    case 'del-mret': { const id=el.dataset.id; if(confirm('تمسح المرتجع ده؟')) withUndo('اتمسح 🗑️', ()=>{ db.merchRets=db.merchRets.filter(r=>r.id!==id); }); break; }
     case 'del-mpay': { const id=el.dataset.id; if(confirm('تمسح الدفعة دي؟')) withUndo('اتمسح 🗑️', ()=>{ db.merchPays=db.merchPays.filter(p=>p.id!==id); }); break; }
     case 'del-pay': { const id=el.dataset.id; if(confirm('تمسحها؟')) withUndo('اتمسح 🗑️', ()=>{ db.payments=db.payments.filter(p=>p.id!==id); }); break; }
     case 'del-sale': { const id=el.dataset.id;
@@ -1111,6 +1200,7 @@ document.addEventListener('click', e=>{
     case 'merch-template': merchTemplate(); break;
     case 'del-lot': { const id=el.dataset.id;
       if(db.sales.some(s=>s.items.some(it=>(it.src||[]).some(x=>x.lot===id)))){ alert('اتباع من البضاعة دي — مش هينفع تتمسح.'); break; }
+      if(db.merchRets.some(r=>(r.lots||[]).some(x=>x.lot===id))){ alert('فيه مرتجع من البضاعة دي — امسح المرتجع الأول.'); break; }
       if(confirm('تمسح السطر ده من بضاعة التاجر؟')) withUndo('اتمسح 🗑️', ()=>{ db.merchants=db.merchants.filter(l=>l.id!==id); }); break; }
     case 'stock-xlsx': $('#fileStock').value=''; $('#fileStock').click(); break;
     case 'stock-template': stockTemplate(); break;
@@ -1132,9 +1222,12 @@ document.addEventListener('click', e=>{
       else { const all=db.entries.map(x=>dk(actDate(x))).filter(Boolean).sort(); repFrom=all[0]||dayKey(); }
       renderReport(); break; }
     case 'export': exportExcel(el.dataset.scope==='all'); break;
+    case 'dd-q': ddQuick(el.dataset.r); break;
+    case 'dd-xlsx': exportDelDays(); break;
     case 'save-rep': { const v=$('#rep').value.trim(), ml=fixMail($('#mail').value);
       if(!v){ alert('اكتب اسم المندوب'); break; } if(!ml){ alert('اكتب الجيميل صح'); break; }
-      db.rep=v; db.mail=ml; save(); render(); toast('اتحفظ ✅'); break; }
+      const idv=$('#idara')?.value; if(IDARA_LIST.length && !idv){ alert('اختار الإدارة التعليمية'); break; }
+      db.rep=v; db.mail=ml; if(idv!=null) db.idara=idv; save(); render(); toast('اتحفظ ✅'); break; }
     case 'import-xlsx': e.preventDefault(); $('#fileXlsx').value=''; $('#fileXlsx').click(); break;
     case 'backup': backup(); break;
     case 'restore': e.preventDefault(); $('#fileJson').value=''; $('#fileJson').click(); break;
@@ -1170,14 +1263,17 @@ function firstRun(){
   m.innerHTML=`<div class="box" style="text-align:center"><img src="icon-192.png" alt="" style="width:90px;height:90px;object-fit:contain" onerror="this.remove()">
     <h3 style="margin:8px 0 2px">أهلاً بيك في برنامج ${APP_NAME}</h3><div class="small muted" style="margin-bottom:14px">${SIGN}</div>
     <div style="text-align:right"><div class="field"><label>اسمك (اسم المندوب)</label><input id="fr_rep" value="${esc(db.rep)}"></div>
-    <div class="field"><label>الجيميل بتاعك (النسخة الاحتياطية بتروح عليه)</label><input id="fr_mail" type="email" dir="ltr" inputmode="email" placeholder="name@gmail.com" value="${esc(db.mail)}"></div></div>
+    <div class="field"><label>الجيميل بتاعك (النسخة الاحتياطية بتروح عليه)</label><input id="fr_mail" type="email" dir="ltr" inputmode="email" placeholder="name@gmail.com" value="${esc(db.mail)}"></div>
+    ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية اللي ماسكها</label>${idaraSelect('fr_idara', db.idara)}</div>`:''}</div>
     <button class="btn pri" id="fr_ok" style="width:100%">يلا نبدأ ✅</button>
     <p class="hint">تقدر تغيّرهم بعدين من الإعدادات.</p></div>`;
   document.body.appendChild(m);
   m.querySelector('#fr_ok').onclick=()=>{
-    const r=m.querySelector('#fr_rep').value.trim(), ml=fixMail(m.querySelector('#fr_mail').value);
+    const r=m.querySelector('#fr_rep').value.trim(), ml=fixMail(m.querySelector('#fr_mail').value), id=m.querySelector('#fr_idara')?.value||'';
     if(!r){ alert('اكتب اسمك'); return; } if(!ml){ alert('اكتب الجيميل بتاعك صح'); return; }
-    db.rep=r; db.mail=ml; save(); m.remove(); render();
+    if(IDARA_LIST.length && !id){ alert('اختار الإدارة التعليمية'); return; }
+    db.rep=r; db.mail=ml; db.idara=id; save(); m.remove(); render();
+    if(id) toast(`📍 اتحمّلت ${villages().length} قرية وبندر لإدارة ${id}`);
   };
 }
 async function backup(){
@@ -1206,7 +1302,7 @@ $('#fileJson').addEventListener('change', async e=>{
     const when = d.savedAt ? ` (معمولة ${fmtDT(d.savedAt)})` : '';
     if(!confirm(`النسخة دي${when} فيها ${d.teachers.length} مدرس و ${d.entries.length} تعامل.\n\nهتحل مكان البيانات اللي على الجهاز ده (${db.teachers.length} مدرس و ${db.entries.length} تعامل). أكمل؟`)) return;
     const arr=x=>Array.isArray(x)?x:[];
-    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
+    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||''}; save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
@@ -1325,7 +1421,8 @@ $('#fileXlsx').addEventListener('change', async e=>{
   if(!plan.length){ alert('الشيت فاضي.'); return; }
   if(!confirm(`لقيت ${plan.length} مدرس في الشيت:\n• ${add} جديد\n• ${upd} موجودين قبل كده (هتتحدّث بياناتهم بس)${twice?`\n• ${twice} سطر رقمه متكرر في الشيت (اتحسب مرة واحدة)`:''}\n\nأستوردهم؟`)) return;
   for(const {rec,ex} of plan){
-    if(ex){ for(const k of Object.keys(rec)) if(rec[k] && (!Array.isArray(rec[k]) || rec[k].length)) ex[k]=rec[k]; }
+    if(ex){ for(const k of Object.keys(rec)) if(rec[k] && (!Array.isArray(rec[k]) || rec[k].length)) ex[k]=rec[k];
+      delete ex.isNew; delete ex.newArea; }   // اتستورد من الشيت → مبقاش «جديد»
     else db.teachers.push({id:uid(), ...rec, name:rec.name||rec.phone, notes:'', created:new Date().toISOString()});
   }
   save(); location.hash='#/'; homeFilter='all'; render(); toast(`✅ اتستورد ${plan.length} مدرس`);
@@ -1337,7 +1434,7 @@ function dateSerial(isoStr){ const d=new Date(isoStr); return (Date.UTC(d.getFul
 function sheetXml(rows, widths, head=0){
   // cell: string | number | {date:iso} ; row[head] = header (bold)
   // row.fill = 'part' (برتقاني) | 'done' (أخضر): الصف كله يتلوّن — styles 4-6 / 7-9
-  const out=rows.map((r,ri)=>{ const f=r.fill==='part'?4:r.fill==='done'?7:0, sa=x=>x==null?'':` s="${x}"`;
+  const out=rows.map((r,ri)=>{ const f=r.fill==='part'?4:r.fill==='done'?7:r.fill==='new'?10:0, sa=x=>x==null?'':` s="${x}"`;
     return `<row r="${ri+1}">`+r.map((c,ci)=>{
     const ref=colName(ci)+(ri+1);
     if(c===null||c===undefined||c==='') return f?`<c r="${ref}" s="${f}"/>`:'';
@@ -1356,7 +1453,7 @@ function buildXlsx(sheets){
     {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
     {name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView rightToLeft="1"/></bookViews><sheets>${sheets.map((s,i)=>`<sheet name="${xmlEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${sheets.some(s=>s.rows.length>1&&!s.head)?`<definedNames>${sheets.map((s,i)=>s.rows.length>1&&!s.head?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xmlEsc(s.name)}'!$A$1:$${colName(s.rows[0].length-1)}$${s.rows.length}</definedName>`:'').join('')}</definedNames>`:''}</workbook>`},
     {name:'xl/_rels/workbook.xml.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
-    {name:'xl/styles.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFDE7C4"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD7F5DF"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>${[3,4].map(fi=>`<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>`).join('')}</cellXfs></styleSheet>`},
+    {name:'xl/styles.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFDE7C4"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD7F5DF"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE9D5FF"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="13"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>${[3,4,5].map(fi=>`<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>`).join('')}</cellXfs></styleSheet>`},
     ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, data:sheetXml(s.rows, s.widths, s.head||0)}))
   ];
   return zipBlob(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1398,12 +1495,13 @@ function exportExcel(all){
     }
     return runs.length ? {rich:runs} : '';
   };
-  const s2=[['اسم المدرس','التليفون','المنطقة','مادته','استلم إيه','المستحق','آخر زيارة','ملاحظات']];
+  const s2=[['اسم المدرس','التليفون','المنطقة','مادته','استلم إيه','المستحق','آخر زيارة','ملاحظات','جديد','قرية جديدة']];
   for(const t of [...db.teachers].sort((a,b)=>a.name.localeCompare(b.name,'ar'))){
     const x=idx[t.id]; const bk=x?x.books:{};
     const row=[t.name, t.phone||'', t.area||'', t.subjectText||'', richCell(t,bk,'d'), richCell(t,bk,'o'),
-      x&&x.last?{date:x.last}:'', t.notes||''];
+      x&&x.last?{date:x.last}:'', t.notes||'', t.isNew?'جديد ✔':'', t.newArea?'قرية جديدة ✔':''];
     if(x?.d) row.fill = x.o ? 'part' : 'done';   // لون حالة المدرس: برتقاني باقيله، أخضر خلّص
+    if(t.isNew) row.fill = 'new';                 // بنفسجي: مدرس ضافه المندوب بإيده ومطلوب إضافته
     s2.push(row);
   }
   // 3) اللي عليا
@@ -1428,11 +1526,18 @@ function exportExcel(all){
       for(const x of srcs) s5.push([{date:s.sd}, t.name||'؟', t.phone||'', bookLabel(it.b), x.q, x.lot?(lotById[x.lot]?.m||'؟'):'—',
         it.pre??'', it.post??'', it.post!=null?r2(x.q*it.post):'']); } }
   // 6) حسابات المدرسين
-  const acc=accMap(); const s6=[['المدرس','التليفون','اشترى','دفع','رجّع','عليه']]; const T=[0,0,0,0];
+  const acc=accMap(); const s6=[['المدرس','التليفون','خد (كتاب)','رجّع (كتاب)','فضل معاه','اشترى بـ','رجّع بـ','دفع','عليه']]; const T=[0,0,0,0,0,0,0];
   for(const [id,a] of Object.entries(acc).filter(([,a])=>a.sold||a.paid).sort((x,y)=>(tmap[x[0]]?.name||'').localeCompare(tmap[y[0]]?.name||'','ar'))){
-    const t=tmap[id]||{}; s6.push([t.name||'؟', t.phone||'', r2(a.bought), r2(a.paid), r2(a.ret), a.owe]);
-    T[0]+=a.bought; T[1]+=a.paid; T[2]+=a.ret; T[3]+=a.owe; }
-  s6.push(['الإجمالي','',r2(T[0]),r2(T[1]),r2(T[2]),r2(T[3])]);
+    const t=tmap[id]||{}; s6.push([t.name||'؟', t.phone||'', a.n, a.rn, a.n-a.rn, r2(a.bought), r2(a.ret), r2(a.paid), a.owe]);
+    T[0]+=a.n; T[1]+=a.rn; T[2]+=a.n-a.rn; T[3]+=a.bought; T[4]+=a.ret; T[5]+=a.paid; T[6]+=a.owe; }
+  s6.push(['الإجمالي','',...T.map(r2)]);
+  // 6-ب) تفصيل كتب المدرسين: صف لكل (مدرس × كتاب)
+  const tb={};
+  for(const s of db.sales) if(s.st==='sold') for(const it of s.items){ const x=tb[s.t+'|'+it.b] ||= {t:s.t, b:it.b, n:0, r:0}; x.n+=it.q; }
+  for(const p of db.payments) if(p.k==='ret'){ const x=tb[p.t+'|'+p.b] ||= {t:p.t, b:p.b, n:0, r:0}; x.r+=p.q||0; }
+  const s6b=[['المدرس','التليفون','الكتاب','خد','رجّع','فضل معاه']];
+  for(const x of Object.values(tb).sort((a,b)=>(tmap[a.t]?.name||'').localeCompare(tmap[b.t]?.name||'','ar') || bookRank[a.b]-bookRank[b.b])){
+    const t=tmap[x.t]||{}; s6b.push([t.name||'؟', t.phone||'', bookLabel(x.b), x.n, x.r, x.n-x.r]); }
   // 7) دفعات ومرتجعات المدرسين
   const s7=[['التاريخ','المدرس','النوع','المبلغ','الكتاب','العدد']];
   for(const p of db.payments.filter(p=>inR(p.d)).sort((a,b)=>a.d.localeCompare(b.d))){ const t=tmap[p.t]||{};
@@ -1442,24 +1547,29 @@ function exportExcel(all){
   for(const s of db.sales.filter(s=>s.st==='order').sort((a,b)=>a.d.localeCompare(b.d))){ const t=tmap[s.t]||{};
     for(const it of s.items){ const p=priceOf(it.b); s8.push([{date:s.d}, t.name||'؟', t.phone||'', bookLabel(it.b), it.q, p?p.post:'', p?r2(it.q*p.post):'']); } }
   // 9) حسابات التجار
-  const s9=[['التاجر','الصنف','العدد','السعر','الإجمالي','المدفوع','الباقي عليك','الفاضل من بضاعته']];
+  const s9=[['التاجر','الصنف','العدد','رجّعت','السعر','الإجمالي','المدفوع','الباقي عليك','الفاضل من بضاعته']];
   for(const x of merchSum()){
-    for(const r of [...x.rows.values()].sort((a,b)=>bookRank[a.b]-bookRank[b.b])) s9.push([x.name, bookLabel(r.b), r.q, r.p??'', r.p!=null?r2(r.q*r.p):'', '', '', r.left]);
-    s9.push([x.name, 'الإجمالي', x.q, '', r2(x.total), r2(x.paid), x.owe, x.left]); }
-  // 10) دفعات التجار
-  const s10=[['التاريخ','التاجر','المبلغ']];
-  for(const p of [...db.merchPays].sort((a,b)=>a.d.localeCompare(b.d))) s10.push([{date:p.d}, p.m, r2(p.amt)]);
+    for(const r of [...x.rows.values()].sort((a,b)=>bookRank[a.b]-bookRank[b.b])) s9.push([x.name, bookLabel(r.b), r.q, r.ret||'', r.p??'', r.p!=null?r2(r.q*r.p):'', '', '', r.left]);
+    s9.push([x.name, 'الإجمالي', x.q, x.rq||'', '', r2(x.total), r2(x.paid), x.owe, x.left]); }
+  // 10) دفعات ومرتجعات التجار
+  const s10=[['التاريخ','التاجر','النوع','المبلغ','الكتاب','العدد']];
+  for(const p of [...db.merchPays.map(p=>({...p,k:'pay'})), ...db.merchRets.map(r=>({...r,k:'ret'}))].sort((a,b)=>a.d.localeCompare(b.d)))
+    s10.push(p.k==='pay' ? [{date:p.d}, p.m, 'دفعة', r2(p.amt), '', ''] : [{date:p.d}, p.m, 'مرتجع', r2(mretVal(p)), bookLabel(p.b), p.q]);
+  // 11) الكتب اللي اتسلّمت بالأيام: الأيام المختارة، ولو مفيش → أيام التسليم في الفترة
+  const delSheet=delSheetOf(delDays.size ? delDays : Object.keys(delByDay()).filter(k=>inRange(k)));
   const blob=buildXlsx([
-    {name:'المدرسين', rows:s2, widths:[22,14,14,12,75,50,12,30]},
+    {name:'المدرسين', rows:s2, widths:[22,14,14,12,75,50,12,30,10,13]},
     {name:'التعاملات', rows:s1, widths:[12,10,12,22,14,14,24,10,10,8,7,12,13,13]},
     {name:'اللي عليا', rows:s3, widths:[26,10,12,60]},
     {name:'ملخص يومي', rows:s4, widths:[13,13,13,15]},
     {name:'البيع', rows:s5, widths:[12,22,14,24,8,14,11,11,12]},
-    {name:'حسابات المدرسين', rows:s6, widths:[22,14,12,12,12,12]},
+    {name:'حسابات المدرسين', rows:s6, widths:[22,14,11,11,11,12,12,12,12]},
+    {name:'تفصيل كتب المدرسين', rows:s6b, widths:[22,14,26,8,8,10]},
     {name:'دفعات ومرتجعات', rows:s7, widths:[12,22,10,12,24,8]},
     {name:'طلبات مستنية', rows:s8, widths:[12,22,14,24,8,14,12]},
-    {name:'حسابات التجار', rows:s9, widths:[16,24,8,10,12,12,13,16]},
-    {name:'دفعات التجار', rows:s10, widths:[12,16,12]}
+    {name:'حسابات التجار', rows:s9, widths:[16,24,8,8,10,12,12,13,16]},
+    {name:'دفعات ومرتجعات التجار', rows:s10, widths:[12,16,10,12,24,8]},
+    ...(delSheet ? [delSheet] : [])
   ]);
   const nm = all ? `تسليمات-${db.rep}-لحد-${dayKey()}.xlsx` : (repFrom===repTo ? `تسليمات-${db.rep}-${repFrom}.xlsx` : `تسليمات-${db.rep}-من-${repFrom}-لحد-${repTo}.xlsx`);
   download(blob, nm); toast('⬇️ شيت الإكسل نزل');
@@ -1567,6 +1677,7 @@ function lotUsed(){
   const u={};
   for(const s of db.sales) if(s.st==='sold') for(const it of s.items) for(const x of it.src||[]) if(x.lot) u[x.lot]=(u[x.lot]||0)+x.q;
   for(const p of db.payments) if(p.k==='ret') for(const pt of p.parts||[]) for(const x of pt.lots||[]) if(x.lot) u[x.lot]=(u[x.lot]||0)-x.q;
+  for(const r of db.merchRets) for(const x of r.lots||[]) u[x.lot]=(u[x.lot]||0)+x.q;   // مرتجع للتاجر يقلّل الفاضل
   return u;
 }
 function lotLeft(){ const u=lotUsed(), o={}; for(const l of db.merchants) o[l.id]=l.q-(u[l.id]||0); return o; }
@@ -1597,16 +1708,19 @@ function sellItems(s, left){
 }
 function merchSum(){
   const left=lotLeft(), m=new Map();
-  const g=name=>{ if(!m.has(name)) m.set(name,{name, q:0, total:0, paid:0, left:0, owe:0, noPrice:false, rows:new Map(), pays:[]}); return m.get(name); };
+  const g=name=>{ if(!m.has(name)) m.set(name,{name, q:0, total:0, paid:0, left:0, owe:0, rq:0, rv:0, noPrice:false, rows:new Map(), pays:[], rets:[]}); return m.get(name); };
+  const lotById=Object.fromEntries(db.merchants.map(l=>[l.id,l]));
   for(const l of db.merchants){
     const x=g(l.m), lf=Math.max(0,left[l.id]);
     x.q+=l.q; x.left+=lf; if(l.p==null) x.noPrice=true; else x.total+=l.q*l.p;
     const rk=l.b+'|'+(l.p??'');
-    if(!x.rows.has(rk)) x.rows.set(rk,{b:l.b, p:l.p, q:0, left:0});
+    if(!x.rows.has(rk)) x.rows.set(rk,{b:l.b, p:l.p, q:0, left:0, ret:0});
     const r=x.rows.get(rk); r.q+=l.q; r.left+=lf;
   }
   for(const p of db.merchPays){ const x=g(p.m); x.paid+=p.amt; x.pays.push(p); }
-  for(const x of m.values()) x.owe=r2(x.total-x.paid);
+  for(const r of db.merchRets){ const x=g(r.m); x.rq+=r.q; x.rv+=mretVal(r); x.rets.push(r);
+    for(const z of r.lots||[]){ const l=lotById[z.lot]; const row=l && x.rows.get(l.b+'|'+(l.p??'')); if(row) row.ret+=z.q; } }
+  for(const x of m.values()) x.owe=r2(x.total-x.paid-x.rv);
   return [...m.values()];
 }
 
@@ -1614,14 +1728,14 @@ function merchSum(){
 function retVal(r, S){ let v=0; for(const pt of r.parts||[]){ const it=S[pt.sale]?.items[pt.i]; if(it && it.post!=null) v+=pt.q*it.post; } return v; }
 function accMap(){
   const S=saleIdx(), m={};
-  const g=id=>m[id] ||= {bought:0, n:0, paid:0, ret:0, owe:0, noPrice:false, orders:0, sold:false};
+  const g=id=>m[id] ||= {bought:0, n:0, rn:0, paid:0, ret:0, owe:0, noPrice:false, orders:0, sold:false};   // n = خد كام كتاب، rn = رجّع كام
   for(const s of db.sales){
     if(s.st==='order'){ g(s.t).orders++; continue; }
     if(s.st!=='sold') continue;
     const a=g(s.t); a.sold=true;
     for(const it of s.items){ a.n+=it.q; if(it.post==null) a.noPrice=true; else a.bought+=it.q*it.post; }
   }
-  for(const p of db.payments){ const a=g(p.t); if(p.k==='pay') a.paid+=p.amt; else if(p.k==='ret') a.ret+=retVal(p,S); }
+  for(const p of db.payments){ const a=g(p.t); if(p.k==='pay') a.paid+=p.amt; else if(p.k==='ret'){ a.ret+=retVal(p,S); a.rn+=p.q||0; } }
   for(const a of Object.values(m)) a.owe=r2(a.bought-a.paid-a.ret);
   return m;
 }
@@ -1692,6 +1806,7 @@ function accHtml(){
   const card=({t,a})=>`<div class="card scard" id="acc-${esc(t.id)}"><div class="hd"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${t.phone?`<a class="ico" href="tel:${esc(t.phone)}">📞</a>`:''}</div>
     <div class="mgrid"><div><span>اشترى</span><b>${fmtM(a.bought)}</b></div><div><span>دفع</span><b style="color:var(--ok)">${fmtM(a.paid)}</b></div>
       <div><span>رجّع</span><b>${fmtM(a.ret)}</b></div><div><span>عليه</span><b style="color:${a.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(a.owe)}</b></div></div>
+    <div class="small" style="margin-top:6px">📚 خد <b>${a.n}</b> كتاب • رجّع <b>${a.rn}</b> • فضل معاه <b>${a.n-a.rn}</b></div>
     ${a.noPrice?'<div class="small muted" style="margin-top:6px">⚠️ فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}
     <div class="acts"><button class="btn sm" data-act="invoice" data-id="${esc(t.id)}">🧾 الفاتورة</button><button class="btn sm ok" data-act="pay" data-id="${esc(t.id)}">💵 دفعة</button><button class="btn sm ghost" data-act="ret" data-id="${esc(t.id)}">↩️ مرتجع</button></div></div>`;
   return `<div class="sumline">برة عند المدرسين <b style="color:var(--bad)">${fmtM(out)}</b></div>` + open.map(card).join('') +
@@ -1703,12 +1818,13 @@ function merchHtml(){
   const tot=ms.reduce((s,x)=>s+Math.max(0,x.owe),0);
   return `<div class="sumline">عليك للتجار كلهم <b style="color:var(--bad)">${fmtM(tot)}</b></div>` + ms.map(x=>`<details class="card scard mcard"><summary>
       <div class="hd"><b>🏪 ${esc(x.name)}</b><span class="small muted">▾</span></div>
-      <div class="small">خدت ${x.q} كتاب بـ ${fmtM(x.total)}${x.noPrice?' (فيه أسعار ناقصة)':''} • دفعت ${fmtM(x.paid)} • عليك <b style="color:${x.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(x.owe)}</b></div></summary>
-    <div class="tscroll"><table class="tbl"><thead><tr><th>الصنف</th><th>خدت</th><th>سعر الواحد</th><th>الإجمالي</th><th>فاضل</th></tr></thead><tbody>
-      ${[...x.rows.values()].sort(byRank).map(r=>`<tr><td>${esc(bookLabel(r.b))}</td><td>${r.q}</td><td>${r.p==null?'—':fmtN(r.p)}</td><td>${r.p==null?'—':fmtN(r.q*r.p)}</td><td>${r.left}</td></tr>`).join('')}</tbody></table></div>
+      <div class="small">خدت ${x.q} كتاب بـ ${fmtM(x.total)}${x.noPrice?' (فيه أسعار ناقصة)':''} • رجّعت ${x.rq}${x.rv?` بـ ${fmtM(x.rv)}`:''} • دفعت ${fmtM(x.paid)} • ${x.owe<0?`<b style="color:var(--ok)">ليك عنده ${fmtM(-x.owe)}</b>`:`عليك <b style="color:${x.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(x.owe)}</b>`}</div></summary>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>الصنف</th><th>خدت</th><th>رجّعت</th><th>سعر الواحد</th><th>الإجمالي</th><th>فاضل</th></tr></thead><tbody>
+      ${[...x.rows.values()].sort(byRank).map(r=>`<tr><td>${esc(bookLabel(r.b))}</td><td>${r.q}</td><td>${r.ret||''}</td><td>${r.p==null?'—':fmtN(r.p)}</td><td>${r.p==null?'—':fmtN(r.q*r.p)}</td><td>${r.left}</td></tr>`).join('')}</tbody></table></div>
     <h4>💵 الدفعات</h4>
     ${x.pays.length?[...x.pays].sort((a,b)=>b.d.localeCompare(a.d)).map(p=>`<div class="hrow"><div class="grow">${fmtDay(dk(p.d))}</div><b>${fmtM(p.amt)}</b><button class="btn sm danger" data-act="del-mpay" data-id="${p.id}" title="امسح">🗑️</button></div>`).join(''):'<div class="muted small">لسه ما دفعتلوش.</div>'}
-    <button class="btn ok" style="width:100%;margin-top:8px" data-act="mpay" data-m="${esc(x.name)}">💵 دفعتله</button></details>`).join('');
+    ${x.rets.length?`<h4>↩️ المرتجعات</h4>${[...x.rets].sort((a,b)=>b.d.localeCompare(a.d)).map(r=>`<div class="hrow"><div class="grow">${fmtDay(dk(r.d))} — <span style="color:var(--c-${bookParts(r.b).sb})">${esc(bookLabel(r.b))}</span> × ${r.q}</div><b>${fmtM(mretVal(r))}</b><button class="btn sm danger" data-act="del-mret" data-id="${r.id}" title="امسح">🗑️</button></div>`).join('')}`:''}
+    <div class="row2" style="margin-top:8px"><button class="btn ok" data-act="mpay" data-m="${esc(x.name)}">💵 دفعتله</button><button class="btn ghost" data-act="mret" data-m="${esc(x.name)}">↩️ رجّعتله</button></div></details>`).join('');
 }
 
 /* --- شاشة بيع / طلب جديد --- */
@@ -1738,6 +1854,7 @@ function saleForm(tid, editId){
     res.innerHTML=(raw && !hits.length?'<div class="hint" style="margin:0 0 6px">مش لاقيه.</div>':'') +
       hits.map(t=>`<button class="pick-row" data-sf="pick" data-id="${esc(t.id)}"><b>${esc(t.name)}</b>${nameTags(t)} <span class="small muted">${esc([t.phone,t.area,t.subjectText].filter(Boolean).join(' • '))}</span></button>`).join('') +
       (raw ? `<div class="addnew"><b class="small">➕ ضيفه (لو مش موجود)</b><div class="row2"><input id="sf_nn" placeholder="الاسم" value="${esc(isNum?'':raw)}"><input id="sf_np" inputmode="tel" dir="ltr" placeholder="التليفون" value="${esc(isNum?raw:'')}"></div>
+        <input id="sf_na" list="vl_s" autocomplete="off" placeholder="المنطقة / القرية" style="margin-top:6px;width:100%">${vlist('vl_s')}
         <button class="btn sm pri" data-sf="addt" style="margin-top:8px">➕ ضيفه</button></div>` : '<div class="hint">اكتب اسم المدرس أو رقمه.</div>');
   };
   const drawT=()=>{
@@ -1801,7 +1918,8 @@ function saleForm(tid, editId){
       if(!name){ alert('اكتب اسم المدرس'); return; }
       const dup=phone && db.teachers.find(x=>x.phone===phone);
       if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تختاره؟`)){ st.tid=dup.id; drawT(); drawB(); } return; }
-      const nt={id:uid(), name, phone, stage:'', subjectText:'', subjects:[], area:'', school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
+      const area=(m.querySelector('#sf_na')?.value||'').trim();
+      const nt={id:uid(), name, phone, isNew:true, area, newArea:isNewArea(area), stage:'', subjectText:'', subjects:[], school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
       db.teachers.push(nt); save(); st.tid=nt.id; drawT(); drawB(); toast(`➕ اتضاف ${name}`);
     }
     else if(a==='order') save1(false);
@@ -1996,6 +2114,67 @@ function retForm(tid){
         }
         db.payments.push({id:uid(), k:'ret', t:tid, b, q:rq[b], d, parts});
       }
+    });
+  };
+  drawTot();
+}
+
+/* --- مرتجع للتاجر: بيرجع من أحدث بضاعة (البيع بياخد الأقدم) --- */
+function mretVal(r){ let v=0; for(const z of r.lots||[]){ const l=db.merchants.find(x=>x.id===z.lot); if(l && l.p!=null) v+=z.q*l.p; } return v; }
+function mretAlloc(name, k, q, left){
+  const out=[];
+  for(const l of [...db.merchants].reverse()){ if(!q) break; if(l.m!==name || l.b!==k || left[l.id]<=0) continue;
+    const n=Math.min(q,left[l.id]); out.push({lot:l.id, q:n}); q-=n; }
+  return out;
+}
+function mretForm(name){
+  const x=merchSum().find(z=>z.name===name); if(!x) return;
+  const left=lotLeft(), took={}, has={};
+  for(const l of db.merchants) if(l.m===name){ took[l.b]=(took[l.b]||0)+l.q; has[l.b]=(has[l.b]||0)+Math.max(0,left[l.id]); }
+  const ks=Object.keys(took).sort((a,b)=>bookRank[a]-bookRank[b]);
+  if(!ks.length){ alert('مفيش كتب خدتها منه.'); return; }
+  const rq={};
+  const val=(k,q)=>mretAlloc(name,k,q,left).reduce((s,z)=>{ const l=db.merchants.find(y=>y.id===z.lot); return s+(l&&l.p!=null?z.q*l.p:0); },0);
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>↩️ مرتجع لـ ${esc(name)}</h3>
+    <p class="hint" style="margin:0 0 6px">اكتب عدد المرتجع قدام الكتب اللي رجّعتها بس، وسيب الباقي فاضي.</p>
+    <div class="srow" style="border-top:0;font-size:13px;color:var(--muted);font-weight:700"><div class="grow">الكتاب</div><div>المرتجع</div></div>
+    ${ks.map(k=>`<div class="srow" data-k="${k}"><div class="grow"><b style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</b>
+        <div class="small">خدت <b>${took[k]}</b> • فاضل معاك <b>${has[k]}</b></div><div class="small muted" data-live="${k}"></div></div>
+      <div class="step"><button data-rf="dec" data-k="${k}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-k="${k}"><button class="plus" data-rf="inc" data-k="${k}" aria-label="زوّد">+</button></div></div>`).join('')}
+    <div class="sale-foot"><div id="mr_tot" class="tot"></div>
+      <div class="field"><label>التاريخ</label><input id="mr_d" type="date" value="${dayKey()}"></div>
+      <div class="row2"><button class="btn pri" id="mr_ok">💾 حفظ المرتجع</button><button class="btn ghost" id="mr_x">إلغاء</button></div></div></div>`;
+  document.body.appendChild(m);
+  const close=()=>m.remove();
+  const drawTot=()=>{
+    let n=0, v=0, over=false;
+    for(const k of ks){ const q=rq[k]||0; if(!q) continue; n+=q; if(q>has[k]) over=true; else v+=val(k,q); }
+    const after=r2(x.owe-v);
+    m.querySelector('#mr_tot').innerHTML = n
+      ? `↩️ إجمالي المرتجع <b>${n}</b> كتاب — <b>${fmtM(v)}</b><div class="small">${after<0?`<b style="color:var(--ok)">ليك عنده بعد المرتجع: ${fmtM(-after)}</b>`:`عليك له بعد المرتجع: <b>${fmtM(after)}</b>`}</div>${over?'<div class="small" style="color:var(--bad)">⚠️ فيه كتاب المرتجع بتاعه أكتر من الفاضل معاك</div>':''}`
+      : `<span class="muted">اكتب عدد المرتجع قدام الكتب</span><div class="small">عليك له دلوقتي: <b>${fmtM(x.owe)}</b></div>`;
+  };
+  const setQ=(k,q)=>{ q=Math.max(0,Math.min(9999,q||0)); if(q) rq[k]=q; else delete rq[k];
+    const r=m.querySelector(`.srow[data-k="${k}"]`); if(r){ r.classList.toggle('sel',!!q); const i=r.querySelector('.qin'); if(document.activeElement!==i) i.value=q||''; i.style.borderColor=q>has[k]?'var(--bad)':'';
+      r.querySelector('[data-live]').innerHTML = q ? (q>has[k] ? '<span style="color:var(--bad)">أكتر من الفاضل معاك</span>' : `يتبقى معاك ${has[k]-q} • قيمة المرتجع ${fmtM(val(k,q))}`) : ''; }
+    drawTot(); };
+  m.addEventListener('input', e=>{ const i=e.target.closest('.qin'); if(i) setQ(i.dataset.k, parseInt(digits(i.value).replace(/\D/g,''),10)); });
+  m.addEventListener('click', e=>{
+    if(e.target===m){ close(); return; }
+    const b=e.target.closest('[data-rf]'); if(!b) return;
+    const k=b.dataset.k; setQ(k,(rq[k]||0)+(b.dataset.rf==='inc'?1:-1));
+  });
+  m.querySelector('#mr_x').onclick=close;
+  m.querySelector('#mr_ok').onclick=()=>{
+    const pick=ks.filter(k=>rq[k]>0);
+    if(!pick.length){ alert('اكتب عدد المرتجع قدام الكتاب الأول'); return; }
+    const over=pick.filter(k=>rq[k]>has[k]);
+    if(over.length){ alert('المرتجع أكتر من الفاضل معاك في:\n'+over.map(k=>`• ${bookLabel(k)}: فاضل معاك ${has[k]} بس`).join('\n')); return; }
+    const d=pickDate(m.querySelector('#mr_d').value), n=pick.reduce((s,k)=>s+rq[k],0); close();
+    withUndo(`↩️ اتسجّل مرتجع ${n} كتاب لـ ${name}`, ()=>{
+      const lf=lotLeft();
+      for(const b of pick) db.merchRets.push({id:uid(), m:name, b, q:rq[b], d, lots:mretAlloc(name, b, rq[b], lf)});
     });
   };
   drawTot();
