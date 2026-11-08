@@ -161,8 +161,7 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 <header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→</button><h1 id="title">دفتر التسليمات</h1></div></header>
 <main class="wrap" id="app"></main>
 <div class="actbar" id="actbar"><div class="in">
-  <button class="btn ok" data-act="commit-d">✅ سلّمت <span class="n"></span></button>
-  <button class="btn owe" data-act="commit-o">⏳ مستحق له <span class="n"></span></button>
+  <button class="btn ok" data-act="commit-d" style="flex:2">✅ سلّمت <span class="n"></span></button>
   <button class="btn ghost sm" data-act="clear-sel" aria-label="إلغاء">✕</button>
 </div></div>
 <nav class="tabs" id="tabs">
@@ -280,9 +279,11 @@ function autoOwed(t){
   if(!exp.length) return [];
   const delivered = new Set();
   for(const e of db.entries) if(e.t===t.id && e.s==='d') delivered.add(e.b);
-  const alreadyOwed = new Set();
-  for(const e of db.entries) if(e.t===t.id && e.s==='o') alreadyOwed.add(e.b);
-  return exp.filter(k => !delivered.has(k) && !alreadyOwed.has(k));
+  return exp.filter(k => !delivered.has(k));
+}
+function owedEntries(){
+  const r=[]; for(const t of db.teachers) for(const k of autoOwed(t)) r.push({id:'', t:t.id, b:k, q:1, s:'o', dd:'', rd:''});
+  return r;
 }
 
 let toastTimer;
@@ -302,7 +303,7 @@ function withUndo(msg, fn){
 /* ================= حسابات ================= */
 function indexEntries(){
   const idx = {};
-  for(const e of db.entries){
+  for(const e of [...db.entries.filter(e=>e.s==='d'), ...owedEntries()]){
     const x = idx[e.t] ||= {d:0, o:0, last:'', books:{}};
     const b = x.books[e.b] ||= {d:0,o:0};
     if(e.s==='d'){x.d+=e.q; b.d+=e.q;} else {x.o+=e.q; b.o+=e.q;}
@@ -310,7 +311,7 @@ function indexEntries(){
   }
   return idx;
 }
-function owedTotal(){ return db.entries.reduce((s,e)=>s+(e.s==='o'?e.q:0),0); }
+function owedTotal(){ return owedEntries().length; }
 function dayStats(day){
   const visits=new Set(); let d=0,o=0;
   for(const e of db.entries){
@@ -429,7 +430,7 @@ function renderList(){
   const raw=homeQuery.trim(); const qd=normPhone(raw).replace(/^0/,'');
   const isNum = raw && /^[\d٠-٩۰-۹\s+\-]+$/.test(raw);
   const Q = raw && !isNum ? parseQuery(raw) : {owed:false, subj:null, stage:null, rest:[]};
-  const owedBy={}; for(const e of db.entries) if(e.s==='o') (owedBy[e.t] ||= []).push(e);
+  const owedBy={}; for(const e of owedEntries()) (owedBy[e.t] ||= []).push(e);
   const visitedToday=new Set(db.entries.filter(e=>dk(e.dd)===today||dk(e.rd)===today).map(e=>e.t));
   let list=db.teachers.filter(t=>{
     if(homeArea && t.area!==homeArea) return false;
@@ -472,9 +473,10 @@ function renderTeacher(id){
   const t=tById(id);
   if(!t){ setHeader('مش لاقي المدرس', true); app.innerHTML='<div class="empty">المدرس ده مش موجود. <a href="#/">ارجع للرئيسية</a></div>'; return; }
   setHeader(t.name, true);
-  const ents=db.entries.filter(e=>e.t===id);
-  const owed=ents.filter(e=>e.s==='o').sort((a,b)=>bookRank[a.b]-bookRank[b.b]);
-  const books={}; for(const e of ents){ const b=books[e.b] ||= {d:0,o:0}; e.s==='d'?b.d+=e.q:b.o+=e.q; }
+  const ents=db.entries.filter(e=>e.t===id && e.s==='d');
+  const owed=autoOwed(t).map(k=>({b:k,q:1}));
+  const books={}; for(const e of ents){ const b=books[e.b] ||= {d:0,o:0}; b.d+=e.q; }
+  for(const e of owed){ (books[e.b] ||= {d:0,o:0}).o=1; }
   const delivered=Object.entries(books).filter(([k,v])=>v.d).sort((a,b)=>bookRank[a[0]]-bookRank[b[0]]);
   const phone=t.phone||'';
   const wa = phone ? 'https://wa.me/2'+phone : '';
@@ -524,19 +526,11 @@ function renderTeacher(id){
         <button class="btn sm ghost" data-act="show-cls-change">تغيير</button></div></div>`;
   }
 
-  // المستحق التلقائي (بناءً على التصنيف)
-  const autoOwedBooks = t.clsConfirmed ? autoOwed(t) : [];
-  if(autoOwedBooks.length){
-    html += `<div class="auto-owed"><h3>📚 المفروض يستلم كمان (بناءً على تصنيفه)</h3>
-      <div class="items">${autoOwedBooks.map(k=>esc(bookLabel(k))).join('، ')}</div>
-      <button class="btn sm pri" style="margin-top:8px" data-act="add-auto-owed">⏳ سجّلهم مستحق كلهم</button></div>`;
-  }
-
   if(owed.length){
-    const tot=owed.reduce((s,e)=>s+e.q,0);
-    html += `<div class="warn"><h3>⏳ مستحق له ${tot} كتاب — لسه ما سلّمتوش</h3>
-      ${owed.map(e=>`<div class="orow"><div class="grow"><b>${esc(bookLabel(e.b))}</b>${e.q>1?` × ${e.q}`:''}<div class="small muted">طلبه ${fmtDT(e.rd)}</div></div>
-        <button class="btn sm ok" data-act="deliver-owed" data-id="${e.id}">✅ سلّمته</button></div>`).join('')}
+    const tot=owed.length, all=expectedBooks(t).length;
+    html += `<div class="warn"><h3>⏳ مستحق له ${tot} كتاب (من ${all}) — لسه ما سلّمتوش</h3>
+      ${owed.map(e=>`<div class="orow"><div class="grow"><b>${esc(bookLabel(e.b))}</b></div>
+        <button class="btn sm ok" data-act="deliver-owed" data-k="${e.b}">✅ سلّمته</button></div>`).join('')}
       ${owed.length>1?`<button class="btn ok" style="width:100%;margin-top:8px" data-act="deliver-all-owed">✅ سلّمته كل المستحق (${tot})</button>`:''}
     </div>`;
   }
@@ -546,7 +540,7 @@ function renderTeacher(id){
     html += `<div class="got" style="background:var(--brand-soft)"><h3 style="color:var(--brand)">🆕 ما استلمش منك أي كتاب لسه</h3></div>`;
   }
 
-  html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين اختار «سلّمت» أو «مستحق له».</p>`;
+  html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين دوس «سلّمت». المستحق بيتحسب لوحده من التصنيف.</p>`;
   for(const st of stages){
     const S=STAGES[st]; const mineStage=myStages.includes(st);
     const subs=[...S.subjects].sort((a,b)=>(t.subjects?.includes(b)?1:0)-(t.subjects?.includes(a)?1:0));
@@ -605,7 +599,7 @@ function updateActbar(){
   const bar=$('#actbar'); bar.classList.toggle('show', !!(n && curTeacher));
   bar.querySelectorAll('.n').forEach(x=>x.textContent=n?`(${n})`:'');
 }
-function commitSel(status){
+function commitSel(status='d'){
   const t=tById(curTeacher); if(!t) return;
   const keys=Object.keys(sel).sort((a,b)=>bookRank[a]-bookRank[b]); if(!keys.length) return;
   const now=new Date().toISOString(); const n=keys.reduce((s,k)=>s+sel[k],0);
@@ -622,8 +616,7 @@ function commitSel(status){
 /* ================= اللي عليا ================= */
 let owedSubj='', owedArea='';
 function owedFiltered(){
-  return db.entries.filter(e=>{
-    if(e.s!=='o') return false;
+  return owedEntries().filter(e=>{
     if(owedSubj && bookParts(e.b).sb!==owedSubj) return false;
     if(owedArea){ const t=tById(e.t); if(!t || t.area!==owedArea) return false; }
     return true;
@@ -631,7 +624,7 @@ function owedFiltered(){
 }
 function renderOwed(){
   setHeader('📦 اللي عليا (المستحق)', false);
-  const all=db.entries.filter(e=>e.s==='o');
+  const all=owedEntries();
   if(!all.length){ app.innerHTML='<div class="card empty"><div style="font-size:42px">🎉</div><b>مفيش ولا كتاب مستحق عليك.</b></div>'; return; }
   const subjCount={}; for(const e of all){ const sb=bookParts(e.b).sb; subjCount[sb]=(subjCount[sb]||0)+e.q; }
   if(owedSubj && !subjCount[owedSubj]) owedSubj='';
@@ -769,9 +762,8 @@ document.addEventListener('click', e=>{
     case 'dec': bumpSel(el.dataset.k, -1); break;
     case 'clear-sel': sel={}; document.querySelectorAll('.grow-row.sel').forEach(r=>{r.classList.remove('sel'); r.querySelector('.q').textContent='';}); updateActbar(); break;
     case 'commit-d': commitSel('d'); break;
-    case 'commit-o': commitSel('o'); break;
-    case 'deliver-owed': { const id=el.dataset.id; withUndo('✅ اتسجّل التسليم', ()=>{ const x=db.entries.find(z=>z.id===id); if(x){ x.s='d'; x.dd=new Date().toISOString(); } }); break; }
-    case 'deliver-all-owed': { const now=new Date().toISOString(); withUndo('✅ اتسلّم كل المستحق', ()=>{ db.entries.forEach(x=>{ if(x.t===curTeacher && x.s==='o'){ x.s='d'; x.dd=now; } }); }); break; }
+    case 'deliver-owed': { const k=el.dataset.k, t=tById(curTeacher); if(!t) break; withUndo('✅ اتسجّل التسليم', ()=>{ db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'d', dd:new Date().toISOString(), rd:'', rep:db.rep}); }); break; }
+    case 'deliver-all-owed': { const t=tById(curTeacher); if(!t) break; const now=new Date().toISOString(); const ks=autoOwed(t); withUndo(`✅ اتسلّم ${ks.length} كتاب`, ()=>{ for(const k of ks) db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'d', dd:now, rd:'', rep:db.rep}); }); break; }
     case 'del-entry': { const id=el.dataset.id; const ent=db.entries.find(z=>z.id===id);
       if(ent && ent.s==='d' && ent.dd){
         const age = Date.now() - new Date(ent.dd).getTime();
@@ -823,12 +815,21 @@ function download(blob, name){
 }
 
 /* ================= نسخة احتياطية ================= */
-function backup(){
+const BACKUP_MAIL='rahuqhasna@gmail.com';
+async function backup(){
   const now = new Date().toISOString();
-  const blob=new Blob([JSON.stringify({app:'selah-books', ...db, savedAt:now})], {type:'application/json'});
-  download(blob, `نسخة-احتياطية-${db.rep}-${dayKey()}.json`);
+  const name=`نسخة-احتياطية-${db.rep}-${dayKey()}.json`;
+  const json=JSON.stringify({app:'selah-books', ...db, savedAt:now});
+  const subject=`نسخة احتياطية — دفتر التسليمات — ${db.rep} — ${fmtDay(dayKey())}`;
+  const file=new File([json], name, {type:'application/json'});
   db.lastBackup = now; save();
-  toast('⬇️ النسخة نزلت — ابعتها لنفسك على الواتساب');
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:subject, text:`ابعتها على ${BACKUP_MAIL}`}); toast(`✅ اختار Gmail وابعتها على ${BACKUP_MAIL}`); return; }
+    catch(e){ if(e.name==='AbortError') return; }
+  }
+  download(new Blob([json],{type:'application/json'}), name);
+  location.href=`mailto:${BACKUP_MAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent('النسخة الاحتياطية نزلت على الجهاز — ارفقها هنا وابعت.')}`;
+  toast('⬇️ النسخة نزلت — ارفقها في الإيميل وابعت');
 }
 $('#fileJson').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
@@ -1031,7 +1032,7 @@ function exportExcel(all){
   }
   // 3) اللي عليا
   const s3=[['الكتاب','عدد النسخ','عدد المدرسين','المدرسين']]; const by={};
-  for(const e of db.entries.filter(e=>e.s==='o')) (by[e.b] ||= []).push(e);
+  for(const e of owedEntries()) (by[e.b] ||= []).push(e);
   for(const k of Object.keys(by).sort((a,b)=>bookRank[a]-bookRank[b])){ const l=by[k];
     s3.push([bookLabel(k), l.reduce((s,e)=>s+e.q,0), new Set(l.map(e=>e.t)).size, l.map(e=>(tmap[e.t]?.name||'؟')+(e.q>1?` (${e.q})`:'')).join('، ')]); }
   // 4) ملخص يومي
