@@ -2831,7 +2831,8 @@ function linkDrive(){
         toast('✅ الدرايف اتربط — بيرفع أول نسخة…'); render(); driveBackup(true);
       }catch(e){ alert(/norefresh/.test(e.message)
         ? 'جوجل ما ادّاش صلاحية دائمة.\nافتح myaccount.google.com/permissions وشيل «سلاح التلميذ» واربط تاني.'
-        : 'الربط ما نجحش. جرّب تاني بعد شوية.'); }
+        : /noclient/.test(e.message) ? 'الربط لسه مش جاهز من ناحية الإدارة (ناقص Client secret في السكريبت).\nكلّم شريف.'
+        : 'الربط ما نجحش. جرّب تاني بعد شوية.\n(' + e.message + ')'); }
     }});
   c.requestCode();
 }
