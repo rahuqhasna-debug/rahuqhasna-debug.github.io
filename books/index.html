@@ -2034,6 +2034,15 @@ const stamp=()=>{ const d=new Date(); return `${dayKey(d)} ${timeStr(d).replace(
 const blobB64=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(b); });
 const upSheet=it=>cloudPost({k:'sheet', mail:db.mail, rep:db.rep, key:db.driveKey, name:it.name, sub:it.sub, b64:it.b64});
 function openUrl(u){ const w=window.open(u,'_blank'); if(!w) location.href=u; }
+// شيت جوجل على أندرويد: يتفتح في تطبيق «جداول بيانات Google» (المتصفح على الموبايل بيفتحه عرض بس)
+function openSheet(u){
+  const m=/\/spreadsheets\/d\/([\w-]+)/.exec(u||'');
+  if(m && /Android/i.test(navigator.userAgent)){
+    location.href='intent://docs.google.com/spreadsheets/d/'+m[1]+'/edit#Intent;scheme=https;package=com.google.android.apps.docs.editors.sheets;S.browser_fallback_url='+encodeURIComponent('https://play.google.com/store/apps/details?id=com.google.android.apps.docs.editors.sheets')+';end';
+    return;
+  }
+  openUrl(u);
+}
 async function sendSheets(list){
   list=list.map(x=>({...x, name:x.name.replace(/[\\\/:*?"<>|]/g,'-')}));
   if(!GCLIENT_ID || !CLOUD_URL){ for(const x of list) download(x.blob, x.name); toast('⬇️ الشيت نزل'); return; }
@@ -2054,7 +2063,7 @@ async function sendSheets(list){
       queue(/relink/.test(e.message) ? '⚠️ الدرايف محتاج يتربط تاني من الإعدادات — الشيت هيستنى ويترفع بعدين.' : '⚠️ الرفع ما نجحش — هيتحاول تاني لوحده.', items.slice(i));
       return; }
   }
-  if(confirm(`✅ اترفع على الدرايف في «شيتات سلاح التلميذ»:\n\n${names}\n\nتفتحه دلوقتي؟`)) openUrl(urls[0]);
+  if(confirm(`✅ اترفع على الدرايف في «شيتات سلاح التلميذ»:\n\n${names}\n\nتفتحه دلوقتي؟`)) openSheet(urls[0]);
 }
 const sendSheet=(blob, name, sub)=>sendSheets([{blob, name, sub}]);
 var shqBusy=false;
