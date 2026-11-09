@@ -286,6 +286,29 @@ nav.tabs a{font-size:12px}
 .g3{background:linear-gradient(135deg,#15803d,#4ade80)}.g4{background:linear-gradient(135deg,#7c3aed,#c084fc)}
 .g5{background:linear-gradient(135deg,#0e7490,#22d3ee)}.g6{background:linear-gradient(135deg,#475569,#94a3b8)}
 .hres{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+/* الرئيسية على قد شاشة التليفون: من غير تمرير */
+.wrap.home{height:calc(100dvh - 52px);display:flex;flex-direction:column;overflow:hidden;padding:8px 12px calc(6px + env(safe-area-inset-bottom))}
+.wrap.home>*{flex:none;margin-bottom:8px}
+.wrap.home .stats{gap:6px}.wrap.home .stat{padding:5px 4px;border-radius:10px}
+.wrap.home .stat b{font-size:19px;line-height:1.3}.wrap.home .stat span{font-size:11px}
+.hprog{height:7px;background:var(--line);border-radius:5px;overflow:hidden;margin:-2px 0 2px}
+.hprog>i{display:block;height:100%;background:var(--ok)}
+.hprog-t{font-size:11px;color:var(--muted);margin:0 0 6px;text-align:center}
+.tday{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 8px;font-size:13px;line-height:1.5}
+.tday .btn{padding:6px 10px;font-size:13px;border-radius:10px;text-decoration:none}
+.wrap.home .search{margin-bottom:8px}.wrap.home .search input{padding:9px 12px;font-size:16px}.wrap.home .search .btn{padding:9px 14px}
+.wrap.home .hres{flex:1 1 auto;min-height:0;overflow-y:auto;margin-bottom:6px}
+.wrap.home .hres:empty{display:none}
+.wrap.home .igrid{flex:1 1 auto;min-height:0;margin:0 0 4px;gap:10px;grid-template-rows:repeat(3,1fr)}
+.wrap.home.q .igrid{display:none}
+.wrap.home .icon-b{min-height:0;font-size:16px;gap:2px}
+.wrap.home .icon-b .e{font-size:clamp(28px,6dvh,44px)}
+.wrap.home .sign{margin:0;font-size:11px}
+.wrap.home .backup-bar,.wrap.home .banner{padding:6px 10px;font-size:13px}
+/* الترحيب: شريط صغير بيظهر شوية ويختفي (3–4 مرات في اليوم بالكتير) */
+.hello-s{position:fixed;top:58px;left:12px;right:12px;z-index:40;max-width:620px;margin:0 auto;background:linear-gradient(135deg,#0f766e,#16a34a);color:#fff;border-radius:14px;padding:8px 12px;font-size:14px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.2);transition:opacity .5s,transform .5s;cursor:pointer}
+.hello-s .enc{font-weight:400;font-size:13px;opacity:.95}
+.hello-s.out{opacity:0;transform:translateY(-12px);pointer-events:none}
 /* صفحة المدرس */
 .tcard.st-part{background:var(--owe-soft);border-color:color-mix(in srgb,var(--owe) 35%,transparent)}
 .tcard.st-done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
@@ -620,6 +643,7 @@ function render(){
   if(st0){ const id=decodeURIComponent(st0[1]); if(curTeacher!==id){ sel={}; openBox=''; forceCls=false; othersOpen=false; }
     curTeacher=id; tTab='sale'; h='/t/'+st0[1]; try{ history.replaceState(null,'','#'+h); }catch(e){} }
   $('#tabs').hidden = h==='/';   // الشريط اللي تحت مخفي في الرئيسية
+  if(h!=='/') app.classList.remove('home','q');
   const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
   ACC = accMap();
   DUPS = new Set(dupGroups().map(([p])=>p));
@@ -646,14 +670,28 @@ window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
 const ENC=['ربنا يوفقك النهارده 🤲','شد حيلك يا بطل 💪','كل كتاب بتسلّمه بيفرق مع طالب 📚','ابتسامتك أول البيع 😊','خطوة خطوة وهتوصل 🚶','إنت قدها وقدود 🔥',
   'النهارده يوم حلو إن شاء الله ☀️','الشغل الحلو بيبان 👌','ابدأ بالمدرسين الـ A الأول ⭐','سجّل كل تسليم أول بأول ✍️','الصبر مفتاح الفرج 🗝️',
   'ربنا يبارك في رزقك 🤲','كمّل… إنت ماشي صح ✅','كل زيارة بتقرّبك من الهدف 🎯','يلا بينا نخلّص المستحق 🚀'];
-function helloCard(){
-  const h=new Date().getHours(), nm=esc(db.rep||'');
+// الترحيب: شريط صغير بيظهر 6 ثواني ويختفي — مرة واحدة في كل فترة (4 فترات في اليوم بالكتير)
+function helloSlot(h){ return h>=5&&h<10 ? 0 : h>=10&&h<14 ? 1 : h>=14&&h<18 ? 2 : 3; }
+function maybeHello(){
+  if(!db.rep || $('.hello-s')) return;
+  const d=new Date(), h=d.getHours(), slot=`${dayKey(h<5?new Date(d.getTime()-864e5):d)}-${helloSlot(h)}`;
+  let last=''; try{ last=localStorage.getItem(KEY+'-hello')||''; }catch(e){}
+  if(last===slot) return;
+  try{ localStorage.setItem(KEY+'-hello', slot); }catch(e){}
+  const nm=esc(db.rep);
   const g = h>=5&&h<12 ? `☀️ صباح الخير يا ${nm} — أخوك شريف حشيش بيصبّح عليك`
     : h>=12&&h<17 ? `🌤️ نهارك سعيد يا ${nm} — أخوك شريف حشيش بيسلّم عليك` : `🌙 مساء الخير يا ${nm} — أخوك شريف حشيش بيمسّي عليك`;
-  const d=new Date(), di=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5)%ENC.length;
+  const di=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5)%ENC.length;
+  const el=document.createElement('div'); el.className='hello-s out'; el.innerHTML=`${g}<div class="enc">${ENC[di]}</div>`;
+  document.body.appendChild(el);
+  const bye=()=>{ el.classList.add('out'); setTimeout(()=>el.remove(), 600); };
+  el.onclick=bye; setTimeout(()=>el.classList.remove('out'), 60); setTimeout(bye, 6000);
+}
+function homeProg(){
   let exp=0; for(const t of db.teachers) exp+=expectedBooks(t).length;
-  const done=exp-owedTotal(), pc=exp?Math.round(done*100/exp):0;
-  return `<div class="hello"><h2>${g}</h2><div class="enc">${ENC[di]}</div>${exp?`<div class="prog"><i style="width:${pc}%"></i></div><div class="prog-t">سلّمت ${done} من ${exp} مستحق (${pc}%)</div>`:''}</div>`;
+  if(!exp) return '';
+  const done=exp-owedTotal(), pc=Math.round(done*100/exp);
+  return `<div class="hprog"><i style="width:${pc}%"></i></div><div class="hprog-t">سلّمت ${done} من ${exp} مستحق (${pc}%)</div>`;
 }
 function topBanners(){
   const banner = storageOk ? '' : '<div class="banner">⚠️ الحفظ على الجهاز مش شغال — اعمل نسخة احتياطية</div>';
@@ -697,14 +735,18 @@ function renderHome(){
   const st=dayStats(dayKey()), ob=owedTotal(), po=db.sales.filter(s=>s.st==='order').length;
   const ic=(href,e,l,g,badge)=>`<a class="icon-b ${g}" href="${href}"><span class="e">${e}</span>${l}${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const grid=`<div class="igrid">${ic('#/teachers','👨‍🏫','المدرسين','g1')}${ic('#/owed','📦','اللي عليا','g2',ob)}${ic('#/sales','💰','البيع','g3',po)}${ic('#/report','📊','التقارير','g4')}${ic('#/plan','🗺️','خطة بكرة','g5')}${ic('#/settings','⚙️','الإعدادات','g6')}</div>`;
-  if(!db.teachers.length){ app.innerHTML = topBanners() + helloCard() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
-  app.innerHTML = topBanners() + helloCard() + `
+  setTimeout(maybeHello, 1300);
+  if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
+  const x=todayData();
+  app.classList.add('home'); app.classList.toggle('q', !!homeQuery.trim());
+  app.innerHTML = topBanners() + `
     <div class="stats">
       <div class="stat"><b>${st.visits}</b><span>زيارة النهارده</span></div>
       <div class="stat"><b>${st.d}</b><span>كتاب اتسلّم النهارده</span></div>
       <div class="stat"><b style="color:var(--owe)">${ob}</b><span>كتاب عليا (مستحق)</span></div>
-    </div>
-    ${todayCard()}
+    </div>${homeProg()}
+    <div class="tday"><div class="grow">📅 بعت بـ <b>${fmtM(x.sv)}</b> • حصّلت <b>${fmtM(x.paid)}</b> • مرتجع <b>${x.rN}</b></div>
+      <a class="btn ok" href="${esc(waLink(db.reportPhone||'', reportText()))}" target="_blank" rel="noopener">📤 التقرير</a></div>
     <div class="search"><input id="hq" type="search" placeholder="🔎 دوّر على مدرس: اسم، تليفون، قرية…" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button></div>
     <div class="hres" id="hres"></div>
@@ -713,7 +755,7 @@ function renderHome(){
   const draw=()=>{ const l=quickFind(q.value), r=$('#hres');
     r.innerHTML = !q.value.trim() ? '' : l.length ? l.slice(0,6).map(t=>teacherCard(t, idx[t.id])).join('') + (l.length>6?`<a class="btn ghost" href="#/teachers">كل النتايج (${l.length}) ←</a>`:'')
       : `<div class="empty small">مش لاقيه — <a href="#" data-act="new-teacher" data-name="${esc(q.value.trim())}">ضيفه مدرس جديد</a></div>`; };
-  q.addEventListener('input',()=>{ homeQuery=q.value; draw(); });
+  q.addEventListener('input',()=>{ homeQuery=q.value; app.classList.toggle('q', !!q.value.trim()); draw(); });
   q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=quickFind(q.value)[0]; if(f) location.hash='#/t/'+encodeURIComponent(f.id); }});
   draw();
 }
@@ -1326,6 +1368,8 @@ document.addEventListener('click', e=>{
       withUndo('✅ اتباع', ()=>{ sellItems(s, lotLeft()); }); afterWork(s.t); showInvoice(s.t, true); break; }
     case 'cancel-order': { const id=el.dataset.id; if(confirm('تلغي الطلب ده؟')) withUndo('❌ الطلب اتلغى', ()=>{ db.sales=db.sales.filter(s=>s.id!==id); }); break; }
     case 'invoice': showInvoice(el.dataset.id); break;
+    case 'drive-link': linkDrive(); break;
+    case 'drive-now': driveBackup(true); break;
     case 'sync-now': if(!navigator.onLine){ alert('مفيش نت دلوقتي — هيتبعت لوحده أول ما النت يرجع.'); break; } db.lastSync=''; cloudSync(true); break;
     case 'pull-prices': if(!navigator.onLine){ alert('مفيش نت دلوقتي.'); break; } pullPrices(true); break;
     case 'pay': { const t=tById(el.dataset.id); if(!t) break;
@@ -1426,6 +1470,8 @@ function firstRun(){
 }
 async function backup(){
   if(!db.mail){ firstRun(); return; }
+  // الدرايف مربوط وفيه نت → النسخة تترفع على درايف المندوب على طول
+  if(db.driveKey && GCLIENT_ID && CLOUD_URL && navigator.onLine){ if(await driveBackup(true)) return; }
   const MAIL=db.mail;
   const now = new Date().toISOString();
   const name=`نسخة-احتياطية-${db.rep}-${dayKey()}.json`;
@@ -1452,7 +1498,8 @@ $('#fileJson').addEventListener('change', async e=>{
     const arr=x=>Array.isArray(x)?x:[];
     db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
-      merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||''}; save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
+      merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
+      driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
 
@@ -2624,7 +2671,7 @@ function pricesCard(){
       <div class="kv"><span>فواتير مستنية تتبعت</span><b>${invQ().length}</b></div>
       <button class="btn" style="width:100%;margin-top:8px" data-act="sync-now">🔄 ابعت دلوقتي</button>
       <p class="hint">الشغل بيتبعت لوحده كل ما يبقى فيه جديد وفيه نت. مش محتاج تدوس حاجة.</p></div>` : '';
-  return cloud + `<div class="card"><h3 class="sec-t">💲 أسعار الكتب</h3>
+  return driveCard() + cloud + `<div class="card"><h3 class="sec-t">💲 أسعار الكتب</h3>
     <div class="kv"><span>كتب ليها سعر</span><b>${n} من ${SELL_KEYS.length}</b></div>
     ${CLOUD_URL ? `<div class="kv"><span>آخر تحديث للأسعار</span><b>${db.pricesAt?fmtDT(db.pricesAt):'لسه'}</b></div>
     <button class="btn" style="width:100%;margin-top:8px" data-act="pull-prices">🔄 حدّث الأسعار دلوقتي</button>
@@ -2738,36 +2785,128 @@ $('#fileMerch').addEventListener('change', async e=>{
 
 /* ================= الدرايف (Apps Script على حساب شريف) ================= */
 // المندوب بيبعت بس: نسخة من كل شغله (ملف لكل يوم) + صفحته في شيت البيع + صور الفواتير. وبيسحب الأسعار.
-var syncTimer=null, syncBusy=false, invBusy=false;   // var: ممكن save() تتنده قبل السطر ده
-function scheduleSync(ms=15000){ if(!CLOUD_URL) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>cloudSync(), ms); }
+var syncTimer=null, syncBusy=false, invBusy=false, dbkTimer=null, dbkBusy=false;   // var: ممكن save() تتنده قبل السطر ده
+function scheduleSync(ms=15000){ if(!CLOUD_URL) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>cloudSync(), ms);
+  clearTimeout(dbkTimer); dbkTimer=setTimeout(()=>{ if(driveDue()) driveBackup(); }, 8000); }
+
+/* --- النسخة الاحتياطية على درايف المندوب نفسه ---
+   كل نص ساعة أو كل 4 زيارات (أيهما الأول)، لو فيه تعديل من آخر نسخة. الدرايف بيحتفظ بآخر 40 نسخة.
+   الربط مرة واحدة: المندوب يوافق بحساب جوجل بتاعه (صلاحية drive.file = الملفات اللي البرنامج عملها بس)،
+   والسكريبت بيحفظ الصلاحية ويرفع النسخ بعد كده لوحده. */
+const GCLIENT_ID = '1017677782441-dhfvp69vnhq7tes5stvkqqedm7kvgb5q.apps.googleusercontent.com';   // Client ID من Google Cloud (شريف بيحطه). فاضي = النسخ على الدرايف مقفولة
+const DBK_MIN = 30, DBK_VISITS = 4, DBK_KEEP = 40;
+function visitsSince(iso){
+  const v=new Set();
+  for(const e of db.entries){ if((e.s==='d' && (e.dd||'')>iso) || (e.rd && e.rd>iso)) v.add(e.t); }
+  for(const s of db.sales) if((s.sd||s.d||'')>iso) v.add(s.t);
+  return v.size;
+}
+function driveDue(){
+  if(!GCLIENT_ID || !CLOUD_URL || !db.driveKey) return false;
+  if(!db.entries.length && !db.stock.length && !db.sales.length && !db.merchants.length) return false;
+  if(db.lastDriveBk && (db.lastChange||'') <= db.lastDriveBk) return false;   // مفيش جديد
+  if(!db.lastDriveBk) return true;
+  return (Date.now()-new Date(db.lastDriveBk).getTime())/60000 >= DBK_MIN || visitsSince(db.lastDriveBk) >= DBK_VISITS;
+}
+async function driveBackup(manual){
+  if(!GCLIENT_ID || !CLOUD_URL || !db.driveKey || dbkBusy) return false;
+  if(!navigator.onLine){ if(manual) toast('📵 مفيش نت — النسخة هتترفع لوحدها أول ما النت يرجع'); return false; }
+  dbkBusy=true; const at=new Date().toISOString(), d=new Date(at), k=dayKey(d);
+  const name=`نسخة — ${dayName(k)} ${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} — ${timeStr(d).replace(':','-')}.json`;
+  try{
+    const j=await cloudPost({k:'bk', mail:db.mail, rep:db.rep, key:db.driveKey, name, keep:DBK_KEEP, data:{app:'selah-books', ...db, savedAt:at}});
+    db.lastDriveBk=at; db.lastBackup=at; db.driveCount=j.count||0; save(false); updateBkBtn();
+    if(manual){ toast(`✅ النسخة اترفعت على الدرايف بتاعك (${j.count||''} نسخة)`); }
+    if(location.hash==='#/settings') render();
+    return true;
+  }catch(e){
+    if(/relink/.test(e.message)){ db.driveKey=''; save(false); toast('⚠️ الدرايف محتاج يتربط تاني من الإعدادات'); if(location.hash==='#/settings') render(); }
+    else if(manual) toast('⚠️ النسخة ما اترفعتش — هتتحاول تاني لوحدها');
+    return false;
+  }finally{ dbkBusy=false; }
+}
+function loadGis(){
+  if(window.google?.accounts?.oauth2 || document.getElementById('gisJs')) return;
+  const s=document.createElement('script'); s.id='gisJs'; s.src='https://accounts.google.com/gsi/client'; s.async=true;
+  s.onerror=()=>s.remove(); document.head.appendChild(s);
+}
+function linkDrive(){
+  if(!GCLIENT_ID || !CLOUD_URL) return;
+  if(!navigator.onLine){ toast('📵 محتاج نت عشان تربط الدرايف'); return; }
+  if(!window.google?.accounts?.oauth2){ loadGis(); toast('⏳ استنى ثانيتين ودوس تاني'); return; }
+  const c=google.accounts.oauth2.initCodeClient({client_id:GCLIENT_ID, scope:'https://www.googleapis.com/auth/drive.file email',
+    ux_mode:'popup', login_hint:db.mail||'', callback: async r=>{
+      if(!r || r.error || !r.code){ toast('⚠️ الربط ما كملش'); return; }
+      try{
+        const j=await cloudPost({k:'link', mail:db.mail, rep:db.rep, code:r.code});
+        db.driveKey=j.key; db.driveMail=j.gmail||''; db.lastDriveBk=''; save(false);
+        toast('✅ الدرايف اتربط — بيرفع أول نسخة…'); render(); driveBackup(true);
+      }catch(e){ alert(/norefresh/.test(e.message)
+        ? 'جوجل ما ادّاش صلاحية دائمة.\nافتح myaccount.google.com/permissions وشيل «سلاح التلميذ» واربط تاني.'
+        : 'الربط ما نجحش. جرّب تاني بعد شوية.'); }
+    }});
+  c.requestCode();
+}
+function driveCard(){
+  if(!GCLIENT_ID || !CLOUD_URL) return '';
+  if(!db.driveKey) return `<div class="card"><h3 class="sec-t">🗂️ النسخة الاحتياطية على الدرايف بتاعك</h3>
+    <p class="hint" style="margin-top:0">اربط حساب جوجل بتاعك مرة واحدة، والبرنامج هيرفع نسخة لوحده على الدرايف بتاعك كل نص ساعة أو كل ${DBK_VISITS} زيارات، ويحتفظ بآخر ${DBK_KEEP} نسخة في فولدر «سلاح التلميذ البحيرة».</p>
+    <button class="btn pri" style="width:100%" data-act="drive-link">🔗 اربط الدرايف بتاعي</button></div>`;
+  return `<div class="card"><h3 class="sec-t">🗂️ النسخة الاحتياطية على الدرايف بتاعك</h3>
+    <div class="kv"><span>الحساب</span><b>${esc(db.driveMail||db.mail)}</b></div>
+    <div class="kv"><span>آخر نسخة</span><b>${db.lastDriveBk?fmtDT(db.lastDriveBk):'لسه'}</b></div>
+    ${db.driveCount?`<div class="kv"><span>النسخ اللي على الدرايف</span><b>${db.driveCount} من ${DBK_KEEP}</b></div>`:''}
+    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="drive-now">⬆️ ارفع نسخة دلوقتي</button><button class="btn ghost" data-act="drive-link">🔗 اربط تاني</button></div>
+    <p class="hint">بتترفع لوحدها كل نص ساعة أو كل ${DBK_VISITS} زيارات (أيهما الأول) لو فيه شغل جديد. لو مفيش نت بتستنى لحد ما النت يرجع. هتلاقيها في الدرايف ← فولدر «سلاح التلميذ البحيرة»، ولو احتجت ترجّع نسخة نزّلها ورجّعها من «استرجاع نسخة».</p></div>`;
+}
 async function cloudPost(body){
   const r=await fetch(CLOUD_URL, {method:'POST', body:JSON.stringify(body)});   // text/plain → من غير preflight
   const j=await r.json(); if(!j.ok) throw new Error(j.err||'fail'); return j;
 }
+// الصفوف اللي بتتكتب في شيت المندوب على درايف شريف (بند ش): البيع، المرتجعات والدفعات، التسليمات
 function syncRows(){
   const tm=Object.fromEntries(db.teachers.map(t=>[t.id,t])), lot=Object.fromEntries(db.merchants.map(l=>[l.id,l])), S=saleIdx(), D=iso=>fmtDay(dk(iso));
-  const sales=[['التاريخ','المدرس','التليفون','الكتاب','العدد','السعر قبل','السعر بعد','الإجمالي','التاجر']];
-  for(const s of db.sales.filter(s=>s.st==='sold').sort((a,b)=>(a.sd||'').localeCompare(b.sd||''))){ const t=tm[s.t]||{};
+  const sold=db.sales.filter(s=>s.st==='sold').sort((a,b)=>(a.sd||'').localeCompare(b.sd||''));
+  // رقم الفاتورة = ترتيبها عند المدرس ده (من الأقدم)
+  const invNo={}, cnt={}; for(const s of sold){ cnt[s.t]=(cnt[s.t]||0)+1; invNo[s.id]=cnt[s.t]; }
+  // اسم صورة الفاتورة على الدرايف بيبدأ بـ «فاتورة-<المدرس>-<اليوم>» (زي queueInvoice)
+  const imgBase=(t,iso)=>`فاتورة-${t.name||''}-${dk(iso)}`.replace(/[\\/:*?"<>|]/g,'');
+  const sales=[['رقم الفاتورة','التاريخ','المدرس','التليفون','الكتاب','العدد','السعر قبل','السعر بعد','الإجمالي','التاجر','صورة الفاتورة']];
+  for(const s of sold){ const t=tm[s.t]||{};
     for(const it of s.items) for(const x of (it.src&&it.src.length?it.src:[{lot:null,q:it.q}]))
-      sales.push([D(s.sd), t.name||'؟', t.phone||'', bookLabel(it.b), x.q, it.pre??'', it.post??'', it.post!=null?r2(x.q*it.post):'', x.lot?(lot[x.lot]?.m||'؟'):'—']); }
-  const pays=[['التاريخ','المدرس','النوع','المبلغ','الكتاب','العدد']];
+      sales.push([`فاتورة ${invNo[s.id]}`, D(s.sd), t.name||'؟', t.phone||'', bookLabel(it.b), x.q, it.pre??'', it.post??'', it.post!=null?r2(x.q*it.post):'', x.lot?(lot[x.lot]?.m||'؟'):'—', 'IMG:'+imgBase(t,s.sd)]); }
+  const pays=[['التاريخ','المدرس','النوع','الكتاب','العدد','المبلغ','فاتورة رقم']];
   for(const p of [...db.payments].sort((a,b)=>(a.d||'').localeCompare(b.d||''))){ const t=tm[p.t]||{};
-    pays.push(p.k==='pay' ? [D(p.d), t.name||'؟', 'دفعة', r2(p.amt), '', ''] : [D(p.d), t.name||'؟', 'مرتجع', r2(retVal(p,S)), bookLabel(p.b), p.q]); }
-  return {sales, pays};
+    if(p.k==='pay') pays.push([D(p.d), t.name||'؟', 'دفعة', '', '', r2(p.amt), '']);
+    else pays.push([D(p.d), t.name||'؟', 'مرتجع', bookLabel(p.b), p.q, r2(retVal(p,S)), [...new Set((p.parts||[]).map(pt=>invNo[pt.sale]).filter(Boolean))].map(n=>'فاتورة '+n).join('، ')]); }
+  // التسليمات: كل سطر ليه كود ثابت (e.id) عشان عمود «التسجيل على برنامج الشركة» اللي شريف بيعلّمه يفضل زي ما هو
+  const dels=[];
+  for(const e of [...db.entries].sort((a,b)=>((tm[a.t]?.name||'').localeCompare(tm[b.t]?.name||'','ar')) || (actDate(a)||'').localeCompare(actDate(b)||''))){
+    const t=tm[e.t]||{}, a=actDate(e);
+    dels.push({id:e.id, r:[t.name||'؟', t.phone||'', bookLabel(e.b), e.q, e.s==='d'?'اتسلّم':'مستحق (لسه)', a?D(a):'', a?timeStr(new Date(a)):'', t.area||'', e.rd?D(e.rd):'', e.dd?D(e.dd):'', e.rep||db.rep]}); }
+  return {sales, pays, dels};
 }
 function syncStats(){
-  const st=dayStats(dayKey()), acc=accMap(), left=stockLeft(); let sold=0, owe=0;
+  const st=dayStats(dayKey()), acc=accMap(), left=stockLeft(), S=saleIdx(); let sold=0, owe=0;
   for(const a of Object.values(acc)){ sold+=a.bought; if(a.owe>0) owe+=a.owe; }
+  // أرقام كل يوم (آخر 40 يوم) لمقارنة المناديب في صفحة المتابعة: سلّم • باع بـ • حصّل • مرتجع
+  const from=dayKey(new Date(Date.now()-40*864e5)), days={}, g=k=>days[k] ||= {d:0, sv:0, pd:0, rv:0};
+  for(const e of db.entries) if(e.s==='d'){ const k=dk(e.dd); if(k>=from) g(k).d+=e.q; }
+  for(const s of db.sales) if(s.st==='sold'){ const k=dk(s.sd); if(k>=from) for(const it of s.items) if(it.post!=null) g(k).sv+=it.q*it.post; }
+  for(const p of db.payments){ const k=dk(p.d); if(k<from) continue; if(p.k==='pay') g(k).pd+=p.amt; else g(k).rv+=retVal(p,S); }
+  for(const k in days) for(const f of ['sv','pd','rv']) days[k][f]=r2(days[k][f]);
+  const merchOwe=r2(merchSum().reduce((s,x)=>s+Math.max(0,x.owe),0));
   return {teachers:db.teachers.length, visitsToday:st.visits, deliveredToday:st.d, delivered:db.entries.filter(e=>e.s==='d').reduce((s,e)=>s+e.q,0),
-    owed:owedTotal(), sold:r2(sold), owe:r2(owe), orders:db.sales.filter(s=>s.st==='order').length, stockLeft:left?Object.values(left).reduce((a,b)=>a+b,0):null};
+    owed:owedTotal(), sold:r2(sold), owe:r2(owe), orders:db.sales.filter(s=>s.st==='order').length, stockLeft:left?Object.values(left).reduce((a,b)=>a+b,0):null,
+    merchOwe, days};
 }
 async function cloudSync(manual){
   if(!CLOUD_URL || !db.mail || syncBusy || !navigator.onLine) return;
   if(db.lastSync && (db.lastChange||'') <= db.lastSync){ flushInv(); if(manual) toast('☁️ كل حاجة متبعتة'); return; }
   syncBusy=true; const at=new Date().toISOString();
   try{
-    const {sales, pays}=syncRows();
-    await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays,
+    const {sales, pays, dels}=syncRows();
+    await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels,
       data:{app:'selah-books', ...db, savedAt:at}});
     db.lastSync=at; save(false); if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
   }catch(e){ if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده'); }
@@ -2802,6 +2941,8 @@ async function pullPrices(manual){
       if(pre==null && post==null) continue;
       const k=rowBook(row[H.sb], row[H.g], H.st>=0?row[H.st]:''); if(k && isSell(k)) np[k]={pre, post};
     }
+    // رقم واتساب التقارير: من صفحة «إعدادات» في شيت الأسعار (شريف بس اللي بيحدده)
+    if(j.phone!=null){ const ph=String(j.phone).trim(); if(ph!==(db.reportPhone||'')){ db.reportPhone=ph; save(false); } }
     const changed=JSON.stringify(np)!==JSON.stringify(db.prices);
     db.pricesAt=new Date().toISOString();
     if(changed){ db.prices=np; fillPrices(); save(); render(); toast('💲 الأسعار اتحدّثت'); }
@@ -2809,10 +2950,12 @@ async function pullPrices(manual){
   }catch(e){ if(manual) toast('⚠️ مش قادر أجيب الأسعار دلوقتي'); }
 }
 if(CLOUD_URL){
-  setTimeout(()=>{ pullPrices(); cloudSync(); }, 3000);
-  window.addEventListener('online', ()=>{ pullPrices(); cloudSync(); });
-  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) cloudSync(); });
+  const dchk=()=>{ if(driveDue()) driveBackup(); };
+  setTimeout(()=>{ pullPrices(); cloudSync(); dchk(); if(GCLIENT_ID && !db.driveKey) loadGis(); }, 3000);
+  window.addEventListener('online', ()=>{ pullPrices(); cloudSync(); setTimeout(dchk, 4000); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ cloudSync(); dchk(); } else setTimeout(dchk, 2000); });
   setInterval(()=>cloudSync(), 5*60000);
+  setInterval(dchk, 60000);
 }
 
 render();
