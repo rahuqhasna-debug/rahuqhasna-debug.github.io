@@ -1193,10 +1193,17 @@ function renderReport(){
     <div class="card"><h3 class="sec-t">📗 شيت إكسل</h3>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-scope="range">⬇️ إكسل للفترة دي</button>
       <button class="btn" style="width:100%" data-act="export" data-scope="all">⬇️ إكسل بكل حاجة من الأول</button>
-      <p class="hint">ملف «سلاح التلميذ» فيه 12 شيت: فواتير البيع بمرتجعات • حسابات المدرسين • صافي كتب المدرسين • حسابات التجار • صافي التجار • تسليمات 1 • تسليمات 2 • الملخص اليومي للكتب • أعداد المدرسين • الإضافات • طلبات مستنية التنفيذ • ترتيب الهدايا. البيع والتسليمات والطلبات حسب الفترة اللي فوق، والتجار والمخزون من الأول.</p></div>
+      <p class="hint">ملف «سلاح التلميذ» فيه 12 شيت: تسليمات 1 • تسليمات 2 • أعداد المدرسين • الإضافات • طلبات مستنية التنفيذ • حسابات التجار • صافي التجار • الملخص اليومي للكتب • فواتير البيع بمرتجعات • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا. البيع والتسليمات والطلبات حسب الفترة اللي فوق، والتجار والمخزون من الأول.</p></div>
+    <div class="card"><h3 class="sec-t">🏢 شيت بيع الشركة</h3>
+      <button class="btn pri" style="width:100%" data-act="compsale">🏢 شيت بيع الشركة للفترة دي</button>
+      <p class="hint">بنفس شكل شيت «بيع مباشر» بتاع الشركة: English • Prim • Prep • Summary. كل فاتورة في سطر (ولو من أكتر من تاجر يتقسم).</p></div>
+    <div class="card"><h3 class="sec-t">👥 بيانات المدرسين</h3>
+      <button class="btn pri" style="width:100%" data-act="tdata">👥 شيت بيانات المدرسين</button>
+      <p class="hint">كل المدرسين بتصنيفهم، مترتبين بالمنطقة، وجوه كل منطقة A وبعدها B وبعدها C.</p></div>
     <div class="card"><h3 class="sec-t">📋 جرد المخزن</h3>
-      <button class="btn pri" style="width:100%" data-act="jard">📋 شيت الجرد</button>
-      <p class="hint">بنفس شكل شيت جرد الشركة: الباقي معاك من كل كتاب (اللي استلمته من المخزن − اللي سلّمته) مقسوم ربط وفرط. أكتشف والكوبونات فاضيين تكتبهم بإيدك.</p></div>`;
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="jard">📋 شيت الجرد</button>
+      <button class="btn" style="width:100%" data-act="sjard">🧮 شيت جرد المبيعات</button>
+      <p class="hint">الجرد: بنفس شكل شيت جرد الشركة (اللي استلمته من المخزن − اللي سلّمته) ربط وفرط. جرد المبيعات: لكل كتاب استلمت كام من التجار، رجّعت كام، هدايا، اتباع كام، رجع كام من المدرسين، والباقي معاك بالظبط.</p></div>`;
   $('#rf').addEventListener('change',e=>{repFrom=e.target.value||dayKey(); renderReport();});
   $('#rt').addEventListener('change',e=>{repTo=e.target.value||dayKey(); renderReport();});
   app.querySelectorAll('[data-dd]').forEach(cb=>cb.addEventListener('change',()=>{ cb.checked?delDays.add(cb.dataset.dd):delDays.delete(cb.dataset.dd); ddSum(); }));
@@ -1397,6 +1404,9 @@ document.addEventListener('click', e=>{
       document.querySelectorAll('[data-list]').forEach(x=>x.hidden = x.dataset.list!==openBox);
       document.querySelectorAll('[data-act="tbox"]').forEach(x=>x.classList.toggle('on', x.dataset.k===openBox)); break; }
     case 'jard': exportJard(); break;
+    case 'sjard': exportSalesJard(); break;
+    case 'tdata': exportTeachersData(); break;
+    case 'compsale': exportCompanySales(); break;
     /* البيع */
     case 'sales-tab': salesTab=el.dataset.k; if(location.hash!=='#/sales') location.hash='#/sales'; else render(); break;
     case 'new-sale': saleForm(''); break;
@@ -1535,7 +1545,7 @@ $('#fileJson').addEventListener('change', async e=>{
     const when = d.savedAt ? ` (معمولة ${fmtDT(d.savedAt)})` : '';
     if(!confirm(`النسخة دي${when} فيها ${d.teachers.length} مدرس و ${d.entries.length} تعامل.\n\nهتحل مكان البيانات اللي على الجهاز ده (${db.teachers.length} مدرس و ${db.entries.length} تعامل). أكمل؟`)) return;
     const arr=x=>Array.isArray(x)?x:[];
-    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
+    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
       route:arr(d.route), editLog:arr(d.editLog), pinH:d.pinH||db.pinH||'',
@@ -1714,7 +1724,7 @@ function buildXlsx(sheets){
   const colors=[...FX.keys()];
   const fills=colors.map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join('');
   const xfs=colors.map((c,j)=>{ const fi=3+j; return `<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="${fi}" borderId="0" xfId="0" applyFont="1" applyFill="1"/>`; }).join('');
-  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${3+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF134E4A"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FF134E4A"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${3+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFCCFBF1"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
   const files=[
     {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
     {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
@@ -1862,21 +1872,21 @@ function exportExcel(all){
   const tInfo=id=>{ const t=tmap[id]||{}; return [cls(t), spec(t), t.area||'', t.school||'']; };
 
   /* 6) تسليمات 1: المواد أعمدة، وآخر كل يوم عدد المدرسين وإجمالي الكتب */
-  const s6=[['التاريخ','الساعة','الاسم','التليفون','التصنيف','التخصص','المنطقة','المدرسة', ...SC.map(s=>SUBJ[s]), 'إجمالي الكتب','الكتب','عدد المدرسين']];
+  const s6=[['الاسم','التليفون','التاريخ','الساعة','التصنيف','التخصص','المنطقة','المدرسة', ...SC.map(s=>SUBJ[s]), 'إجمالي الكتب','الكتب','عدد المدرسين']];
   { const c=colorer(), sc0=8, scL=colName(sc0), scR=colName(sc0+SC.length-1), totC=colName(sc0+SC.length), cntC=colName(sc0+SC.length+2), dayTot=[];
     const visits=[...groupBy(dents, e=>e.t+'|'+e.dd).values()].map(l=>({t:l[0].t, dd:l[0].dd, l})).sort((a,b)=>a.dd.localeCompare(b.dd));
     for(const [day, vs] of groupBy(visits, v=>dk(v.dd))){
       const a=s6.length+1;
       for(const v of vs){ const by={}; let n=0; for(const e of v.l){ const sb=bookParts(e.b).sb; by[sb]=(by[sb]||0)+e.q; n+=e.q; }
         const rn=s6.length+1, ks=[...v.l].sort((x,y)=>bookRank[x.b]-bookRank[y.b]);
-        const row=[{date:v.dd}, timeStr(new Date(v.dd)), TN(v.t), TP(v.t), ...tInfo(v.t), ...SC.map(s=>by[s]||''), {f:`SUM(${scL}${rn}:${scR}${rn})`, v:n},
+        const row=[TN(v.t), TP(v.t), {date:v.dd}, timeStr(new Date(v.dd)), ...tInfo(v.t), ...SC.map(s=>by[s]||''), {f:`SUM(${scL}${rn}:${scR}${rn})`, v:n},
           ks.map(e=>bookLabel(e.b)+(e.q>1?` × ${e.q}`:'')).join('، '), ''];
         row.fill=c(v.t); s6.push(row); }
       const b=s6.length, rn=b+1;
       const tr=[`إجمالي ${dayName(day)} ${fmtDay(day)}`, '', '', '', '', '', '', '',
         ...SC.map((s,i)=>{ const col=colName(sc0+i); return {f:`SUM(${col}${a}:${col}${b})`, v:vs.reduce((x,v)=>x+v.l.filter(e=>bookParts(e.b).sb===s).reduce((y,e)=>y+e.q,0),0)}; }),
         {f:`SUM(${totC}${a}:${totC}${b})`, v:vs.reduce((x,v)=>x+v.l.reduce((y,e)=>y+e.q,0),0)}, '',
-        {f:`SUMPRODUCT(1/COUNTIF(C${a}:C${b},C${a}:C${b}))`, v:new Set(vs.map(v=>TN(v.t))).size}];
+        {f:`SUMPRODUCT(1/COUNTIF(A${a}:A${b},A${a}:A${b}))`, v:new Set(vs.map(v=>TN(v.t))).size}];
       tr.fill=TOTF; tr.bold=true; s6.push(tr); dayTot.push(rn); }
     if(dayTot.length){ const g=['الإجمالي الكلي', '', '', '', '', '', '', '', ...SC.map((s,i)=>{ const col=colName(sc0+i); return {f:plus(col,dayTot), v:dayTot.reduce((x,r)=>x+(s6[r-1][sc0+i].v||0),0)}; }),
         {f:plus(totC,dayTot), v:dayTot.reduce((x,r)=>x+s6[r-1][sc0+SC.length].v,0)}, '', {f:plus(cntC,dayTot), v:dayTot.reduce((x,r)=>x+s6[r-1][sc0+SC.length+2].v,0)}];
@@ -1885,12 +1895,12 @@ function exportExcel(all){
   /* 7) تسليمات 2: كل كتاب في سطر + خلية مدمجة لكل مدرس «التسجيل على برنامج الشركة» */
   // شريف بيختار بإيده في الإكسل نفسه (قايمة منسدلة في خلية مدمجة لكل مدرس) — الافتراضي «لم يتم التسجيل»
   const REG_Y='تم التسجيل', REG_N='لم يتم التسجيل';
-  const s7=[['التاريخ','الساعة','الاسم','التليفون','التصنيف','التخصص','المنطقة','المدرسة','الكتاب','العدد','التسجيل على برنامج الشركة']], m7=[];
+  const s7=[['الاسم','التليفون','التاريخ','الساعة','التصنيف','التخصص','المنطقة','المدرسة','الكتاب','العدد','التسجيل على برنامج الشركة']], m7=[];
   { const c=colorer();
     for(const [tid, l] of [...groupBy(dents, e=>e.t)].sort((x,y)=>tsort(x[0],y[0]))){
       const f=c(tid), a=s7.length+1, t=tmap[tid]||{};
       [...l].sort((x,y)=>x.dd.localeCompare(y.dd) || bookRank[x.b]-bookRank[y.b]).forEach((e,i)=>{
-        const row=[{date:e.dd}, timeStr(new Date(e.dd)), TN(tid), TP(tid), ...tInfo(tid), bookLabel(e.b), e.q, i?'':REG_N]; row.fill=f; s7.push(row); });
+        const row=[TN(tid), TP(tid), {date:e.dd}, timeStr(new Date(e.dd)), ...tInfo(tid), bookLabel(e.b), e.q, i?'':REG_N]; row.fill=f; s7.push(row); });
       if(s7.length>a) m7.push(`K${a}:K${s7.length}`); } }
   const R7=s7.length>1?`K2:K${s7.length}`:null;
 
@@ -1916,7 +1926,8 @@ function exportExcel(all){
     if(s8.length>2){ const b=s8.length; const tr=['الإجمالي', ...soldKs.map((k,i)=>{ const col=colName(1+i); return {f:`SUM(${col}2:${col}${b})`, v:days.reduce((a,d)=>a+(ev[d][k]?.sold||0),0)}; }),
         (()=>{ const col=colName(1+soldKs.length); return {f:`SUM(${col}2:${col}${b})`, v:days.reduce((a,d)=>a+Object.values(ev[d]).reduce((x,y)=>x+y.sold,0),0)}; })(),
         (()=>{ const col=colName(2+soldKs.length); return {f:`SUM(${col}2:${col}${b})`, v:days.reduce((a,d)=>a+Object.values(ev[d]).reduce((x,y)=>x+y.tret,0),0)}; })()];
-      tr.fill=TOTF; tr.bold=true; s8.push(tr); } }
+      tr.fill=TOTF; tr.bold=true; s8.push(tr); }
+    if(!days.length) s8.push(['مفيش بيع في الفترة دي']); }
 
   /* 9) أعداد المدرسين */
   const s9=[['التاريخ','إجمالي المدرسين','استكمال','تسليم جديد','كانوا على البرنامج','ضفتهم جداد']];
@@ -1961,30 +1972,31 @@ function exportExcel(all){
   const R11=s11.length>1?`I2:I${s11.length}`:null;
 
   /* 12) ترتيب الهدايا: الصافي بعد المرتجع، ولو اتساووا الأعلى في الفاتورة بعد الخصم */
-  const s12=[['الترتيب','المدرس','التليفون','إجمالي الكتب الصافي','إجمالي الفاتورة قبل الخصم','إجمالي الفاتورة بعد الخصم']];
+  const s12=[['المدرس','التليفون','إجمالي الكتب الصافي','إجمالي الفاتورة قبل الخصم','إجمالي الفاتورة بعد الخصم','الترتيب']];
   { const MED=['FDF1B8','E5E7EB','F3D9C0'], q=`'${N3}'`;
     const rk=Object.entries(rankV).filter(([,x])=>x.n>0).sort((a,b)=>b[1].n-a[1].n || b[1].post-a[1].post);
     rk.forEach(([tid,x],i)=>{ const rn=s12.length+1, ph=TP(tid);
-      const F=col=>ph ? `SUMIFS(${q}!$${col}$2:$${col}$${E3},${q}!$A$2:$A$${E3},B${rn},${q}!$B$2:$B$${E3},C${rn})` : `SUMIF(${q}!$A$2:$A$${E3},B${rn},${q}!$${col}$2:$${col}$${E3})`;
-      const row=[i+1, TN(tid), ph, {f:F('F'), v:x.n}, {f:F('I'), v:x.pre}, {f:F('J'), v:x.post}];
+      const F=col=>ph ? `SUMIFS(${q}!$${col}$2:$${col}$${E3},${q}!$A$2:$A$${E3},A${rn},${q}!$B$2:$B$${E3},B${rn})` : `SUMIF(${q}!$A$2:$A$${E3},A${rn},${q}!$${col}$2:$${col}$${E3})`;
+      const row=[TN(tid), ph, {f:F('F'), v:x.n}, {f:F('I'), v:x.pre}, {f:F('J'), v:x.post}, i+1];
       if(i<3) row.fill=MED[i]; s12.push(row); });
     s12.push([]); s12.push([all?'الفترة: من الأول':`الفترة: من ${fmtDay(repFrom)} لحد ${fmtDay(repTo)}`]); }
 
+  // الترتيب: التسليمات الأول (من اليمين) والبيع في الآخر. الثابت في كل شيت: اسم المدرس والتليفون بس
   const sheets=[
-    {name:'فواتير البيع بمرتجعات', rows:s1, widths:[22,14,12,13,13,50,11], freezeCol:2, af:false},
-    {name:'حسابات المدرسين', rows:s2, widths:[24,14,10,16,18,13,10,9,12,13,10,18,13,13,14,14], freezeCol:2, af:false},
-    {name:N3, rows:s3, widths:[24,14,10,16,18,10,9,12,14,14], freezeCol:2, af:false},
-    {name:N4, rows:s4, widths:[18,24,13,10,16,11], freezeCol:1, af:false, merges:m4},
-    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:1, af:false},
-    {name:'تسليمات 1', rows:s6, widths:[20,10,22,14,9,20,14,16, ...SC.map(()=>9), 11,45,12], freezeCol:4, af:false},
-    {name:'تسليمات 2', rows:s7, widths:[12,10,22,14,9,20,14,16,26,8,18], freezeCol:4, af:false, merges:m7,
+    {name:'تسليمات 1', rows:s6, widths:[22,14,20,10,9,20,14,16, ...SC.map(()=>9), 11,45,12], freezeCol:2, af:false},
+    {name:'تسليمات 2', rows:s7, widths:[22,14,12,10,9,20,14,16,26,8,18], freezeCol:2, af:false, merges:m7,
       dvs:R7?[{rg:R7, list:[REG_Y, REG_N]}]:[], cfs:R7?[{rg:R7, rules:[{eq:REG_Y, dx:'ok'}, {eq:REG_N, dx:'bad'}]}]:[]},
-    {name:'الملخص اليومي للكتب', rows:s8, widths:s8w, freezeCol:1, af:false},
-    {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:1, af:false},
+    {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false},
     {name:'الإضافات', rows:s10, widths:[24,14,20,9,14,14,14,16,10,12,13], freezeCol:2, af:false},
     {name:'طلبات مستنية التنفيذ', rows:s11, widths:[22,14,12,10,16,12,9,9,15,13,14,24], freezeCol:2, af:false,
       dvs:R11?[{rg:R11, list:Object.values(ST)}]:[], cfs:R11?[{rg:R11, rules:[{eq:ST.order, dx:'wait'}, {eq:ST.sold, dx:'ok'}, {eq:ST.cancel, dx:'bad'}, {eq:ST.refused, dx:'bad'}]}]:[]},
-    {name:'ترتيب الهدايا', rows:s12, widths:[9,24,14,15,18,18], freezeCol:3, af:false}
+    {name:N4, rows:s4, widths:[18,24,13,10,16,11], freezeCol:0, af:false, merges:m4},
+    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false},
+    {name:'الملخص اليومي للكتب', rows:s8, widths:s8w, freezeCol:0, af:false},
+    {name:'فواتير البيع بمرتجعات', rows:s1, widths:[22,14,12,13,13,50,11], freezeCol:2, af:false},
+    {name:'حسابات المدرسين', rows:s2, widths:[24,14,10,16,18,13,10,9,12,13,10,18,13,13,14,14], freezeCol:2, af:false},
+    {name:N3, rows:s3, widths:[24,14,10,16,18,10,9,12,14,14], freezeCol:2, af:false},
+    {name:'ترتيب الهدايا', rows:s12, widths:[24,14,15,18,18,9], freezeCol:2, af:false}
   ];
   const blob=buildXlsx(sheets);
   const nm = all ? `سلاح-التلميذ-${db.rep}-لحد-${dayKey()}.xlsx` : (repFrom===repTo ? `سلاح-التلميذ-${db.rep}-${repFrom}.xlsx` : `سلاح-التلميذ-${db.rep}-من-${repFrom}-لحد-${repTo}.xlsx`);
@@ -2053,6 +2065,92 @@ function exportJard(){
   }
   download(buildXlsx([{name:'جرد', rows, widths:[26,12,12,12], head:5}]), `جرد-مخزن-${db.rep}-${dayKey()}.xlsx`);
   toast('⬇️ شيت الجرد نزل');
+}
+
+/* ================= جرد المبيعات: الباقي معايا من بضاعة التجار ================= */
+function exportSalesJard(){
+  const ev={}, add=(b,f,q)=>{ if(!b||!q) return; (ev[b] ||= {in:0, mret:0, gift:0, sold:0, tret:0})[f]+=q; };
+  for(const l of db.merchants) add(l.b, 'in', l.q);
+  for(const r of db.merchRets) add(r.b, 'mret', r.q);
+  for(const g of db.gifts||[]) for(const it of g.items||[]) add(it.b, 'gift', it.q);
+  const sById={}; for(const s of db.sales) if(s.st==='sold'){ sById[s.id]=s; for(const it of s.items) add(it.b, 'sold', it.q); }
+  for(const p of db.payments) if(p.k==='ret') for(const pt of p.parts||[]){ const it=sById[pt.sale]?.items?.[pt.i]; if(it) add(it.b, 'tret', pt.q); }
+  const ks=Object.keys(ev).sort((a,b)=>(bookRank[a]??999)-(bookRank[b]??999));
+  const rows=[['الكتاب','استلمت من التجار','رجّعت للتجار','هدايا','اتباع للمدرسين','رجع من المدرسين','الباقي معايا','ربط (20)','فرط']];
+  for(const k of ks){ const x=ev[k], rn=rows.length+1, left=x.in-x.mret-x.gift-x.sold+x.tret;
+    const row=[bookLabel(k), x.in, x.mret, x.gift, x.sold, x.tret, {f:`B${rn}-C${rn}-D${rn}-E${rn}+F${rn}`, v:left, bold:true},
+      {f:`INT(MAX(0,G${rn})/20)`, v:Math.floor(Math.max(0,left)/20)}, {f:`MOD(MAX(0,G${rn}),20)`, v:Math.max(0,left)%20}];
+    if(left<=5) row.fill='FECACA'; rows.push(row); }
+  if(ks.length){ const b=rows.length, S=(col,i)=>({f:`SUM(${col}2:${col}${b})`, v:rows.slice(1).reduce((a,r)=>a+(typeof r[i]==='object'?r[i].v:r[i]),0)});
+    const tr=['الإجمالي', S('B',1), S('C',2), S('D',3), S('E',4), S('F',5), S('G',6), S('H',7), S('I',8)]; tr.fill='E5E7EB'; tr.bold=true; rows.push(tr); }
+  else rows.push(['لسه مفيش كتب استلمتها من التجار']);
+  rows.push([]); rows.push([`لحد ${fmtDay(dayKey())}`]);
+  download(buildXlsx([{name:'جرد المبيعات', rows, widths:[26,15,13,9,14,15,13,10,8], freezeCol:0, af:false}]), `جرد-المبيعات-${db.rep}-${dayKey()}.xlsx`);
+  toast('⬇️ شيت جرد المبيعات نزل');
+}
+
+/* ================= بيانات المدرسين (بالمنطقة، وجوه كل منطقة A ثم B ثم C) ================= */
+function exportTeachersData(){
+  if(!db.teachers.length) return toast('مفيش مدرسين لسه');
+  const vil=IDARAT[db.idara]||[], vi=a=>{ const i=vil.indexOf(a||''); return i<0?9999:i; };
+  const cr=t=>({A:0,B:1,C:2}[clsLetter(t)||String(t.cls||'').toUpperCase()] ?? 3);
+  const ts=[...db.teachers].sort((a,b)=>vi(a.area)-vi(b.area) || (a.area||'').localeCompare(b.area||'','ar') || cr(a)-cr(b) || (a.name||'').localeCompare(b.name||'','ar'));
+  const XP=['DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','FDE2E4','E6EBF0'];
+  const rows=[['اسم المدرس','التليفون','التصنيف','المنطقة','المدرسة','التخصص','المادة','المرحلة','عدد الطلاب','على البرنامج','ملاحظات']];
+  let prev=null, ci=-1;
+  for(const t of ts){ if(t.area!==prev){ prev=t.area; ci=(ci+1)%XP.length; }
+    const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', t.spec||'', t.subjectText||'', STAGE_TXT[t.stage]||'', t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||''];
+    row.fill=XP[ci]; rows.push(row); }
+  const nm=('بيانات المدرسين — '+(db.idara||'')).trim();
+  download(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,10,13,24], freezeCol:2, af:false}]), nm+'.xlsx');
+  toast('⬇️ شيت بيانات المدرسين نزل');
+}
+
+/* ================= شيت بيع الشركة (نفس شكل «بيع مباشر»: English • Prim • Prep • Summary) ================= */
+function exportCompanySales(){
+  if(!db.empCode){ const c=prompt('اكتب الكود الوظيفي بتاعك (زي sp-288):', ''); if(c===null) return; db.empCode=c.trim(); save(); }
+  const inR=k=>k && k>=repFrom && k<=repTo, L=lotMap();
+  const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t]));
+  const sold=db.sales.filter(s=>s.st==='sold' && inR(dk(s.sd||s.d))).sort((a,b)=>(a.sd||a.d||'').localeCompare(b.sd||b.d||''));
+  if(!sold.length && !confirm('مفيش بيع في الفترة اللي اخترتها، الشيت هيطلع فاضي. تكمل؟')) return;
+  const G=(st,sb,a,b)=>Array.from({length:b-a+1},(_,i)=>`${st}-${sb}-${a+i}`);
+  const INV='رقم الفاتورة فى حالة الفاتورة المجمعة';
+  const SH=[
+    {name:'English', ks:G('p','en',1,6), lb:['Eng 1','Eng 2','Eng 3','Eng 4','Eng 5','Eng 6'], tail:['Total', INV, 'ملاحظات']},
+    {name:'Prim', ks:[...G('p','ar',1,6), ...G('p','math',1,6), ...G('p','stu',4,6), ...G('p','sci',4,6)],
+      lb:['ع 1','ع 2','ع 3','ع4','ع5','ع6','ح 1','ح 2','ح 3','ح4','ح5','ح6','مواد 4','مواد 5','مواد 6','علوم 4','علوم 5','علوم 6'], tail:['Total', INV]},
+    {name:'Prep', ks:[...G('m','ar',1,3), ...G('m','math',1,3), ...G('m','stu',1,3)], lb:['ع 1','ع 2','ع 3','ح 1','ح 2','ح 3','مواد 1','مواد 2','مواد 3'], tail:['Total', INV]}];
+  const H0=['التاريخ','الكود الوظيفى للمندوب','اسم المندوب','المحافظة','القطاع','اسم المدرس','رقم الهاتف','الإدارة','اسم التاجر'];
+  // كل فاتورة → كميات لكل تاجر
+  const groups=[];
+  for(const s of sold){ const byM=new Map();
+    for(const it of s.items){ for(const x of (it.src&&it.src.length?it.src:[{lot:null, q:it.q}])){ const m=x.lot?lotName(L,x.lot):'';
+      if(!byM.has(m)) byM.set(m,{}); const o=byM.get(m); o[it.b]=(o[it.b]||0)+x.q; } }
+    for(const [m,q] of byM) groups.push({s, m, q}); }
+  const out=[];
+  for(const sh of SH){ const n0=H0.length, rows=[[...H0, ...sh.lb, ...sh.tail]], c0=colName(n0), c1=colName(n0+sh.ks.length-1);
+    for(const g of groups){ const v=sh.ks.map(k=>g.q[k]||0); if(!v.some(Boolean)) continue;
+      const t=tmap[g.s.t]||{}, rn=rows.length+1;
+      rows.push([{date:g.s.sd||g.s.d}, db.empCode||'', db.rep||'', 'البحيرة', 'البحيرة', t.name||'', t.phone||'', db.idara||'', g.m,
+        ...v.map(x=>x||''), {f:`SUM(${c0}${rn}:${c1}${rn})`, v:v.reduce((a,x)=>a+x,0)}, '', ...(sh.tail.length>2?['']:[])]); }
+    sh.rows=rows; sh.n=rows.length;
+    sh.sum=k=>{ const i=sh.ks.indexOf(k), col=colName(n0+i); return {f:`SUM('${sh.name}'!${col}2:${col}${Math.max(2,sh.n)})`, v:rows.slice(1).reduce((a,r)=>a+(+r[n0+i]||0),0)}; };
+    out.push({name:sh.name, rows, widths:[12,14,16,11,11,24,14,14,18, ...sh.ks.map(()=>7), 8, 20, 20], freezeCol:0, af:false}); }
+  // Summary: صف لكل محافظة، والبحيرة بس فيها أرقام
+  const [EN,PR,PP]=SH;
+  const sKs=[[PR,PR.ks.slice(0,6)],[PR,PR.ks.slice(6,12)],[PR,PR.ks.slice(12,15)],[PR,PR.ks.slice(15,18)],[EN,EN.ks],[PP,PP.ks]];
+  const sLb=[...PR.lb, ...EN.lb, ...PP.lb];
+  const GOV=['القاهرة','القليوبية','الفيوم','بني سويف','الاسكندرية','البحيرة','الاسماعيلية','بورسعيد','السويس','الشرقية','الغربية','الدقهلية','دمياط','المنوفية','كفر الشيخ','المنيا','اسيوط','سوهاج','قنا','البحر الاحمر','الاقصر','اسوان'];
+  const W=sLb.length, last=colName(W);
+  const srows=[['Gov', ...sLb, 'Total']];
+  for(const gv of GOV){ const rn=srows.length+1;
+    const cells = gv==='البحيرة' ? sKs.flatMap(([sh,ks])=>ks.map(k=>sh.sum(k))) : Array(W).fill(0);
+    srows.push([gv, ...cells, {f:`SUM(B${rn}:${colName(W)}${rn})`, v:cells.reduce((a,c)=>a+(typeof c==='object'?c.v:c),0)}]); }
+  const b=srows.length, tr=['Total', ...Array.from({length:W+1},(_,i)=>{ const col=colName(i+1); return {f:`SUM(${col}2:${col}${b})`, v:srows.slice(1).reduce((a,r)=>a+(typeof r[i+1]==='object'?r[i+1].v:r[i+1]),0)}; })];
+  tr.fill='E5E7EB'; tr.bold=true; srows.push(tr);
+  out.push({name:'Summary', rows:srows, widths:[14, ...Array(W+1).fill(7)], freezeCol:0, af:false});
+  download(buildXlsx(out), `بيع مباشر — ${db.rep} — ${repFrom} لحد ${repTo}.xlsx`);
+  toast('⬇️ شيت بيع الشركة نزل');
 }
 
 /* ================= البيع والتجار ================= */
