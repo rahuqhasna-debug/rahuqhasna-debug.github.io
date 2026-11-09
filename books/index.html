@@ -343,7 +343,7 @@ function load(){
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
 }
 // رابط الـ Deploy بتاع Apps Script (درايف شريف). فاضي = البرنامج شغال من غير درايف
-const CLOUD_URL = '';
+const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbxvUtxpYVOskaw95PzGRTwj6bgNeDbt_cwXjys4U_7IiH2FKr_wjeayGTV8ncwkrc3A/exec';
 function save(changed=true){
   if(changed) db.lastChange = new Date().toISOString();
   try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; if(changed) scheduleSync(); }
