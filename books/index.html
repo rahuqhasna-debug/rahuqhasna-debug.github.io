@@ -1227,7 +1227,7 @@ function renderSettings(){
   setHeader('⚙️ الإعدادات', false);
   app.innerHTML=`<div class="card"><h3 class="sec-t">👤 المندوب</h3>
       <div class="field"><label>اسم المندوب</label><input id="rep" value="${esc(db.rep)}"></div>
-      <div class="field"><label>الجيميل (النسخة الاحتياطية بتروح عليه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
+      <div class="field"><label>الجيميل (حساب جوجل اللي النسخ بتترفع على الدرايف بتاعه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
       ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية${db.idara?` (${villages().length} قرية وبندر)`:''}</label>${idaraSelect('idara', db.idara)}</div>`:''}
       <button class="btn pri" style="width:100%" data-act="save-rep">حفظ</button>
       <p class="hint">الاسم بيتكتب على كل تسليم وفي شيت الإكسل والفاتورة.</p></div>
@@ -1455,7 +1455,7 @@ function firstRun(){
   m.innerHTML=`<div class="box" style="text-align:center"><img src="icon-192.png" alt="" style="width:90px;height:90px;object-fit:contain" onerror="this.remove()">
     <h3 style="margin:8px 0 2px">أهلاً بيك في برنامج ${APP_NAME}</h3><div class="small muted" style="margin-bottom:14px">${SIGN}</div>
     <div style="text-align:right"><div class="field"><label>اسمك (اسم المندوب)</label><input id="fr_rep" value="${esc(db.rep)}"></div>
-    <div class="field"><label>الجيميل بتاعك (النسخة الاحتياطية بتروح عليه)</label><input id="fr_mail" type="email" dir="ltr" inputmode="email" placeholder="name@gmail.com" value="${esc(db.mail)}"></div>
+    <div class="field"><label>الجيميل بتاعك (النسخ الاحتياطية بتترفع على الدرايف بتاعه)</label><input id="fr_mail" type="email" dir="ltr" inputmode="email" placeholder="name@gmail.com" value="${esc(db.mail)}"></div>
     ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية اللي ماسكها</label>${idaraSelect('fr_idara', db.idara)}</div>`:''}</div>
     <button class="btn pri" id="fr_ok" style="width:100%">يلا نبدأ ✅</button>
     <p class="hint">تقدر تغيّرهم بعدين من الإعدادات.</p></div>`;
@@ -1470,23 +1470,11 @@ function firstRun(){
 }
 async function backup(){
   if(!db.mail){ firstRun(); return; }
-  // الدرايف مربوط وفيه نت → النسخة تترفع على درايف المندوب على طول
-  if(db.driveKey && GCLIENT_ID && CLOUD_URL && navigator.onLine){ if(await driveBackup(true)) return; }
-  const MAIL=db.mail;
-  const now = new Date().toISOString();
-  const name=`نسخة-احتياطية-${db.rep}-${dayKey()}.json`;
-  const json=JSON.stringify({app:'selah-books', ...db, savedAt:now});
-  const subject=`نسخة احتياطية — ${APP_NAME} — ${db.rep} — ${fmtDay(dayKey())}`;
-  const file=new File([json], name, {type:'application/json'});
-  const done=()=>{ db.lastBackup = now; save(false); render(); };
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{ await navigator.share({files:[file], title:subject, text:`ابعتها على ${MAIL}`}); done(); toast(`✅ اختار Gmail وابعتها على ${MAIL}`); return; }
-    catch(e){ if(e.name==='AbortError') return; }
-  }
-  done();
-  download(new Blob([json],{type:'application/json'}), name);
-  location.href=`mailto:${MAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent('النسخة الاحتياطية نزلت على الجهاز — ارفقها هنا وابعت.')}`;
-  toast('⬇️ النسخة نزلت — ارفقها في الإيميل وابعت');
+  // النسخة الاحتياطية بتترفع على درايف المندوب على طول (مفيش جيميل)
+  if(!GCLIENT_ID || !CLOUD_URL){ toast('⚠️ النسخ على الدرايف لسه مش متفعّلة'); return; }
+  if(!db.driveKey){ toast('🔗 اربط الدرايف بتاعك الأول — مرة واحدة بس'); linkDrive(); return; }
+  if(!navigator.onLine){ toast('📵 مفيش نت — النسخة هتترفع على الدرايف لوحدها أول ما النت يرجع'); return; }
+  await driveBackup(true);
 }
 $('#fileJson').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
