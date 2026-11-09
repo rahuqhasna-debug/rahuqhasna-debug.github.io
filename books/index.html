@@ -1690,20 +1690,26 @@ const xmlEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':
 function dateSerial(isoStr){ const d=new Date(isoStr); return (Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()) - Date.UTC(1899,11,30))/864e5; }
 // ألوان الصفوف: row.fill = لون (hex) أو 'part'/'done'/'new'. الخلية ممكن تبقى {v, fill, bold} علشان لون خاص بيها
 const FILLMAP={part:'FDE7C4', done:'D7F5DF', new:'E9D5FF'};
-const cellFill = c => (c && typeof c==='object' && ('v' in c || 'f' in c)) ? c.fill : null;
+const cellFill = c => (c && typeof c==='object' && ('v' in c || 'f' in c) && typeof c.fill==='string') ? c.fill : null;
+// لون الصف: لازم نص بس — الصف Array و r.fill من غير لون = دالة Array.fill (ده كان بيكتب لون بايظ في الإكسل ويطلع أسود)
+const rowFill = r => typeof r.fill==='string' ? (FILLMAP[r.fill]||r.fill) : null;
 // ستايلات الشرط (conditional formatting): أخضر / أحمر / أصفر
 const DXN={ok:0, bad:1, wait:2};
 function sheetXml(sh, FX){
-  const {rows, widths, head=0, freezeCol=false, dv=null, merges=[], af=true}=sh;
+  const {rows, widths, head=0, freezeCol=false, dv=null, merges=[], af=true, noFreeze=false}=sh;
   const dvs=[...(sh.dvs||[])], cfs=[...(sh.cfs||[])];
   // style: 0 عادي، 1 عنوان، 2 تاريخ، 3 ملفوف، 4 إجمالي — ولكل لون: 4 ستايلات (عادي، تاريخ، ملفوف، إجمالي)
-  const st=(fill,kind)=> fill ? 5+FX.get(fill)*4+kind : [0,2,3,4][kind];
-  const out=rows.map((r,ri)=>{ const rf=FILLMAP[r.fill]||r.fill||null, isH = ri===head || r.hdr;
+  // كل الستايلات ليها أرضية كريمي أو لون فاتح — مفيش خلية من غير لون (موبايل شريف بيقلب اللي من غير لون أسود)
+  const st=(fill,kind)=> fill && FX.has(fill) ? 5+FX.get(fill)*4+kind : [0,2,3,4][kind];
+  // كل صف فيه بيانات بيتكمّل لعرض الجدول، فمفيش خلية جوه الجدول من غير أرضية وحدود
+  const W=Math.max(1, ...rows.map(r=>r.length));
+  const out=rows.map((r0,ri)=>{ const r=r0.length ? Object.assign([...r0, ...Array(W-r0.length).fill('')], {bold:r0.bold, hdr:r0.hdr}) : r0;
+    const rf=rowFill(r0), isH = ri===head || r.hdr;
     return `<row r="${ri+1}">`+r.map((c0,ci)=>{
     const ref=colName(ci)+(ri+1);
     let c=c0, f=rf, b=!!r.bold, fm=null, wr=false;
     // خلية: قيمة، أو {v, f (معادلة), fill, bold, wrap}
-    if(c && typeof c==='object' && ('v' in c || 'f' in c)){ f=c.fill||f; b=c.bold||b; fm=c.f||null; wr=!!c.wrap; c=c.v; }
+    if(c && typeof c==='object' && ('v' in c || 'f' in c)){ f=cellFill(c)||f; b=c.bold||b; fm=c.f||null; wr=!!c.wrap; c=c.v; }
     if(isH) return c===null||c===undefined||c==='' ? `<c r="${ref}" s="1"/>` : `<c r="${ref}" t="inlineStr" s="1"><is><t xml:space="preserve">${xmlEsc(c)}</t></is></c>`;
     const k0 = b?3:wr?2:0;
     if(fm){ const hasV = c!==null && c!==undefined && c!=='';
@@ -1717,7 +1723,7 @@ function sheetXml(sh, FX){
   const cols=widths?`<cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`:'';
   // تجميد صف العناوين (+ أول عمود أو أكتر: اسم المدرس وتليفونه)
   const nf = freezeCol===true ? 1 : (+freezeCol||0);
-  const pane = nf ? `<pane xSplit="${nf}" ySplit="${head+1}" topLeftCell="${colName(nf)}${head+2}" activePane="bottomRight" state="frozen"/>`
+  const pane = noFreeze ? '' : nf ? `<pane xSplit="${nf}" ySplit="${head+1}" topLeftCell="${colName(nf)}${head+2}" activePane="bottomRight" state="frozen"/>`
     : `<pane ySplit="${head+1}" topLeftCell="A${head+2}" activePane="bottomLeft" state="frozen"/>`;
   // الشكل القديم: قايمة منسدلة بقيمتين أخضر/أحمر
   if(dv && rows.length>1){ const rg=`${dv.col}2:${dv.col}${rows.length}`;
@@ -1731,14 +1737,14 @@ function sheetXml(sh, FX){
 function buildXlsx(sheets){
   // كل الألوان اللي في الشيتات
   const FX=new Map();
-  for(const s of sheets) for(const r of s.rows){ const rf=FILLMAP[r.fill]||r.fill; if(rf && !FX.has(rf)) FX.set(rf,FX.size);
+  for(const s of sheets) for(const r of s.rows){ const rf=rowFill(r); if(rf && !FX.has(rf)) FX.set(rf,FX.size);
     for(const c of r){ const f=cellFill(c); if(f && !FX.has(f)) FX.set(f,FX.size); } }
   const colors=[...FX.keys()];
   const fills=colors.map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join('');
   // كل خلية ليها خلفية صريحة (بيضا لو مالهاش لون) + حدود رمادي — علشان برامج الموبايل في الوضع الليلي ما تعملهاش سودا
   const XF4=fi=>`<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="${fi}" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>`;
   const xfs=colors.map((c,j)=>XF4(4+j)).join('');
-  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FF134E4A"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${4+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFCCFBF1"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEFEFE"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF6B7280"/></left><right style="thin"><color rgb="FF6B7280"/></right><top style="thin"><color rgb="FF6B7280"/></top><bottom style="thin"><color rgb="FF6B7280"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${4+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF9D98B"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF8E7"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF6B7280"/></left><right style="thin"><color rgb="FF6B7280"/></right><top style="thin"><color rgb="FF6B7280"/></top><bottom style="thin"><color rgb="FF6B7280"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
   const files=[
     {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
     {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
@@ -1758,11 +1764,11 @@ function exportExcel(all){
   const SB=k=>SUBJ[bookParts(k).sb], GR=k=>{ const p=bookParts(k); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`; };
   const mName=lot=>lotName(L,lot);
   const SC=['ar','math','stu','en','sci'];
-  const TOTF='E5E7EB', LOW=5;
+  const TOTF='FCE3A8', LOW=5;
   const cls=t=>clsLetter(t)||t.cls||'', spec=t=>t.spec || [t.subjectText, STAGE_TXT[t.stage]||''].filter(Boolean).join(' — ');
   const plus=(col, rs)=>rs.length ? rs.map(r=>col+r).join('+') : '0';
   // لون فاتح ثابت لكل مدرس/تاجر (من اسمه/كوده مش من رقم السطر)، ولو طلع نفس لون اللي قبله ياخد اللي بعده
-  const XP=['FDE2E4','DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','E6EBF0','FBE3F1','E8F3D6','E0E7FF','FCEFD9'];
+  const XP=['FDE2E4','DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','E0F2FE','FBE3F1','E8F3D6','E0E7FF','FCEFD9'];
   const hashC=s=>{ let h=0; for(const ch of String(s)) h=(h*31+ch.charCodeAt(0))>>>0; return h; };
   const colorer=()=>{ let prev=null; return key=>{ let i=hashC(key)%XP.length; if(XP[i]===prev) i=(i+1)%XP.length; prev=XP[i]; return XP[i]; }; };
   const groupBy=(arr, f)=>{ const m=new Map(); for(const x of arr){ const k=f(x); if(!m.has(k)) m.set(k,[]); m.get(k).push(x); } return m; };
@@ -1987,7 +1993,7 @@ function exportExcel(all){
 
   /* 12) ترتيب الهدايا: الصافي بعد المرتجع، ولو اتساووا الأعلى في الفاتورة بعد الخصم */
   const s12=[['المدرس','التليفون','إجمالي الكتب الصافي','إجمالي الفاتورة قبل الخصم','إجمالي الفاتورة بعد الخصم','الترتيب']];
-  { const MED=['FDF1B8','E5E7EB','F3D9C0'], q=`'${N3}'`;
+  { const MED=['FDF1B8','FCE3A8','F3D9C0'], q=`'${N3}'`;
     const rk=Object.entries(rankV).filter(([,x])=>x.n>0).sort((a,b)=>b[1].n-a[1].n || b[1].post-a[1].post);
     rk.forEach(([tid,x],i)=>{ const rn=s12.length+1, ph=TP(tid);
       const F=col=>ph ? `SUMIFS(${q}!$${col}$2:$${col}$${E3},${q}!$A$2:$A$${E3},A${rn},${q}!$B$2:$B$${E3},B${rn})` : `SUMIF(${q}!$A$2:$A$${E3},A${rn},${q}!$${col}$2:$${col}$${E3})`;
@@ -2130,7 +2136,7 @@ function exportJard(){
   const sg=rows.length+1;
   rows.push(['توقيع المندوب','','توقيع القائم بالجرد',''], [db.rep||'']);
   const merges=['A1:C1','E1:F1','A2:C2','E2:F2','A3:A4','B3:B4','C3:D3','E3:F3','C4:D4','E4:E5','F4:F5',`C${sg}:D${sg}`];
-  sendSheet(buildXlsx([{name:'Sheet', rows, widths:[48.8,25.9,20,18.6,33.1,18.6], head:4, merges, freezeCol:0, af:false}]), `جرد مخزن مندوب — ${db.rep} — ${stamp()}.xlsx`, 'شيتات الجرد');
+  sendSheet(buildXlsx([{name:'Sheet', rows, widths:[48.8,25.9,20,18.6,33.1,18.6], head:4, merges, noFreeze:true, af:false}]), `جرد مخزن مندوب — ${db.rep} — ${stamp()}.xlsx`, 'شيتات الجرد');
 }
 
 /* ================= جرد المبيعات: الباقي معايا من بضاعة التجار ================= */
@@ -2148,7 +2154,7 @@ function exportSalesJard(){
       {f:`INT(MAX(0,G${rn})/20)`, v:Math.floor(Math.max(0,left)/20)}, {f:`MOD(MAX(0,G${rn}),20)`, v:Math.max(0,left)%20}];
     if(left<=5) row.fill='FECACA'; rows.push(row); }
   if(ks.length){ const b=rows.length, S=(col,i)=>({f:`SUM(${col}2:${col}${b})`, v:rows.slice(1).reduce((a,r)=>a+(typeof r[i]==='object'?r[i].v:r[i]),0)});
-    const tr=['الإجمالي', S('B',1), S('C',2), S('D',3), S('E',4), S('F',5), S('G',6), S('H',7), S('I',8)]; tr.fill='E5E7EB'; tr.bold=true; rows.push(tr); }
+    const tr=['الإجمالي', S('B',1), S('C',2), S('D',3), S('E',4), S('F',5), S('G',6), S('H',7), S('I',8)]; tr.fill='FCE3A8'; tr.bold=true; rows.push(tr); }
   else rows.push(['لسه مفيش كتب استلمتها من التجار']);
   rows.push([]); rows.push([`لحد ${fmtDay(dayKey())}`]);
   sendSheet(buildXlsx([{name:'جرد المبيعات', rows, widths:[26,15,13,9,14,15,13,10,8], freezeCol:0, af:false}]), `جرد المبيعات — ${db.rep} — ${stamp()}.xlsx`, 'شيتات الجرد');
@@ -2160,7 +2166,7 @@ function exportTeachersData(){
   const vil=IDARAT[db.idara]||[], vi=a=>{ const i=vil.indexOf(a||''); return i<0?9999:i; };
   const cr=t=>({A:0,B:1,C:2}[clsLetter(t)||String(t.cls||'').toUpperCase()] ?? 3);
   const ts=[...db.teachers].sort((a,b)=>vi(a.area)-vi(b.area) || (a.area||'').localeCompare(b.area||'','ar') || cr(a)-cr(b) || (a.name||'').localeCompare(b.name||'','ar'));
-  const XP=['DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','FDE2E4','E6EBF0'];
+  const XP=['DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','FDE2E4','E0F2FE'];
   const rows=[['اسم المدرس','التليفون','التصنيف','المنطقة','المدرسة','التخصص','المادة','المرحلة','عدد الطلاب','على البرنامج','ملاحظات']];
   let prev=null, ci=-1;
   for(const t of ts){ if(t.area!==prev){ prev=t.area; ci=(ci+1)%XP.length; }
@@ -2212,7 +2218,7 @@ function exportCompanySales(){
     const cells = gv==='البحيرة' ? sKs.flatMap(([sh,ks])=>ks.map(k=>sh.sum(k))) : Array(W).fill(0);
     srows.push([gv, ...cells, {f:`SUM(B${rn}:${colName(W)}${rn})`, v:cells.reduce((a,c)=>a+(typeof c==='object'?c.v:c),0)}]); }
   const b=srows.length, tr=['Total', ...Array.from({length:W+1},(_,i)=>{ const col=colName(i+1); return {f:`SUM(${col}2:${col}${b})`, v:srows.slice(1).reduce((a,r)=>a+(typeof r[i+1]==='object'?r[i+1].v:r[i+1]),0)}; })];
-  tr.fill='E5E7EB'; tr.bold=true; srows.push(tr);
+  tr.fill='FCE3A8'; tr.bold=true; srows.push(tr);
   out.push({name:'Summary', rows:srows, widths:[14, ...Array(W+1).fill(7)], freezeCol:0, af:false});
   sendSheet(buildXlsx(out), `بيع مباشر — ${db.rep} — ${repFrom} لحد ${repTo} — ${stamp()}.xlsx`, 'شيتات البيع');
 }
