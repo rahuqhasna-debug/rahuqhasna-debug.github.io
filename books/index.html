@@ -342,9 +342,11 @@ function load(){
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
 }
+// رابط الـ Deploy بتاع Apps Script (درايف شريف). فاضي = البرنامج شغال من غير درايف
+const CLOUD_URL = '';
 function save(changed=true){
   if(changed) db.lastChange = new Date().toISOString();
-  try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; }
+  try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; if(changed) scheduleSync(); }
   catch(e){ storageOk = false; alert('⚠️ مش قادر أحفظ البيانات على الجهاز ده. اعمل نسخة احتياطية حالاً من الإعدادات.'); }
 }
 load();
@@ -1177,9 +1179,11 @@ document.addEventListener('click', e=>{
       const ot=tById(s.t); if(dupBlock(ot)) break;
       if(ot && !expectedBooks(ot).length){ alert('⚠️ حدد تخصص المدرس الأول'); curTeacher=ot.id; forceCls=true; location.hash='#/t/'+encodeURIComponent(ot.id); break; }
       const sh=shortMsg(s.items); if(sh && !confirm(`⚠️ بضاعة التجار مش مكفّية:\n${sh}\n\nتكمل البيع؟`)) break;
-      withUndo('✅ اتباع', ()=>{ sellItems(s, lotLeft()); }); showInvoice(s.t); break; }
+      withUndo('✅ اتباع', ()=>{ sellItems(s, lotLeft()); }); showInvoice(s.t, true); break; }
     case 'cancel-order': { const id=el.dataset.id; if(confirm('تلغي الطلب ده؟')) withUndo('❌ الطلب اتلغى', ()=>{ db.sales=db.sales.filter(s=>s.id!==id); }); break; }
     case 'invoice': showInvoice(el.dataset.id); break;
+    case 'sync-now': if(!navigator.onLine){ alert('مفيش نت دلوقتي — هيتبعت لوحده أول ما النت يرجع.'); break; } db.lastSync=''; cloudSync(true); break;
+    case 'pull-prices': if(!navigator.onLine){ alert('مفيش نت دلوقتي.'); break; } pullPrices(true); break;
     case 'pay': { const t=tById(el.dataset.id); if(!t) break;
       amtModal('💵 دفعة من '+esc(t.name), `<div class="hint" style="margin:0 0 8px">عليه دلوقتي: <b>${fmtM(ACC[t.id]?.owe||0)}</b></div>`, (amt,d)=>
         withUndo(`💵 اتسجّلت دفعة ${fmtM(amt)}`, ()=>{ db.payments.push({id:uid(), k:'pay', t:t.id, amt, d}); })); break; }
@@ -1900,7 +1904,7 @@ function saleForm(tid, editId){
       if(s) s.items=its; else { s={id:uid(), t:t.id, st:'order', d:new Date().toISOString(), items:its, rep:db.rep}; db.sales.push(s); }
       if(sell) sellItems(s, lotLeft());
     });
-    if(sell) showInvoice(t.id);
+    if(sell) showInvoice(t.id, true);
   };
   m.addEventListener('click', e=>{
     if(e.target===m){ close(); return; }
@@ -1929,7 +1933,7 @@ function saleForm(tid, editId){
 }
 
 /* --- الفاتورة --- */
-function showInvoice(tid){
+function showInvoice(tid, fresh){
   const t=tById(tid); if(!t) return;
   const a=accMap()[tid] || {bought:0, paid:0, ret:0, owe:0, noPrice:false};
   const rows=new Map();
@@ -1955,6 +1959,7 @@ function showInvoice(tid){
   document.body.appendChild(m);
   m.querySelector('[data-inv="close"]').onclick=()=>m.remove();
   const data={t, a, list, day}, base=`فاتورة-${t.name}-${dayKey()}`.replace(/[\\/:*?"<>|]/g,'');
+  if(fresh) queueInvoice(data, base);   // بيع جديد → صورة الفاتورة تتحفظ في فولدر المندوب على الدرايف
   m.querySelector('[data-inv="img"]').onclick=async()=>{
     const cv=invoiceCanvas(data); const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92));
     shareFile(blob, base+'.jpg', 'image/jpeg', `فاتورة ${t.name}`);
@@ -2183,10 +2188,18 @@ function mretForm(name){
 /* --- الإعدادات: الأسعار وبضاعة التجار --- */
 function pricesCard(){
   const n=SELL_KEYS.filter(k=>priceOf(k)).length;
-  return `<div class="card"><h3 class="sec-t">💲 أسعار الكتب</h3>
+  const cloud = CLOUD_URL ? `<div class="card"><h3 class="sec-t">☁️ الدرايف</h3>
+      <div class="kv"><span>آخر إرسال للشغل</span><b>${db.lastSync?fmtDT(db.lastSync):'لسه'}</b></div>
+      <div class="kv"><span>فواتير مستنية تتبعت</span><b>${invQ().length}</b></div>
+      <button class="btn" style="width:100%;margin-top:8px" data-act="sync-now">🔄 ابعت دلوقتي</button>
+      <p class="hint">الشغل بيتبعت لوحده كل ما يبقى فيه جديد وفيه نت. مش محتاج تدوس حاجة.</p></div>` : '';
+  return cloud + `<div class="card"><h3 class="sec-t">💲 أسعار الكتب</h3>
     <div class="kv"><span>كتب ليها سعر</span><b>${n} من ${SELL_KEYS.length}</b></div>
-    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="price-xlsx">📥 ارفع شيت الأسعار</button><button class="btn" data-act="price-template">⬇️ شيت فاضي</button></div>
-    <p class="hint">أعمدته: المادة، الصف، المرحلة، السعر قبل الخصم، السعر بعد الخصم. لو «بعد الخصم» فاضي البرنامج بيحسبه (إنجليزي 30%، إعدادي 24.5%). البيع اللي اتأكد بيفضل بسعره وقتها، والطلبات بتاخد السعر الجديد.</p>
+    ${CLOUD_URL ? `<div class="kv"><span>آخر تحديث للأسعار</span><b>${db.pricesAt?fmtDT(db.pricesAt):'لسه'}</b></div>
+    <button class="btn" style="width:100%;margin-top:8px" data-act="pull-prices">🔄 حدّث الأسعار دلوقتي</button>
+    <p class="hint">الأسعار بتيجي أوتوماتيك من الإدارة لما يبقى فيه نت، ولو مفيش نت بيستخدم آخر أسعار. البيع اللي اتأكد بيفضل بسعره وقتها.</p>`
+    : `<div class="row2" style="margin-top:8px"><button class="btn pri" data-act="price-xlsx">📥 ارفع شيت الأسعار</button><button class="btn" data-act="price-template">⬇️ شيت فاضي</button></div>
+    <p class="hint">أعمدته: المادة، الصف، المرحلة، السعر قبل الخصم، السعر بعد الخصم. لو «بعد الخصم» فاضي البرنامج بيحسبه (إنجليزي 30%، إعدادي 24.5%). البيع اللي اتأكد بيفضل بسعره وقتها، والطلبات بتاخد السعر الجديد.</p>`}
     ${n?`<details class="stk"><summary>👀 الأسعار الحالية</summary>${SELL_KEYS.map(k=>{ const p=priceOf(k);
       return `<div class="kv"><span style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</span><span>${p?`${p.pre!=null?`<s class="muted">${fmtN(p.pre)}</s> ← `:''}<b>${fmtN(p.post)}</b>`:'—'}</span></div>`; }).join('')}</details>`:''}</div>`;
 }
@@ -2279,6 +2292,85 @@ $('#fileMerch').addEventListener('change', async e=>{
   if(!confirm(`لقيت:\n${Object.entries(sum).map(([n,q])=>`• ${n}: ${q} كتاب`).join('\n')}${bad?`\n⚠️ و ${bad} سطر مش فاهمه (هيتساب)`:''}\n\nأضيفهم لبضاعة التجار؟`)) return;
   withUndo(`🏪 اتضاف ${add.reduce((s,l)=>s+l.q,0)} كتاب لبضاعة التجار`, ()=>{ db.merchants.push(...add); });
 });
+
+/* ================= الدرايف (Apps Script على حساب شريف) ================= */
+// المندوب بيبعت بس: نسخة من كل شغله (ملف لكل يوم) + صفحته في شيت البيع + صور الفواتير. وبيسحب الأسعار.
+var syncTimer=null, syncBusy=false, invBusy=false;   // var: ممكن save() تتنده قبل السطر ده
+function scheduleSync(ms=15000){ if(!CLOUD_URL) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>cloudSync(), ms); }
+async function cloudPost(body){
+  const r=await fetch(CLOUD_URL, {method:'POST', body:JSON.stringify(body)});   // text/plain → من غير preflight
+  const j=await r.json(); if(!j.ok) throw new Error(j.err||'fail'); return j;
+}
+function syncRows(){
+  const tm=Object.fromEntries(db.teachers.map(t=>[t.id,t])), lot=Object.fromEntries(db.merchants.map(l=>[l.id,l])), S=saleIdx(), D=iso=>fmtDay(dk(iso));
+  const sales=[['التاريخ','المدرس','التليفون','الكتاب','العدد','السعر قبل','السعر بعد','الإجمالي','التاجر']];
+  for(const s of db.sales.filter(s=>s.st==='sold').sort((a,b)=>(a.sd||'').localeCompare(b.sd||''))){ const t=tm[s.t]||{};
+    for(const it of s.items) for(const x of (it.src&&it.src.length?it.src:[{lot:null,q:it.q}]))
+      sales.push([D(s.sd), t.name||'؟', t.phone||'', bookLabel(it.b), x.q, it.pre??'', it.post??'', it.post!=null?r2(x.q*it.post):'', x.lot?(lot[x.lot]?.m||'؟'):'—']); }
+  const pays=[['التاريخ','المدرس','النوع','المبلغ','الكتاب','العدد']];
+  for(const p of [...db.payments].sort((a,b)=>(a.d||'').localeCompare(b.d||''))){ const t=tm[p.t]||{};
+    pays.push(p.k==='pay' ? [D(p.d), t.name||'؟', 'دفعة', r2(p.amt), '', ''] : [D(p.d), t.name||'؟', 'مرتجع', r2(retVal(p,S)), bookLabel(p.b), p.q]); }
+  return {sales, pays};
+}
+function syncStats(){
+  const st=dayStats(dayKey()), acc=accMap(), left=stockLeft(); let sold=0, owe=0;
+  for(const a of Object.values(acc)){ sold+=a.bought; if(a.owe>0) owe+=a.owe; }
+  return {teachers:db.teachers.length, visitsToday:st.visits, deliveredToday:st.d, delivered:db.entries.filter(e=>e.s==='d').reduce((s,e)=>s+e.q,0),
+    owed:owedTotal(), sold:r2(sold), owe:r2(owe), orders:db.sales.filter(s=>s.st==='order').length, stockLeft:left?Object.values(left).reduce((a,b)=>a+b,0):null};
+}
+async function cloudSync(manual){
+  if(!CLOUD_URL || !db.mail || syncBusy || !navigator.onLine) return;
+  if(db.lastSync && (db.lastChange||'') <= db.lastSync){ flushInv(); if(manual) toast('☁️ كل حاجة متبعتة'); return; }
+  syncBusy=true; const at=new Date().toISOString();
+  try{
+    const {sales, pays}=syncRows();
+    await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays,
+      data:{app:'selah-books', ...db, savedAt:at}});
+    db.lastSync=at; save(false); if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
+  }catch(e){ if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده'); }
+  finally{ syncBusy=false; }
+  flushInv();
+}
+// صور الفواتير: بتستنى في طابور على الجهاز لحد ما يبقى فيه نت
+var INV_KEY=KEY+'-inv';
+function invQ(){ try{ return JSON.parse(localStorage.getItem(INV_KEY)||'[]'); }catch(e){ return []; } }
+function setInvQ(q){ try{ localStorage.setItem(INV_KEY, JSON.stringify(q)); }catch(e){ try{ localStorage.setItem(INV_KEY, JSON.stringify(q.slice(-3))); }catch(_){} } }
+function queueInvoice(data, base){
+  if(!CLOUD_URL) return;
+  try{ const d=new Date(), b64=invoiceCanvas(data).toDataURL('image/jpeg',0.8).split(',')[1];
+    const q=invQ(); q.push({name:`${base}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.jpg`, b64}); setInvQ(q.slice(-15)); }catch(e){}
+  setTimeout(flushInv, 2000);
+}
+async function flushInv(){
+  if(!CLOUD_URL || !db.mail || invBusy || !navigator.onLine) return;
+  invBusy=true;
+  try{ let q=invQ(); while(q.length){ await cloudPost({k:'inv', mail:db.mail, rep:db.rep, name:q[0].name, b64:q[0].b64}); q=invQ(); q.shift(); setInvQ(q); } }
+  catch(e){} finally{ invBusy=false; }
+}
+// الأسعار: من شيت «الأسعار» على درايف شريف (المندوب ما بيعدّلهاش)
+async function pullPrices(manual){
+  if(!CLOUD_URL || !navigator.onLine) return;
+  try{
+    const r=await fetch(CLOUD_URL+'?k=prices'); const j=await r.json(); if(!j.ok || !Array.isArray(j.rows)) throw new Error('bad');
+    const H=findHead(j.rows, (H,fi)=>{ H.pre=fi(/قبل/); H.post=fi(/بعد/); return H.pre>=0 || H.post>=0; }); if(!H) throw new Error('head');
+    const np={};
+    for(const row of j.rows.slice(H.row+1)){
+      const pre=H.pre>=0?parseNum(row[H.pre]):null, post=H.post>=0?parseNum(row[H.post]):null;
+      if(pre==null && post==null) continue;
+      const k=rowBook(row[H.sb], row[H.g], H.st>=0?row[H.st]:''); if(k && isSell(k)) np[k]={pre, post};
+    }
+    const changed=JSON.stringify(np)!==JSON.stringify(db.prices);
+    db.pricesAt=new Date().toISOString();
+    if(changed){ db.prices=np; fillPrices(); save(); render(); toast('💲 الأسعار اتحدّثت'); }
+    else { save(false); if(manual){ toast('💲 الأسعار زي ما هي'); render(); } }
+  }catch(e){ if(manual) toast('⚠️ مش قادر أجيب الأسعار دلوقتي'); }
+}
+if(CLOUD_URL){
+  setTimeout(()=>{ pullPrices(); cloudSync(); }, 3000);
+  window.addEventListener('online', ()=>{ pullPrices(); cloudSync(); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) cloudSync(); });
+  setInterval(()=>cloudSync(), 5*60000);
+}
 
 render();
 // شاشة الفتح: ثانية واحدة (اللوجو والتوقيع)
