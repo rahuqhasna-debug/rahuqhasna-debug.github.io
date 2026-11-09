@@ -1168,8 +1168,15 @@ function owedText(){
 }
 
 /* ================= التقارير ================= */
-let repFrom=dayKey(), repTo=dayKey();
+let repFrom=null, repTo=dayKey();
+// أول يوم شغل (التقارير بتفتح من الأول)
+function firstDay(){ let m=dayKey();
+  const chk=d=>{ const k=d&&dk(d); if(k && k<m) m=k; };
+  for(const e of db.entries){ chk(e.dd); chk(e.rd); } for(const s of db.sales){ chk(s.d); chk(s.sd); }
+  for(const l of db.merchants) chk(l.d); for(const x of db.stock) chk(x.d);
+  return m; }
 function renderReport(){
+  if(!repFrom) repFrom=firstDay();
   setHeader('📊 التقارير والإكسل', false);
   const inRange=k=>k && k>=repFrom && k<=repTo;
   const days={};
@@ -1190,16 +1197,14 @@ function renderReport(){
     <div class="stats"><div class="stat"><b>${tv}</b><span>زيارة</span></div><div class="stat"><b>${td}</b><span>كتاب اتسلّم</span></div><div class="stat"><b>${to}</b><span>مستحق اتسجّل</span></div></div>
     <div class="card"><h3 class="sec-t">📅 يوم بيوم</h3>${dkeys.length?dkeys.map(k=>`<div class="kv"><span>${fmtDay(k)}</span><span class="small">${days[k].v.size} زيارة • ✅ ${days[k].d} • ⏳ ${days[k].o}</span></div>`).join(''):'<div class="muted">مفيش تعاملات في الفترة دي.</div>'}</div>
     ${delDaysCard()}
-    <div class="card"><h3 class="sec-t">📗 شيت إكسل</h3>
-      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-scope="range">⬇️ إكسل للفترة دي</button>
-      <button class="btn" style="width:100%" data-act="export" data-scope="all">⬇️ إكسل بكل حاجة من الأول</button>
-      <p class="hint">ملف «سلاح التلميذ» فيه 12 شيت: تسليمات 1 • تسليمات 2 • أعداد المدرسين • الإضافات • طلبات مستنية التنفيذ • حسابات التجار • صافي التجار • الملخص اليومي للكتب • فواتير البيع بمرتجعات • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا. البيع والتسليمات والطلبات حسب الفترة اللي فوق، والتجار والمخزون من الأول.</p></div>
-    <div class="card"><h3 class="sec-t">🏢 شيت بيع الشركة</h3>
-      <button class="btn pri" style="width:100%" data-act="compsale">🏢 شيت بيع الشركة للفترة دي</button>
-      <p class="hint">بنفس شكل شيت «بيع مباشر» بتاع الشركة: English • Prim • Prep • Summary. كل فاتورة في سطر (ولو من أكتر من تاجر يتقسم).</p></div>
-    <div class="card"><h3 class="sec-t">👥 بيانات المدرسين</h3>
+    <div class="card"><h3 class="sec-t">☁️ الشيتات بتترفع على الدرايف بتاعك</h3>
+      <p class="hint" style="margin-top:0">كل شيت بيترفع على طول في فولدر «شيتات سلاح التلميذ» على الدرايف، كل نوع في فولدره. لو مفيش نت بيترفع لوحده أول ما النت يرجع.${shq().length?` <b>مستني يترفع: ${shq().length} شيت.</b>`:''}</p>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-scope="range">📗 شيتات البيع + شيتات التسليمات</button>
+      <p class="hint">ملفين: «البيع» (الطلبات • حسابات التجار • صافي التجار • الملخص اليومي • فواتير البيع • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا) و«التسليمات» (تسليمات 1 • تسليمات 2 • أعداد المدرسين). حسب الفترة اللي فوق (بتبدأ من أول الشغل).</p>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="compsale">🏢 شيت بيع الشركة</button>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="edafat">➕ شيت الإضافات</button>
       <button class="btn pri" style="width:100%" data-act="tdata">👥 شيت بيانات المدرسين</button>
-      <p class="hint">كل المدرسين بتصنيفهم، مترتبين بالمنطقة، وجوه كل منطقة A وبعدها B وبعدها C.</p></div>
+      <p class="hint">بيع الشركة بنفس شكل «بيع مباشر». الإضافات بنفس شكل شيت الإضافات (المدرسين الجداد من الأول). بيانات المدرسين مترتبة بالمنطقة ثم A/B/C.</p></div>
     <div class="card"><h3 class="sec-t">📋 جرد المخزن</h3>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="jard">📋 شيت الجرد</button>
       <button class="btn" style="width:100%" data-act="sjard">🧮 شيت جرد المبيعات</button>
@@ -1258,7 +1263,7 @@ function exportDelDays(){
   if(!delDays.size){ alert('اختار يوم أو أكتر الأول'); return; }
   const sh=delSheetOf(delDays); if(!sh) return;
   const ks=[...delDays].sort();
-  download(buildXlsx([sh]), `الكتب-اللي-اتسلمت-${db.rep}-${ks[0]}${ks.length>1?'-لحد-'+ks[ks.length-1]:''}.xlsx`); toast('⬇️ الشيت نزل');
+  sendSheet(buildXlsx([sh]), `الكتب اللي اتسلمت — ${db.rep} — ${ks[0]}${ks.length>1?' لحد '+ks[ks.length-1]:''} — ${stamp()}.xlsx`, 'شيتات التسليمات');
 }
 
 /* ================= الإعدادات ================= */
@@ -1336,7 +1341,11 @@ function teacherForm(t, preset={}){
       ${['فصل','صفوف عليا','صفوف عليا وإعدادي','كشكول'].map(v=>`<option ${(t.spec||'')===v?'selected':''}>${v}</option>`).join('')}</select></div>
     <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" list="vl_f" autocomplete="off" placeholder="${villages().length?'اختار أو اكتب':''}" value="${esc(t.area)}">${vlist('vl_f')}</div>
       <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
-    <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div>
+    <div class="field"><label>الصفوف اللي بيدرّسها</label><div class="chips" id="f_grades" style="margin:0">
+      ${[1,2,3,4,5,6].map(g=>`<label class="chip" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" value="${g}" ${(t.grades||[]).includes(g)?'checked':''}>${GRADE[g-1]}</label>`).join('')}</div></div>
+    <div class="row2"><div class="field"><label>دروس / مدارس</label><select id="f_where">
+      ${['','دروس','مدارس','دروس ومدارس'].map(v=>`<option value="${v}" ${(t.where||'')===v?'selected':''}>${v||'—'}</option>`).join('')}</select></div>
+      <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div></div>
     <div class="row2" style="margin-top:6px"><button class="btn pri" id="f_save">حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
     ${isNew?'':'<button class="btn danger" id="f_del" style="width:100%;margin-top:10px">🗑️ امسح المدرس ده وكل تعاملاته</button>'}</div>`;
   document.body.appendChild(m);
@@ -1352,7 +1361,9 @@ function teacherForm(t, preset={}){
     const subjectText=m.querySelector('#f_subj').value.trim();
     const data={name, phone, stage:m.querySelector('#f_stage').value, subjectText, subjects:parseSubjects(subjectText),
       area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
-      cls:m.querySelector('#f_cls').value, spec:m.querySelector('#f_spec').value, students:m.querySelector('#f_students').value.trim()};
+      cls:m.querySelector('#f_cls').value, spec:m.querySelector('#f_spec').value, students:m.querySelector('#f_students').value.trim(),
+      grades:[...m.querySelectorAll('#f_grades input:checked')].map(x=>+x.value), where:m.querySelector('#f_where').value};
+    if(isNew && (!data.grades.length || !data.where) && !confirm('الصفوف أو «دروس / مدارس» لسه ما اتحددوش — دول بيتكتبوا في شيت الإضافات.\nتحفظ كده؟')) return;
     if(data.spec){ const c=parseCls(data.spec); if(c) data.stage=c.stages.join(''); }
     data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
     if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
@@ -1406,6 +1417,7 @@ document.addEventListener('click', e=>{
     case 'jard': exportJard(); break;
     case 'sjard': exportSalesJard(); break;
     case 'tdata': exportTeachersData(); break;
+    case 'edafat': exportAdditions(); break;
     case 'compsale': exportCompanySales(); break;
     /* البيع */
     case 'sales-tab': salesTab=el.dataset.k; if(location.hash!=='#/sales') location.hash='#/sales'; else render(); break;
@@ -1726,7 +1738,7 @@ function buildXlsx(sheets){
   // كل خلية ليها خلفية صريحة (بيضا لو مالهاش لون) + حدود رمادي — علشان برامج الموبايل في الوضع الليلي ما تعملهاش سودا
   const XF4=fi=>`<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="${fi}" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>`;
   const xfs=colors.map((c,j)=>XF4(4+j)).join('');
-  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FF134E4A"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${4+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFCCFBF1"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF6B7280"/></left><right style="thin"><color rgb="FF6B7280"/></right><top style="thin"><color rgb="FF6B7280"/></top><bottom style="thin"><color rgb="FF6B7280"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FF134E4A"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${4+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFCCFBF1"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEFEFE"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF6B7280"/></left><right style="thin"><color rgb="FF6B7280"/></right><top style="thin"><color rgb="FF6B7280"/></top><bottom style="thin"><color rgb="FF6B7280"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
   const files=[
     {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
     {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
@@ -1983,13 +1995,14 @@ function exportExcel(all){
       if(i<3) row.fill=MED[i]; s12.push(row); });
     s12.push([]); s12.push([all?'الفترة: من الأول':`الفترة: من ${fmtDay(repFrom)} لحد ${fmtDay(repTo)}`]); }
 
-  // الترتيب: التسليمات الأول (من اليمين) والبيع في الآخر. الثابت في كل شيت: اسم المدرس والتليفون بس
-  const sheets=[
+  // ملفين: التسليمات والبيع. الثابت في كل شيت: اسم المدرس والتليفون بس. (الإضافات بقت شيت لوحدها: exportAdditions)
+  void s10;
+  const dSheets=[
     {name:'تسليمات 1', rows:s6, widths:[22,14,20,10,9,20,14,16, ...SC.map(()=>9), 11,45,12], freezeCol:2, af:false},
     {name:'تسليمات 2', rows:s7, widths:[22,14,12,10,9,20,14,16,26,8,18], freezeCol:2, af:false, merges:m7,
       dvs:R7?[{rg:R7, list:[REG_Y, REG_N]}]:[], cfs:R7?[{rg:R7, rules:[{eq:REG_Y, dx:'ok'}, {eq:REG_N, dx:'bad'}]}]:[]},
-    {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false},
-    {name:'الإضافات', rows:s10, widths:[24,14,20,9,14,14,14,16,10,12,13], freezeCol:2, af:false},
+    {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false}];
+  const sheets=[
     {name:'طلبات مستنية التنفيذ', rows:s11, widths:[22,14,12,10,16,12,9,9,15,13,14,24], freezeCol:2, af:false,
       dvs:R11?[{rg:R11, list:Object.values(ST)}]:[], cfs:R11?[{rg:R11, rules:[{eq:ST.order, dx:'wait'}, {eq:ST.sold, dx:'ok'}, {eq:ST.cancel, dx:'bad'}, {eq:ST.refused, dx:'bad'}]}]:[]},
     {name:N4, rows:s4, widths:[18,24,13,10,16,11], freezeCol:0, af:false, merges:m4},
@@ -2000,10 +2013,54 @@ function exportExcel(all){
     {name:N3, rows:s3, widths:[24,14,10,16,18,10,9,12,14,14], freezeCol:2, af:false},
     {name:'ترتيب الهدايا', rows:s12, widths:[24,14,15,18,18,9], freezeCol:2, af:false}
   ];
-  const blob=buildXlsx(sheets);
-  const nm = all ? `سلاح-التلميذ-${db.rep}-لحد-${dayKey()}.xlsx` : (repFrom===repTo ? `سلاح-التلميذ-${db.rep}-${repFrom}.xlsx` : `سلاح-التلميذ-${db.rep}-من-${repFrom}-لحد-${repTo}.xlsx`);
-  download(blob, nm); toast('⬇️ ملف الإكسل نزل');
+  const per = all ? `لحد ${dayKey()}` : (repFrom===repTo ? repFrom : `من ${repFrom} لحد ${repTo}`);
+  sendSheets([
+    {blob:buildXlsx(sheets), name:`البيع — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات البيع'},
+    {blob:buildXlsx(dSheets), name:`التسليمات — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات التسليمات'}]);
 }
+
+/* ================= الشيتات → درايف المندوب: «شيتات سلاح التلميذ/<الفولدر>» =================
+   مش بتنزل على التليفون. مفيش نت أو الدرايف مش مربوط → بتستنى في طابور وتترفع لوحدها بعدين. */
+const SHQ_KEY='selah-sheetq';
+function shq(){ try{ return JSON.parse(localStorage.getItem(SHQ_KEY)||'[]'); }catch(e){ return []; } }
+function shqSet(q){ try{ localStorage.setItem(SHQ_KEY, JSON.stringify(q)); return true; }catch(e){ return false; } }
+const stamp=()=>{ const d=new Date(); return `${dayKey(d)} ${timeStr(d).replace(':','-')}`; };
+const blobB64=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(b); });
+const upSheet=it=>cloudPost({k:'sheet', mail:db.mail, rep:db.rep, key:db.driveKey, name:it.name, sub:it.sub, b64:it.b64});
+function openUrl(u){ const w=window.open(u,'_blank'); if(!w) location.href=u; }
+async function sendSheets(list){
+  list=list.map(x=>({...x, name:x.name.replace(/[\\\/:*?"<>|]/g,'-')}));
+  if(!GCLIENT_ID || !CLOUD_URL){ for(const x of list) download(x.blob, x.name); toast('⬇️ الشيت نزل'); return; }
+  const items=[]; for(const x of list) items.push({name:x.name, sub:x.sub, b64:await blobB64(x.blob), at:new Date().toISOString()});
+  const names=list.map(x=>`📁 ${x.sub} ← ${x.name}`).join('\n');
+  const queue=(why, arr=items)=>{
+    const q=shq(); q.push(...arr); const ok=shqSet(q);
+    if(!ok || confirm(`${why}\n\n${names}\n\nعايز تنزّله على التليفون كمان دلوقتي؟`)) for(const x of list) download(x.blob, x.name);
+    if(location.hash==='#/report') render();
+  };
+  if(!db.driveKey){ queue('🔗 الدرايف لسه مش مربوط — الشيت هيترفع لوحده أول ما تربطه.'); if(navigator.onLine) linkDrive(); return; }
+  if(!navigator.onLine){ queue('📵 مفيش نت — الشيت هيترفع على الدرايف لوحده أول ما النت يرجع.'); return; }
+  toast('⏳ بيترفع على الدرايف…');
+  const urls=[];
+  for(let i=0;i<items.length;i++){
+    try{ const j=await upSheet(items[i]); urls.push(j.url); }
+    catch(e){ if(/relink/.test(e.message)){ db.driveKey=''; save(false); }
+      queue(/relink/.test(e.message) ? '⚠️ الدرايف محتاج يتربط تاني من الإعدادات — الشيت هيستنى ويترفع بعدين.' : '⚠️ الرفع ما نجحش — هيتحاول تاني لوحده.', items.slice(i));
+      return; }
+  }
+  if(confirm(`✅ اترفع على الدرايف في «شيتات سلاح التلميذ»:\n\n${names}\n\nتفتحه دلوقتي؟`)) openUrl(urls[0]);
+}
+const sendSheet=(blob, name, sub)=>sendSheets([{blob, name, sub}]);
+var shqBusy=false;
+async function flushSheets(){
+  if(shqBusy || !db.driveKey || !navigator.onLine || !CLOUD_URL) return;
+  let q=shq(); if(!q.length) return; shqBusy=true; let n=0;
+  try{ while(q.length){ try{ await upSheet(q[0]); }catch(e){ if(/relink/.test(e.message)){ db.driveKey=''; save(false); } break; }
+    q.shift(); shqSet(q); n++; } }
+  finally{ shqBusy=false; }
+  if(n){ toast(`✅ اترفع ${n} شيت على الدرايف`); if(location.hash==='#/report') render(); }
+}
+window.addEventListener('online', ()=>setTimeout(flushSheets, 3000));
 
 /* ================= المخزون: شيت ================= */
 function stockTemplate(){
@@ -2040,33 +2097,40 @@ $('#fileStock').addEventListener('change', async e=>{
 /* ================= شيت الجرد ================= */
 function exportJard(){
   if(!db.stock.length && !confirm('لسه ما سجّلتش أي كتب استلمتها من المخزن، فالجرد هيطلع أصفار. تكمل؟')) return;
+  // نفس شيت «جرد مخزن مندوب ترم أول» بالملّي: العدد كله في «جرد فرط» والإجمالي = ربط × الربطة + فرط.
+  // الملحق والمفكرة عددهم نفس عدد الكتاب بتاعهم. اللي مش في البرنامج (أكتشف، بوستر، كارت، كوبونات) فاضي.
   const left=stockLeft()||{}, L=k=>Math.max(0, left[k]||0);
   const rg=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
   const R=[]; // [الاسم, مفتاح الكتاب أو null, الربطة]
-  const add=(pre,sb,st,gs,size)=>{ for(const g of gs) R.push([`${pre} ${g}${st==='p'?'ب':'ع'}`, sb?`${st}-${sb}-${g}`:null, size]); };
+  const add=(pre,sb,st,gs,size)=>{ for(const g of gs) R.push([`${pre} ${g}${st==='p'?'ب':'ع'}`, sb?`${st}-${sb}-${g}`:null, typeof size==='function'?size(g):size]); };
   add('سلاح عربى','ar','p',rg(1,6),20);
-  add('سلاح أكتشف',null,'p',rg(1,3),20);
+  add('سلاح أكتشف',null,'p',rg(1,3),100);
   add('سلاح رياضة','math','p',rg(1,6),20);
   add('سلاح انجليزى','en','p',rg(1,6),20);
   add('سلاح علوم','sci','p',rg(4,6),20);
   add('سلاح دراسات','stu','p',rg(4,6),20);
-  add('ملحق عربى','ar','p',rg(2,6),40);
+  add('ملحق عربى','ar','p',rg(2,6),g=>g===2?100:40);
   add('ملحق رياضة','math','p',[4],40);
   add('ملحق انجليزى','en','p',rg(1,6),40);
-  for(const [pre,size] of [['سلاح',20],['ملحق',40],['مفكرة',40]])
-    for(const [sb,n] of [['ar','عربى'],['math','رياضة'],['stu','دراسات']]) add(`${pre} ${n}`,sb,'m',rg(1,3),size);
-  add('بوستر دراسات','stu','m',rg(1,3),40);
-  R.push(['كوبون 1&2&3',null,0], ['كوبون 4&5&6',null,0]);
+  add('سلاح عربى','ar','m',rg(1,3),20); add('سلاح رياضة','math','m',rg(1,3),20); add('سلاح دراسات','stu','m',rg(1,3),20);
+  add('ملحق عربى','ar','m',rg(1,3),40); add('ملحق رياضة','math','m',rg(1,3),g=>g===3?80:40); add('ملحق دراسات','stu','m',rg(1,3),40);
+  add('مفكرة عربى','ar','m',rg(1,3),120); add('مفكرة رياضة','math','m',rg(1,3),60); add('مفكرة دراسات','stu','m',rg(1,3),g=>g===3?60:50);
+  add('بوستر دراسات',null,'m',rg(1,3),200);
+  R.push(['كارت المعلم',null,1], ['كوبون 1&2&3',null,1], ['كوبون 4&5&6',null,1]);
   const d=new Date(), DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-  const rows=[['اسم المحافظة','البحيرة'], ['التاريخ',{date:d.toISOString()}], ['اليوم',DAYS[d.getDay()]], ['اسم المندوب',db.rep], [],
-    ['الصنف','جرد ربط','جرد فرط','الاجمالى']];
+  const rows=[
+    ['اسم المحافظة','','','التاريخ',{date:d.toISOString()},''],
+    ['البحيرة','','','اليوم',DAYS[d.getDay()],''],
+    ['اسم المندوب :  ',db.rep||'','كتب','','هدايا عينية',''],
+    ['','','هدايا','','الصنف','العدد بالنسخة'],
+    ['الصنف','جرد ربط','جرد فرط','الاجمالى','','']];
   for(const [nm,k,size] of R){
-    const label=nm+' ﺣ1';
-    if(!k){ rows.push([label]); continue; }
-    const n=L(k); rows.push([label, Math.floor(n/size), n%size, n]);
-  }
-  download(buildXlsx([{name:'جرد', rows, widths:[26,12,12,12], head:5}]), `جرد-مخزن-${db.rep}-${dayKey()}.xlsx`);
-  toast('⬇️ شيت الجرد نزل');
+    const rn=rows.length+1, label=(nm+' ﺣ1').replace(/^(كارت المعلم|كوبون.*) ﺣ1$/,'$1'), n=k?L(k):0;
+    rows.push([label, '', k?n:'', size>1?{f:`B${rn}*${size}+C${rn}`, v:n}:{f:`B${rn}+C${rn}`, v:n}]); }
+  const sg=rows.length+1;
+  rows.push(['توقيع المندوب','','توقيع القائم بالجرد',''], [db.rep||'']);
+  const merges=['A1:C1','E1:F1','A2:C2','E2:F2','A3:A4','B3:B4','C3:D3','E3:F3','C4:D4','E4:E5','F4:F5',`C${sg}:D${sg}`];
+  sendSheet(buildXlsx([{name:'Sheet', rows, widths:[48.8,25.9,20,18.6,33.1,18.6], head:4, merges, freezeCol:0, af:false}]), `جرد مخزن مندوب — ${db.rep} — ${stamp()}.xlsx`, 'شيتات الجرد');
 }
 
 /* ================= جرد المبيعات: الباقي معايا من بضاعة التجار ================= */
@@ -2087,8 +2151,7 @@ function exportSalesJard(){
     const tr=['الإجمالي', S('B',1), S('C',2), S('D',3), S('E',4), S('F',5), S('G',6), S('H',7), S('I',8)]; tr.fill='E5E7EB'; tr.bold=true; rows.push(tr); }
   else rows.push(['لسه مفيش كتب استلمتها من التجار']);
   rows.push([]); rows.push([`لحد ${fmtDay(dayKey())}`]);
-  download(buildXlsx([{name:'جرد المبيعات', rows, widths:[26,15,13,9,14,15,13,10,8], freezeCol:0, af:false}]), `جرد-المبيعات-${db.rep}-${dayKey()}.xlsx`);
-  toast('⬇️ شيت جرد المبيعات نزل');
+  sendSheet(buildXlsx([{name:'جرد المبيعات', rows, widths:[26,15,13,9,14,15,13,10,8], freezeCol:0, af:false}]), `جرد المبيعات — ${db.rep} — ${stamp()}.xlsx`, 'شيتات الجرد');
 }
 
 /* ================= بيانات المدرسين (بالمنطقة، وجوه كل منطقة A ثم B ثم C) ================= */
@@ -2105,13 +2168,12 @@ function exportTeachersData(){
     const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||''];
     row.fill=XP[ci]; rows.push(row); }
   const nm=('بيانات المدرسين — '+(db.idara||'')).trim();
-  download(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,10,13,24], freezeCol:2, af:false}]), nm+'.xlsx');
-  toast('⬇️ شيت بيانات المدرسين نزل');
+  sendSheet(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,10,13,24], freezeCol:2, af:false}]), `${nm} — ${stamp()}.xlsx`, 'بيانات المدرسين');
 }
 
 /* ================= شيت بيع الشركة (نفس شكل «بيع مباشر»: English • Prim • Prep • Summary) ================= */
 function exportCompanySales(){
-  if(!db.empCode){ const c=prompt('اكتب الكود الوظيفي بتاعك (زي sp-288):', ''); if(c===null) return; db.empCode=c.trim(); save(); }
+  if(!askCode()) return;
   const inR=k=>k && k>=repFrom && k<=repTo, L=lotMap();
   const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t]));
   const sold=db.sales.filter(s=>s.st==='sold' && inR(dk(s.sd||s.d))).sort((a,b)=>(a.sd||a.d||'').localeCompare(b.sd||b.d||''));
@@ -2152,8 +2214,24 @@ function exportCompanySales(){
   const b=srows.length, tr=['Total', ...Array.from({length:W+1},(_,i)=>{ const col=colName(i+1); return {f:`SUM(${col}2:${col}${b})`, v:srows.slice(1).reduce((a,r)=>a+(typeof r[i+1]==='object'?r[i+1].v:r[i+1]),0)}; })];
   tr.fill='E5E7EB'; tr.bold=true; srows.push(tr);
   out.push({name:'Summary', rows:srows, widths:[14, ...Array(W+1).fill(7)], freezeCol:0, af:false});
-  download(buildXlsx(out), `بيع مباشر — ${db.rep} — ${repFrom} لحد ${repTo}.xlsx`);
-  toast('⬇️ شيت بيع الشركة نزل');
+  sendSheet(buildXlsx(out), `بيع مباشر — ${db.rep} — ${repFrom} لحد ${repTo} — ${stamp()}.xlsx`, 'شيتات البيع');
+}
+
+// الكود الوظيفي: بيتسأل كل مرة الشيت بينزل (ومكتوب فيه آخر كود)
+function askCode(){ const c=prompt('اكتب الكود الوظيفي بتاعك (زي sp-288):', db.empCode||''); if(c===null) return false; db.empCode=c.trim(); save(false); return true; }
+
+/* ================= شيت الإضافات (نفس شيت الشركة بالظبط): المدرسين الجداد من أول الشغل ================= */
+function gradesTxt(t){ return (t.grades||[]).slice().sort((a,b)=>a-b).map(g=>GRADE[g-1]).join('، '); }
+function levelTxt(t){ const gs=t.grades||[], st=t.stage||'';
+  const lo=st.includes('p') && gs.some(g=>g<4), hi=st.includes('m') || (st.includes('p') && gs.some(g=>g>=4));
+  return lo&&hi ? 'صفوف صغرى وعليا' : lo ? 'صفوف صغرى' : hi ? 'صفوف عليا' : ''; }
+function exportAdditions(){
+  const ts=db.teachers.filter(t=>t.isNew).sort((a,b)=>(a.created||'').localeCompare(b.created||''));
+  if(!ts.length) return toast('مفيش مدرسين جداد متسجلين');
+  if(!askCode()) return;
+  const rows=[['الاسم','الرقم','المادة','الصف','المرحلة','كود المندوب','الادارة','المحافظة','دروس / مدارس','ابتدائي / اعدادي']];
+  for(const t of ts) rows.push([t.name||'', t.phone||'', t.subjectText||'', gradesTxt(t), levelTxt(t), db.empCode||'', db.idara||'', 'البحيرة', t.where||'', STAGE_TXT[t.stage]||t.stageText||'']);
+  sendSheet(buildXlsx([{name:'Sheet1', rows, widths:[24,14,14,22,18,13,16,12,14,16], freezeCol:2, af:false}]), `اضافات — ${db.rep} — ${stamp()}.xlsx`, 'شيتات الإضافات');
 }
 
 /* ================= البيع والتجار ================= */
@@ -3144,7 +3222,7 @@ function linkDrive(){
       try{
         const j=await cloudPost({k:'link', mail:db.mail, rep:db.rep, code:r.code});
         db.driveKey=j.key; db.driveMail=j.gmail||''; db.lastDriveBk=''; save(false);
-        toast('✅ الدرايف اتربط — بيرفع أول نسخة…'); render(); driveBackup(true);
+        toast('✅ الدرايف اتربط — بيرفع أول نسخة…'); render(); driveBackup(true).then(()=>flushSheets());
       }catch(e){ alert(/norefresh/.test(e.message)
         ? 'جوجل ما ادّاش صلاحية دائمة.\nافتح myaccount.google.com/permissions وشيل «سلاح التلميذ» واربط تاني.'
         : /noclient/.test(e.message) ? 'الربط لسه مش جاهز من ناحية الإدارة (ناقص Client secret في السكريبت).\nكلّم شريف.'
@@ -3257,6 +3335,7 @@ async function pullPrices(manual){
 if(CLOUD_URL){
   const dchk=()=>{ if(driveDue()) driveBackup(); };
   setTimeout(()=>{ pullPrices(); cloudSync(); dchk(); if(GCLIENT_ID && !db.driveKey) loadGis(); }, 3000);
+  setTimeout(()=>flushSheets(), 9000);
   window.addEventListener('online', ()=>{ pullPrices(); cloudSync(); setTimeout(dchk, 4000); });
   document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ cloudSync(); dchk(); } else setTimeout(dchk, 2000); });
   setInterval(()=>cloudSync(), 5*60000);
