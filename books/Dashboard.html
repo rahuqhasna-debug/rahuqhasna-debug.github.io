@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#14201e;--muted:#5d6b68;--line:#dde4e2;--brand:#0f766e;--soft:#e2f2ef;--ok:#15803d;--owe:#b45309;--bad:#b91c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;--brand:#2dd4bf;--soft:#11322e;--ok:#4ade80;--owe:#fbbf24;--bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;font-size:15px;line-height:1.5}
+header{background:#0f766e;color:#fff;padding:12px 16px;font-weight:800;font-size:18px;position:sticky;top:0;z-index:5}
+main{max-width:900px;margin:0 auto;padding:12px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 12px}
+.rep{cursor:pointer}.rep:active{background:var(--soft)}
+.rep h3{margin:0 0 2px;font-size:17px}
+.muted{color:var(--muted)}.small{font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px}
+.grid div{background:var(--bg);border-radius:10px;padding:8px;text-align:center}
+.grid b{display:block;font-size:19px}.grid span{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:8px;margin:0 0 12px;overflow-x:auto}
+.tabs button{border:1.5px solid var(--line);background:var(--card);border-radius:20px;padding:7px 14px;font:inherit;cursor:pointer;color:inherit;white-space:nowrap}
+.tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+.btn{border:0;border-radius:10px;padding:8px 14px;background:var(--soft);color:var(--brand);font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 8px;padding:0 12px}
+summary{cursor:pointer;padding:10px 0;font-weight:700}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center}
+.tbl th{color:var(--muted);font-size:12px}.tbl td:first-child,.tbl th:first-child{text-align:right}
+.scroll{overflow-x:auto}
+.trow{padding:6px 0;border-top:1px dashed var(--line);font-size:14px}
+.empty{text-align:center;color:var(--muted);padding:24px}
+.sign{text-align:center;color:var(--muted);font-size:12px;margin-top:20px}
+</style>
+</head>
+<body>
+<header>📊 متابعة المناديب — سلاح التلميذ البحيرة</header>
+<main id="app"><div class="empty">جاري التحميل…</div></main>
+<script>
+let KEY='', REPS=[], CUR=null, TAB='days';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SUBJ={ar:'عربي',math:'رياضة',stu:'دراسات',en:'إنجليزي',sci:'علوم'}, COL={ar:'#1D4ED8',math:'#15803D',stu:'#92400E',en:'#7E22CE',sci:'#EA580C'};
+const GR=['أولى','تانية','تالتة','رابعة','خامسة','سادسة'], STN={p:'ابتدائي',m:'إعدادي'};
+const ORDER=[]; for(const [st,subs,n] of [['p',['ar','math','stu','en','sci'],6],['m',['ar','math','stu'],3]]) for(const sb of subs) for(let g=(st==='p'&&(sb==='sci'||sb==='stu'))?4:1; g<=n; g++) ORDER.push(st+'-'+sb+'-'+g);
+const RANK={}; ORDER.forEach((k,i)=>RANK[k]=i);
+const sbOf=k=>String(k).split('-')[1];
+const lbl=k=>{const [st,sb,g]=String(k).split('-'); return (SUBJ[sb]||'؟')+' '+(GR[g-1]||'')+' '+(STN[st]||'');};
+const bk=k=>`<b style="color:${COL[sbOf(k)]||'inherit'}">${esc(lbl(k))}</b>`;
+const pad=n=>String(n).padStart(2,'0');
+const dk=iso=>{ if(!iso) return ''; const d=new Date(iso); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+const DAYS=['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+const fd=k=>{ if(!k) return ''; const [y,m,d]=k.split('-'); return DAYS[new Date(+y,+m-1,+d).getDay()]+' '+(+d)+'/'+(+m); };
+const r2=n=>Math.round(n*100)/100;
+const fm=n=>r2(n||0).toLocaleString('en-US')+' ج';
+function ago(iso){ if(!iso) return '—'; const m=Math.round((Date.now()-new Date(iso).getTime())/60000);
+  if(m<1) return 'دلوقتي'; if(m<60) return `من ${m} دقيقة`; const h=Math.round(m/60); if(h<24) return `من ${h} ساعة`; return `من ${Math.round(h/24)} يوم (${fd(dk(iso))})`; }
+const fail=e=>{ $('#app').innerHTML=`<div class="card empty">⚠️ ${esc(e&&e.message||e)}</div>`; };
+
+google.script.url.getLocation(loc=>{ KEY=(loc.parameter&&loc.parameter.admin)||''; loadReps(); });
+function loadReps(){ $('#app').innerHTML='<div class="empty">جاري التحميل…</div>';
+  google.script.run.withSuccessHandler(r=>{ REPS=r||[]; home(); }).withFailureHandler(fail).adminReps(KEY); }
+
+function statsGrid(s){ s=s||{};
+  const it=[['المدرسين',s.teachers],['زيارات النهارده',s.visitsToday],['اتسلّم النهارده',s.deliveredToday],['اتسلّم كله',s.delivered],['مستحق عليه',s.owed],['بيع',s.sold!=null?fm(s.sold):null],['برة عند المدرسين',s.owe!=null?fm(s.owe):null],['طلبات مستنية',s.orders],['فاضل في المخزون',s.stockLeft]];
+  return '<div class="grid">'+it.filter(x=>x[1]!=null).map(([l,v])=>`<div><b>${esc(v)}</b><span>${l}</span></div>`).join('')+'</div>'; }
+
+// مقارنة المناديب: النهارده / الأسبوع ده (من السبت) / الشهر ده
+let CMP='day';
+function cmpFrom(){ const d=new Date(); d.setHours(0,0,0,0);
+  if(CMP==='week') d.setDate(d.getDate()-((d.getDay()+1)%7));
+  if(CMP==='month') d.setDate(1);
+  return dk(d.toISOString()); }
+function compareHtml(){
+  const from=cmpFrom(), b=(k,t)=>`<button class="${CMP===k?'on':''}" data-c="${k}">${t}</button>`;
+  const rows=REPS.map(r=>{ const x={rep:r.rep, d:0, sv:0, pd:0, rv:0, mo:(r.stats||{}).merchOwe||0}, D=(r.stats||{}).days||{};
+    for(const k in D) if(k>=from){ x.d+=D[k].d||0; x.sv+=D[k].sv||0; x.pd+=D[k].pd||0; x.rv+=D[k].rv||0; }
+    return x; }).sort((a,b)=>(b.d-a.d)||(b.sv-a.sv));
+  const T=rows.reduce((s,x)=>{ for(const f of ['d','sv','pd','rv','mo']) s[f]+=x[f]; return s; }, {d:0,sv:0,pd:0,rv:0,mo:0});
+  return `<div class="card"><h3 style="margin:0 0 8px">🏆 مقارنة المناديب</h3>
+    <div class="tabs">${b('day','النهارده')}${b('week','الأسبوع ده')}${b('month','الشهر ده')}</div>
+    <div class="scroll"><table class="tbl"><tr><th>المندوب</th><th>سلّم</th><th>باع بـ</th><th>حصّل</th><th>مرتجع</th><th>عليه للتجار</th></tr>
+    ${rows.map((x,i)=>`<tr><td>${i===0&&x.d?'🥇 ':''}<b>${esc(x.rep)}</b></td><td><b>${x.d}</b></td><td>${fm(x.sv)}</td><td style="color:var(--ok)">${fm(x.pd)}</td><td style="color:var(--owe)">${fm(x.rv)}</td><td style="color:${x.mo>0?'var(--bad)':'inherit'}">${fm(x.mo)}</td></tr>`).join('')}
+    <tr><td><b>الإجمالي</b></td><td><b>${T.d}</b></td><td><b>${fm(T.sv)}</b></td><td><b>${fm(T.pd)}</b></td><td><b>${fm(T.rv)}</b></td><td><b>${fm(T.mo)}</b></td></tr></table></div>
+    <div class="small muted" style="margin-top:6px">الأرقام بتتحدّث كل ما المندوب يبعت شغل. «عليه للتجار» = الرصيد كله لحد دلوقتي.</div></div>`;
+}
+function home(){
+  CUR=null;
+  if(!REPS.length){ $('#app').innerHTML='<div class="card empty">لسه مفيش مندوب بعت شغل.<br>أول ما مندوب يفتح البرنامج وفيه نت هيظهر هنا.</div>'+sign(); return; }
+  $('#app').innerHTML=compareHtml()+`<div class="small muted" style="margin:0 2px 8px">${REPS.length} مندوب — دوس على أي مندوب تشوف شغله</div>`+
+    REPS.map((r,i)=>`<div class="card rep" data-i="${i}"><h3>👤 ${esc(r.rep)}</h3>
+      <div class="small muted">${esc([r.idara, r.mail].filter(Boolean).join(' • '))}</div>
+      <div class="small">🕘 آخر نشاط: <b>${esc(ago(r.last))}</b></div>${statsGrid(r.stats)}</div>`).join('')+
+    `<div style="text-align:center"><button class="btn" onclick="loadReps()">🔄 تحديث</button></div>`+sign();
+  document.querySelectorAll('.rep').forEach(el=>el.onclick=()=>openRep(REPS[+el.dataset.i].mail));
+  document.querySelectorAll('[data-c]').forEach(el=>el.onclick=()=>{ CMP=el.dataset.c; home(); });
+}
+const sign=()=>'<div class="sign">تصميم وتنفيذ: شريف حشيش</div>';
+
+function openRep(mail){ $('#app').innerHTML='<div class="empty">جاري تحميل شغل المندوب…</div>'; window.scrollTo(0,0);
+  google.script.run.withSuccessHandler(r=>{ if(!r) return fail('المندوب ده مش موجود'); CUR={meta:r.meta, db:JSON.parse(r.data||'{}'), url:r.folderUrl, book:r.bookUrl}; showRep(); }).withFailureHandler(fail).adminRep(KEY, mail); }
+
+function showRep(){
+  const {meta:m, db, url, book}=CUR, tab=(k,t)=>`<button class="${TAB===k?'on':''}" data-t="${k}">${t}</button>`;
+  let h=`<button class="btn" id="back">→ كل المناديب</button>
+    <div class="card" style="margin-top:10px"><h3 style="margin:0">👤 ${esc(m.rep)}</h3>
+      <div class="small muted">${esc([m.idara, m.mail].filter(Boolean).join(' • '))}</div>
+      <div class="small">🕘 آخر نشاط: <b>${esc(ago(m.last))}</b> • <a href="${esc(url)}" target="_blank">📁 فولدر المندوب (النسخ والفواتير)</a>${book?` • <a href="${esc(book)}" target="_blank">📗 شيت المندوب (البيع والتسليمات)</a>`:''}</div>${statsGrid(m.stats)}</div>
+    <div class="tabs">${tab('days','📅 يوم بيوم')}${tab('money','💰 البيع والفلوس')}${tab('stock','📦 المخزون')}</div>`;
+  h += TAB==='days' ? daysHtml(db) : TAB==='money' ? moneyHtml(db) : stockHtml(db);
+  $('#app').innerHTML=h+sign();
+  $('#back').onclick=home;
+  document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{ TAB=b.dataset.t; showRep(); });
+}
+
+function tmap(db){ const o={}; for(const t of db.teachers||[]) o[t.id]=t; return o; }
+
+// يوم بيوم: الزيارات والتسليمات (وتحتها مين خد إيه) والبيع
+function daysHtml(db){
+  const T=tmap(db), D={};
+  const g=k=>D[k]||(D[k]={v:new Set(), q:0, sb:{}, per:{}, sold:0, soldN:0, paid:0});
+  for(const e of db.entries||[]){ if(e.s!=='d') continue; const x=g(dk(e.dd)); x.v.add(e.t); x.q+=e.q; const s=sbOf(e.b); x.sb[s]=(x.sb[s]||0)+e.q; (x.per[e.t]||(x.per[e.t]=[])).push(e); }
+  for(const s of db.sales||[]){ if(s.st!=='sold') continue; const x=g(dk(s.sd)); x.v.add(s.t); for(const it of s.items){ x.soldN+=it.q; if(it.post!=null) x.sold+=it.q*it.post; } }
+  for(const p of db.payments||[]) if(p.k==='pay') g(dk(p.d)).paid+=p.amt;
+  const keys=Object.keys(D).filter(Boolean).sort().reverse();
+  if(!keys.length) return '<div class="card empty">لسه مفيش تسليمات.</div>';
+  return keys.map(k=>{ const x=D[k];
+    const subj=Object.keys(SUBJ).filter(s=>x.sb[s]).map(s=>`<span style="color:${COL[s]}">${SUBJ[s]} ${x.sb[s]}</span>`).join(' • ');
+    const per=Object.keys(x.per).map(id=>{ const t=T[id]||{name:'؟'}; const l=x.per[id].sort((a,b)=>RANK[a.b]-RANK[b.b]);
+      return `<div class="trow"><b>${esc(t.name)}</b> <span class="small muted">${esc([t.area,t.phone].filter(Boolean).join(' • '))}</span><br>${l.map(e=>bk(e.b)+(e.q>1?' × '+e.q:'')).join('، ')}</div>`; }).join('');
+    return `<details><summary>${fd(k)} — ${x.v.size} زيارة • ${x.q} كتاب${x.soldN?` • 💰 باع ${x.soldN} بـ ${fm(x.sold)}`:''}${x.paid?` • 💵 قبض ${fm(x.paid)}`:''}</summary>
+      ${subj?`<div class="small" style="margin-bottom:6px">${subj}</div>`:''}${per||'<div class="small muted">بيع بس اليوم ده.</div>'}<div style="height:8px"></div></details>`; }).join('');
+}
+
+// البيع والفلوس: حسابات المدرسين والتجار
+function moneyHtml(db){
+  const T=tmap(db), S={}, A={}; for(const s of db.sales||[]) S[s.id]=s;
+  const a=id=>A[id]||(A[id]={n:0, bought:0, paid:0, ret:0, rn:0});
+  for(const s of db.sales||[]) if(s.st==='sold'){ const x=a(s.t); for(const it of s.items){ x.n+=it.q; if(it.post!=null) x.bought+=it.q*it.post; } }
+  for(const p of db.payments||[]){ const x=a(p.t);
+    if(p.k==='pay') x.paid+=p.amt;
+    else if(p.k==='ret'){ x.rn+=p.q; for(const pt of p.parts||[]){ const it=S[pt.sale]&&S[pt.sale].items[pt.i]; if(it&&it.post!=null) x.ret+=pt.q*it.post; } } }
+  const ids=Object.keys(A).filter(id=>A[id].n||A[id].paid);
+  let tb=0, tp=0, tr=0, to=0;
+  const rows=ids.map(id=>{ const x=A[id], owe=r2(x.bought-x.paid-x.ret); tb+=x.bought; tp+=x.paid; tr+=x.ret; to+=Math.max(0,owe);
+    return {t:T[id]||{name:'؟'}, x, owe}; }).sort((p,q)=>q.owe-p.owe);
+  // التجار
+  const lots={}; for(const l of db.merchants||[]) lots[l.id]=l;
+  const M={}; const mm=n=>M[n]||(M[n]={q:0, tot:0, paid:0, ret:0});
+  for(const l of db.merchants||[]){ const x=mm(l.m); x.q+=l.q; if(l.p!=null) x.tot+=l.q*l.p; }
+  for(const p of db.merchPays||[]) mm(p.m).paid+=p.amt;
+  for(const r of db.merchRets||[]) for(const z of r.lots||[]){ const l=lots[z.lot]; if(l&&l.p!=null) mm(r.m).ret+=z.q*l.p; }
+  const orders=(db.sales||[]).filter(s=>s.st==='order');
+  return `<div class="card"><h3 style="margin:0 0 8px">🧾 حسابات المدرسين</h3>
+    ${rows.length?`<div class="scroll"><table class="tbl"><tr><th>المدرس</th><th>خد</th><th>رجّع</th><th>اشترى بـ</th><th>دفع</th><th>رجّع بـ</th><th>عليه</th></tr>
+    ${rows.map(({t,x,owe})=>`<tr><td><b>${esc(t.name)}</b><div class="small muted">${esc(t.phone||'')}</div></td><td>${x.n}</td><td>${x.rn}</td><td>${fm(x.bought)}</td><td style="color:var(--ok)">${fm(x.paid)}</td><td style="color:var(--owe)">${fm(x.ret)}</td><td style="color:${owe>0?'var(--bad)':'var(--ok)'}"><b>${fm(owe)}</b></td></tr>`).join('')}
+    <tr><td><b>الإجمالي</b></td><td></td><td></td><td><b>${fm(tb)}</b></td><td><b>${fm(tp)}</b></td><td><b>${fm(tr)}</b></td><td style="color:var(--bad)"><b>${fm(to)}</b></td></tr></table></div>`:'<div class="muted">لسه ما باعش.</div>'}</div>
+    <div class="card"><h3 style="margin:0 0 8px">🏪 التجار</h3>
+    ${Object.keys(M).length?`<div class="scroll"><table class="tbl"><tr><th>التاجر</th><th>خد</th><th>بـ</th><th>رجّع بـ</th><th>دفع</th><th>عليه</th></tr>
+    ${Object.keys(M).map(n=>{ const x=M[n], owe=r2(x.tot-x.ret-x.paid); return `<tr><td><b>${esc(n)}</b></td><td>${x.q}</td><td>${fm(x.tot)}</td><td>${fm(x.ret)}</td><td>${fm(x.paid)}</td><td style="color:${owe>0?'var(--bad)':'var(--ok)'}"><b>${fm(owe)}</b></td></tr>`; }).join('')}</table></div>`:'<div class="muted">مفيش بضاعة تجار.</div>'}</div>
+    ${orders.length?`<div class="card"><h3 style="margin:0 0 8px">🛒 طلبات مستنية (${orders.length})</h3>${orders.map(s=>`<div class="trow"><b>${esc((T[s.t]||{name:'؟'}).name)}</b> — ${s.items.map(it=>bk(it.b)+' × '+it.q).join('، ')}</div>`).join('')}</div>`:''}`;
+}
+
+// المخزون: استلم من المخزن − سلّم
+function stockHtml(db){
+  const R={}, Dl={};
+  for(const s of db.stock||[]) R[s.b]=(R[s.b]||0)+s.q;
+  for(const e of db.entries||[]) if(e.s==='d') Dl[e.b]=(Dl[e.b]||0)+e.q;
+  const ks=ORDER.filter(k=>R[k]||Dl[k]);
+  if(!ks.length) return '<div class="card empty">لسه ما سجّلش كتب استلمها من المخزن.</div>';
+  let tr=0, td=0;
+  return `<div class="card"><div class="scroll"><table class="tbl"><tr><th>الكتاب</th><th>استلم</th><th>سلّم</th><th>فاضل</th></tr>
+    ${ks.map(k=>{ const r=R[k]||0, d=Dl[k]||0, l=r-d; tr+=r; td+=d; return `<tr><td>${bk(k)}</td><td>${r}</td><td>${d}</td><td style="color:${l<0?'var(--bad)':'inherit'}"><b>${l}</b></td></tr>`; }).join('')}
+    <tr><td><b>الإجمالي</b></td><td><b>${tr}</b></td><td><b>${td}</b></td><td><b>${tr-td}</b></td></tr></table></div></div>`;
+}
+</script>
+</body>
+</html>
