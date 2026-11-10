@@ -1399,7 +1399,7 @@ function renderSettings(){
     ${locCard()}
     ${pricesCard()}
     ${merchCard()}
-    ${pinCard()}
+    ${pinCard()}${editLogCard()}
     <div class="card"><h3 class="sec-t">💾 نسخة احتياطية / نقل لجهاز تاني</h3>
       <div class="row2"><button class="btn pri" data-act="backup">⬇️ اعمل نسخة</button><button class="btn" data-act="restore">⬆️ رجّع نسخة</button></div>
       <p class="hint">البيانات محفوظة على الجهاز ده بس. اعمل نسخة كل كام يوم وابعتها لنفسك على الواتساب أو الدرايف. علشان تنقل للكمبيوتر أو الموبايل: اعمل نسخة هنا، وافتح البرنامج على الجهاز التاني ودوس «رجّع نسخة».</p></div>
@@ -2671,7 +2671,7 @@ function invCardHtml(x, L, tid){
       ${g.lines.map(l=>`<div><span style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</span> × ${l.q}${l.v?` = ${fmtM(l.v)}`:''}${l.m?` <span class="small muted">← رجع لـ ${esc(l.m)}</span>`:''}</div>`).join('')}</div>`; }).join('');
   return `<div class="card icard"><h4><span>🧾 فاتورة ${x.no}</span><span class="small">${fmtDay(dk(x.s.sd||x.s.d))}</span></h4>
     <div class="tscroll" style="margin-top:4px"><table class="tbl"><thead><tr><th>الكتاب</th><th>خد</th><th>رجّع</th><th>فضل</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table></div>
-    ${rb}<div class="net">صافي الفاتورة: ${fmtM(net)}</div></div>`;
+    ${rb}<div class="net">صافي الفاتورة: ${fmtM(net)}</div><button class="btn sm ghost" style="width:100%;margin-top:8px" data-act="inv-edit" data-id="${esc(x.s.id)}">✏️ تعديل الفاتورة</button></div>`;
 }
 function tSaleHtml(t){
   const a=ACC[t.id]||{bought:0,n:0,rn:0,paid:0,ret:0,owe:0,noPrice:false,orders:0};
@@ -2798,11 +2798,11 @@ function afterWork(tid){
   if(prev && prev!==t.area && !s.done.includes(prev)){ const l=pendingA(prev); if(l.length){ s.done.push(prev); grp=[[prev,l]]; } }
   s.cur=t.area; alSave(s);
   saveVillageLoc(t.area);
-  if(grp.length) setTimeout(()=>alertA(grp), 500);
+  if(grp.length && !isNight()) setTimeout(()=>alertA(grp), 500);
 }
 // بعد 6 بالليل: المناطق اللي اشتغل فيها النهارده وفيها A ما استلموش
 function eveningCheck(){
-  if(new Date().getHours()<18 || !db.teachers.length) return;
+  if(new Date().getHours()<18 || isNight() || !db.teachers.length) return;
   const s=alState(); if(s.eve) return; s.eve=true; alSave(s);
   const grp=workedAreasToday().map(a=>[a, pendingA(a)]).filter(([,l])=>l.length);
   if(grp.length) setTimeout(()=>alertA(grp), 1500);
@@ -2819,6 +2819,7 @@ function saveVillageLoc(area){
 function startWatch(){
   if(geoWatch!=null || !navigator.geolocation) return;
   try{ geoWatch=navigator.geolocation.watchPosition(p=>{
+    if(isNight()) return;
     const here={lat:p.coords.latitude, lng:p.coords.longitude}, s=alState();
     for(const a of workedAreasToday()){ const v=db.vloc?.[a]; if(!v || s.done.includes(a) || distKm(here,v)<=2) continue;
       const l=pendingA(a); if(!l.length) continue;
@@ -3970,8 +3971,8 @@ function visitRow(v, reg){
   return `<div class="vrow" data-hay="${esc(teacherHay(t))}"><div class="tc-top" style="gap:8px"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}
       <div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}${reg?` • زيارة ${dayName(v.day)} ${fmtDay(v.day)}`:''}</div></div><div class="icos">${phoneBtns(t)}</div></div>
     ${bkChips(reg ? v.ents : v.left)}
-    ${reg ? `<div class="regd">✅ تم التسجيل بتاريخ ${dates.map(fmtDay).join(' و ')}</div><button class="btn sm ghost" style="margin-top:6px" data-act="reg-undo" data-k="${esc(v.k)}">↩️ رجّعها للزيارات</button>`
-      : `${v.left.length<v.ents.length?'<div class="small muted" style="margin-top:4px">اتسجل منها جزء قبل كده — ده الباقي</div>':''}<button class="btn sm ok" style="width:100%;margin-top:8px" data-act="reg-visit" data-k="${esc(v.k)}">✅ تم التسجيل</button>`}</div>`;
+    ${reg ? `<div class="regd">✅ تم التسجيل بتاريخ ${dates.map(fmtDay).join(' و ')}</div><div class="row2" style="margin-top:6px"><button class="btn sm ghost" data-act="reg-undo" data-k="${esc(v.k)}">↩️ رجّعها للزيارات</button><button class="btn sm" data-act="vis-edit" data-k="${esc(v.k)}">✏️ تعديل الزيارة</button></div>`
+      : `${v.left.length<v.ents.length?'<div class="small muted" style="margin-top:4px">اتسجل منها جزء قبل كده — ده الباقي</div>':''}<div class="row2" style="margin-top:8px"><button class="btn sm ok" data-act="reg-visit" data-k="${esc(v.k)}">✅ تم التسجيل</button><button class="btn sm" data-act="vis-edit" data-k="${esc(v.k)}">✏️ تعديل الزيارة</button></div>`}</div>`;
 }
 function renderVisits(f){
   const all=visitGroups(), open=all.filter(v=>v.left.length), done=all.filter(v=>!v.left.length);
@@ -4010,6 +4011,112 @@ function regVisit(k){
     m.remove(); const now=new Date().toISOString(), full=ids.length===v.left.length;
     withUndo(full ? `✅ ${t.name} اتسجل — راح التسجيلات` : `✅ اتسجل ${ids.length} — الباقي فاضل في الزيارة`, ()=>{ for(const id of ids) db.reg[id]=now; });
   });
+}
+
+/* ---------- تعديل الزيارة + تعديل فاتورة المدرس + سجل التعديلات ----------
+   تعديل الزيارة: الكتب اللي اتسلّمت (db.entries) — الرصيد = المستلم − المسلّم فبيتحسب لوحده (زوّدت ينقص، رجّعت يزيد).
+   تعديل الفاتورة: عدد كل كتاب في البيع، والتقسيم على التجار (src) بيتعدّل، فرصيد التجار بيتحسب لوحده. المرتجع اللي اتسجّل ما بيتمسحش. */
+function logEdit(kind, tid, ch, extra){ if(ch.length) db.editLog.push({id:uid(), at:new Date().toISOString(), kind, t:tid, ch, ...(extra||{})}); }
+function qtyRows(rows, withPrice){
+  return rows.map((r,i)=>`<div class="srow"><div class="grow"><b style="color:var(--c-${bookParts(r.b).sb})">${esc(bookLabel(r.b))}</b>${r.fresh?' <span class="pill new">جديد</span>':''}
+      <div class="small muted">كان ${r.q0}${withPrice&&r.pr!=null?` • ${fmtN(r.pr)} ج للواحد`:''}${r.min?` • رجّع منه ${r.min} (مش هينزل عنها)`:''}</div></div>
+    <div class="step"><button data-ev="dec" data-i="${i}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-i="${i}" value="${r.q}"><button class="plus" data-ev="inc" data-i="${i}" aria-label="زوّد">+</button></div></div>`).join('');
+}
+function bindQtyEditor(m, rows, paintList, paintSum, minOf){
+  m.addEventListener('input', e=>{ const i=e.target.closest('.qin'); if(!i) return; const r=rows[+i.dataset.i];
+    r.q=Math.max(minOf(r),Math.min(9999,parseInt(digits(i.value).replace(/\D/g,''),10)||0)); paintSum(); });
+  m.addEventListener('click', e=>{ if(e.target===m){ m.remove(); return; } const b=e.target.closest('[data-ev]'); if(!b) return; const r=rows[+b.dataset.i];
+    r.q=Math.max(minOf(r),Math.min(9999,r.q+(b.dataset.ev==='inc'?1:-1))); paintList(); });
+  m.querySelector('#ev_add').addEventListener('change', e=>{ const b=e.target.value; if(!b) return; const ex=rows.find(r=>r.b===b);
+    if(ex) ex.q++; else rows.push({id:'', i:-1, b, q0:0, q:1, min:0, fresh:true, pr:priceOf(b)?.post ?? null}); e.target.value=''; paintList(); });
+}
+function editVisit(k){
+  const v=visitGroups().find(x=>x.k===k); if(!v) return; const t=tById(v.t);
+  const rows=v.ents.map(e=>({id:e.id, b:e.b, q0:e.q, q:e.q, min:0})), stk=stockLeft();
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>✏️ تعديل زيارة ${esc(t.name)}</h3><div class="small muted" style="margin-bottom:8px">زيارة ${dayName(v.day)} ${fmtDay(v.day)} — زوّد أو نقّص أي كتاب، والرصيد بيتعدّل لوحده (زوّدت ينقص، رجّعت يزيد). صفّر الخانة عشان تشيل الكتاب.</div>
+    <div id="ev_l"></div>
+    <div class="field" style="margin-top:8px"><label>➕ ضيف كتاب</label><select id="ev_add"><option value="">اختار الكتاب…</option>${BOOK_ORDER.map(b=>`<option value="${b}">${esc(bookLabel(b))}</option>`).join('')}</select></div>
+    <div id="ev_sum" class="tot" style="margin:8px 0"></div>
+    <div class="row2"><button class="btn pri" id="ev_ok">💾 حفظ التعديل</button><button class="btn ghost" id="ev_x">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const delta=()=>{ const d={}; for(const r of rows) if(r.q!==r.q0) d[r.b]=(d[r.b]||0)+(r.q-r.q0); return Object.entries(d).filter(([,x])=>x); };
+  const paintSum=()=>{ const d=delta();
+    m.querySelector('#ev_sum').innerHTML = d.length ? d.map(([b,x])=>{ const after=stk?(stk[b]||0)-x:null;
+      return `<div class="small">${esc(bookLabel(b))}: ${x>0?`زوّدت ${x} ← الرصيد <b style="color:var(--owe)">ينقص ${x}</b>`:`نقّصت ${-x} ← الرصيد <b style="color:var(--ok)">يزيد ${-x}</b>`}${after!=null?` (يبقى ${after})`:''}${after!=null&&after<0?' <span style="color:var(--bad)">⚠️ أكتر من اللي استلمته</span>':''}</div>`; }).join('') : '<span class="muted">لسه ما غيّرتش حاجة</span>'; };
+  const paintList=()=>{ m.querySelector('#ev_l').innerHTML=qtyRows(rows, false); paintSum(); };
+  bindQtyEditor(m, rows, paintList, paintSum, ()=>0);
+  m.querySelector('#ev_x').onclick=()=>m.remove();
+  m.querySelector('#ev_ok').onclick=()=>{
+    const d=delta(); if(!d.length){ alert('ما غيّرتش حاجة'); return; }
+    if(stk && d.some(([b,x])=>(stk[b]||0)-x<0) && !confirm('فيه كتاب هيبقى رصيده بالسالب (أكتر من اللي استلمته). تكمّل؟')) return;
+    const ch=rows.filter(r=>r.q!==r.q0).map(r=>({f:bookLabel(r.b)+(r.id?'':' (جديد)'), o:r.id?String(r.q0):'—', n:r.q?String(r.q):'اتشال'}));
+    const dd=v.ents[0].dd; m.remove();
+    withUndo('✏️ الزيارة اتعدّلت — الرصيد اتحسب', ()=>{
+      for(const r of rows){
+        if(r.id){ const e=db.entries.find(x=>x.id===r.id); if(!e || r.q===r.q0) continue;
+          if(r.q<=0) db.entries=db.entries.filter(x=>x.id!==r.id); else e.q=r.q;
+          delete db.reg[r.id]; }   // اتعدّل: يرجع للزيارات يتسجّل تاني على برنامج الشركة
+        else if(r.q>0) db.entries.push({id:uid(), t:v.t, b:r.b, q:r.q, s:'d', dd, rd:'', rep:db.rep});
+      }
+      logEdit('visit', v.t, ch, {day:v.day});
+    });
+  };
+  paintList();
+}
+function shrinkSrc(s, i, d){   // ينقّص التقسيم على التجار من الآخر، من غير اللي اترجّع
+  const prior={};
+  for(const p of db.payments) if(p.k==='ret' && p.t===s.t) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) for(const x of pt.lots||[]) prior[x.lot]=(prior[x.lot]||0)+x.q;
+  const src=s.items[i].src||[];
+  for(let j=src.length-1; j>=0 && d>0; j--){ const x=src[j], can=x.q-(prior[x.lot]||0); if(can<=0) continue; const n=Math.min(d,can); x.q-=n; d-=n; }
+  s.items[i].src=src.filter(x=>x.q>0);
+}
+function editInvoice(sid){
+  const s=db.sales.find(x=>x.id===sid && x.st==='sold'); if(!s) return; const t=tById(s.t); if(!t) return;
+  const doneOf=i=>{ let n=0; for(const p of db.payments) if(p.k==='ret' && p.t===s.t) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) n+=pt.q; return n; };
+  const anyRet=s.items.some((_,i)=>doneOf(i)>0), left=lotLeft();
+  const rows=s.items.map((it,i)=>({id:'x', i, b:it.b, q0:it.q, q:it.q, pr:it.post, min:anyRet?Math.max(doneOf(i),1):0}));
+  const tot=(f)=>rows.reduce((a,r)=>a+(r.pr!=null?f(r)*r.pr:0),0);
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>✏️ تعديل فاتورة ${esc(t.name)}</h3><div class="small muted" style="margin-bottom:8px">فاتورة ${fmtDay(dk(s.sd||s.d))} — زوّد أو نقّص الأعداد، والحساب وبضاعة التجار بيتعدّلوا لوحدهم.${anyRet?' (فيها مرتجع، فمش هينفع تنزل عن اللي اترجّع ولا تشيل كتاب)':' صفّر الخانة عشان تشيل الكتاب.'}</div>
+    <div id="ev_l"></div>
+    <div class="field" style="margin-top:8px"><label>➕ ضيف كتاب للفاتورة</label><select id="ev_add"><option value="">اختار الكتاب…</option>${[...SELL_KEYS].map(b=>`<option value="${b}">${esc(bookLabel(b))}</option>`).join('')}</select></div>
+    <div id="ev_sum" class="tot" style="margin:8px 0"></div>
+    <div class="row2"><button class="btn pri" id="ev_ok">💾 حفظ التعديل</button><button class="btn ghost" id="ev_x">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const short=()=>rows.filter(r=>r.q>r.q0 && db.merchants.length && (r.q-r.q0)>merchAvail(r.b,left).reduce((a,[,n])=>a+n,0));
+  const paintSum=()=>{ const a=tot(r=>r.q0), b=tot(r=>r.q), n0=rows.reduce((x,r)=>x+r.q0,0), n1=rows.reduce((x,r)=>x+r.q,0);
+    m.querySelector('#ev_sum').innerHTML = (n0===n1 && a===b && rows.every(r=>r.q===r.q0)) ? '<span class="muted">لسه ما غيّرتش حاجة</span>'
+      : `<div class="small">الكتب: ${n0} ← <b>${n1}</b> • الإجمالي: ${fmtN(a)} ← <b>${fmtN(b)}</b> ج</div>`
+        + short().map(r=>`<div class="small" style="color:var(--bad)">⚠️ ${esc(bookLabel(r.b))}: مفيش في بضاعة التجار كفاية</div>`).join(''); };
+  const paintList=()=>{ m.querySelector('#ev_l').innerHTML=qtyRows(rows, true); paintSum(); };
+  bindQtyEditor(m, rows, paintList, paintSum, r=>r.min);
+  m.querySelector('#ev_x').onclick=()=>m.remove();
+  m.querySelector('#ev_ok').onclick=()=>{
+    if(rows.every(r=>r.q===r.q0)){ alert('ما غيّرتش حاجة'); return; }
+    if(short().length && !confirm('فيه كتب مفيش منها كفاية في بضاعة التجار، هتتسجّل من غير تاجر. تكمّل؟')) return;
+    const ch=rows.filter(r=>r.q!==r.q0).map(r=>({f:bookLabel(r.b)+(r.fresh?' (جديد)':''), o:r.fresh?'—':String(r.q0), n:r.q?String(r.q):'اتشال'}));
+    const a=tot(r=>r.q0), b=tot(r=>r.q), inv=fmtDay(dk(s.sd||s.d)); if(a!==b) ch.push({f:'إجمالي الفاتورة', o:fmtN(a)+' ج', n:fmtN(b)+' ج'});
+    m.remove();
+    withUndo('✏️ الفاتورة اتعدّلت — الحساب والرصيد اتحسبوا', ()=>{
+      for(const r of rows){
+        if(r.fresh){ const p=priceOf(r.b); s.items.push({b:r.b, q:r.q, pre:p?p.pre:null, post:p?p.post:null, src:allocate(r.b, r.q, left)}); continue; }
+        const it=s.items[r.i], d=r.q-r.q0; if(!d) continue;
+        if(d>0) it.src=[...(it.src||[]), ...allocate(it.b, d, left)]; else shrinkSrc(s, r.i, -d);
+        it.q=r.q;
+      }
+      for(let i=s.items.length-1;i>=0;i--) if(s.items[i].q<=0) s.items.splice(i,1);
+      if(!s.items.length) db.sales=db.sales.filter(x=>x!==s);
+      logEdit('invoice', s.t, ch, {inv});
+    });
+  };
+  paintList();
+}
+function editLogCard(){
+  if(!db.editLog.length) return '';
+  return `<div class="card"><details class="stk"><summary>🕘 سجل التعديلات (${db.editLog.length})</summary>${[...db.editLog].reverse().map(x=>{ const t=x.t?tById(x.t):null, nm=t?esc(t.name):'';
+    const hd = x.kind==='visit' ? `🚚 تسليم ${nm}${x.day?` — زيارة ${fmtDay(x.day)}`:''}` : x.kind==='invoice' ? `🧾 فاتورة ${nm}${x.inv?` — ${esc(x.inv)}`:''}` : '🏪 فاتورة تاجر';
+    return `<div class="hrow"><div class="grow"><div><b>${hd}</b></div><div class="small muted">${fmtDT(x.at)}</div>${x.ch.map(c=>`<div class="small"><b>${esc(c.f)}:</b> <s class="muted">${esc(c.o)}</s> ← <b>${esc(c.n)}</b></div>`).join('')}</div></div>`; }).join('')}</details></div>`;
 }
 
 /* ---------- رسائل للمدرسين (واتساب واحد ورا التاني) ---------- */
@@ -4079,6 +4186,8 @@ document.addEventListener('click', e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   switch(el.dataset.act){
     case 'reg-visit': regVisit(el.dataset.k); break;
+    case 'vis-edit': editVisit(el.dataset.k); break;
+    case 'inv-edit': editInvoice(el.dataset.id); break;
     case 'reg-undo': { const v=visitGroups().find(x=>x.k===el.dataset.k); if(!v || !confirm('ترجّع الزيارة دي للزيارات (كأنها ما اتسجلتش)؟')) break;
       withUndo('↩️ الزيارة رجعت', ()=>{ for(const e2 of v.ents) delete db.reg[e2.id]; }); break; }
     case 'reg-old': { const today=dayKey(), l=visitGroups().filter(v=>v.left.length && v.day<today); if(!l.length) break;
@@ -4099,7 +4208,7 @@ function pinCard(){
     <div class="small muted" style="margin-bottom:8px">${db.pinH?'الرقم السري متحدد ✅ — البرنامج بيطلبه مرة واحدة كل ما تفتحه.':'لسه ما حددتش رقم سري — لازم تحدده عشان تعدّل فاتورة تاجر.'}</div>
     <button class="btn" style="width:100%" data-act="pin-set">${db.pinH?'🔑 غيّر الرقم السري':'🔑 حدد رقم سري'}</button>
     ${db.pinH?'<a href="#" class="small" data-act="pin-forgot" style="display:block;margin-top:8px">نسيت الرقم السري؟</a>':''}
-    ${db.editLog.length?`<details class="stk"><summary>🕘 سجل تعديلات فواتير التجار (${db.editLog.length})</summary>${[...db.editLog].reverse().map(x=>`<div class="hrow"><div class="grow"><div class="small muted">${fmtDT(x.at)}</div>${x.ch.map(c=>`<div class="small"><b>${esc(c.f)}:</b> <s class="muted">${esc(c.o)}</s> ← <b>${esc(c.n)}</b></div>`).join('')}</div></div>`).join('')}</details>`:''}</div>`;
+  </div>`;
 }
 function pinModal(title, fields, cb){
   const m=document.createElement('div'); m.className='modal';
@@ -4170,22 +4279,62 @@ function lotEditConfirm(l, nw, ch, left){
 }
 
 /* ---------- ٩) تذكير «صلِّ على النبي ﷺ» كل نص ساعة (مرة مكتوب ومرة بالصوت) ---------- */
-// كل ربع ساعة ذكر (بالدور)، ومرة مكتوب ومرة مكتوب وبالصوت
-const PB_MIN=15;
-const ZIKR=[['🤍 صلِّ على النبي ﷺ','صلِّ على النبي'],['🤍 لا إله إلا الله','لا إله إلا الله'],['🤍 سبحان الله وبحمده، سبحان الله العظيم','سبحان الله وبحمده، سبحان الله العظيم'],
-  ['🤍 صلِّ على النبي ﷺ','اللهم صلِّ وسلم على سيدنا محمد'],['🤍 لا إله إلا الله وحده لا شريك له','لا إله إلا الله وحده لا شريك له']];
-function pbShow(voice, n){
-  const [txt, sp]=ZIKR[(n||0)%ZIKR.length];
+// كل ٢٠ دقيقة تذكير بالدور (٦ أنواع)، مكتوب + صوت + إشعار النظام. إلزامي (مفيش إعدادات)
+const PB_MIN=20;
+const NIGHT_FROM=21, NIGHT_TO=7;   // بالليل مفيش تذكيرات ولا تنبيهات الـ GPS
+function isNight(){ const h=new Date().getHours(); return h>=NIGHT_FROM || h<NIGHT_TO; }
+// الأحاديث من الصحيح (متفق عليه / الترمذي)، والآيات بنصها
+const REM_CATS=[
+  {k:'sal',    items:h=>[['🤍 صلِّ على النبي ﷺ','اللهم صلِّ وسلِّم وبارك على سيدنا محمد'],['🤍 صلِّ على النبي ﷺ','اللهم صلِّ على محمد وعلى آل محمد']]},
+  {k:'sharif', items:h=>{ const w=h<12?'بيصبّح':'بيمسّي'; return [[`🤍 أخوك شريف ${w} عليك`, `أخوك شريف ${w} عليك`]]; }},
+  {k:'dhikr',  items:h=>[['📿 سبحان الله وبحمده، سبحان الله العظيم','سبحان الله وبحمده، سبحان الله العظيم'],['📿 لا إله إلا الله وحده لا شريك له','لا إله إلا الله وحده لا شريك له']]},
+  {k:'verse',  items:h=>[['📖 ﴿وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا﴾ (الطلاق: ٢)','ومن يتق الله يجعل له مخرجا'],['📖 ﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾ (الشرح: ٦)','إن مع العسر يسرا'],['📖 ﴿أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ﴾ (الرعد: ٢٨)','ألا بذكر الله تطمئن القلوب']]},
+  {k:'hadith', items:h=>[['📜 «إنما الأعمال بالنيات» — متفق عليه','إنما الأعمال بالنيات'],['📜 «المسلم من سلم المسلمون من لسانه ويده» — متفق عليه','المسلم من سلم المسلمون من لسانه ويده'],['📜 «الكلمة الطيبة صدقة» — متفق عليه','الكلمة الطيبة صدقة'],['📜 «إن الله رفيق يحب الرفق في الأمر كله» — متفق عليه','إن الله رفيق يحب الرفق في الأمر كله'],['📜 «تبسّمك في وجه أخيك صدقة» — رواه الترمذي','تبسمك في وجه أخيك صدقة']]},
+  {k:'hikma',  items:h=>[['💡 الصبر مفتاح الفرج','الصبر مفتاح الفرج'],['💡 القناعة كنز لا يفنى','القناعة كنز لا يفنى'],['💡 اللي بيزرع الخير بيحصد الخير','اللي بيزرع الخير بيحصد الخير']]}
+];
+function remChime(){   // صوت متوسط (مش عالي)
+  try{ const C=new (window.AudioContext||window.webkitAudioContext)();
+    [[523,0],[659,0.5]].forEach(([f,t0])=>{ const o=C.createOscillator(), g=C.createGain(); o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(C.destination);
+      g.gain.setValueAtTime(0.0001,C.currentTime+t0); g.gain.exponentialRampToValueAtTime(0.15,C.currentTime+t0+0.05); g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+t0+0.9);
+      o.start(C.currentTime+t0); o.stop(C.currentTime+t0+0.95); });
+    setTimeout(()=>C.close(),2000); }catch(e){}
+}
+function speakRem(txt){
+  try{ if(!('speechSynthesis' in window)) return; const u=new SpeechSynthesisUtterance(txt); u.lang='ar-EG'; u.volume=0.8;
+    const v=speechSynthesis.getVoices().find(x=>/^ar/i.test(x.lang)); if(v) u.voice=v; speechSynthesis.speak(u); }catch(e){}
+}
+function remSysNotify(txt){   // إشعار النظام: صوته بيتبع الصامت بتاع التليفون
+  try{ if(!('Notification' in window) || Notification.permission!=='granted') return;
+    const opts={body:txt, tag:'selah-rem', renotify:true, icon:'icon-192.png', badge:'icon-192.png'};
+    if(navigator.serviceWorker && navigator.serviceWorker.ready)
+      navigator.serviceWorker.ready.then(r=>r.showNotification('سلاح التلميذ البحيرة', opts)).catch(()=>{ try{ new Notification('سلاح التلميذ البحيرة', opts); }catch(e){} });
+    else new Notification('سلاح التلميذ البحيرة', opts);
+  }catch(e){}
+}
+function pbShow(n){
+  const h=new Date().getHours(), cat=REM_CATS[n%REM_CATS.length], items=cat.items(h);
+  const [txt, sp]=items[Math.floor(n/REM_CATS.length)%items.length];
+  remSysNotify(txt);
+  if(document.hidden) return;   // البرنامج مش ظاهر: الإشعار بس
   const el=document.createElement('div'); el.className='hello-s pb-s out'; el.textContent=txt; document.body.appendChild(el);
   const bye=()=>{ el.classList.add('out'); setTimeout(()=>el.remove(), 600); };
   el.onclick=bye; setTimeout(()=>el.classList.remove('out'), 60); setTimeout(bye, 7000);
-  if(voice && !(NAV && !NAV.done)) say(sp);
+  remChime();
+  if(cat.k==='sal' && !(NAV && !NAV.done)) speakRem(sp);
+}
+function remPermBar(){   // مش مجبر، بس شريط دايم لحد ما يفعّل الإشعارات
+  if(!('Notification' in window) || Notification.permission==='granted' || document.getElementById('remPerm')) return;
+  const b=document.createElement('div'); b.id='remPerm';
+  b.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:70;background:#0f766e;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center;font-size:14px';
+  b.innerHTML='<div style="flex:1">🔔 فعّل الإشعارات عشان التذكيرات تيجيك وإنت بره البرنامج</div><button id="remPermBtn" style="background:#fff;color:#0f766e;border:0;border-radius:8px;padding:8px 10px;font-weight:700">فعّل</button>';
+  document.body.appendChild(b);
+  b.querySelector('#remPermBtn').onclick=async()=>{ try{ const r=await Notification.requestPermission(); if(r==='granted') b.remove(); else b.querySelector('div').textContent='⚠️ الإشعارات مقفولة من إعدادات التليفون/المتصفح — فعّلها يدوي'; }catch(e){} };
 }
 function pbTick(){
-  if(document.hidden || !db.rep || document.querySelector('.hello-s')) return;
+  if(!db.rep || isNight() || document.querySelector('.hello-s')) return;
   let s={}; try{ s=JSON.parse(localStorage.getItem(KEY+'-pb')||'{}'); }catch(e){}
   const now=Date.now();
-  if(!s.at) s={at:now, n:0}; else if(now-s.at>=PB_MIN*60000){ s.at=now; s.n=(s.n||0)+1; pbShow(s.n%2===0, Math.floor((s.n-1)/2)); }
+  if(!s.at) s={at:now, n:0}; else if(now-s.at>=PB_MIN*60000){ s.at=now; s.n=(s.n||0)+1; pbShow(s.n-1); }
   try{ localStorage.setItem(KEY+'-pb', JSON.stringify(s)); }catch(e){}
 }
 setInterval(pbTick, 60000);
@@ -4222,7 +4371,7 @@ document.addEventListener('click', e=>{
 
 render();
 // تنبيه الـ A: بعد 6 بالليل لما يفتح البرنامج، ومتابعة المكان لو اشتغل في قرية ليها مكان متسجّل
-setTimeout(()=>{ eveningCheck(); if(workedAreasToday().some(a=>db.vloc?.[a])) startWatch(); }, 2500);
+setTimeout(()=>{ eveningCheck(); if(workedAreasToday().some(a=>db.vloc?.[a])) startWatch(); remPermBar(); }, 2500);
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) eveningCheck(); });
 // شاشة الفتح: ثانية واحدة (اللوجو والتوقيع)
 setTimeout(()=>{ const s=$('#splash'); if(s){ s.classList.add('out'); setTimeout(()=>s.remove(), 400); } }, 1000);
