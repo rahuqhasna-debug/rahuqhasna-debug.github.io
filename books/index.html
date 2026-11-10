@@ -360,6 +360,22 @@ mark.hl{background:#fde047;color:#000;border-radius:3px;padding:0 1px}
 .g7{background:linear-gradient(135deg,#be123c,#fb7185)}.g8{background:linear-gradient(135deg,#0f766e,#5eead4)}
 .wrap.home .igrid.i8{grid-template-rows:repeat(4,1fr)}
 .wrap.home .igrid.i8 .icon-b .e{font-size:clamp(24px,4.6dvh,40px)}
+/* دفعة 6: شريط التقارير والإعدادات تحت الرئيسية • خط السير بالأيام • الزيارات • الرسائل */
+.wrap.home{height:calc(100dvh - 52px - 60px - env(safe-area-inset-bottom))}
+nav.hbar a{max-width:none;font-weight:700;font-size:14px}
+.dayc{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+.dayc>span{font-size:20px;color:var(--brand)}
+.vfold{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+.vfold .n{background:var(--owe);color:#fff;border-radius:12px;padding:0 10px;font-weight:800}
+.vfold .n.ok{background:var(--ok)}
+.vrow{border-top:1px solid var(--line);padding:10px 0}
+.vrow:first-of-type{border-top:0}
+.vbk{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.vbk span{background:var(--bg,#f1f5f9);border:1px solid var(--line);border-radius:9px;padding:2px 8px;font-size:13px}
+.regd{color:var(--ok);font-weight:700;font-size:13px;margin-top:4px}
+.pickl label.off{opacity:.55}
+.msgq{text-align:center}
+.msgq .big{font-size:20px;font-weight:800;margin:8px 0}
 .mapbox{height:calc(100dvh - 250px);min-height:300px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-bottom:10px;background:var(--line)}
 .mapbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
@@ -406,6 +422,10 @@ mark.hl{background:#fde047;color:#000;border-radius:3px;padding:0 1px}
   <a href="#/sales" data-tab="sales"><span class="i">💰</span>البيع<span class="badge" id="salesBadge" hidden></span></a>
   <a href="#/settings" data-tab="settings"><span class="i">⚙️</span>الإعدادات</a>
 </nav>
+<nav class="tabs hbar" id="hbar" hidden>
+  <a href="#/report"><span class="i">📊</span>التقارير</a>
+  <a href="#/settings"><span class="i">⚙️</span>الإعدادات</a>
+</nav>
 <input type="file" id="fileXlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <input type="file" id="fileJson" accept=".json,application/json" hidden>
 <input type="file" id="fileStock" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
@@ -437,7 +457,7 @@ const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
 const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
-function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], editLog:[], pinH:'', lastBackup:''}}
+function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], pinH:'', lastBackup:''}}
 /* ================= الإدارات التعليمية والقرى (البحيرة) =================
    كل إدارة: [قرى وبنادر]. القايمة دي اتراجعت مع شريف قبل ما تتحط. */
 const IDARAT = {
@@ -471,6 +491,13 @@ function load(){
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
   db.route ||= []; db.editLog ||= []; db.pinH ||= '';   // route = خط السير (أكواد المدرسين)، editLog = سجل تعديل فواتير التجار، pinH = الرقم السري (متشفّر)
+  // days = أيام خط السير [{id, n:الاسم, t:[أكواد المدرسين]}]، reg = التسجيل على برنامج الشركة {كود التسليم: تاريخ التسجيل}
+  fixDays();
+}
+function fixDays(){
+  if(!Array.isArray(db.days)) db.days=[]; if(!db.reg || typeof db.reg!=='object' || Array.isArray(db.reg)) db.reg={};
+  if(Array.isArray(db.route) && db.route.length && !db.days.length) db.days=[{id:'d'+Date.now().toString(36), n:'اليوم الأول', t:db.route.slice()}];   // خط السير القديم بيبقى «اليوم الأول»
+  db.route=[];
 }
 // رابط الـ Deploy بتاع Apps Script (درايف شريف). فاضي = البرنامج شغال من غير درايف
 const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbxvUtxpYVOskaw95PzGRTwj6bgNeDbt_cwXjys4U_7IiH2FKr_wjeayGTV8ncwkrc3A/exec';
@@ -677,7 +704,9 @@ function render(){
     curTeacher=id; tTab='sale'; h='/t/'+st0[1]; try{ history.replaceState(null,'','#'+h); }catch(e){} }
   if(NAV && !/^\/nav\//.test(h)) navStop();   // خرج من الملاحة
   if(MAP && h!=='/map') killMap();
-  $('#tabs').hidden = h==='/';   // الشريط اللي تحت مخفي في الرئيسية
+  if(h==='/plan'){ h='/route'; try{ history.replaceState(null,'','#/route'); }catch(e){} }   // «خطة بكرة» اتدمجت في «خط السير»
+  $('#tabs').hidden = h==='/';   // الشريط اللي تحت مخفي في الرئيسية — وبدله شريط التقارير والإعدادات
+  $('#hbar').hidden = h!=='/';
   if(h!=='/') app.classList.remove('home','q');
   const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
   ACC = accMap();
@@ -690,11 +719,15 @@ function render(){
   if(mm){ curTeacher=null; sel={}; updateActbar(); renderMerchPage(decodeURIComponent(mm[1])); setTab('sales'); return; }
   const nv = h.match(/^\/nav\/(.+)$/);
   if(nv){ curTeacher=null; sel={}; updateActbar(); renderNav(decodeURIComponent(nv[1])); setTab(''); return; }
+  const rd = h.match(/^\/route\/(.+)$/);
+  if(rd){ curTeacher=null; sel={}; updateActbar(); renderDay(decodeURIComponent(rd[1])); setTab(''); return; }
+  const vs = h.match(/^\/visits(?:\/(.+))?$/);
+  if(vs){ curTeacher=null; sel={}; updateActbar(); renderVisits(vs[1]?decodeURIComponent(vs[1]):''); setTab(''); return; }
   const m = h.match(/^\/t\/(.+)$/);
   if(m){ const id=decodeURIComponent(m[1]); if(curTeacher!==id){ curTeacher=id; sel={}; openBox=''; forceCls=false; othersOpen=false; tTab='del'; } renderTeacher(id); setTab('teachers'); }
   else { curTeacher=null; sel={}; updateActbar();
     if(h==='/teachers'){ renderTeachers(); setTab('teachers'); }
-    else if(h==='/plan'){ renderPlan(); setTab(''); }
+    else if(h==='/msgs'){ renderMsgs(); setTab(''); }
     else if(h==='/map'){ renderMap(); setTab(''); }
     else if(h==='/route'){ renderRoute(); setTab(''); }
     else if(h==='/owed'){ renderOwed(); setTab('owed'); }
@@ -773,7 +806,8 @@ function renderHome(){
   setHeader(APP_NAME, false);
   const st=dayStats(dayKey()), ob=owedTotal(), po=db.sales.filter(s=>s.st==='order').length;
   const ic=(href,e,l,g,badge)=>`<a class="icon-b ${g}" href="${href}"><span class="e">${e}</span>${l}${badge?`<span class="badge">${badge}</span>`:''}</a>`;
-  const grid=`<div class="igrid i8">${ic('#/teachers','👨‍🏫','المدرسين','g1')}${ic('#/owed','📦','اللي عليا','g2',ob)}${ic('#/sales','💰','البيع','g3',po)}${ic('#/report','📊','التقارير','g4')}${ic('#/plan','🗺️','خطة بكرة','g5')}${ic('#/route','🧭','خط السير','g8',db.route.length)}${ic('#/map','📍','الخريطة','g7')}${ic('#/settings','⚙️','الإعدادات','g6')}</div>`;
+  const vn=visitGroups().filter(v=>v.left.length).length;
+  const grid=`<div class="igrid">${ic('#/teachers','👨‍🏫','المدرسين','g1')}${ic('#/sales','💰','البيع','g3',po)}${ic('#/msgs','✉️','رسائل المدرسين','g5')}${ic('#/route','🧭','خط السير','g8',db.days.length)}${ic('#/map','📍','الخريطة','g7')}${ic('#/visits','👣','الزيارات','g4',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -782,7 +816,7 @@ function renderHome(){
     <div class="stats">
       <div class="stat"><b>${st.visits}</b><span>زيارة النهارده</span></div>
       <div class="stat"><b>${st.d}</b><span>كتاب اتسلّم النهارده</span></div>
-      <div class="stat"><b style="color:var(--owe)">${ob}</b><span>كتاب عليا (مستحق)</span></div>
+      <a class="stat" href="#/owed" style="text-decoration:none;color:inherit"><b style="color:var(--owe)">${ob}</b><span>عليا (مستحق) ←</span></a>
     </div>${homeProg()}
     <div class="tday"><div class="grow">📅 بعت بـ <b>${fmtM(x.sv)}</b> • حصّلت <b>${fmtM(x.paid)}</b> • مرتجع <b>${x.rN}</b></div>
       <a class="btn ok" href="${esc(waLink(db.reportPhone||'', reportText()))}" target="_blank" rel="noopener">📤 التقرير</a></div>
@@ -1199,20 +1233,29 @@ function renderReport(){
     ${delDaysCard()}
     <div class="card"><h3 class="sec-t">☁️ الشيتات بتترفع على الدرايف بتاعك</h3>
       <p class="hint" style="margin-top:0">كل شيت بيترفع على طول في فولدر «شيتات سلاح التلميذ» على الدرايف، كل نوع في فولدره. لو مفيش نت بيترفع لوحده أول ما النت يرجع.${shq().length?` <b>مستني يترفع: ${shq().length} شيت.</b>`:''}</p>
-      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-scope="range">📗 شيتات البيع + شيتات التسليمات</button>
-      <p class="hint">ملفين: «البيع» (الطلبات • حسابات التجار • صافي التجار • الملخص اليومي • فواتير البيع • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا) و«التسليمات» (تسليمات 1 • تسليمات 2 • أعداد المدرسين). حسب الفترة اللي فوق (بتبدأ من أول الشغل).</p>
-      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="compsale">🏢 شيت بيع الشركة</button>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-part="del">📚 شيت التسليمات</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="edafat">➕ شيت الإضافات</button>
-      <button class="btn pri" style="width:100%" data-act="tdata">👥 شيت بيانات المدرسين</button>
-      <p class="hint">بيع الشركة بنفس شكل «بيع مباشر». الإضافات بنفس شكل شيت الإضافات (المدرسين الجداد من الأول). بيانات المدرسين مترتبة بالمنطقة ثم A/B/C.</p></div>
-    <div class="card"><h3 class="sec-t">📋 جرد المخزن</h3>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="tdata">👥 شيت بيانات المدرسين</button>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="sale-sheets">💰 شيت البيع</button>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-part="mer">🏪 شيت حساب التجار</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="jard">📋 شيت الجرد</button>
-      <button class="btn" style="width:100%" data-act="sjard">🧮 شيت جرد المبيعات</button>
-      <p class="hint">الجرد: بنفس شكل شيت جرد الشركة (اللي استلمته من المخزن − اللي سلّمته) ربط وفرط. جرد المبيعات: لكل كتاب استلمت كام من التجار، رجّعت كام، هدايا، اتباع كام، رجع كام من المدرسين، والباقي معاك بالظبط.</p></div>`;
+      <button class="btn pri" style="width:100%" data-act="sjard">🧮 شيت جرد المبيعات</button>
+      <p class="hint">• <b>التسليمات</b>: تسليمات 1 • تسليمات 2 • أعداد المدرسين.<br>• <b>شيت البيع</b> بيسألك: «حساب المدرسين» (الطلبات • الملخص اليومي • فواتير البيع • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا) ولا «بيع الشركة» (بنفس شكل بيع مباشر).<br>• <b>حساب التجار</b>: حسابات التجار • صافي التجار.<br>• <b>الجرد</b>: بنفس شكل جرد الشركة، كل كتاب رابطة + فرد. <b>جرد المبيعات</b>: الباقي معاك من بضاعة التجار.<br>التسليمات والبيع والتجار حسب الفترة اللي فوق (بتبدأ من أول الشغل).</p></div>`;
   $('#rf').addEventListener('change',e=>{repFrom=e.target.value||dayKey(); renderReport();});
   $('#rt').addEventListener('change',e=>{repTo=e.target.value||dayKey(); renderReport();});
   app.querySelectorAll('[data-dd]').forEach(cb=>cb.addEventListener('change',()=>{ cb.checked?delDays.add(cb.dataset.dd):delDays.delete(cb.dataset.dd); ddSum(); }));
   ddSum();
+}
+// «💰 شيت البيع» بيسأل: حساب المدرسين ولا بيع الشركة
+function saleSheetChoice(){
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>💰 شيت البيع</h3><p class="small muted" style="margin-top:0">عايز أنهي شيت؟</p>
+    <button class="btn pri" style="width:100%;margin-bottom:8px" data-sc="tch">👨‍🏫 شيت حساب المدرسين</button>
+    <button class="btn pri" style="width:100%;margin-bottom:8px" data-sc="comp">🏢 شيت بيع الشركة</button>
+    <button class="btn ghost" style="width:100%" data-sc="x">إلغاء</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ if(e.target===m){ m.remove(); return; } const b=e.target.closest('[data-sc]'); if(!b) return; m.remove();
+    if(b.dataset.sc==='tch') exportExcel(false, 'tch'); else if(b.dataset.sc==='comp') exportCompanySales(); });
 }
 /* --- شيت «الكتب اللي اتسلّمت» بالأيام (التسليم للمدرسين بس) --- */
 let delDays=new Set();
@@ -1231,7 +1274,7 @@ function delDaysCard(){
     <div style="max-height:320px;overflow:auto">${ks.map(k=>`<label class="ddrow"><input type="checkbox" data-dd="${k}" ${delDays.has(k)?'checked':''}><span class="grow">${dayName(k)} ${dShort(k)}</span><b>${D[k].n} كتاب</b></label>`).join('')}</div>
     <div id="ddsum" class="tot" style="margin:8px 0"></div>
     <button class="btn pri" style="width:100%" data-act="dd-xlsx">📚 نزّل الشيت</button>
-    <p class="hint">الكتب اللي اتسلّمت للمدرسين بس. الشيت فيه كل المواد وكل الصفوف (حتى لو صفر)، وكل يوم مختار في عمود لوحده + الإجمالي.</p></div>`;
+    <p class="hint">الكتب اللي اتسلّمت للمدرسين بس. كل يوم مختار في صف لوحده، والكتب أعمدة (كل المواد وكل الصفوف حتى لو صفر) + إجمالي لكل مادة، وآخر صف الإجمالي.</p></div>`;
 }
 function ddSum(){ const el=$('#ddsum'); if(!el) return; const D=delByDay(), n=[...delDays].reduce((s,k)=>s+(D[k]?.n||0),0);
   el.innerHTML = delDays.size ? `تم اختيار <b>${delDays.size}</b> ${delDays.size===1?'يوم':'أيام'} — <b>${n}</b> كتاب` : '<span class="muted">اختار يوم أو أكتر</span>'; }
@@ -1246,18 +1289,26 @@ const SUBJ_ALL={ar:'العربي', math:'الرياضة', stu:'الدراسات'
 function delSheetOf(days){
   const D=delByDay(); days=[...days].filter(k=>D[k]).sort();
   if(!days.length) return null;
-  const hd=days.map(k=>`${dayName(k)} ${dShort(k)}`), sum=a=>a.reduce((x,y)=>x+y,0);
-  const rows=[[`المندوب: ${db.rep}`], [`الإدارة: ${db.idara||'—'}`], ['الأيام: '+hd.join('، ')], [], ['الكتاب', ...hd, 'الإجمالي']];
-  const grand=days.map(()=>0), B=(t,c)=>({rich:[{t:String(t), bold:true, color:c}]});
+  // الأيام صفوف والكتب أعمدة: فوق صف المواد (مدموج)، وتحته صف الكتب، ولكل مادة عمود إجمالي، وآخر عمود الإجمالي الكلي، وآخر صف الإجمالي
+  const hd=days.map(k=>`${dayName(k)} ${dShort(k)}`), B=(t,c)=>({rich:[{t:String(t), bold:true, color:c}]});
+  const cols=[];   // {k: مفتاح الكتاب} أو {sb: إجمالي المادة} أو {all: الإجمالي الكلي}
+  const sR=['اليوم'], bR=['اليوم'], merges=[];
   for(const sb of ['ar','math','stu','sci','en']){
     const ks=BOOK_ORDER.filter(k=>bookParts(k).sb===sb); if(!ks.length) continue;
-    const sub=days.map(()=>0);
-    for(const k of ks){ const v=days.map(d=>D[d].b[k]||0); v.forEach((n,i)=>sub[i]+=n); rows.push([bookLabel(k), ...v, sum(v)]); }
-    const c=SUBJ_COLOR[sb]; rows.push([B('إجمالي '+SUBJ_ALL[sb], c), ...sub.map(n=>B(n,c)), B(sum(sub),c)]);
-    sub.forEach((n,i)=>grand[i]+=n);
+    const a=cols.length+1;
+    for(const k of ks){ const p=bookParts(k); cols.push({k}); sR.push(SUBJ_ALL[sb]); bR.push(`${GRADE[p.g-1]} ${STAGES[p.st].name}`); }
+    cols.push({sb}); sR.push(SUBJ_ALL[sb]); bR.push('إجمالي '+SUBJ_ALL[sb]);
+    merges.push(`${colName(a)}5:${colName(cols.length)}5`);
   }
-  rows.push([B('الإجمالي الكلي'), ...grand.map(n=>B(n)), B(sum(grand))]);
-  return {name:'الكتب اللي اتسلّمت', rows, head:4, widths:[28, ...days.map(()=>14), 12]};
+  cols.push({all:1}); sR.push('الإجمالي الكلي'); bR.push('الإجمالي الكلي');
+  merges.push('A5:A6', `${colName(cols.length)}5:${colName(cols.length)}6`);
+  sR.hdr=true;
+  const val=(c, d)=> c.k ? (D[d].b[c.k]||0) : c.sb ? Object.keys(D[d].b).filter(k=>bookParts(k).sb===c.sb).reduce((s,k)=>s+D[d].b[k],0) : D[d].n;
+  const cell=(c, n)=> c.sb ? B(n, SUBJ_COLOR[c.sb]) : c.all ? B(n) : n;
+  const rows=[[`المندوب: ${db.rep}`], [`الإدارة: ${db.idara||'—'}`], ['الأيام: '+hd.join('، ')], [], sR, bR];
+  for(const d of days) rows.push([`${dayName(d)} ${fmtDay(d)}`, ...cols.map(c=>cell(c, val(c, d)))]);
+  rows.push([B('الإجمالي'), ...cols.map(c=>B(days.reduce((s,d)=>s+val(c, d),0), c.sb?SUBJ_COLOR[c.sb]:undefined))]);
+  return {name:'الكتب اللي اتسلّمت', rows, head:5, freezeCol:1, merges, widths:[18, ...cols.map(c=>c.k?11:13)]};
 }
 function exportDelDays(){
   if(!delDays.size){ alert('اختار يوم أو أكتر الأول'); return; }
@@ -1486,7 +1537,8 @@ document.addEventListener('click', e=>{
       else if(r==='month') repFrom=isoDay(d.getFullYear(), d.getMonth()+1, 1);
       else { const all=db.entries.map(x=>dk(actDate(x))).filter(Boolean).sort(); repFrom=all[0]||dayKey(); }
       renderReport(); break; }
-    case 'export': exportExcel(el.dataset.scope==='all'); break;
+    case 'export': exportExcel(el.dataset.scope==='all', el.dataset.part||''); break;
+    case 'sale-sheets': saleSheetChoice(); break;
     case 'dd-q': ddQuick(el.dataset.r); break;
     case 'dd-xlsx': exportDelDays(); break;
     case 'save-rep': { const v=$('#rep').value.trim(), ml=fixMail($('#mail').value);
@@ -1560,8 +1612,8 @@ $('#fileJson').addEventListener('change', async e=>{
     db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
-      route:arr(d.route), editLog:arr(d.editLog), pinH:d.pinH||db.pinH||'',
-      driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
+      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), pinH:d.pinH||db.pinH||'',
+      driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
 
@@ -1755,7 +1807,8 @@ function buildXlsx(sheets){
   ];
   return zipBlob(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
-function exportExcel(all){
+// part: 'del' = شيت التسليمات، 'tch' = شيت حساب المدرسين (بيع المندوب للمدرسين)، 'mer' = شيت حساب التجار، غير كده = التلاتة
+function exportExcel(all, part){
   // ملف واحد «سلاح التلميذ» فيه 12 شيت. الأسعار والمبلغ بعد الخصم جايين جاهزين من البرنامج (it.pre / it.post / l.p)، مفيش أي نسبة خصم بتتحسب هنا.
   const inRange = k => all || (k && k>=repFrom && k<=repTo);
   const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t])), L=lotMap();
@@ -2008,11 +2061,14 @@ function exportExcel(all){
     {name:'تسليمات 2', rows:s7, widths:[22,14,12,10,9,20,14,16,26,8,18], freezeCol:2, af:false, merges:m7,
       dvs:R7?[{rg:R7, list:[REG_Y, REG_N]}]:[], cfs:R7?[{rg:R7, rules:[{eq:REG_Y, dx:'ok'}, {eq:REG_N, dx:'bad'}]}]:[]},
     {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false}];
+  // حساب التجار لوحده (حسابات التجار + صافي التجار)
+  const mSheets=[
+    {name:N4, rows:s4, widths:[18,24,13,10,16,11], freezeCol:0, af:false, merges:m4},
+    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false}];
+  // حساب المدرسين = بيع المندوب للمدرسين (من غير التجار)
   const sheets=[
     {name:'طلبات مستنية التنفيذ', rows:s11, widths:[22,14,12,10,16,12,9,9,15,13,14,24], freezeCol:2, af:false,
       dvs:R11?[{rg:R11, list:Object.values(ST)}]:[], cfs:R11?[{rg:R11, rules:[{eq:ST.order, dx:'wait'}, {eq:ST.sold, dx:'ok'}, {eq:ST.cancel, dx:'bad'}, {eq:ST.refused, dx:'bad'}]}]:[]},
-    {name:N4, rows:s4, widths:[18,24,13,10,16,11], freezeCol:0, af:false, merges:m4},
-    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false},
     {name:'الملخص اليومي للكتب', rows:s8, widths:s8w, freezeCol:0, af:false},
     {name:'فواتير البيع بمرتجعات', rows:s1, widths:[22,14,12,13,13,50,11], freezeCol:2, af:false},
     {name:'حسابات المدرسين', rows:s2, widths:[24,14,10,16,18,13,10,9,12,13,10,18,13,13,14,14], freezeCol:2, af:false},
@@ -2020,9 +2076,11 @@ function exportExcel(all){
     {name:'ترتيب الهدايا', rows:s12, widths:[24,14,15,18,18,9], freezeCol:2, af:false}
   ];
   const per = all ? `لحد ${dayKey()}` : (repFrom===repTo ? repFrom : `من ${repFrom} لحد ${repTo}`);
-  sendSheets([
-    {blob:buildXlsx(sheets), name:`البيع — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات البيع'},
-    {blob:buildXlsx(dSheets), name:`التسليمات — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات التسليمات'}]);
+  const out=[];
+  if(!part || part==='del') out.push({blob:buildXlsx(dSheets), name:`التسليمات — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات التسليمات'});
+  if(!part || part==='tch') out.push({blob:buildXlsx(sheets), name:`حساب المدرسين — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات البيع'});
+  if(!part || part==='mer') out.push({blob:buildXlsx(mSheets), name:`حساب التجار — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات البيع'});
+  sendSheets(out);
 }
 
 /* ================= الشيتات → درايف المندوب: «شيتات سلاح التلميذ/<الفولدر>» =================
@@ -2112,7 +2170,8 @@ $('#fileStock').addEventListener('change', async e=>{
 /* ================= شيت الجرد ================= */
 function exportJard(){
   if(!db.stock.length && !confirm('لسه ما سجّلتش أي كتب استلمتها من المخزن، فالجرد هيطلع أصفار. تكمل؟')) return;
-  // نفس شيت «جرد مخزن مندوب ترم أول» بالملّي: العدد كله في «جرد فرط» والإجمالي = ربط × الربطة + فرط.
+  // نفس شيت «جرد مخزن مندوب ترم أول» بالملّي: العدد بيتكتب رابطة («جرد ربط») + فرد («جرد فرط») والإجمالي = ربط × الربطة + فرط.
+  // الربطة: الكتاب 20، الملحق 40 (بعض الملاحق غير كده — هتتحدد مع شريف)، المفكرة زي شيت الشركة.
   // الملحق والمفكرة عددهم نفس عدد الكتاب بتاعهم. اللي مش في البرنامج (أكتشف، بوستر، كارت، كوبونات) فاضي.
   const left=stockLeft()||{}, L=k=>Math.max(0, left[k]||0);
   const rg=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
@@ -2140,8 +2199,10 @@ function exportJard(){
     ['','','هدايا','','الصنف','العدد بالنسخة'],
     ['الصنف','جرد ربط','جرد فرط','الاجمالى','','']];
   for(const [nm,k,size] of R){
+    // العدد بيتقسم: رابطة (جرد ربط) والباقي فرد (جرد فرط) — مثلاً 21 والرابطة 20 = 1 رابطة و 1 فرد
     const rn=rows.length+1, label=(nm+' ﺣ1').replace(/^(كارت المعلم|كوبون.*) ﺣ1$/,'$1'), n=k?L(k):0;
-    rows.push([label, '', k?n:'', size>1?{f:`B${rn}*${size}+C${rn}`, v:n}:{f:`B${rn}+C${rn}`, v:n}]); }
+    const bq = k ? (size>1 ? Math.floor(n/size) : 0) : '', fq = k ? (size>1 ? n%size : n) : '';
+    rows.push([label, bq, fq, size>1?{f:`B${rn}*${size}+C${rn}`, v:n}:{f:`B${rn}+C${rn}`, v:n}]); }
   const sg=rows.length+1;
   rows.push(['توقيع المندوب','','توقيع القائم بالجرد',''], [db.rep||'']);
   const merges=['A1:C1','E1:F1','A2:C2','E2:F2','A3:A4','B3:B4','C3:D3','E3:F3','C4:D4','E4:E5','F4:F5',`C${sg}:D${sg}`];
@@ -3544,7 +3605,7 @@ function tMarker(t, r){
   mk.on('click', go);
   return mk;
 }
-function mapList(){ const ws=qWords(PQ.mq||''), rs=new Set(db.route);
+function mapList(){ const ws=qWords(PQ.mq||''), rs=new Set(mapRouteIds());
   return db.teachers.filter(t=>t.loc && (!mapCat || tCat(t)===mapCat) && (!mapRouteOnly || rs.has(t.id)) && (!ws.length || ws.every(w=>hayT(t).includes(w)))); }
 function drawMarkers(fit){
   if(!MAP) return; const lay=MAP._lay; lay.clearLayers();
@@ -3560,7 +3621,7 @@ function renderMap(){
   for(const t of withL){ const c=tCat(t); cnt[c]=(cnt[c]||0)+1; }
   app.innerHTML=`<div class="mapbar"><div class="search" style="flex:1;margin:0"><input id="mq" type="search" placeholder="🔎 دوّر على مدرس على الخريطة" value="${esc(PQ.mq||'')}" autocomplete="off"></div><button class="btn" data-act="map-me">📍 أنا فين</button></div>
     <div class="legend"><button class="chip ${!mapCat?'on':''}" data-act="map-cat" data-k="">الكل (${withL.length})</button>${Object.entries(CAT).filter(([k])=>cnt[k]).map(([k,[n,c]])=>`<button class="chip ${mapCat===k?'on':''}" data-act="map-cat" data-k="${k}"><i style="background:${c}"></i>${n} (${cnt[k]})</button>`).join('')}
-      ${db.route.length?`<button class="chip ${mapRouteOnly?'on':''}" data-act="map-route">🧭 خط السير بس (${db.route.length})</button>`:''}</div>
+      ${mapRouteIds().length?`<button class="chip ${mapRouteOnly?'on':''}" data-act="map-route">🧭 ${mapDay&&dayById(mapDay)?esc(dayById(mapDay).n):'خط السير'} بس (${mapRouteIds().length})</button>`:''}</div>
     <div class="small muted" id="mcount" style="margin-bottom:6px"></div>
     <div id="mapbox" class="mapbox"></div>
     ${noL?`<div class="small muted">📍 ${noL} مدرس لسه ملهمش موقع — ارفعه من صفحة المدرس أو من «شيت المواقع» في الإعدادات.</div>`:''}`;
@@ -3698,49 +3759,217 @@ function navStep(p){
 }
 
 /* ---------- ٧) خط السير الحر ---------- */
+// خط السير بالأيام: db.days = [{id, n, t:[أكواد المدرسين]}] — مش ملزم، ترتيب للمندوب بس
+const DAY_ORD=['الأول','التاني','التالت','الرابع','الخامس','السادس','السابع','التامن','التاسع','العاشر'];
+let mapDay='';   // لو الخريطة مفتوحة من يوم معيّن
+const dayById = id => db.days.find(d=>d.id===id);
+const routeIds = () => [...new Set(db.days.flatMap(d=>d.t))];
+const mapRouteIds = () => { const d=mapDay && dayById(mapDay); return d ? d.t : routeIds(); };
+function cleanDays(){ let ch=false; for(const d of db.days){ const n=d.t.filter(id=>tById(id)); if(n.length!==d.t.length){ d.t=n; ch=true; } } if(ch) save(false); }
+// تحميلة العربية: نفس حساب «خطة بكرة» القديم (كل كتاب مستحق = 1 + الطلبات)
+function dayTake(ids){ const m={}; for(const id of ids){ const t=tById(id); if(!t) continue; const n=planNeed(t);
+  for(const k of n.ow) m[k]=(m[k]||0)+1; for(const s of n.ord) for(const it of s.items) m[it.b]=(m[it.b]||0)+it.q; } return m; }
+const takeSum = take => Object.values(take).reduce((s,v)=>s+v,0);
+function takeHtml(take){ const tk=Object.keys(take).sort((a,b)=>bookRank[a]-bookRank[b]);
+  return `<h3 class="sec-t">🚗 حمّل العربية (${takeSum(take)} كتاب)</h3>` + (tk.map(k=>`<div class="kv"><span style="color:var(--c-${bookParts(k).sb});font-weight:700">${esc(bookLabel(k))}</span><b>${take[k]}</b></div>`).join('') || '<div class="muted">مفيش كتب باقية للمدرسين دول.</div>'); }
+const dayAreas = ids => { const a=[...new Set(ids.map(id=>tById(id)?.area).filter(Boolean))]; return a.length ? ' • 📍 '+esc(a.slice(0,3).join('، '))+(a.length>3?` +${a.length-3}`:'') : ''; };
+function dayText(d){ const take=dayTake(d.t);
+  return `🧭 ${d.n}\n\n🚗 حمّل العربية (${takeSum(take)} كتاب):\n` + Object.keys(take).sort((a,b)=>bookRank[a]-bookRank[b]).map(k=>`• ${bookLabel(k)}: ${take[k]}`).join('\n') +
+    `\n\n👥 المدرسين (${d.t.length}):\n` + d.t.map(tById).filter(Boolean).map(t=>{ const n=planNeed(t); return `• ${t.name}${t.phone?` (${t.phone})`:''}${t.area?` — ${t.area}`:''}${n.ow.length?` — باقيله ${n.ow.length} كتاب`:''}${n.money?` — عليه ${fmtM(n.money)}`:''}${n.ord.length?' — عنده طلب':''}`; }).join('\n');
+}
 function renderRoute(){
-  setHeader('🧭 خط السير', false);
-  const before=db.route.length; db.route=db.route.filter(id=>tById(id)); if(db.route.length!==before) save(false);
-  const idx=indexEntries(), list=db.route.map(tById);
-  app.innerHTML=`<div class="card"><div class="kv"><span>المدرسين المختارين</span><b style="font-size:20px">${list.length}</b></div>
-    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="route-pick">➕ ضيف / شيل مدرسين</button><button class="btn" data-act="route-map" ${list.some(t=>t.loc)?'':'disabled'}>📍 على الخريطة</button></div>
-    ${list.length?'<button class="btn ghost sm" data-act="route-clear" style="width:100%;margin-top:8px">🧹 امسح الخط كله</button>':''}</div>
-    ${list.length ? searchBar('rq')+`<div class="tlist" id="rlist">${list.map(t=>teacherCard(t, idx[t.id], `<div class="acts" style="margin-top:6px">${t.loc?`<button class="btn sm pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:'<span class="small muted">📍 ملوش موقع</span>'}<button class="btn sm danger" data-act="route-rm" data-id="${esc(t.id)}">✕ شيله</button></div>`)).join('')}</div>`
-      : '<div class="card empty">لسه ما اخترتش مدرسين.<br>دوس «➕ ضيف / شيل مدرسين»: اختار منطقة ومنها المدرسين اللي عايزهم، أو دوّر على أي مدرس بالاسم من أي منطقة.</div>'}`;
+  setHeader('🧭 خط السير', false); cleanDays();
+  const all=routeIds(), allTake=dayTake(all);
+  app.innerHTML=`<div class="card"><div class="kv"><span>الأيام</span><b style="font-size:20px">${db.days.length}</b></div><div class="kv"><span>المدرسين في كل الأيام</span><b>${all.length}</b></div><div class="kv"><span>🚗 الكتب لكل الأيام</span><b>${takeSum(allTake)}</b></div>
+    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="day-add">➕ يوم جديد</button><button class="btn" data-act="route-map" ${all.some(id=>tById(id)?.loc)?'':'disabled'}>📍 الكل على الخريطة</button></div>
+    <p class="hint">ضيف الأيام اللي جاية، وفي كل يوم المدرسين اللي ناوي تزورهم (بالقرية أو بالاسم). مش لازم تلتزم بيه — ده ترتيب ليك بس.</p></div>
+    ${db.days.length ? db.days.map(d=>{ const tk=takeSum(dayTake(d.t)); return `<a class="card dayc" href="#/route/${encodeURIComponent(d.id)}"><div class="grow"><b style="font-size:17px">📅 ${esc(d.n)}</b><div class="small muted">👥 ${d.t.length} مدرس • 🚗 ${tk} كتاب${dayAreas(d.t)}</div></div><span>←</span></a>`; }).join('')
+      : '<div class="card empty">لسه مفيش أيام.<br>دوس «➕ يوم جديد» وضيف فيه المدرسين اللي هتزورهم.</div>'}
+    ${db.days.length?'<button class="btn ghost sm" data-act="route-clear" style="width:100%">🧹 امسح خط السير كله</button>':''}`;
+}
+function renderDay(id){
+  const d=dayById(id); if(!d){ location.hash='#/route'; return; }
+  cleanDays(); setHeader('📅 '+d.n, true);
+  const idx=indexEntries(), list=d.t.map(tById).filter(Boolean);
+  const others=id2=>db.days.filter(x=>x.id!==d.id && x.t.includes(id2)).map(x=>x.n);
+  app.innerHTML=`<div class="card"><div class="kv"><span>مدرسين ${esc(d.n)}</span><b style="font-size:20px">${list.length}</b></div>
+    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="route-pick" data-id="${esc(d.id)}">➕ ضيف / شيل مدرسين</button><button class="btn" data-act="route-map" data-id="${esc(d.id)}" ${list.some(t=>t.loc)?'':'disabled'}>📍 على الخريطة</button></div>
+    <div class="row2" style="margin-top:8px"><button class="btn ghost sm" data-act="day-ren" data-id="${esc(d.id)}">✏️ غيّر اسم اليوم</button><button class="btn ghost sm" data-act="day-del" data-id="${esc(d.id)}">🗑️ امسح اليوم</button></div></div>
+    <div class="card">${takeHtml(dayTake(d.t))}${list.length?`<button class="btn" style="width:100%;margin-top:10px" data-act="day-copy" data-id="${esc(d.id)}">📋 انسخ خطة اليوم (للواتساب)</button>`:''}</div>
+    ${list.length ? searchBar('rq')+`<div class="tlist" id="rlist">${list.map(t=>{ const n=planNeed(t), o=others(t.id);
+        return teacherCard(t, idx[t.id], (n.ow.length?`<div class="oline">⏳ ${esc(owedLine(n.ow.map(b=>({b,q:1}))))}</div>`:'') + (n.ord.length?`<div class="oline" style="color:var(--sel-ink)">🛒 طلب: ${n.ord.map(s=>itemsLine(s.items)).join(' • ')}</div>`:'') +
+          (o.length?`<div class="small muted">📅 كمان في: ${esc(o.join('، '))}</div>`:'') +
+          `<div class="acts" style="margin-top:6px">${t.loc?`<button class="btn sm pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:'<span class="small muted">📍 ملوش موقع</span>'}<button class="btn sm danger" data-act="route-rm" data-id="${esc(t.id)}" data-d="${esc(d.id)}">✕ شيله</button></div>`); }).join('')}</div>`
+      : '<div class="card empty">لسه ما اخترتش مدرسين لليوم ده.<br>دوس «➕ ضيف / شيل مدرسين»: اختار قرية ومنها المدرسين اللي عايزهم، أو دوّر على أي مدرس بالاسم.</div>'}`;
   bindSearch('rq', '#rlist');
 }
-function routePick(){
-  const chosen=new Set(db.route); let area='', q='';
+function dayAdd(){
+  const n=db.days.length, id=uid(), nm=`اليوم ${DAY_ORD[n]||n+1}`;
+  db.days.push({id, n:nm, t:[]}); save(); location.hash='#/route/'+encodeURIComponent(id); toast(`📅 ${nm} اتضاف`);
+}
+function routePick(dayId){
+  const day=dayById(dayId); if(!day) return;
+  const chosen=new Set(day.t); let area='', q='', needOnly=false;
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const m=document.createElement('div'); m.className='modal';
-  m.innerHTML=`<div class="box"><h3>🧭 اختار مدرسين خط السير</h3>
+  m.innerHTML=`<div class="box"><h3>🧭 مدرسين ${esc(day.n)}</h3>
     <div class="search" style="margin:0 0 8px"><input id="rp_q" type="search" placeholder="🔎 دوّر على أي مدرس: اسم، تليفون، قرية، تصنيف…" autocomplete="off"></div>
     <select id="rp_a" style="width:100%"><option value="">— كل المناطق —</option>${areas.map(a=>`<option>${esc(a)}</option>`).join('')}</select>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="rp_n"> ⏳ اللي محتاجين زيارة بس (باقيلهم كتب أو فلوس أو طلب)</label>
     <div class="row2" style="margin-top:8px"><button class="btn sm" data-rp="all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-rp="none">⬜ شيل كل اللي ظاهرين</button></div>
     <div class="pickl" id="rp_l"></div>
     <div class="row2"><button class="btn ok" data-rp="ok"></button><button class="btn ghost" data-rp="x">إلغاء</button></div></div>`;
   document.body.appendChild(m);
   const okBtn=()=>{ m.querySelector('[data-rp="ok"]').textContent=`✅ تمام (${chosen.size} مدرس)`; };
+  const inDays=id=>db.days.filter(x=>x.id!==day.id && x.t.includes(id)).map(x=>x.n);
   const shown=()=>{ const ws=qWords(q);
-    if(!area && !ws.length) return db.route.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !db.route.includes(t.id)));
-    return db.teachers.filter(t=>(!area || t.area===area) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>a.name.localeCompare(b.name,'ar')); };
+    if(!area && !ws.length && !needOnly) return day.t.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !day.t.includes(t.id)));
+    return db.teachers.filter(t=>(!area || t.area===area) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>a.name.localeCompare(b.name,'ar')); };
   const draw=()=>{ const l=shown(), box=m.querySelector('#rp_l');
-    box.innerHTML = l.length ? l.slice(0,300).map(t=>`<label><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}><div class="grow"><b>${esc(t.name)}</b>${nameTags(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div></div></label>`).join('')
+    box.innerHTML = l.length ? l.slice(0,300).map(t=>{ const o=inDays(t.id); return `<label><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}><div class="grow"><b>${esc(t.name)}</b>${nameTags(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div>${o.length?`<div class="small" style="color:var(--owe)">📅 موجود في: ${esc(o.join('، '))}</div>`:''}</div></label>`; }).join('')
       : `<div class="empty small">${area||q.trim()?'مفيش مدرس بالاسم ده':'اختار منطقة أو دوّر على مدرس — والمختارين بيظهروا هنا'}</div>`;
     markWords(box, qWords(q)); okBtn(); };
   m.querySelector('#rp_q').addEventListener('input', e=>{ q=e.target.value; draw(); });
   m.querySelector('#rp_a').addEventListener('change', e=>{ area=e.target.value; draw(); });
+  m.querySelector('#rp_n').addEventListener('change', e=>{ needOnly=e.target.checked; draw(); });
   m.addEventListener('change', e=>{ const c=e.target.closest('input[type=checkbox][data-id]'); if(!c) return; c.checked ? chosen.add(c.dataset.id) : chosen.delete(c.dataset.id); okBtn(); });
   m.addEventListener('click', e=>{
     if(e.target===m){ m.remove(); return; }
     const b=e.target.closest('[data-rp]'); if(!b) return; const a=b.dataset.rp;
     if(a==='all' || a==='none'){ for(const t of shown()) a==='all' ? chosen.add(t.id) : chosen.delete(t.id); draw(); }
     else if(a==='x') m.remove();
-    else if(a==='ok'){ m.remove(); const keep=db.route.filter(id=>chosen.has(id)), add=[...chosen].filter(id=>!keep.includes(id));
-      withUndo(`🧭 خط السير: ${chosen.size} مدرس`, ()=>{ db.route=[...keep, ...add]; }); }
+    else if(a==='ok'){ m.remove(); const keep=day.t.filter(id=>chosen.has(id)), add=[...chosen].filter(id=>!keep.includes(id));
+      withUndo(`🧭 ${day.n}: ${chosen.size} مدرس`, ()=>{ const d=dayById(day.id); if(d) d.t=[...keep, ...add]; }); }
   });
   draw();
 }
+
+/* ---------- الزيارات + التسجيل على برنامج الشركة ----------
+   كل مدرس اتسلّمله كتب في يوم = زيارة (مدرس + يوم). db.reg[كود التسليم] = تاريخ تسجيله على برنامج الشركة.
+   اللي اتسجل بيختفي من الزيارة؛ لما الزيارة كلها تتسجل تروح فولدر «التسجيلات». */
+function visitGroups(){
+  const g={};
+  for(const e of db.entries){ if(e.s!=='d' || !e.dd || !tById(e.t)) continue;
+    const day=dk(e.dd), k=e.t+'|'+day; (g[k] ||= {k, t:e.t, day, ents:[]}).ents.push(e); }
+  return Object.values(g).map(v=>{ v.left=v.ents.filter(e=>!db.reg[e.id]); v.ents.sort((a,b)=>bookRank[a.b]-bookRank[b.b]); v.left.sort((a,b)=>bookRank[a.b]-bookRank[b.b]); return v; })
+    .sort((a,b)=>b.day.localeCompare(a.day) || tById(a.t).name.localeCompare(tById(b.t).name,'ar'));
+}
+const bkChips = ents => `<div class="vbk">${ents.map(e=>`<span style="color:var(--c-${bookParts(e.b).sb});font-weight:700">${esc(bookLabel(e.b))}${e.q>1?` × ${e.q}`:''}</span>`).join('')}</div>`;
+function visitRow(v, reg){
+  const t=tById(v.t), dates=[...new Set(v.ents.map(e=>dk(db.reg[e.id])).filter(Boolean))].sort();
+  return `<div class="vrow" data-hay="${esc(teacherHay(t))}"><div class="tc-top" style="gap:8px"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}
+      <div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}${reg?` • زيارة ${dayName(v.day)} ${fmtDay(v.day)}`:''}</div></div><div class="icos">${phoneBtns(t)}</div></div>
+    ${bkChips(reg ? v.ents : v.left)}
+    ${reg ? `<div class="regd">✅ تم التسجيل بتاريخ ${dates.map(fmtDay).join(' و ')}</div><button class="btn sm ghost" style="margin-top:6px" data-act="reg-undo" data-k="${esc(v.k)}">↩️ رجّعها للزيارات</button>`
+      : `${v.left.length<v.ents.length?'<div class="small muted" style="margin-top:4px">اتسجل منها جزء قبل كده — ده الباقي</div>':''}<button class="btn sm ok" style="width:100%;margin-top:8px" data-act="reg-visit" data-k="${esc(v.k)}">✅ تم التسجيل</button>`}</div>`;
+}
+function renderVisits(f){
+  const all=visitGroups(), open=all.filter(v=>v.left.length), done=all.filter(v=>!v.left.length);
+  const byDay={}; for(const v of open) (byDay[v.day] ||= []).push(v);
+  const days=Object.keys(byDay).sort().reverse();
+  const groupHtml=(list, reg)=>{ const bd={}; for(const v of list) (bd[v.day] ||= []).push(v);
+    return Object.keys(bd).sort().reverse().map(d=>`<div class="card"><h3 class="sec-t">📅 ${dayName(d)} ${fmtDay(d)} (${bd[d].length})</h3>${bd[d].map(v=>visitRow(v, reg)).join('')}</div>`).join(''); };
+  if(f==='reg'){ setHeader('✅ التسجيلات', true);
+    app.innerHTML = done.length ? searchBar('vq')+`<div id="vlist">${groupHtml(done, true)}</div>` : '<div class="card empty">لسه مفيش زيارات اتسجلت كلها على برنامج الشركة.</div>';
+    bindSearch('vq', '#vlist'); return; }
+  if(f==='all' || /^\d{4}-\d\d-\d\d$/.test(f)){
+    const list = f==='all' ? open : (byDay[f]||[]);
+    setHeader(f==='all' ? '👣 كل الزيارات' : `👣 زيارات ${dayName(f)} ${fmtDay(f)}`, true);
+    app.innerHTML = list.length ? searchBar('vq')+`<div id="vlist">${groupHtml(list, false)}</div>` : '<div class="card empty">مفيش زيارات مستنية تسجيل هنا 🎉</div>';
+    bindSearch('vq', '#vlist'); return; }
+  setHeader('👣 الزيارات', false);
+  const today=dayKey(), old=open.filter(v=>v.day<today).length;
+  app.innerHTML=`<div class="card"><p class="hint" style="margin-top:0">أي مدرس بتسلّمه كتب بيدخل هنا لوحده في فولدر اليوم. بعد ما تسجّله على برنامج الشركة دوس «✅ تم التسجيل».</p>
+      <div class="row2"><a class="btn pri" href="#/visits/all" style="text-align:center;text-decoration:none">📋 الكل (${open.length})</a><a class="btn ok" href="#/visits/reg" style="text-align:center;text-decoration:none">✅ التسجيلات (${done.length})</a></div></div>
+    ${days.length ? days.map(d=>`<a class="card vfold" href="#/visits/${d}"><span style="font-size:26px">📁</span><div class="grow"><b>${dayName(d)} ${fmtDay(d)}</b>${d===today?' <span class="pill new">النهارده</span>':''}<div class="small muted">مستني تسجيل</div></div><span class="n">${byDay[d].length}</span></a>`).join('')
+      : '<div class="card empty">مفيش زيارات مستنية تسجيل 🎉</div>'}
+    ${old?`<button class="btn ghost sm" style="width:100%" data-act="reg-old">✔️ علّم كل الزيارات القديمة (قبل النهارده) إنها اتسجلت — ${old} زيارة</button>`:''}`;
+}
+function regVisit(k){
+  const v=visitGroups().find(x=>x.k===k); if(!v || !v.left.length) return; const t=tById(v.t);
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>✅ تسجيل ${esc(t.name)}</h3><div class="small muted" style="margin-bottom:8px">زيارة ${dayName(v.day)} ${fmtDay(v.day)} — علّم على اللي سجلته على برنامج الشركة</div>
+    <div class="pickl">${v.left.map(e=>`<label><input type="checkbox" data-id="${esc(e.id)}" checked><div class="grow"><b style="color:var(--c-${bookParts(e.b).sb})">${esc(bookLabel(e.b))}</b>${e.q>1?` × ${e.q}`:''}</div></label>`).join('')}</div>
+    <div class="row2"><button class="btn ok" data-rg="all">✅ سجلت الكل</button><button class="btn pri" data-rg="sel">✅ سجلت المحدد بس</button></div>
+    <button class="btn ghost" style="width:100%;margin-top:8px" data-rg="x">إلغاء</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ if(e.target===m){ m.remove(); return; } const b=e.target.closest('[data-rg]'); if(!b) return; const a=b.dataset.rg;
+    if(a==='x'){ m.remove(); return; }
+    const ids = a==='all' ? v.left.map(x=>x.id) : [...m.querySelectorAll('input[data-id]:checked')].map(x=>x.dataset.id);
+    if(!ids.length){ alert('علّم على كتاب واحد على الأقل'); return; }
+    m.remove(); const now=new Date().toISOString(), full=ids.length===v.left.length;
+    withUndo(full ? `✅ ${t.name} اتسجل — راح التسجيلات` : `✅ اتسجل ${ids.length} — الباقي فاضل في الزيارة`, ()=>{ for(const id of ids) db.reg[id]=now; });
+  });
+}
+
+/* ---------- رسائل للمدرسين (واتساب واحد ورا التاني) ---------- */
+let msgSel=new Set(), msgF={a:'', c:'', s:'', q:''};
+function msgShown(){ const ws=qWords(msgF.q);
+  return db.teachers.filter(t=>(!msgF.a || t.area===msgF.a) && (!msgF.c || clsLetter(t)===msgF.c) && (!msgF.s || tSubs(t).includes(msgF.s)) && (!ws.length || ws.every(w=>hayT(t).includes(w))))
+    .sort((a,b)=>(a.area||'').localeCompare(b.area||'','ar') || a.name.localeCompare(b.name,'ar')); }
+function msgText(){ try{ return localStorage.getItem(KEY+'-msg')||''; }catch(e){ return ''; } }
+function renderMsgs(){
+  setHeader('✉️ رسائل المدرسين', false);
+  for(const id of [...msgSel]) if(!tById(id)) msgSel.delete(id);
+  const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const chip=(k,v,l)=>`<button class="chip ${msgF[k]===v?'on':''}" data-act="msg-f" data-k="${k}" data-v="${esc(v)}">${l}</button>`;
+  app.innerHTML=`<div class="card"><h3 class="sec-t">✍️ الرسالة</h3>
+      <textarea id="msg_t" rows="5" style="width:100%" placeholder="اكتب الرسالة هنا… ولو كتبت {الاسم} هيتحط مكانها اسم المدرس">${esc(msgText())}</textarea></div>
+    <div class="card"><h3 class="sec-t">👥 اختار المدرسين</h3>
+      <select id="msg_a" style="width:100%;margin-bottom:8px"><option value="">— كل القرى —</option>${areas.map(a=>`<option ${msgF.a===a?'selected':''}>${esc(a)}</option>`).join('')}</select>
+      <div class="chips">${chip('c','','كل التصنيفات')}${['A','B','C'].map(c=>chip('c',c,c)).join('')}</div>
+      <div class="chips">${chip('s','','كل المواد')}${Object.entries(SUBJ).map(([k,n])=>chip('s',k,n)).join('')}</div>
+      <div class="search" style="margin:0 0 8px"><input id="msg_q" type="search" placeholder="🔎 دوّر: اسم، تليفون، قرية…" value="${esc(msgF.q)}" autocomplete="off"></div>
+      <div class="row2"><button class="btn sm" data-act="msg-all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-act="msg-none">⬜ شيل كل اللي ظاهرين</button></div>
+      <div class="pickl" id="msg_l"></div></div>
+    <button class="btn ok" id="msg_go" style="width:100%;font-size:17px" data-act="msg-send"></button>
+    <p class="hint">الواتساب مش بيسمح يبعت لكذا حد مرة واحدة لوحده — البرنامج هيفتحلك المدرسين واحد ورا التاني والرسالة مكتوبة، وإنت تدوس إرسال وترجع تدوس «التالي».</p>`;
+  const ta=$('#msg_t'); ta.addEventListener('input', ()=>{ try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} });
+  $('#msg_a').addEventListener('change', e=>{ msgF.a=e.target.value; msgDraw(); });
+  $('#msg_q').addEventListener('input', e=>{ msgF.q=e.target.value; msgDraw(); });
+  $('#msg_l').addEventListener('change', e=>{ const c=e.target.closest('input[data-id]'); if(!c) return; c.checked?msgSel.add(c.dataset.id):msgSel.delete(c.dataset.id); msgCount(); });
+  msgDraw();
+}
+function msgCount(){ const b=$('#msg_go'); if(b) b.textContent=`📤 ابدأ الإرسال (${[...msgSel].filter(id=>tById(id)?.phone).length} مدرس)`; }
+function msgDraw(){ const box=$('#msg_l'); if(!box) return; const l=msgShown();
+  box.innerHTML = l.length ? l.slice(0,400).map(t=>`<label class="${t.phone?'':'off'}"><input type="checkbox" data-id="${esc(t.id)}" ${msgSel.has(t.id)?'checked':''} ${t.phone?'':'disabled'}><div class="grow"><b>${esc(t.name)}</b>${nameTags(t)}<div class="small muted">${esc([t.area, t.phone||'مفيش رقم', t.subjectText].filter(Boolean).join(' • '))}</div></div></label>`).join('')
+    + (l.length>400?`<div class="small muted">ظاهر أول 400 — ضيّق البحث</div>`:'') : '<div class="empty small">مفيش مدرسين بالاختيار ده</div>';
+  markWords(box, qWords(msgF.q)); msgCount(); }
+function msgSend(){
+  const txt=($('#msg_t')?.value||'').trim(); if(!txt){ alert('اكتب الرسالة الأول'); return; }
+  const list=[...msgSel].map(tById).filter(t=>t && t.phone); if(!list.length){ alert('اختار مدرس واحد على الأقل'); return; }
+  let i=0, sent=0; const m=document.createElement('div'); m.className='modal';
+  const close=()=>{ m.remove(); toast(`📤 اتبعت لـ ${sent} من ${list.length} مدرس`); };
+  const draw=()=>{ if(i>=list.length){ close(); return; } const t=list[i], body=txt.replace(/\{الاسم\}/g, t.name);
+    m.innerHTML=`<div class="box msgq"><h3>📤 إرسال الرسالة</h3><div class="small muted">مدرس ${i+1} من ${list.length} • اتبعت ${sent}</div>
+      <div class="big">${esc(t.name)}</div><div class="small muted" dir="ltr">${esc(t.phone)}</div><div class="small muted">${esc(t.area||'')}</div>
+      <a class="btn ok" id="mq_wa" style="display:block;text-decoration:none;margin-top:12px;font-size:17px" href="${esc(waLink(t.phone, body))}" target="_blank" rel="noopener">💬 افتح الواتساب وابعت</a>
+      <div class="row2" style="margin-top:8px"><button class="btn pri" data-mq="next">التالي ←</button><button class="btn ghost" data-mq="skip">⏭️ تخطّي</button></div>
+      <button class="btn ghost sm" style="width:100%;margin-top:8px" data-mq="x">✕ وقّف الإرسال</button></div>`;
+    m.querySelector('#mq_wa').addEventListener('click', ()=>{ opened=true; });
+  };
+  let opened=false;
+  m.addEventListener('click', e=>{ const b=e.target.closest('[data-mq]'); if(!b) return; const a=b.dataset.mq;
+    if(a==='x'){ close(); return; }
+    if(a==='next' && opened) sent++;
+    opened=false; i++; draw(); });
+  document.body.appendChild(m); draw();
+}
+document.addEventListener('click', e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  switch(el.dataset.act){
+    case 'reg-visit': regVisit(el.dataset.k); break;
+    case 'reg-undo': { const v=visitGroups().find(x=>x.k===el.dataset.k); if(!v || !confirm('ترجّع الزيارة دي للزيارات (كأنها ما اتسجلتش)؟')) break;
+      withUndo('↩️ الزيارة رجعت', ()=>{ for(const e2 of v.ents) delete db.reg[e2.id]; }); break; }
+    case 'reg-old': { const today=dayKey(), l=visitGroups().filter(v=>v.left.length && v.day<today); if(!l.length) break;
+      if(!confirm(`هتعلّم ${l.length} زيارة قديمة (قبل النهارده) إنها اتسجلت على برنامج الشركة وتروح التسجيلات. أكمل؟`)) break;
+      const now=new Date().toISOString(); withUndo(`✔️ ${l.length} زيارة راحت التسجيلات`, ()=>{ for(const v of l) for(const e2 of v.left) db.reg[e2.id]=now; }); break; }
+    case 'msg-f': msgF[el.dataset.k]=el.dataset.v; renderMsgs(); break;
+    case 'msg-all': for(const t of msgShown()) if(t.phone) msgSel.add(t.id); msgDraw(); break;
+    case 'msg-none': for(const t of msgShown()) msgSel.delete(t.id); msgDraw(); break;
+    case 'msg-send': msgSend(); break;
+  }
+});
 
 /* ---------- ٨) تعديل فاتورة التاجر برقم سري + سجل التعديلات ---------- */
 const pinHash = p => { let h=5381; for(const c of 'selah|'+p) h=(((h<<5)+h) ^ c.charCodeAt(0))>>>0; return h.toString(36); };
@@ -3784,7 +4013,7 @@ function lotEditForm(id){
   const m=document.createElement('div'); m.className='modal';
   m.innerHTML=`<div class="box"><h3>✏️ تعديل فاتورة تاجر</h3>
     <div class="field"><label>التاجر</label><input id="le_m" list="le_ml" value="${esc(l.m)}"><datalist id="le_ml">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
-    <div class="field"><label>الكتاب (المادة والصف)</label><select id="le_b">${SELL_KEYS.map(k=>`<option value="${k}" ${k===l.b?'selected':''}>${esc(bookLabel(k))}</option>`).join('')}</select></div>
+    <div class="field"><label>الكتاب</label><div style="font-weight:800;color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</div><input type="hidden" id="le_b" value="${esc(l.b)}"></div>
     <div class="row2"><div class="field"><label>الكمية</label><input id="le_q" inputmode="numeric" value="${l.q}"></div><div class="field"><label>السعر</label><input id="le_p" inputmode="decimal" value="${l.p??''}"></div></div>
     <div class="field"><label>التاريخ</label><input id="le_d" type="date" value="${dk(l.d)}"></div>
     <div class="row2"><button class="btn pri" id="le_ok">التالي ←</button><button class="btn ghost" id="le_x">إلغاء</button></div></div>`;
@@ -3820,18 +4049,22 @@ function lotEditConfirm(l, nw, ch, left){
 }
 
 /* ---------- ٩) تذكير «صلِّ على النبي ﷺ» كل نص ساعة (مرة مكتوب ومرة بالصوت) ---------- */
-const PB_MIN=30;
-function pbShow(voice){
-  const el=document.createElement('div'); el.className='hello-s pb-s out'; el.textContent='🤍 صلِّ على النبي ﷺ'; document.body.appendChild(el);
+// كل ربع ساعة ذكر (بالدور)، ومرة مكتوب ومرة مكتوب وبالصوت
+const PB_MIN=15;
+const ZIKR=[['🤍 صلِّ على النبي ﷺ','صلِّ على النبي'],['🤍 لا إله إلا الله','لا إله إلا الله'],['🤍 سبحان الله وبحمده، سبحان الله العظيم','سبحان الله وبحمده، سبحان الله العظيم'],
+  ['🤍 صلِّ على النبي ﷺ','اللهم صلِّ وسلم على سيدنا محمد'],['🤍 لا إله إلا الله وحده لا شريك له','لا إله إلا الله وحده لا شريك له']];
+function pbShow(voice, n){
+  const [txt, sp]=ZIKR[(n||0)%ZIKR.length];
+  const el=document.createElement('div'); el.className='hello-s pb-s out'; el.textContent=txt; document.body.appendChild(el);
   const bye=()=>{ el.classList.add('out'); setTimeout(()=>el.remove(), 600); };
   el.onclick=bye; setTimeout(()=>el.classList.remove('out'), 60); setTimeout(bye, 7000);
-  if(voice && !(NAV && !NAV.done)) say('صلِّ على النبي');
+  if(voice && !(NAV && !NAV.done)) say(sp);
 }
 function pbTick(){
   if(document.hidden || !db.rep || document.querySelector('.hello-s')) return;
   let s={}; try{ s=JSON.parse(localStorage.getItem(KEY+'-pb')||'{}'); }catch(e){}
   const now=Date.now();
-  if(!s.at) s={at:now, n:0}; else if(now-s.at>=PB_MIN*60000){ s.at=now; s.n=(s.n||0)+1; pbShow(s.n%2===0); }
+  if(!s.at) s={at:now, n:0}; else if(now-s.at>=PB_MIN*60000){ s.at=now; s.n=(s.n||0)+1; pbShow(s.n%2===0, Math.floor((s.n-1)/2)); }
   try{ localStorage.setItem(KEY+'-pb', JSON.stringify(s)); }catch(e){}
 }
 setInterval(pbTick, 60000);
@@ -3845,14 +4078,20 @@ document.addEventListener('click', e=>{
     case 'nav-voice': VOICE=!VOICE; el.textContent=VOICE?'🔊':'🔇'; if(!VOICE) try{ speechSynthesis.cancel(); }catch(_){} break;
     case 'nav-center': if(NAV){ NAV.follow=true; if(NAV.here && NAV.map) NAV.map.setView([NAV.here.lat, NAV.here.lng], 17); } break;
     case 'map-cat': mapCat=el.dataset.k; renderMap(); break;
-    case 'map-route': mapRouteOnly=!mapRouteOnly; renderMap(); break;
+    case 'map-route': mapRouteOnly=!mapRouteOnly; if(!mapRouteOnly) mapDay=''; renderMap(); break;
     case 'map-me': mapMe(); break;
     case 'loc-xlsx': $('#fileLoc').value=''; $('#fileLoc').click(); break;
     case 'loc-template': locTemplate(); break;
-    case 'route-pick': routePick(); break;
-    case 'route-rm': { const t=tById(id); withUndo(`✕ اتشال ${t?t.name:''} من خط السير`, ()=>{ db.route=db.route.filter(x=>x!==id); }); break; }
-    case 'route-clear': if(confirm('تمسح خط السير كله؟')) withUndo('🧹 خط السير اتمسح', ()=>{ db.route=[]; }); break;
-    case 'route-map': mapRouteOnly=true; mapCat=''; location.hash='#/map'; break;
+    case 'route-pick': routePick(id); break;
+    case 'route-rm': { const t=tById(id), dd=el.dataset.d; withUndo(`✕ اتشال ${t?t.name:''} من اليوم`, ()=>{ const d=dayById(dd); if(d) d.t=d.t.filter(x=>x!==id); }); break; }
+    case 'route-clear': if(confirm('تمسح خط السير كله (كل الأيام)؟')) withUndo('🧹 خط السير اتمسح', ()=>{ db.days=[]; }); break;
+    case 'route-map': mapDay=id||''; mapRouteOnly=true; mapCat=''; location.hash='#/map'; break;
+    case 'day-add': dayAdd(); break;
+    case 'day-copy': { const d=dayById(id); if(d) copyText(dayText(d)); break; }
+    case 'day-ren': { const d=dayById(id); if(!d) break; const v=(prompt('اسم اليوم (مثلاً: السبت 15/11 — أبو حمص):', d.n)||'').trim();
+      if(v && v!==d.n) withUndo('✏️ الاسم اتغيّر', ()=>{ dayById(id).n=v; }); break; }
+    case 'day-del': { const d=dayById(id); if(!d || !confirm(`تمسح «${d.n}»؟`)) break;
+      withUndo(`🗑️ ${d.n} اتمسح`, ()=>{ db.days=db.days.filter(x=>x.id!==id); }); location.hash='#/route'; break; }
     case 'pin-set': setPin(); break;
     case 'pin-forgot': { e.preventDefault(); const v=fixMail(prompt('اكتب الجيميل المتسجّل في البرنامج عشان تمسح الرقم السري القديم:')||'');
       if(v && v===db.mail){ db.pinH=''; PIN_OK=false; save(); render(); toast('الرقم السري اتمسح — حدد واحد جديد'); } else if(v) alert('الجيميل ده مش هو المتسجّل.'); break; }
