@@ -4511,7 +4511,9 @@ function renderMsgs(){
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const chip=(k,v,l)=>`<button class="chip ${msgF[k]===v?'on':''}" data-act="msg-f" data-k="${k}" data-v="${esc(v)}">${l}</button>`;
   app.innerHTML=`<div class="card"><h3 class="sec-t">✍️ الرسالة</h3>
-      <textarea id="msg_t" rows="5" style="width:100%" placeholder="اكتب الرسالة هنا… ولو كتبت {الاسم} هيتحط مكانها اسم المدرس">${esc(msgText())}</textarea></div>
+      <textarea id="msg_t" rows="5" style="width:100%" placeholder="اكتب الرسالة هنا… ولو كتبت {الاسم} هيتحط مكانها اسم المدرس">${esc(msgText())}</textarea>
+      <button class="btn sm" id="msg_link" style="margin-top:6px">🔗 حط [رابط المدرس]</button>
+      <div class="hint">[رابط المدرس] بيتبدل لوحده برابط كل مدرس (صفحته في 💬 المراسلات).</div></div>
     <div class="card"><h3 class="sec-t">👥 اختار المدرسين</h3>
       ${areaChips(areas, 'msa')}
       <div class="chips">${chip('c','','كل التصنيفات')}${['A','B','C'].map(c=>chip('c',c,c)).join('')}</div>
@@ -4522,6 +4524,7 @@ function renderMsgs(){
     <button class="btn ok" id="msg_go" style="width:100%;font-size:17px" data-act="msg-send"></button>
     <p class="hint">الواتساب مش بيسمح يبعت لكذا حد مرة واحدة لوحده — البرنامج هيفتحلك المدرسين واحد ورا التاني والرسالة مكتوبة، وإنت تدوس إرسال وترجع تدوس «التالي».</p>`;
   const ta=$('#msg_t'); ta.addEventListener('input', ()=>{ try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} });
+  $('#msg_link').onclick=()=>{ const p=ta.selectionStart??ta.value.length; ta.value=ta.value.slice(0,p)+'[رابط المدرس]'+ta.value.slice(p); try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} ta.focus(); };
   for(const a of [...msgA]) if(!areas.includes(a)) msgA.delete(a);
   bindAreaChips(app, 'msa', msgA, msgDraw);
   $('#msg_q').addEventListener('input', e=>{ msgF.q=e.target.value; msgDraw(); });
@@ -4533,12 +4536,50 @@ function msgDraw(){ const box=$('#msg_l'); if(!box) return; const l=msgShown();
   box.innerHTML = l.length ? l.slice(0,400).map(t=>`<label class="${t.phone?'':'off'}"><input type="checkbox" data-id="${esc(t.id)}" ${msgSel.has(t.id)?'checked':''} ${t.phone?'':'disabled'}><div class="grow"><b>${esc(t.name)}</b>${nameTags(t)}<div class="small muted">${esc([t.area, t.phone||'مفيش رقم', t.subjectText].filter(Boolean).join(' • '))}</div></div></label>`).join('')
     + (l.length>400?`<div class="small muted">ظاهر أول 400 — ضيّق البحث</div>`:'') : '<div class="empty small">مفيش مدرسين بالاختيار ده</div>';
   markWords(box, qWords(msgF.q)); msgCount(); }
-function msgSend(){
+/* [رابط المدرس]: بنجيب (أو نعمل) حساب كل مدرس في 💬 المراسلات (Supabase) بجلسة admin.html المحفوظة على نفس الموقع */
+async function sbSession(){
+  const c=window.SILAH_CONFIG; let s=null; try{ s=JSON.parse(localStorage.getItem('selah-trial-auth')||'null'); }catch(e){}
+  if(!c || !s || !s.refresh_token) return null;
+  if(!s.expires_at || s.expires_at*1000 < Date.now()+60000){
+    const r=await fetch(c.SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:c.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});
+    if(!r.ok) return null; const n=await r.json(); s={...s, ...n}; try{ localStorage.setItem('selah-trial-auth', JSON.stringify(s)); }catch(e){}
+  }
+  return {c, s, h:{apikey:c.SUPABASE_ANON_KEY, Authorization:'Bearer '+s.access_token, 'Content-Type':'application/json'}};
+}
+function sbProfile(t){ return {name:t.name||'', phone:t.phone||'', stage:t.stage||'', subjects:(t.subjects||[]).filter(x=>x!=='kash').slice(0,2), spec:t.spec||'',
+  area:t.area||'', school:t.school||'', grades:(t.grades||[]).filter(g=>g>=1&&g<=6), where:t.where||'', students:t.students||''}; }
+function sbBooks(tid){ const m={}; for(const s of db.sales||[]) if(s.t===tid) for(const it of s.items||[]) m[it.b]=(m[it.b]||0)+(+it.q||0);
+  return Object.entries(m).filter(([,q])=>q>0).map(([b,q])=>({b, l:bookLabel(b), q})); }
+async function sbLinks(list){
+  const S=await sbSession(); if(!S) throw new Error('login');
+  const me=await (await fetch(S.c.SUPABASE_URL+'/rest/v1/staff?select=id&user_id=eq.'+S.s.user.id,{headers:S.h})).json();
+  if(!Array.isArray(me) || !me[0]) throw new Error('login');
+  const rep=me[0].id, codes={}, base=new URL('teacher.html', location.href).href;
+  const get=async ids=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select=local_id,invite_code&rep_id=eq.'+rep+'&local_id=in.('+ids.map(encodeURIComponent).join(',')+')',{headers:S.h}); const j=await r.json(); if(!r.ok) throw new Error(j.message||'err'); j.forEach(x=>codes[x.local_id]=x.invite_code); };
+  for(let i=0;i<list.length;i+=80) await get(list.slice(i,i+80).map(t=>t.id));
+  const miss=list.filter(t=>!codes[t.id]);
+  for(let i=0;i<miss.length;i+=200){
+    const rows=miss.slice(i,i+200).map(t=>({rep_id:rep, local_id:t.id, name:t.name, phone:t.phone||'', profile:sbProfile(t), books:sbBooks(t.id)}));
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?on_conflict=rep_id,local_id',{method:'POST',headers:{...S.h, Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(rows)});
+    const j=await r.json(); if(!r.ok) throw new Error(j.message||'err'); j.forEach(x=>codes[x.local_id]=x.invite_code);
+  }
+  const out={}; for(const t of list) if(codes[t.id]) out[t.id]=base+'#c='+codes[t.id]; return out;
+}
+async function msgSend(){
   const txt=($('#msg_t')?.value||'').trim(); if(!txt){ alert('اكتب الرسالة الأول'); return; }
   const list=[...msgSel].map(tById).filter(t=>t && t.phone); if(!list.length){ alert('اختار مدرس واحد على الأقل'); return; }
+  let links={};
+  if(txt.includes('[رابط المدرس]')){
+    const b=$('#msg_go'); if(b){ b.disabled=true; b.textContent='⏳ بجهّز روابط المدرسين…'; }
+    try{ links=await sbLinks(list); }
+    catch(e){ if(b) b.disabled=false; msgCount();
+      if(String(e.message)==='login'){ if(confirm('عشان [رابط المدرس] يشتغل لازم تدخل «💬 المراسلات» مرة بحسابك.\nتفتحها دلوقتي؟')) location.href='admin.html'; }
+      else alert('مقدرتش أجيب الروابط: '+(navigator.onLine?e.message:'مفيش نت')); return; }
+    if(b) b.disabled=false; msgCount();
+  }
   let i=0, sent=0; const m=document.createElement('div'); m.className='modal';
   const close=()=>{ m.remove(); toast(`📤 اتبعت لـ ${sent} من ${list.length} مدرس`); };
-  const draw=()=>{ if(i>=list.length){ close(); return; } const t=list[i], body=txt.replace(/\{الاسم\}/g, t.name);
+  const draw=()=>{ if(i>=list.length){ close(); return; } const t=list[i], body=txt.replace(/\{الاسم\}/g, t.name).replace(/\[رابط المدرس\]/g, links[t.id]||'');
     m.innerHTML=`<div class="box msgq"><h3>📤 إرسال الرسالة</h3><div class="small muted">مدرس ${i+1} من ${list.length} • اتبعت ${sent}</div>
       <div class="big">${esc(t.name)}</div><div class="small muted" dir="ltr">${esc(t.phone)}</div><div class="small muted">${esc(t.area||'')}</div>
       <a class="btn ok" id="mq_wa" style="display:block;text-decoration:none;margin-top:12px;font-size:17px" href="${esc(waLink(t.phone, body))}" target="_blank" rel="noopener">💬 افتح الواتساب وابعت</a>
