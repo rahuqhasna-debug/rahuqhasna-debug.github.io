@@ -76,8 +76,10 @@ function renderHome() {
     <div><b style="font-size:19px">${esc(D.name)}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
   const standalone = matchMedia('(display-mode: standalone)').matches;
   const notif = 'Notification' in window ? Notification.permission : 'unsupported';
-  if (!standalone || notif === 'default') h += `<div class="note"><b>📲 ثبّت البرنامج على موبايلك وفعّل الإشعارات</b><div class="small" style="margin:4px 0 8px">عشان توصلك رسايل الأستاذ ${esc(D.rep || '')} أول بأول.</div>
-    <button class="btn owe" id="setup">✅ ثبّت وفعّل الإشعارات</button>${/iphone|ipad/i.test(navigator.userAgent) ? '<div class="small" style="margin-top:6px">على الآيفون: زرار المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية».</div>' : ''}</div>`;
+  if (!standalone || notif !== 'granted') h += `<div class="card" style="background:linear-gradient(135deg,#c2410c,#ea580c);color:#fff;border:0"><b style="font-size:17px">🌟 ثبّت البرنامج على موبايلك وفعّل الإشعارات</b>
+    <div style="margin:6px 0 4px">عشان توصلك رسايل الأستاذ ${esc(D.rep || '')} ومواعيد استلام النسخ المجانية أول بأول، وتحدّث بياناتك وتتابع كل جديد من سلاح التلميذ.</div>
+    <div style="margin-bottom:10px">خليك دايمًا على تواصل معانا ❤️</div>
+    <button class="btn" id="setup" style="background:#fff;color:#c2410c;width:100%;font-size:16px">✅ ثبّت وفعّل الإشعارات</button>${/iphone|ipad/i.test(navigator.userAgent) ? '<div class="small" style="margin-top:6px">على الآيفون: زرار المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية».</div>' : ''}</div>`;
   if (D.unread) h += `<div class="alert"><h3>💬 عندك ${D.unread} رسالة جديدة</h3><button class="btn danger" onclick="go('msgs')">افتح الرسائل ←</button></div>`;
   for (const u of D.updates) h += `<div class="alert"><h3>📝 مطلوب تحديث بياناتك</h3>${esc(fieldsTxt(u.fields || []))}${u.note ? `<div style="margin-top:6px">«${esc(u.note)}»</div>` : ''}
     <div class="acts"><button class="btn danger" onclick="go('me')">حدّث دلوقتي ←</button></div></div>`;
@@ -100,7 +102,6 @@ function renderHome() {
     }
     h += '</div>';
   }
-  if (!D.updates.length && !p && !D.decisions.length && !D.unread) h += '<div class="card empty">مفيش جديد 👌<br><button class="btn" style="margin-top:10px" onclick="go(\'me\')">افتح ملفي</button></div>';
   app.innerHTML = h;
   const su = $('#setup'); su && (su.onclick = setupApp);
   const sr = $('#sendReply');
@@ -187,8 +188,10 @@ function renderBooks() {
   const o = $('#ord'); o && (o.onclick = orderDlg);
   const bl = $('#bl'); if (!bl) return; bindQty(bl);
   $('#be').onclick = async () => {
-    const now = readQty(bl), ch = now.filter(x => (bk.find(y => y.b === x.b) || {}).q !== x.q).map(x => ({ ...x, l: bookLabel(x.b), was: (bk.find(y => y.b === x.b) || {}).q }));
-    if (!ch.length) return toast('مفيش تغيير');
+    // بنبعت الطلب كله (كل الكتب بالقديم والجديد) عشان المندوب يشوفه على بعضه
+    const now = readQty(bl), all = now.map(x => ({ ...x, l: bookLabel(x.b), was: (bk.find(y => y.b === x.b) || {}).q || 0 }));
+    if (!all.some(x => x.q !== x.was)) return toast('مفيش تغيير');
+    const ch = all;
     const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'edit', p_items: ch, p_note: null });
     if (error) return toast(errMsg(error));
     toast('اتبعت طلب التعديل ✅'); window.pushNotifyRep && window.pushNotifyRep('✏️ ' + D.name + ' عايز يعدّل كمية كتب'); load();

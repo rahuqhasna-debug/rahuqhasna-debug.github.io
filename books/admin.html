@@ -32,8 +32,8 @@
 "use strict";
 const sb = makeClient(true);
 const app = $('#app');
-let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, pollT = null;
-const ui = { q: '', filter: 'all', rep: '', selMode: false, sel: new Set(), shown: 200, bellTab: 'edits', invQ: '', invSel: new Set() };
+let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, lastMsg = {}, pollT = null;
+const ui = { q: '', filter: 'all', rep: '', selMode: false, sel: new Set(), shown: 200, bellTab: 'msgs', invQ: '', invSel: new Set() };
 const isAdmin = () => me && me.role === 'admin';
 const MB = 1048576, GKEY = 'selah-books-v1';
 
@@ -189,10 +189,11 @@ async function loadAll() {
     fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
     fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'pending')),
     isAdmin() ? fetchAll(() => sb.from('staff').select('id,name,role,active').order('created_at')) : Promise.resolve([me]),
-    fetchAll(() => sb.from('messages').select('teacher_id').eq('from_teacher', true).is('read_at', null))
+    fetchAll(() => sb.from('messages').select('id,teacher_id,body,created_at').eq('from_teacher', true).is('read_at', null).order('id'))
   ]);
   T = t; staffList = s; notesBy = {}; n.forEach(x => (notesBy[x.teacher_id] ||= []).push(x.body));
-  pendSet = new Set(p.map(x => x.teacher_id)); unreadBy = {}; u.forEach(x => unreadBy[x.teacher_id] = (unreadBy[x.teacher_id] || 0) + 1);
+  pendSet = new Set(p.map(x => x.teacher_id)); unreadBy = {}; lastMsg = {};
+  u.forEach(x => { unreadBy[x.teacher_id] = (unreadBy[x.teacher_id] || 0) + 1; lastMsg[x.teacher_id] = { b: x.body, id: x.id, at: x.created_at }; });
   await counts();
 }
 async function refresh() { try { await loadAll(); route(); } catch (e) { toast(errMsg(e)); } }
@@ -236,6 +237,8 @@ async function importGreen() {
 /* ---------- قائمة المدرسين ---------- */
 function filtered() {
   const q = norm(ui.q);
+  // اللي بعتوا رسايل جديدة فوق (الأحدث الأول)
+  const rank = t => lastMsg[t.id] ? lastMsg[t.id].id : 0;
   return T.filter(t => {
     if (ui.rep && t.rep_id !== ui.rep) return false;
     if (ui.filter === 'notes' && !notesBy[t.id]) return false;
@@ -247,7 +250,7 @@ function filtered() {
     const pr = t.profile || {};
     const hay = norm([t.name, t.phone, pr.area, pr.school, valText('subjects', pr.subjects), pr.address, ...(notesBy[t.id] || [])].join(' '));
     return q.split(/\s+/).every(w => hay.includes(w));
-  });
+  }).sort((a, b) => rank(b) - rank(a));
 }
 function viewList() {
   setHeader(`المدرسين — ${me.name}`, false);
@@ -280,7 +283,9 @@ function viewList() {
 }
 function tItem(t) {
   const pr = t.profile || {}, nn = (notesBy[t.id] || []).length, un = unreadBy[t.id] || 0;
-  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)}</div>
+  const lm = lastMsg[t.id];
+  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" ${un ? 'style="border-color:#16a34a;background:color-mix(in srgb,#16a34a 8%,var(--card))"' : ''}>${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)}${un ? ` <span style="background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">${un}</span>` : ''}</div>
+    ${lm ? `<div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
     <div class="sub">${esc([t.phone, valText('subjects', pr.subjects), pr.area].filter(x => x && x !== '—').join(' · '))}${isAdmin() ? ' · ' + esc(repName(t.rep_id)) : ''}</div></div>
     ${pendSet.has(t.id) ? '<span class="pill owe">⏳</span>' : ''}${nn ? `<span class="pill new">📌${nn}</span>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔</span>'}${t.last_seen ? '' : '<span class="pill new">لسه ما فتحش</span>'}
     <button class="btn sm ${un ? 'danger' : 'ghost'}" data-chat>💬${un ? ' ' + un : ''}</button></div>`;
@@ -347,23 +352,29 @@ function reqUpdateDlg(ids) {
       const f = $$('input:checked', box).map(i => i.value); if (!f.length) return toast('اختار حاجة واحدة على الأقل');
       const { data, error } = await sb.rpc('request_update', { p_ids: ids, p_fields: f, p_note: $('#rn', box).value });
       if (error) return toast(errMsg(error));
-      close(); toast(`اتبعت لـ ${data} مدرس ✅`); if (location.hash.startsWith('#/t/')) route();
+      close(); toast(`اتبعت لـ ${data} مدرس ✅`);
+      if (window.pushToTeachers) window.pushToTeachers(ids, '📝 مطلوب تحديث بياناتك: ' + f.map(k => FIELD_LABEL[k] || k).join('، ')).catch(() => { });
+      if (location.hash.startsWith('#/t/')) route();
     };
   });
 }
 
 /* ---------- المحادثة ---------- */
 let chatMsgs = [], chatLast = 0;
+let chatSel = null;   // وضع التحديد للمسح
 function bubbleS(m, t) {
-  if (m.kind === 'ring') return `<div class="bub ring">🔔 نبّهت ${esc(t.name)}<span class="tm">${fmtDate(m.created_at)}${m.read_at ? ' · شافها ✓✓' : ''}</span></div>`;
-  const mine = !m.from_teacher;
-  return `<div class="bub ${mine ? 'me' : 'them'}">${esc(m.body)}<span class="tm">${fmtDate(m.created_at)}${mine ? (m.read_at ? ' <b style="color:#2563eb">✓✓</b>' : ' ✓') : ''}</span></div>`;
+  if (m.kind === 'ring') return '';   // التنبيه مايظهرش في الشات عند المندوب
+  const mine = !m.from_teacher, sel = chatSel && chatSel.has(m.id);
+  return `<div class="bub ${mine ? 'me' : 'them'}" data-mid="${m.id}" style="${chatSel ? 'cursor:pointer;' : ''}${sel ? 'outline:3px solid #dc2626;' : ''}">${chatSel ? (sel ? '☑️ ' : '⬜ ') : ''}${esc(m.body)}<span class="tm">${fmtDate(m.created_at)}${mine ? (m.read_at ? ' <b style="color:#2563eb">✓✓</b>' : ' ✓') : ''}</span></div>`;
 }
 async function viewChat(id) {
   const t = T.find(x => x.id === id); if (!t) { location.hash = '#/'; return; }
   setHeader('💬 ' + t.name, true);
-  app.innerHTML = `<div class="acts" style="margin:0 0 6px"><button class="btn sm owe" id="ring">🔔 نبّه المدرس</button><a class="btn sm ghost" href="#/t/${t.id}">👤 ملفه</a>
-    <button class="btn sm ghost" id="keep">📌 احفظ رسالة في سجله</button></div>
+  chatSel = null;
+  app.innerHTML = `<style>@keyframes ringy{0%,100%{transform:rotate(0)}20%{transform:rotate(-25deg)}40%{transform:rotate(25deg)}60%{transform:rotate(-15deg)}80%{transform:rotate(15deg)}}.ringing{animation:ringy .5s 3}</style>
+    <div class="acts" style="margin:0 0 6px"><button class="btn sm owe" id="ring"><span id="ringI" style="display:inline-block">🔔</span> نبّه المدرس</button><a class="btn sm ghost" href="#/t/${t.id}">👤 ملفه</a>
+    <button class="btn sm ghost" id="keep">📌 احفظ رسالة في سجله</button><button class="btn sm danger" id="delm">🗑️ مسح رسايل</button></div>
+    <div id="delbar" hidden class="alert" style="padding:8px"><b>دوس على الرسايل اللي عايز تمسحها</b><div class="acts"><button class="btn sm danger" id="delgo">🗑️ امسح المحدد (0)</button><button class="btn sm ghost" id="delx">إلغاء</button></div></div>
     <div class="small muted" style="text-align:center">${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
   $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`;
   chatMsgs = []; chatLast = 0;
@@ -373,10 +384,10 @@ async function viewChat(id) {
     if (!first && data.some(m => m.from_teacher)) ding();
     chatMsgs = first ? data : chatMsgs.concat(data);
     if (chatMsgs.length) chatLast = chatMsgs[chatMsgs.length - 1].id;
-    if (data.some(m => m.from_teacher && !m.read_at)) { await sb.from('messages').update({ read_at: new Date().toISOString() }).eq('teacher_id', t.id).eq('from_teacher', true).is('read_at', null); delete unreadBy[t.id]; counts(); }
+    if (data.some(m => m.from_teacher && !m.read_at)) { await sb.from('messages').update({ read_at: new Date().toISOString() }).eq('teacher_id', t.id).eq('from_teacher', true).is('read_at', null); delete unreadBy[t.id]; delete lastMsg[t.id]; counts(); }
     if (!first) { const { data: rd } = await sb.from('messages').select('id,read_at').eq('teacher_id', t.id).eq('from_teacher', false).not('read_at', 'is', null).gt('id', Math.max(0, chatLast - 50)); (rd || []).forEach(r => { const m = chatMsgs.find(x => x.id === r.id); if (m) m.read_at = r.read_at; }); }
-    $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>';
-    if (first || data.length) scrollTo(0, document.body.scrollHeight);
+    if (!chatSel) $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>';
+    if (first || data.some(m => m.kind !== 'ring')) scrollTo(0, document.body.scrollHeight);
   };
   const send = async (kind, body) => {
     const { error } = await sb.from('messages').insert({ teacher_id: t.id, from_teacher: false, kind, body, sender: me.name });
@@ -385,7 +396,21 @@ async function viewChat(id) {
     if (window.pushToTeacher) window.pushToTeacher(t, kind === 'ring' ? `🔔 رُدّ على الأستاذ ${me.name}` : `💬 الأستاذ ${me.name}: ${body.slice(0, 80)}`, kind === 'ring').catch(() => { });
   };
   $('#ms').onclick = async () => { const v = $('#mt').value.trim(); if (!v) return; $('#mt').value = ''; await send('text', v); };
-  $('#ring').onclick = async () => { await send('ring', ''); toast('🔔 اتبعت التنبيه'); };
+  $('#ring').onclick = async () => {
+    const i = $('#ringI'); i.classList.remove('ringing'); void i.offsetWidth; i.classList.add('ringing');
+    try { navigator.vibrate && navigator.vibrate([200, 80, 200]); } catch (e) { }
+    await send('ring', '');
+  };
+  const redraw = () => { $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>'; if (chatSel) $('#delgo').textContent = `🗑️ امسح المحدد (${chatSel.size})`; };
+  $('#delm').onclick = () => { chatSel = new Set(); $('#delbar').hidden = false; redraw(); };
+  $('#delx').onclick = () => { chatSel = null; $('#delbar').hidden = true; redraw(); };
+  $('#chat').onclick = e => { if (!chatSel) return; const b = e.target.closest('[data-mid]'); if (!b) return; const id = +b.dataset.mid; chatSel.has(id) ? chatSel.delete(id) : chatSel.add(id); redraw(); };
+  $('#delgo').onclick = async () => {
+    if (!chatSel || !chatSel.size) return toast('اختار رسالة الأول');
+    if (!confirm(`هيتمسح ${chatSel.size} رسالة من عندك وعند المدرس. متأكد؟`)) return;
+    const ids = [...chatSel]; const { error } = await sb.from('messages').delete().in('id', ids); if (error) return toast(errMsg(error));
+    chatMsgs = chatMsgs.filter(m => !ids.includes(m.id)); chatSel = null; $('#delbar').hidden = true; redraw(); toast('اتمسحت ✅');
+  };
   $('#keep').onclick = () => {
     const ms = chatMsgs.filter(m => m.kind === 'text').slice(-30);
     if (!ms.length) return toast('مفيش رسايل');
@@ -514,11 +539,13 @@ function orderCard(o, inTeacher) {
   return `<div class="card" data-ord="${o.id}" style="border-color:#b45309">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="grow">${inTeacher ? '' : `<a href="#/t/${o.teacher_id}"><b>${esc(t.name || '')}</b></a> — `}
       <b>${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ طلب تعديل كمية'}</b><div class="small muted">${fmtDate(o.created_at)}</div></div></div>
-    <div id="oi-${o.id}">${(o.items || []).map(i => `<div class="kv" data-b="${esc(i.b)}"><span>${esc(i.l || bookLabel(i.b))}${o.kind === 'edit' && i.was != null ? ` <span class="small muted">(كان ${i.was})</span>` : ''}</span>
-      <span class="qty"><button type="button" data-d="-1">−</button><b>${i.q}</b><button type="button" data-d="1">+</button></span></div>`).join('')}</div>
+    ${o.kind === 'edit' ? '<div class="small muted" style="margin-bottom:4px">الطلب كله — اللي اتغيّر متعلّم بالبرتقاني:</div>' : ''}
+    <div id="oi-${o.id}">${(o.items || []).map(i => { const chg = o.kind === 'edit' && i.was != null && i.was !== i.q;
+      return `<div class="kv" data-b="${esc(i.b)}" ${chg ? 'style="background:var(--owe-soft);border-radius:8px;padding:6px"' : ''}><span>${esc(i.l || bookLabel(i.b))}${o.kind === 'edit' && i.was != null ? ` <span class="small ${chg ? '' : 'muted'}">(كان ${i.was}${chg ? ` ← بقى ${i.q}` : ''})</span>` : ''}</span>
+      <span class="qty"><button type="button" data-d="-1">−</button><b>${i.q}</b><button type="button" data-d="1">+</button></span></div>`; }).join('')}</div>
     ${o.note ? `<div class="small">ملاحظة: ${esc(o.note)}</div>` : ''}
-    <div class="acts"><button class="btn sm ok" data-oact="approve">✅ موافقة</button><button class="btn sm danger" data-oact="reject">❌ رفض</button><button class="btn sm ghost" data-oact="ask">❓ اسأله في الشات</button></div>
-    <div class="small muted">تقدر تغيّر الكمية بـ − / + قبل الموافقة.</div></div>`;
+    <div class="acts"><button class="btn sm ok" data-oact="approve">📥 انقله للطلبات في البيع</button><button class="btn sm danger" data-oact="reject">❌ رفض</button><button class="btn sm ghost" data-oact="ask">💬 اسأله في الشات</button></div>
+    <div class="small muted">تقدر تغيّر الكمية بـ − / + قبل النقل. النقل بيسجله «طلب مستني» في البيع، ومش بيتنفذ غير لما انت تنفذه من هناك.</div></div>`;
 }
 function bindReviews(root) {
   root.addEventListener('change', e => { const c = e.target.closest('[data-ph]'); if (c) c.parentNode.classList.toggle('on', c.checked); });
@@ -535,8 +562,13 @@ function bindReviews(root) {
       const { error } = await sb.from('orders').update({ status: a === 'approve' ? 'approved' : 'rejected', items, reason, decided_at: new Date().toISOString() }).eq('id', o.id);
       if (error) { $$('button', card).forEach(x => x.disabled = false); return toast(errMsg(error)); }
       let msg = 'تمام ✅';
-      if (a === 'approve' && o.kind === 'order') msg = gOrder(t.local_id, items) ? '✅ اتسجل «طلب مستني» في البيع عند المدرس ده' : '✅ اتوافق — سجّل الطلب في البيع بإيدك (المدرس مش في البرنامج على الموبايل ده)';
-      if (a === 'approve' && o.kind === 'edit') msg = '✅ اتوافق — عدّل الكمية في البيع من صفحة المدرس في البرنامج';
+      if (a === 'approve') {
+        // طلب جديد ← الكتب كلها. تعديل كمية ← الزيادة بس تبقى طلب مستني، والنقص بتعدّله بإيدك
+        const add = o.kind === 'order' ? items : items.map(i => ({ ...i, q: i.q - (i.was || 0) })).filter(i => i.q > 0);
+        const less = o.kind === 'edit' ? items.filter(i => i.q < (i.was || 0)) : [];
+        const ok = add.length ? gOrder(t.local_id, add) : true;
+        msg = ok ? `📥 اتنقل «طلب مستني» في البيع${less.length ? ` — وفيه ${less.length} كتاب قلّت كميته: عدّله في البيع بإيدك` : ''}` : '✅ اتوافق — سجّله في البيع بإيدك (المدرس مش في البرنامج على الموبايل ده)';
+      }
       if (window.pushToTeacher) window.pushToTeacher({ id: o.teacher_id }, a === 'approve' ? '✅ طلب الكتب بتاعك اتوافق عليه' : '❌ طلب الكتب اترفض', false).catch(() => { });
       card.remove(); toast(msg, 4500); counts();
       return;
@@ -582,7 +614,7 @@ function bindReviews(root) {
 }
 
 /* ---------- الجرس ---------- */
-const BELL = [['orders', '🛒 طلبات المدرسين'], ['mine', '🧾 طلباتي'], ['notes', '📋 الملاحظات'], ['edits', '📝 تعديل الملفات'], ['del', '🗑️ مسح الرسايل'], ['msgs', '💬 رسايل جديدة']];
+const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['mine', '🧾 طلباتي'], ['edits', '📝 تعديل الملفات'], ['notes', '📋 الملاحظات'], ['del', '🗑️ مسح الرسايل']];
 async function viewBell() {
   setHeader('🔔 الإشعارات', false);
   const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs };
@@ -594,7 +626,9 @@ async function viewBell() {
   bb.innerHTML = '<div class="loading">جاري التحميل…</div>';
   if (ui.bellTab === 'msgs') {
     const ids = Object.keys(unreadBy);
-    bb.innerHTML = ids.length ? `<div class="tlist">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<a class="titem" href="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)}</div></div><span class="pill bad">💬 ${unreadBy[t.id]}</span></a>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
+    ids.sort((a, b) => (lastMsg[b]?.id || 0) - (lastMsg[a]?.id || 0));
+    bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<a class="titem" href="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} <span style="background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">${unreadBy[t.id]}</span></div>
+      <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div></div></a>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
     return;
   }
   if (ui.bellTab === 'orders') {
