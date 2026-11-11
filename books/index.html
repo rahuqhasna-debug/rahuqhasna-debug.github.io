@@ -379,8 +379,9 @@ nav.tabs a{font-size:12px}
 [data-hay][hidden],[data-hgrp][hidden]{display:none!important}
 mark.hl{background:#fde047;color:#000;border-radius:3px;padding:0 1px}
 .nores{margin:6px 0 10px}
-.g7{background:linear-gradient(135deg,#be123c,#fb7185)}.g8{background:linear-gradient(135deg,#0f766e,#5eead4)}
+.g7{background:linear-gradient(135deg,#be123c,#fb7185)}.g8{background:linear-gradient(135deg,#0f766e,#5eead4)}.g9{background:linear-gradient(135deg,#7c3aed,#c4b5fd)}
 .wrap.home .igrid.i8{grid-template-rows:repeat(4,1fr)}
+.igrid.i8>:last-child:nth-child(odd){grid-column:1/-1}
 .wrap.home .igrid.i8 .icon-b .e{font-size:clamp(24px,4.6dvh,40px)}
 /* دفعة 6: شريط التقارير والإعدادات تحت الرئيسية • خط السير بالأيام • الزيارات • الرسائل */
 .wrap.home{height:calc(100dvh - 52px - 60px - env(safe-area-inset-bottom))}
@@ -512,7 +513,7 @@ function specSelOpts(stage, cur){ const o=specOpts(stage); if(!o.length) return 
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
 const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
-function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], tlog:[], pinH:'', lastBackup:''}}
+function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], tlog:[], pinH:'', lastBackup:'', repKey:''}}
 /* ================= الإدارات التعليمية والقرى (البحيرة) =================
    كل إدارة: [قرى وبنادر]. القايمة دي اتراجعت مع شريف قبل ما تتحط. */
 const IDARAT = {
@@ -545,6 +546,8 @@ function load(){
   // البيع: sales = طلبات وبيع، payments = دفعات ومرتجعات المدرسين، prices = أسعار الكتب، merchants = بضاعة التجار، merchPays = دفعات التجار
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
   db.reqs ||= [];   // طلبات المدرسين (الجرس)
+  // repKey = مفتاح المندوب على السيرفر: حسابات المدرسين والتحديثات بتتربط بيه (مش بالإيميل)
+  db.repKey ||= Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
   db.tlog ||= [];   // سجل المدرس: تعديل البيانات (القديم ← الجديد) والصور
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
   db.route ||= []; db.editLog ||= []; db.pinH ||= '';   // route = خط السير (أكواد المدرسين)، editLog = سجل تعديل فواتير التجار، pinH = الرقم السري (متشفّر)
@@ -795,6 +798,9 @@ function render(){
   $('#tabs').hidden = h==='/';   // الشريط اللي تحت مخفي في الرئيسية — وبدله شريط التقارير والإعدادات
   $('#hbar').hidden = h!=='/';
   if(h!=='/') app.classList.remove('home','q');
+  // بوابة المدرس (#/tp): حسابه في البرنامج — من غير شاشة المندوب ولا الشريط
+  if(h==='/tp'){ curTeacher=null; updateActbar(); $('#tabs').hidden=true; renderTP(); setTab(''); return; }
+  pullReqs();   // التحديثات اللي المدرسين بعتوها من حساباتهم (كل دقيقتين بالكتير)
   const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
   ACC = accMap();
   DUPS = new Set(dupGroups().map(([p])=>p));
@@ -816,6 +822,7 @@ function render(){
   else { curTeacher=null; sel={}; updateActbar();
     if(h==='/teachers'){ renderTeachers(); setTab('teachers'); }
     else if(h==='/msgs'){ renderMsgs(); setTab(''); }
+    else if(h==='/sent'){ renderSent(); setTab(''); }
     else if(h==='/map'){ renderMap(); setTab(''); }
     else if(h==='/route'){ renderRoute(); setTab(''); }
     else if(h==='/owed'){ renderOwed(); setTab('owed'); }
@@ -896,7 +903,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','✉️','رسائل المدرسين','g5','واتساب للمدرسين')}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','👣','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles i8">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','✉️','رسائل المدرسين','g5','واتساب للمدرسين')}${ic('#/sent','📨','المرسلات','g9','حسابات المدرسين + التحديثات')}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','👣','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -1782,7 +1789,7 @@ $('#fileJson').addEventListener('change', async e=>{
     db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
-      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), pinH:d.pinH||db.pinH||'',
+      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), pinH:d.pinH||db.pinH||'', repKey:d.repKey||db.repKey||'',
       driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
@@ -4261,18 +4268,211 @@ function editLogCard(tid){   // من غير tid = السجل كله (الإعد�
 }
 /* ---------- طلبات المدرسين 🔔: بتتكتب في صفحة المدرس (ملاحظات) وبتظهر في الجرس فوق ---------- */
 const pendReqs = () => (db.reqs||[]).filter(r=>!r.done && tById(r.t));
-function updateBell(){ const n=pendReqs().length, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
+function updateBell(){ const n=pendReqs().length+remoteReqs.length, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
 function bellModal(){
   document.getElementById('bellM')?.remove();
   const l=pendReqs().sort((a,b)=>b.at.localeCompare(a.at));
   const m=document.createElement('div'); m.className='modal'; m.id='bellM';
-  m.innerHTML=`<div class="box"><h3>🔔 طلبات المدرسين (${l.length})</h3>${l.length ? l.map(r=>{ const t=tById(r.t);
+  m.innerHTML=`<div class="box"><h3>🔔 طلبات المدرسين (${l.length+remoteReqs.length})</h3>
+    ${remoteReqs.length ? `<h3 class="sec-t">📥 تحديثات من حسابات المدرسين (${remoteReqs.length})</h3>` + remoteReqs.map(rreqCard).join('') : ''}
+    ${l.length ? l.map(r=>{ const t=tById(r.t);
     return `<div class="card" style="margin-bottom:8px"><div class="tc-top" style="gap:8px"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}" data-bell="x"><b>${esc(t.name)}</b></a><div class="small muted">${esc([t.area,t.phone].filter(Boolean).join(' • '))}</div></div><div class="icos">${phoneBtns(t)}</div></div>
       <div style="margin:6px 0">${esc(r.txt)}</div><div class="small muted">${fmtDT(r.at)}</div>
       <button class="btn sm ok" style="width:100%;margin-top:6px" data-act="req-done" data-id="${esc(r.id)}">✔️ خلّصت</button></div>`; }).join('') : '<div class="empty small">مفيش طلبات مستنية 🎉</div>'}
     <button class="btn ghost" style="width:100%" data-bell="x">قفل</button></div>`;
   document.body.appendChild(m);
   m.addEventListener('click', e=>{ if(e.target===m || e.target.closest('[data-bell]')) m.remove(); });
+}
+
+/* ---------- المرسلات: رسائل وطلبات تحديث داخل البرنامج لحسابات المدرسين ---------- */
+let remoteReqs=[], remoteAt=0, sentSel=new Set(), sentA=new Set(), sentF={c:'',s:'',q:''}, sentAsk=new Set(['phone','area','subjects']);
+const TP_SUBJ={...SUBJ, kash:'كشكول'};
+const tpUrl = () => location.href.split('#')[0] + '#/tp';
+// التحديثات اللي المدرسين بعتوها من حساباتهم (بتتجاب كل دقيقتين بالكتير)
+async function pullReqs(force){
+  if(!CLOUD_URL || !db.repKey) return;
+  if(!force && Date.now()-remoteAt<120000) return;
+  remoteAt=Date.now();
+  try{ const j=await cloudPost({k:'tlist', repKey:db.repKey}); remoteReqs=j.reqs||[]; updateBell(); }catch(e){}
+}
+function rreqCard(r){
+  const t=db.teachers.find(x=>last10(x.phone)===last10(r.phone)), c=r.changes||{}, rows=[];
+  if(c.name) rows.push(`<b>الاسم:</b> <s class="muted">${esc(t?.name||'')}</s> ← <b>${esc(c.name)}</b>`);
+  if(c.phone) rows.push(`<b>التليفون:</b> <s class="muted">${esc(t?.phone||'')}</s> ← <b dir="ltr">${esc(c.phone)}</b>`);
+  if(c.area!=null) rows.push(`<b>القرية:</b> <s class="muted">${esc(t?.area||'')}</s> ← <b>${esc(c.area)}</b>`);
+  if(Array.isArray(c.subjects)) rows.push(`<b>المواد:</b> <s class="muted">${esc(subjLabel(t?.subjects||[]))}</s> ← <b>${esc(subjLabel(c.subjects))}</b>`);
+  return `<div class="card" style="margin-bottom:8px"><div><b>${esc(t?.name||r.name||'مدرس')}</b> ${t?'':'<span class="pill dup">مش موجود عندك بالرقم ده</span>'}</div>
+    <div class="small" style="margin:6px 0">${rows.join('<br>')||'مفيش تغيير'}</div><div class="small muted">${fmtDT(r.at)}</div>
+    <div class="row2" style="margin-top:6px"><button class="btn sm ok" data-act="rreq-ok" data-id="${esc(r.id)}" ${t?'':'disabled'}>✔️ قبول</button><button class="btn sm ghost" data-act="rreq-no" data-id="${esc(r.id)}">✖️ رفض</button></div></div>`;
+}
+// قبول التحديث: بيتطبق على المدرس عندك (ويتسجل في سجله) ويتقفل على السيرفر
+async function rreqAct(id, ok){
+  const r=remoteReqs.find(x=>x.id===id); if(!r) return;
+  if(ok){
+    const t=db.teachers.find(x=>last10(x.phone)===last10(r.phone));
+    if(!t){ alert('المدرس ده مش موجود عندك بنفس الرقم'); return; }
+    const c=r.changes||{}, log=[];
+    if(c.name && c.name!==t.name){ log.push(`الاسم: ${t.name||''} ← ${c.name}`); t.name=c.name; }
+    if(c.phone && last10(c.phone)!==last10(t.phone)){ log.push(`التليفون: ${t.phone||''} ← ${c.phone}`); t.phone=c.phone; }
+    if(c.area!=null && c.area!==t.area){ log.push(`القرية: ${t.area||''} ← ${c.area}`); t.area=c.area; }
+    if(Array.isArray(c.subjects) && c.subjects.join()!==(t.subjects||[]).join()){ log.push(`المواد: ${subjLabel(t.subjects||[])} ← ${subjLabel(c.subjects)}`); t.subjects=c.subjects; t.subjectText=subjLabel(c.subjects); }
+    logT(t.id, 'من حسابه: ' + (log.join(' • ') || 'مفيش تغيير'), 'تحديث من المدرس');
+    save();
+  }
+  try{ await cloudPost({k:'tdone', repKey:db.repKey, id, status:ok?'تم':'مرفوض'}); }
+  catch(e){ toast('⚠️ اتسجل عندك بس السيرفر ما ردش — جرب تاني'); return; }
+  remoteReqs=remoteReqs.filter(x=>x.id!==id); updateBell(); bellModal();
+}
+// اختيار المدرسين (زي رسائل المدرسين بالظبط)
+function sentShown(){ const ws=qWords(sentF.q);
+  return db.teachers.filter(t=>(!sentA.size || sentA.has(t.area)) && (!sentF.c || clsLetter(t)===sentF.c) && (!sentF.s || tSubs(t).includes(sentF.s)) && (!ws.length || ws.every(w=>hayT(t).includes(w))))
+    .sort((a,b)=>(a.area||'').localeCompare(b.area||'','ar') || a.name.localeCompare(b.name,'ar')); }
+function sentText(){ try{ return localStorage.getItem(KEY+'-sent')||''; }catch(e){ return ''; } }
+function renderSent(){
+  setHeader('📨 المرسلات', false);
+  for(const id of [...sentSel]) if(!tById(id)) sentSel.delete(id);
+  const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const chip=(k,v,l)=>`<button class="chip ${sentF[k]===v?'on':''}" data-act="sent-f" data-k="${k}" data-v="${esc(v)}">${l}</button>`;
+  const askChip=(k,l)=>`<button class="chip ${sentAsk.has(k)?'on':''}" data-act="sent-ask" data-v="${k}">${l}</button>`;
+  app.innerHTML=`<div class="card"><h3 class="sec-t">✍️ الرسالة</h3>
+      <textarea id="snt_t" rows="4" style="width:100%" placeholder="اكتب الرسالة اللي هتظهر في حساب المدرس… ({الاسم} بيتبدل باسمه)">${esc(sentText())}</textarea>
+      <h3 class="sec-t" style="margin-top:10px">🔄 اطلب من المدرس يحدّث:</h3>
+      <div class="chips">${askChip('name','الاسم')}${askChip('phone','التليفون')}${askChip('area','القرية')}${askChip('subjects','المواد')}</div>
+      <p class="hint" style="margin:6px 0 0">لو اخترت حاجة هنا، المدرس هيشوف فورمة يعدّلها ويبعتها لك، وأنت تقبل أو ترفض من 🔔.</p></div>
+    <div class="card"><h3 class="sec-t">👥 اختار المدرسين</h3>
+      ${areaChips(areas, 'sna')}
+      <div class="chips">${chip('c','','كل التصنيفات')}${['A','B','C'].map(c=>chip('c',c,c)).join('')}</div>
+      <div class="chips">${chip('s','','كل المواد')}${Object.entries(SUBJ).map(([k,n])=>chip('s',k,n)).join('')}</div>
+      <div class="search" style="margin:0 0 8px"><input id="snt_q" type="search" placeholder="🔎 دوّر: اسم، تليفون، قرية…" value="${esc(sentF.q)}" autocomplete="off"></div>
+      <div class="row2"><button class="btn sm" data-act="sent-all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-act="sent-none">⬜ شيل كل اللي ظاهرين</button></div>
+      <div class="pickl" id="snt_l"></div></div>
+    <button class="btn ok" id="snt_go" style="width:100%;font-size:17px" data-act="sent-send"></button>
+    <div class="row2" style="margin-top:8px"><button class="btn ghost" data-act="sent-codes">🔑 أكواد دخول المدرسين</button></div>
+    <p class="hint">الرسالة بتتبعت جوه البرنامج لحساب كل مدرس. أول مرة المدرس بيتفتح له حساب بكود، والكود بيظهر لك في «أكواد الدخول» تبعته له على واتساب.</p>`;
+  const ta=$('#snt_t'); ta.addEventListener('input', ()=>{ try{ localStorage.setItem(KEY+'-sent', ta.value); }catch(e){} });
+  for(const a of [...sentA]) if(!areas.includes(a)) sentA.delete(a);
+  bindAreaChips(app, 'sna', sentA, sentDraw);
+  $('#snt_q').addEventListener('input', e=>{ sentF.q=e.target.value; sentDraw(); });
+  $('#snt_l').addEventListener('change', e=>{ const c=e.target.closest('input[data-id]'); if(!c) return; c.checked?sentSel.add(c.dataset.id):sentSel.delete(c.dataset.id); sentCount(); });
+  sentDraw();
+}
+function sentCount(){ const b=$('#snt_go'); if(b) b.textContent=`📨 ابعت للمدرسين (${[...sentSel].filter(id=>tById(id)?.phone).length})`; }
+function sentDraw(){ const box=$('#snt_l'); if(!box) return; const l=sentShown();
+  box.innerHTML = l.length ? l.slice(0,400).map(t=>`<label class="${t.phone?'':'off'}"><input type="checkbox" data-id="${esc(t.id)}" ${sentSel.has(t.id)?'checked':''} ${t.phone?'':'disabled'}><div class="grow"><b>${esc(t.name)}</b>${nameTags(t)}${t.tpin?' <span class="pill">🔑 عنده حساب</span>':''}<div class="small muted">${esc([t.area, t.phone||'مفيش رقم', t.subjectText].filter(Boolean).join(' • '))}</div></div></label>`).join('')
+    + (l.length>400?`<div class="small muted">ظاهر أول 400 — ضيّق البحث</div>`:'') : '<div class="empty small">مفيش مدرسين بالاختيار ده</div>';
+  markWords(box, qWords(sentF.q)); sentCount(); }
+function tpInvite(a){ return `أهلاً ${a.name||''} 👋\nده حسابك في برنامج سلاح التلميذ البحيرة، تقدر تدخل منه تشوف رسايل المندوب وتحدّث بياناتك:\n${tpUrl()}\nرقم التليفون: ${a.phone}\nالكود: ${a.pin}`; }
+async function sentSend(){
+  const txt=($('#snt_t')?.value||'').trim(), ask=[...sentAsk];
+  const list=[...sentSel].map(tById).filter(t=>t&&t.phone);
+  if(!txt && !ask.length){ alert('اكتب رسالة، أو اختار حاجة يحدّثها المدرس'); return; }
+  if(!list.length){ alert('اختار مدرس واحد على الأقل'); return; }
+  if(!CLOUD_URL){ alert('البرنامج مش متوصّل بالسيرفر دلوقتي'); return; }
+  if(!confirm(`هتبعت لـ ${list.length} مدرس في حساباتهم؟`)) return;
+  const btn=$('#snt_go'); if(btn){ btn.disabled=true; btn.textContent='⏳ بيبعت...'; }
+  try{
+    const j=await cloudPost({k:'tmsend', repKey:db.repKey, rep:db.rep, items:list.map(t=>({phone:t.phone, name:t.name, area:t.area||'', idara:db.idara||'', subjects:t.subjects||[], msg:txt.replace(/\{الاسم\}/g, t.name), ask}))});
+    const res=j.accounts||[];
+    for(const a of res){ const t=db.teachers.find(x=>last10(x.phone)===a.phone); if(t){ a.phone=t.phone; if(a.pin) t.tpin=a.pin; } }
+    save(false);
+    sentResult(res);
+  }catch(e){ alert('⚠️ ما اتبعتش: ' + (e.message==='nokey' ? 'مفتاح المندوب ناقص' : 'مفيش نت أو السيرفر ما ردش — جرب تاني')); }
+  finally{ const b2=$('#snt_go'); if(b2) b2.disabled=false; sentCount(); }
+}
+function sentResult(res){
+  const ok=res.filter(a=>a.pin), bad=res.filter(a=>!a.pin);
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>📨 اتبعت لـ ${ok.length} مدرس</h3>
+    ${ok.map(a=>`<div class="card" style="margin-bottom:6px"><b>${esc(a.name||'')}</b> ${a.isNew?'<span class="pill nw">حساب جديد</span>':''}<div class="small">التليفون <b dir="ltr">${esc(a.phone)}</b> • الكود <b dir="ltr">${esc(a.pin)}</b></div>
+      <a class="btn sm ok" style="display:block;text-decoration:none;margin-top:6px" href="${esc(waLink(a.phone, tpInvite(a)))}" target="_blank" rel="noopener">💬 ابعت له الكود على واتساب</a></div>`).join('')}
+    ${bad.length?`<div class="small muted">ما اتبعتش لـ: ${bad.map(a=>esc(a.name||a.phone)+(a.err==='taken'?' (حسابه عند مندوب تاني)':' (رقم غلط)')).join('، ')}</div>`:''}
+    <button class="btn ghost" style="width:100%;margin-top:8px" data-bell="x">قفل</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ if(e.target===m || e.target.closest('[data-bell]')) m.remove(); });
+}
+function sentCodes(){
+  const l=db.teachers.filter(t=>t.tpin && t.phone);
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>🔑 أكواد دخول المدرسين (${l.length})</h3>${l.length ? l.map(t=>`<div class="card" style="margin-bottom:6px"><b>${esc(t.name)}</b>
+      <div class="small">التليفون <b dir="ltr">${esc(t.phone)}</b> • الكود <b dir="ltr">${esc(t.tpin)}</b></div>
+      <a class="btn sm ok" style="display:block;text-decoration:none;margin-top:6px" href="${esc(waLink(t.phone, tpInvite({name:t.name, phone:t.phone, pin:t.tpin})))}" target="_blank" rel="noopener">💬 ابعته على واتساب</a></div>`).join('') : '<div class="empty small">مفيش حسابات لسه — ابعت رسالة الأول</div>'}
+    <button class="btn ghost" style="width:100%;margin-top:8px" data-bell="x">قفل</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ if(e.target===m || e.target.closest('[data-bell]')) m.remove(); });
+}
+
+/* ---------- بوابة المدرس (#/tp): حسابه في البرنامج ---------- */
+let tpData=null, tpSubs=new Set();
+const tpSess=()=>{ try{ return JSON.parse(sessionStorage.getItem(KEY+'-tp')||'null'); }catch(e){ return null; } };
+const tpSaveSess=s=>{ try{ if(s) sessionStorage.setItem(KEY+'-tp', JSON.stringify(s)); else sessionStorage.removeItem(KEY+'-tp'); }catch(e){} };
+async function renderTP(){
+  setHeader('🎓 حسابي', true);
+  const s=tpSess();
+  if(!s) return tpLoginForm();
+  app.innerHTML='<div class="card"><div class="empty">⏳ بنحمّل حسابك…</div></div>';
+  try{ tpData=await cloudPost({k:'tlogin', phone:s.phone, pin:s.pin}); tpShow(); }
+  catch(e){ tpSaveSess(null); tpLoginForm(e.message==='login' ? 'الرقم أو الكود غلط' : 'مفيش نت دلوقتي، جرب تاني'); }
+}
+function tpLoginForm(msg){
+  setHeader('🎓 دخول المدرس', true);
+  app.innerHTML=`<div class="card"><h3 class="sec-t">🔐 دخول المدرس</h3>
+    <p class="hint">ادخل برقم تليفونك والكود اللي المندوب بعته لك.</p>
+    <input id="tp_ph" type="tel" inputmode="numeric" placeholder="رقم التليفون" dir="ltr" style="width:100%;margin-bottom:8px">
+    <input id="tp_pin" type="tel" inputmode="numeric" maxlength="4" placeholder="الكود (4 أرقام)" dir="ltr" style="width:100%;margin-bottom:8px">
+    <button class="btn pri" id="tp_go" style="width:100%">دخول</button>
+    <div id="tp_err" class="small" style="color:#b91c1c;margin-top:8px">${esc(msg||'')}</div></div>`;
+  $('#tp_go').addEventListener('click', tpLogin);
+}
+async function tpLogin(){
+  const phone=last10($('#tp_ph').value), pin=pinOf($('#tp_pin').value);
+  if(phone.length!==10){ $('#tp_err').textContent='اكتب رقم التليفون'; return; }
+  const g=$('#tp_go'); g.disabled=true; $('#tp_err').textContent='⏳ بنتحقق...';
+  try{ tpData=await cloudPost({k:'tlogin', phone, pin}); tpSaveSess({phone, pin}); tpShow(); }
+  catch(e){ g.disabled=false; $('#tp_err').textContent = e.message==='login' ? 'الرقم أو الكود غلط' : 'مفيش نت دلوقتي، جرب تاني'; }
+}
+function tpShow(){
+  const p=tpData.profile||{}, inbox=(tpData.inbox||[]).slice().reverse(), reqs=(tpData.reqs||[]).slice().reverse();
+  setHeader('🎓 حسابي — ' + (p.name||''), true);
+  app.innerHTML=`
+    <div class="card"><h3 class="sec-t">👤 بياناتي</h3>
+      <div class="kv"><span>الاسم</span><b>${esc(p.name||'—')}</b></div>
+      <div class="kv"><span>التليفون</span><b dir="ltr">${esc(p.phone||'—')}</b></div>
+      <div class="kv"><span>القرية</span><b>${esc(p.area||'—')}</b></div>
+      <div class="kv"><span>المواد</span><b>${esc(subjLabel(p.subjects||[])||'—')}</b></div></div>
+    <div class="card"><h3 class="sec-t">📨 الرسائل من المندوب</h3>
+      ${inbox.length ? inbox.map(m=>`<div class="card" style="margin-bottom:8px"><div style="white-space:pre-wrap">${esc(m.txt||'')}</div><div class="small muted">${fmtDT(m.at)}</div>
+        ${m.ask&&m.ask.length ? (m.done ? '<div class="small" style="margin-top:6px">✅ بعتّ التحديث</div>' : `<button class="btn pri sm" style="margin-top:6px" data-tp-upd="${esc(m.id)}">✏️ حدّث بياناتي</button>`) : ''}
+        <div data-tp-form="${esc(m.id)}"></div></div>`).join('') : '<div class="empty small">مفيش رسائل لسه</div>'}</div>
+    ${reqs.length ? `<div class="card"><h3 class="sec-t">🕘 تحديثاتي</h3>${reqs.map(r=>`<div class="hrow"><div class="grow">${fmtDT(r.at)} — <b>${esc(r.status)}</b></div></div>`).join('')}</div>` : ''}
+    <button class="btn ghost" id="tp_out" style="width:100%">خروج</button>`;
+  app.querySelectorAll('[data-tp-upd]').forEach(b=>b.addEventListener('click', ()=>tpForm(b.dataset.tpUpd)));
+  $('#tp_out').addEventListener('click', ()=>{ tpSaveSess(null); tpData=null; renderTP(); });
+}
+function tpForm(msgId){
+  const m=(tpData.inbox||[]).find(x=>x.id===msgId), box=app.querySelector(`[data-tp-form="${msgId}"]`);
+  if(!m || !box) return;
+  const p=tpData.profile||{}, ask=m.ask||[], villages=IDARAT[p.idara]||[];
+  tpSubs=new Set(p.subjects||[]);
+  box.innerHTML=`<div class="card" style="margin-top:8px">
+    ${ask.includes('name')?`<label class="small">الاسم</label><input id="tpf_name" value="${esc(p.name||'')}" style="width:100%;margin-bottom:8px">`:''}
+    ${ask.includes('phone')?`<label class="small">التليفون</label><input id="tpf_phone" type="tel" inputmode="numeric" dir="ltr" value="${esc(p.phone||'')}" style="width:100%;margin-bottom:8px">`:''}
+    ${ask.includes('area')?`<label class="small">القرية</label><input id="tpf_area" list="tpf_vl" value="${esc(p.area||'')}" style="width:100%;margin-bottom:8px"><datalist id="tpf_vl">${villages.map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`:''}
+    ${ask.includes('subjects')?`<label class="small">المواد اللي بتدرّسها</label><div class="chips">${Object.entries(TP_SUBJ).map(([k,n])=>`<button type="button" class="chip ${tpSubs.has(k)?'on':''}" data-tps="${k}">${n}</button>`).join('')}</div>`:''}
+    <button class="btn ok" id="tpf_go" style="width:100%;margin-top:8px">📤 ابعت التحديث للمندوب</button></div>`;
+  box.querySelectorAll('[data-tps]').forEach(b=>b.addEventListener('click', ()=>{ const k=b.dataset.tps; tpSubs.has(k)?tpSubs.delete(k):tpSubs.add(k); b.classList.toggle('on', tpSubs.has(k)); }));
+  box.querySelector('#tpf_go').addEventListener('click', ()=>tpSubmit(msgId, ask));
+}
+async function tpSubmit(msgId, ask){
+  const s=tpSess(); if(!s) return renderTP();
+  const data={};
+  if(ask.includes('name')) data.name=($('#tpf_name')?.value||'').trim();
+  if(ask.includes('phone')) data.phone=$('#tpf_phone')?.value||'';
+  if(ask.includes('area')) data.area=($('#tpf_area')?.value||'').trim();
+  if(ask.includes('subjects')){ data.subjects=[...tpSubs]; if(!data.subjects.length){ alert('اختار مادة واحدة على الأقل'); return; } }
+  if(ask.includes('phone') && last10(data.phone).length!==10){ alert('اكتب رقم تليفون صح (11 رقم)'); return; }
+  const btn=$('#tpf_go'); if(btn) btn.disabled=true;
+  try{ await cloudPost({k:'tupd', phone:s.phone, pin:s.pin, msgId, data}); alert('✅ اتبعت التحديث للمندوب'); renderTP(); }
+  catch(e){ alert(e.message==='nochange' ? 'مفيش تعديل اتعمل' : 'ما اتبعتش — جرب تاني'); if(btn) btn.disabled=false; }
 }
 
 /* ---------- رسائل للمدرسين (واتساب واحد ورا التاني) ---------- */
@@ -4343,6 +4543,14 @@ document.addEventListener('click', e=>{
   switch(el.dataset.act){
     case 'reg-visit': regVisit(el.dataset.k); break;
     case 'bell': bellModal(); break;
+    case 'rreq-ok': rreqAct(el.dataset.id, true); break;
+    case 'rreq-no': rreqAct(el.dataset.id, false); break;
+    case 'sent-f': sentF[el.dataset.k]=el.dataset.v; renderSent(); break;
+    case 'sent-ask': { const k=el.dataset.v; sentAsk.has(k)?sentAsk.delete(k):sentAsk.add(k); renderSent(); break; }
+    case 'sent-all': for(const t of sentShown()) if(t.phone) sentSel.add(t.id); sentDraw(); break;
+    case 'sent-none': for(const t of sentShown()) sentSel.delete(t.id); sentDraw(); break;
+    case 'sent-send': sentSend(); break;
+    case 'sent-codes': sentCodes(); break;
     case 'req-add': { const inp=$('#rq_t'), v=(inp?.value||'').trim(); if(!v){ toast('اكتب الطلب الأول'); break; }
       (db.reqs ||= []).push({id:uid(), t:el.dataset.id, txt:v, at:new Date().toISOString(), done:false}); save(); render(); toast('🔔 الطلب اتسجّل وظاهر في الجرس'); break; }
     case 'req-done': { const r=(db.reqs||[]).find(x=>x.id===el.dataset.id); if(!r) break; const open=!!document.getElementById('bellM');
