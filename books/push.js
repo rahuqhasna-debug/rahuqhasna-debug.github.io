@@ -1,6 +1,34 @@
-// إشعارات الموبايل (OneSignal) — بتشتغل لما ONESIGNAL_APP_ID يتحط في config.js. لحد كده مفيش حاجة بتحصل.
+// إشعارات الموبايل (OneSignal Web Push) — بتشتغل لما ONESIGNAL_APP_ID يتحط في config.js.
+// كل مدرس = external_id «t-<id>»، كل مندوب/مالك = «s-<staff id>». الإرسال عن طريق Apps Script (kind:'push') عشان المفتاح السري مايبانش.
 (function () {
   const C = window.SILAH_CONFIG || {};
   if (!C.ONESIGNAL_APP_ID) return;
-  // هيتكمل في خطوة الإشعارات
+  const CLOUD = C.CLOUD_URL;
+  const BASE = location.href.split('#')[0].replace(/[^/]*$/, '');
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  const s = document.createElement('script'); s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js'; s.defer = true; document.head.appendChild(s);
+  const scope = new URL(BASE).pathname;   // /books/
+  const ready = new Promise(res => OneSignalDeferred.push(async OS => {
+    try { await OS.init({ appId: C.ONESIGNAL_APP_ID, serviceWorkerPath: scope.slice(1) + 'sw.js', serviceWorkerParam: { scope }, notifyButton: { enable: false } }); } catch (e) { }
+    res(OS);
+  }));
+  async function link(ext, ask) {
+    const OS = await ready;
+    try { if (ask && !OS.Notifications.permission) await OS.Notifications.requestPermission(); } catch (e) { }
+    try { await OS.login(ext); } catch (e) { }
+  }
+  function send(to, title, body, url, ring) {
+    if (!CLOUD) return Promise.resolve();
+    return fetch(CLOUD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'push', to, title, body, url, ring: !!ring }) }).catch(() => { });
+  }
+
+  // المدرس (teacher.html بيحط window.TP بعد التحميل)
+  window.pushInit = async () => { if (window.TP) await link('t-' + TP.id, true); };
+  window.pushReady = () => { if (window.TP && 'Notification' in window && Notification.permission === 'granted') link('t-' + TP.id, false); };
+  window.pushNotifyRep = text => window.TP && TP.rep ? send(['s-' + TP.rep], 'سلاح التلميذ', text, BASE + 'admin.html#/bell', false) : Promise.resolve();
+
+  // المندوب / المالك (admin.html)
+  window.pushInitStaff = async me => link('s-' + me.id, true);
+  window.pushToTeacher = (t, text, ring) => send(['t-' + t.id], ring ? '🔔 سلاح التلميذ' : 'سلاح التلميذ', text, BASE + 'teacher.html#v=msgs', ring);
+  if (window.TP) window.pushReady();
 })();

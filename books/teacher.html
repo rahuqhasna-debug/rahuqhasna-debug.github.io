@@ -48,7 +48,12 @@ async function load() {
     const { data, error } = await sb.rpc('t_get', { p_code: code });
     if (error) throw error;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
-    D = data; $('#tabs').hidden = false; render();
+    const first = !D; D = data; $('#tabs').hidden = false; render();
+    if (first) {
+      const { data: rep } = await sb.rpc('t_rep', { p_code: code });
+      window.TP = { id: D.id, rep, name: D.name }; window.pushReady && window.pushReady();
+      if (D.unread && window.pushNotifyRep) window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك');
+    }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
 }
 function go(v) { view = v; render(); scrollTo(0, 0); }

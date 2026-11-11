@@ -1,5 +1,7 @@
 // سلاح التلميذ البحيرة — يخلّي البرنامج يفتح من غير نت
-const CACHE = 'books-v4';
+// إشعارات الموبايل (OneSignal) — لو النت مش موجود وقت التسطيب ما يوقفش البرنامج
+try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
+const CACHE = 'books-v5';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
