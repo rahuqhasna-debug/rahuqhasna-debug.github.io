@@ -48,7 +48,7 @@ async function load() {
     const { data, error } = await sb.rpc('t_get', { p_code: code });
     if (error) throw error;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
-    const first = !D; D = data; $('#tabs').hidden = false; render();
+    const first = !D; D = data; $('#tabs').hidden = false; render(); setBadge();
     if (first) {
       const { data: rep } = await sb.rpc('t_rep', { p_code: code });
       window.TP = { id: D.id, rep, name: D.name }; window.pushReady && window.pushReady();
@@ -57,6 +57,11 @@ async function load() {
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
 }
 function go(v) { view = v; render(); scrollTo(0, 0); }
+// عدد الجديد على أيقونة البرنامج (في الموبايلات اللي بتسمح)
+function setBadge() {
+  const n = (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
+  try { if (navigator.setAppBadge) n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } catch (e) { }
+}
 function render() {
   clearInterval(pollT); $('#cbar').innerHTML = '';
   $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
@@ -134,7 +139,7 @@ async function pullMsgs(first) {
   const box = $('#chat'); if (!box) return;
   box.innerHTML = msgs.map(bubble).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
   if (first || data.length) scrollTo(0, document.body.scrollHeight);
-  D.unread = 0; $('#msgCnt').hidden = true;
+  D.unread = 0; $('#msgCnt').hidden = true; setBadge();
 }
 function renderMsgs() {
   app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
@@ -177,11 +182,13 @@ function orderDlg() {
   });
 }
 function renderBooks() {
-  const bk = D.books || [];
+  // لو فيه طلب تعديل كمية مستني: الكمية الجديدة تبان على طول وجنبها «⏳ في انتظار الموافقة»
+  const pe = D.orders.find(o => o.kind === 'edit' && o.status === 'pending');
+  const bk = (D.books || []).map(x => { const n = pe && (pe.items || []).find(i => i.b === x.b); return n ? { ...x, q: n.q, pend: n.q !== x.q } : x; });
   const ost = { pending: '<span class="pill owe">⏳ مستني</span>', approved: '<span class="pill ok">✅ اتوافق</span>', rejected: '<span class="pill bad">❌ اترفض</span>' };
   app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
     <div class="card"><h3>📚 الكتب اللي حضرتك طلبتها</h3>
-    ${bk.length ? `<div class="small muted" style="margin-bottom:6px">لو عايز تغيّر الكمية، عدّلها وابعت طلب تعديل للمندوب.</div><div id="bl">${bk.map(x => qtyRow(x.b, x.l || bookLabel(x.b), x.q)).join('')}</div>
+    ${bk.length ? `<div class="small muted" style="margin-bottom:6px">لو عايز تغيّر الكمية، عدّلها وابعت طلب تعديل للمندوب.</div>${pe ? '<div class="note small" style="padding:8px">⏳ تعديل الكميات بتاعك في انتظار موافقة المندوب</div>' : ''}<div id="bl">${bk.map(x => qtyRow(x.b, x.l || bookLabel(x.b), x.q, x.pend ? '⏳ في انتظار الموافقة' : '')).join('')}</div>
       <button class="btn owe" id="be" style="width:100%;margin-top:10px">✏️ ابعت طلب تعديل الكمية</button>` : '<div class="small muted">لسه مفيش كتب متسجلة لحضرتك.</div>'}</div>
     ${D.orders.length ? `<div class="card"><h3>طلباتك</h3>${D.orders.map(o => `<div class="kv" style="display:block">${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ تعديل كمية'} ${ost[o.status] || ''} <span class="small muted">${fmtDate(o.at)}</span>
       <div class="small">${esc((o.items || []).map(i => `${i.l || bookLabel(i.b)}: ${i.q}`).join('، '))}</div>${o.reason ? `<div class="small">السبب: ${esc(o.reason)}</div>` : ''}</div>`).join('')}</div>` : ''}`;
@@ -189,8 +196,8 @@ function renderBooks() {
   const bl = $('#bl'); if (!bl) return; bindQty(bl);
   $('#be').onclick = async () => {
     // بنبعت الطلب كله (كل الكتب بالقديم والجديد) عشان المندوب يشوفه على بعضه
-    const now = readQty(bl), all = now.map(x => ({ ...x, l: bookLabel(x.b), was: (bk.find(y => y.b === x.b) || {}).q || 0 }));
-    if (!all.some(x => x.q !== x.was)) return toast('مفيش تغيير');
+    const now = readQty(bl), all = now.map(x => ({ ...x, l: bookLabel(x.b), was: ((D.books || []).find(y => y.b === x.b) || {}).q || 0 }));
+    if (!all.some(x => x.q !== x.was) || (pe && all.every(x => ((pe.items || []).find(i => i.b === x.b) || {}).q === x.q))) return toast('مفيش تغيير');
     const ch = all;
     const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'edit', p_items: ch, p_note: null });
     if (error) return toast(errMsg(error));

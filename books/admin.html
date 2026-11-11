@@ -32,7 +32,7 @@
 "use strict";
 const sb = makeClient(true);
 const app = $('#app');
-let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, lastMsg = {}, pollT = null;
+let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, lastMsg = {}, ordersBy = {}, pollT = null;
 const ui = { q: '', filter: 'all', rep: '', selMode: false, sel: new Set(), shown: 200, bellTab: 'msgs', invQ: '', invSel: new Set() };
 const isAdmin = () => me && me.role === 'admin';
 const MB = 1048576, GKEY = 'selah-books-v1';
@@ -189,8 +189,9 @@ async function loadAll() {
     fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
     fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'pending')),
     isAdmin() ? fetchAll(() => sb.from('staff').select('id,name,role,active').order('created_at')) : Promise.resolve([me]),
-    fetchAll(() => sb.from('messages').select('id,teacher_id,body,created_at').eq('from_teacher', true).is('read_at', null).order('id'))
-  ]);
+    fetchAll(() => sb.from('messages').select('id,teacher_id,body,created_at').eq('from_teacher', true).is('read_at', null).order('id')),
+    fetchAll(() => sb.from('orders').select('teacher_id').eq('status', 'pending'))
+  ]).then(r => { ordersBy = {}; r[5].forEach(x => ordersBy[x.teacher_id] = (ordersBy[x.teacher_id] || 0) + 1); return r; });
   T = t; staffList = s; notesBy = {}; n.forEach(x => (notesBy[x.teacher_id] ||= []).push(x.body));
   pendSet = new Set(p.map(x => x.teacher_id)); unreadBy = {}; lastMsg = {};
   u.forEach(x => { unreadBy[x.teacher_id] = (unreadBy[x.teacher_id] || 0) + 1; lastMsg[x.teacher_id] = { b: x.body, id: x.id, at: x.created_at }; });
@@ -238,7 +239,8 @@ async function importGreen() {
 function filtered() {
   const q = norm(ui.q);
   // اللي بعتوا رسايل جديدة فوق (الأحدث الأول)
-  const rank = t => lastMsg[t.id] ? lastMsg[t.id].id : 0;
+  // اللي عندهم رسايل أو طلبات جديدة فوق
+  const rank = t => (lastMsg[t.id] || ordersBy[t.id] ? 1e12 : 0) + (lastMsg[t.id] ? lastMsg[t.id].id : 0) + (ordersBy[t.id] || 0);
   return T.filter(t => {
     if (ui.rep && t.rep_id !== ui.rep) return false;
     if (ui.filter === 'notes' && !notesBy[t.id]) return false;
@@ -284,10 +286,10 @@ function viewList() {
 function tItem(t) {
   const pr = t.profile || {}, nn = (notesBy[t.id] || []).length, un = unreadBy[t.id] || 0;
   const lm = lastMsg[t.id];
-  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" ${un ? 'style="border-color:#16a34a;background:color-mix(in srgb,#16a34a 8%,var(--card))"' : ''}>${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)}${un ? ` <span style="background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">${un}</span>` : ''}</div>
+  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" ${un ? 'style="border-color:#16a34a;background:color-mix(in srgb,#16a34a 8%,var(--card))"' : ''}>${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)}${un ? ` <span style="background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">💬 ${un}</span>` : ''}${ordersBy[t.id] ? ` <span style="background:#ea580c;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">🛒 ${ordersBy[t.id]} طلب</span>` : ''}</div>
     ${lm ? `<div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
     <div class="sub">${esc([t.phone, valText('subjects', pr.subjects), pr.area].filter(x => x && x !== '—').join(' · '))}${isAdmin() ? ' · ' + esc(repName(t.rep_id)) : ''}</div></div>
-    ${pendSet.has(t.id) ? '<span class="pill owe">⏳</span>' : ''}${nn ? `<span class="pill new">📌${nn}</span>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔</span>'}${t.last_seen ? '' : '<span class="pill new">لسه ما فتحش</span>'}
+    ${pendSet.has(t.id) ? '<span class="pill owe" title="تعديل ملف">⏳</span>' : ''}${nn ? `<span class="pill new">📌${nn}</span>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔</span>'}${t.last_seen ? '' : '<span class="pill new">لسه ما فتحش</span>'}
     <button class="btn sm ${un ? 'danger' : 'ghost'}" data-chat>💬${un ? ' ' + un : ''}</button></div>`;
 }
 function drawSelbar() {
@@ -447,12 +449,12 @@ async function viewTeacher(id) {
       ${isAdmin() ? `<div class="small muted">المندوب: ${esc(repName(t.rep_id))}</div>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
     <div style="margin-top:10px">${FIELDS.filter(f => !['name', 'avatar', 'phone'].includes(f.k)).map(f => `<div class="kv"><span>${FIELD_LABEL[f.k]}</span><span>${fmtVal(f.k, pr[f.k])}</span></div>`).join('')}</div>
     ${(t.books || []).length ? `<div class="kv"><span>الكتب المسجلة</span><span class="small">${esc(t.books.map(b => `${b.l || bookLabel(b.b)}: ${b.q}`).join('، '))}</span></div>` : ''}
-    <div class="acts"><a class="btn sm pri" href="#/c/${t.id}">💬 المحادثة</a><button class="btn sm" id="ed">✏️ تعديل مباشر</button>
-      ${t.phone ? `<a class="btn sm ok" target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t))}">🟢 ابعت الرابط</a>` : ''}<button class="btn sm" id="cp">🔗 انسخ الرابط</button>
-      ${inGreen ? `<a class="btn sm ghost" href="index.html#/t/${encodeURIComponent(t.local_id)}">📒 صفحته في البرنامج</a>` : ''}
-      <button class="btn sm owe" id="ru">🔄 اطلب تحديث</button><button class="btn sm ghost" id="en">${t.enabled ? '⛔ إيقاف الرابط' : '✅ تفعيل الرابط'}</button>
-      <button class="btn sm ghost" id="nc">♻️ رابط جديد</button>
-      ${isAdmin() ? '<button class="btn sm ghost" id="tr">🔁 نقل لمندوب</button><button class="btn sm danger" id="del">🗑️ حذف</button>' : ''}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <a class="btn pri" style="text-align:center" href="#/c/${t.id}">💬 محادثة سلاح التلميذ</a>
+      ${t.phone ? `<a class="btn ok" style="text-align:center" target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}">🟢 محادثة واتساب</a>` : '<span></span>'}
+      <button class="btn owe" id="ru">🔄 اطلب تحديث</button>
+      ${inGreen ? `<a class="btn ghost" style="text-align:center" href="index.html#/t/${encodeURIComponent(t.local_id)}">📒 صفحته في البرنامج</a>` : '<span></span>'}
+      ${isAdmin() && staffList.filter(s => s.active).length > 1 ? '<button class="btn ghost" id="tr" style="grid-column:1/-1">🔁 نقل لمندوب تاني</button>' : ''}</div></div>
   ${uR.data.length ? `<div class="alert"><h3>طلبات تحديث مفتوحة</h3>${uR.data.map(u => `<div class="kv"><span>${esc(u.fields.map(k => FIELD_LABEL[k] || k).join('، '))}${u.note ? ' — ' + esc(u.note) : ''}<br><span class="small">${fmtDate(u.created_at)}</span></span><button class="btn sm ghost" data-ucancel="${u.id}">إلغاء</button></div>`).join('')}</div>` : ''}
   <div id="reqs">${eR.data.map(e => reviewCard({ ...e, teachers: { name: t.name, avatar: t.avatar, local_id: t.local_id } }, true)).join('')}${oR.data.map(o => orderCard({ ...o, teachers: { name: t.name, local_id: t.local_id } }, true)).join('')}</div>
   <div class="card"><h3>📌 رسائل المدرس <span class="small muted">(ليك بس، المدرس مش بيشوفها)</span></h3>
@@ -462,24 +464,11 @@ async function viewTeacher(id) {
       <span style="flex:1;color:var(--ink)">${n.kind === 'msg' ? `💬 <b>${esc(n.sender || '')}</b>: ` : '📝 '}${esc(n.body)}<br><span class="small muted">${fmtDate(n.msg_at || n.created_at)}</span></span></label>`).join('') || '<div class="small muted">لسه مفيش</div>'}</div></div>
   <details class="card"><summary><b>🧾 سجل التعديلات (${aR.data.length})</b></summary>${aR.data.map(a => `<div class="kv" style="display:block"><b>${esc(a.action)}</b> <span class="small muted">— ${esc(a.actor_name || '')} · ${fmtDate(a.created_at)}</span><div class="small">${auditDetails(a.details)}</div></div>`).join('') || '<div class="small muted">فاضي</div>'}</details>`;
 
-  $('#ed').onclick = () => directEdit(t);
-  $('#cp').onclick = () => copyText(link);
   $('#ru').onclick = () => reqUpdateDlg([t.id]);
-  $('#en').onclick = async () => { const { error } = await sb.from('teachers').update({ enabled: !t.enabled }).eq('id', t.id); if (error) return toast(errMsg(error)); await refresh(); };
-  $('#nc').onclick = async () => {
-    if (!confirm('الرابط القديم هيبطل يشتغل. متأكد؟')) return;
-    const { error } = await sb.from('teachers').update({ invite_code: Math.random().toString(36).slice(2, 7) + Math.random().toString(36).slice(2, 7) }).eq('id', t.id);
-    if (error) return toast(errMsg(error)); await refresh(); toast('اتعمل رابط جديد — ابعته للمدرس');
-  };
-  const tr = $('#tr'); tr && (tr.onclick = () => modal(`<h3>🔁 نقل ${esc(t.name)}</h3><div class="field"><label>المندوب</label><select id="repSel">${staffList.filter(s => s.active).map(s => `<option value="${s.id}" ${s.id === t.rep_id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+  const tr = $('#tr'); tr && (tr.onclick = () => modal(`<h3>🔁 نقل ${esc(t.name)} لمندوب تاني</h3><div class="field"><label>اختار المندوب</label><select id="repSel">${staffList.filter(s => s.active).map(s => `<option value="${s.id}" ${s.id === t.rep_id ? 'selected' : ''}>${esc(s.name)}${s.id === t.rep_id ? ' (الحالي)' : ''}</option>`).join('')}</select></div>
     <div class="acts"><button class="btn pri" id="trs">نقل</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
     $('#trs', box).onclick = async () => { const { error } = await sb.from('teachers').update({ rep_id: $('#repSel', box).value }).eq('id', t.id); if (error) return toast(errMsg(error)); close(); await refresh(); toast('اتنقل ✅'); };
   }));
-  const dl = $('#del'); dl && (dl.onclick = async () => {
-    if (!confirm(`حذف ${t.name} من المراسلات نهائيًا؟ (البرنامج نفسه ما بيتأثرش)`)) return;
-    const { error } = await sb.from('teachers').delete().eq('id', t.id); if (error) return toast(errMsg(error));
-    await loadAll(); location.hash = '#/';
-  });
   $$('[data-ucancel]').forEach(b => b.onclick = async () => { await sb.from('update_requests').update({ status: 'done', done_at: new Date().toISOString() }).eq('id', b.dataset.ucancel); route(); });
   $('#ns').onclick = async () => {
     const body = $('#nt').value.trim(); if (!body) return;

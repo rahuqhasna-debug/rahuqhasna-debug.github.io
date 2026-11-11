@@ -994,9 +994,23 @@ function owedLine(ents){
   return Object.entries(by).map(([sb,l])=>`${SUBJ[sb]}: `+l.map(e=>{const p=bookParts(e.b); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`+(e.q>1?` (${e.q})`:'');}).join('، ')).join(' • ');
 }
 function phoneBtns(t){
-  if(!t.phone) return '';
-  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico" data-act="noop" href="https://wa.me/2${esc(t.phone)}" target="_blank" rel="noopener" title="واتساب">💬</a>`;
+  // 📨 = رسايل عبر تطبيق سلاح التلميذ (بتظهر بس للي داخل «💬 المراسلات» بالرقم السري على الموبايل ده)
+  const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>` : '';
+  if(!t.phone) return app;
+  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico" data-act="noop" href="https://wa.me/2${esc(t.phone)}" target="_blank" rel="noopener" title="واتساب">🟢</a>${app}`;
 }
+/* خريطة: id المدرس في البرنامج ← id بتاعه في المراسلات (عشان أيقونة 📨 تفتح الشات بتاعه على طول) */
+var sbIds = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-ids')||'{}'); }catch(e){ return {}; } })();
+function sbHas(){ try{ const s=JSON.parse(localStorage.getItem('selah-trial-auth')||'null'); return !!(s && s.refresh_token && window.SILAH_CONFIG); }catch(e){ return false; } }
+async function sbMapPull(){
+  try{
+    if(!sbHas() || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
+    const m={};
+    for(let i=0;;i+=1000){ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select=id,local_id&local_id=not.is.null',{headers:{...S.h, Range:`${i}-${i+999}`}}); if(!r.ok) return; const j=await r.json(); j.forEach(x=>m[x.local_id]=x.id); if(j.length<1000) break; }
+    sbIds=m; try{ localStorage.setItem('selah-trial-ids', JSON.stringify(m)); }catch(e){}
+  }catch(e){}
+}
+setTimeout(sbMapPull, 4000); setInterval(sbMapPull, 10*60000);
 function teacherCard(t, x, extra=''){
   const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
   // أبيض = ما استلمش، برتقاني = استلم وباقيله، أخضر = خلّص
@@ -4296,7 +4310,7 @@ async function pullSbBell(){
     if(s.expires_at && s.expires_at*1000<Date.now()+60000){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
     const r=await fetch(c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:{apikey:c.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:'{}'});
     if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0);
-    if(n>sbBell) try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){}
+    if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} try{ new Audio('ring.mp3').play().catch(()=>{}); }catch(e){} }
     sbBell=n; updateBell();
   }catch(e){}
 }
@@ -4574,14 +4588,15 @@ async function sbLinks(list){
   const me=await (await fetch(S.c.SUPABASE_URL+'/rest/v1/staff?select=id&user_id=eq.'+S.s.user.id,{headers:S.h})).json();
   if(!Array.isArray(me) || !me[0]) throw new Error('login');
   const rep=me[0].id, codes={}, base=new URL('teacher.html', location.href).href;
-  const get=async ids=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select=local_id,invite_code&rep_id=eq.'+rep+'&local_id=in.('+ids.map(encodeURIComponent).join(',')+')',{headers:S.h}); const j=await r.json(); if(!r.ok) throw new Error(j.message||'err'); j.forEach(x=>codes[x.local_id]=x.invite_code); };
+  const get=async ids=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select=id,local_id,invite_code&rep_id=eq.'+rep+'&local_id=in.('+ids.map(encodeURIComponent).join(',')+')',{headers:S.h}); const j=await r.json(); if(!r.ok) throw new Error(j.message||'err'); j.forEach(x=>{ codes[x.local_id]=x.invite_code; sbIds[x.local_id]=x.id; }); };
   for(let i=0;i<list.length;i+=80) await get(list.slice(i,i+80).map(t=>t.id));
   const miss=list.filter(t=>!codes[t.id]);
   for(let i=0;i<miss.length;i+=200){
     const rows=miss.slice(i,i+200).map(t=>({rep_id:rep, local_id:t.id, name:t.name, phone:t.phone||'', profile:sbProfile(t), books:sbBooks(t.id)}));
     const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?on_conflict=rep_id,local_id',{method:'POST',headers:{...S.h, Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(rows)});
-    const j=await r.json(); if(!r.ok) throw new Error(j.message||'err'); j.forEach(x=>codes[x.local_id]=x.invite_code);
+    const j=await r.json(); if(!r.ok) throw new Error(j.message||'err'); j.forEach(x=>{ codes[x.local_id]=x.invite_code; sbIds[x.local_id]=x.id; });
   }
+  try{ localStorage.setItem('selah-trial-ids', JSON.stringify(sbIds)); }catch(e){}
   const out={}; for(const t of list) if(codes[t.id]) out[t.id]=base+'#c='+codes[t.id]; return out;
 }
 async function msgSend(){
