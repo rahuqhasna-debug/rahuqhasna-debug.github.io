@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>سلاح التلميذ - المدرس</title>
+<link rel="manifest" href="teacher.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="common.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+</head>
+<body>
+<header class="top"><div class="in"><h1 id="title">سلاح التلميذ</h1><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
+<main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
+<div id="cbar"></div>
+<nav class="tabs" id="tabs" hidden>
+  <a data-v="home"><span class="i">🏠</span>الرئيسية<span class="cnt" id="homeCnt" hidden></span></a>
+  <a data-v="msgs"><span class="i">💬</span>الرسائل<span class="cnt" id="msgCnt" hidden></span></a>
+  <a data-v="books" id="booksTab" hidden><span class="i">📚</span>كتبي</a>
+  <a data-v="me"><span class="i">👤</span>ملفي</a>
+</nav>
+<script>
+"use strict";
+const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode';
+(function () {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
+  if (h.get('c')) { LS.set(TCODE, h.get('c').trim()); history.replaceState(null, '', location.pathname + (h.get('v') ? '#v=' + h.get('v') : '')); }
+})();
+const code = LS.get(TCODE);
+const sb = makeClient(false, TCFG);
+const app = $('#app');
+let D = null, view = (new URLSearchParams(location.hash.slice(1)).get('v')) || 'home', newPhotos = [], st = {}, msgs = [], lastId = 0, pollT = null, instEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; if (view === 'home' && D) renderHome(); });
+
+const vals = () => ({ ...(D.profile || {}), avatar: D.avatar || '' });
+const prices = () => (D.prices && D.prices.items) || [];
+function ding() { try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { } try { const a = new Audio('ring.mp3'); a.play().catch(() => { }); } catch (e) { } }
+
+async function load() {
+  if (!sb) { app.innerHTML = '<div class="alert">البرنامج لسه مش متظبط. كلّم المندوب.</div>'; return; }
+  if (!code) { app.innerHTML = '<div class="alert"><h3>افتح الرابط اللي وصلك من المندوب</h3>الرابط ده لازم يكون فيه الكود الخاص بيك.</div>'; return; }
+  try {
+    const { data, error } = await sb.rpc('t_get', { p_code: code });
+    if (error) throw error;
+    if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
+    D = data; $('#tabs').hidden = false; render();
+  } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
+}
+function go(v) { view = v; render(); scrollTo(0, 0); }
+function render() {
+  clearInterval(pollT); $('#cbar').innerHTML = '';
+  $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
+  const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
+  $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
+  $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
+  $('#booksTab').hidden = !((D.books || []).length || D.orders.length || canOrder(D.profile));
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي' }[view] || 'أهلًا ' + (D.name || '');
+  if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else renderHome();
+}
+const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
+const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIELD_LABEL[k] || k}</span><span>${fmtVal(k, o[k])}</span></div>`).join('');
+
+function renderHome() {
+  const v = vals();
+  let h = `<div class="card" style="display:flex;align-items:center;gap:12px">${v.avatar ? `<img class="av lg" src="${v.avatar}" alt="">` : '<span class="av lg">👤</span>'}
+    <div><b style="font-size:19px">${esc(D.name)}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
+  const standalone = matchMedia('(display-mode: standalone)').matches;
+  const notif = 'Notification' in window ? Notification.permission : 'unsupported';
+  if (!standalone || notif === 'default') h += `<div class="note"><b>📲 ثبّت البرنامج على موبايلك وفعّل الإشعارات</b><div class="small" style="margin:4px 0 8px">عشان توصلك رسايل الأستاذ ${esc(D.rep || '')} أول بأول.</div>
+    <button class="btn owe" id="setup">✅ ثبّت وفعّل الإشعارات</button>${/iphone|ipad/i.test(navigator.userAgent) ? '<div class="small" style="margin-top:6px">على الآيفون: زرار المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية».</div>' : ''}</div>`;
+  if (D.unread) h += `<div class="alert"><h3>💬 عندك ${D.unread} رسالة جديدة</h3><button class="btn danger" onclick="go('msgs')">افتح الرسائل ←</button></div>`;
+  for (const u of D.updates) h += `<div class="alert"><h3>📝 مطلوب تحديث بياناتك</h3>${esc(fieldsTxt(u.fields || []))}${u.note ? `<div style="margin-top:6px">«${esc(u.note)}»</div>` : ''}
+    <div class="acts"><button class="btn danger" onclick="go('me')">حدّث دلوقتي ←</button></div></div>`;
+  const p = D.pending;
+  if (p && p.status === 'question') h += `<div class="note"><h3 style="margin:0 0 6px">❓ سؤال من المندوب على تعديلك</h3>«${esc(p.reason || '')}»
+    <textarea id="reply" placeholder="اكتب ردك هنا…" style="margin-top:8px"></textarea>
+    <div class="acts"><button class="btn owe" id="sendReply">ابعت الرد</button><button class="btn ghost" onclick="go('me')">عدّل ملفي</button></div></div>`;
+  else if (p) h += `<div class="note"><b>⏳ تعديلك في انتظار المراجعة</b><div class="small" style="margin-top:4px">${esc(fieldsTxt(Object.keys(p.new_values || {})))}${p.photos ? ` + ${p.photos} صورة` : ''}</div></div>`;
+  for (const o of D.orders.filter(o => o.status !== 'pending').slice(0, 3)) h += `<div class="${o.status === 'approved' ? 'good' : 'alert'}">${o.status === 'approved' ? '✅ اتوافق على' : '❌ اترفض'} ${o.kind === 'order' ? 'طلب الكتب' : 'تعديل الكميات'}${o.reason ? ' — ' + esc(o.reason) : ''}<div class="small">${fmtDate(o.at)}</div></div>`;
+  if (D.decisions.length) {
+    h += '<div class="card"><h3>آخر القرارات على تعديلاتك</h3>';
+    for (const d of D.decisions) {
+      if (d.status === 'rejected') h += `<div class="alert" style="margin:8px 0 0">❌ اترفض تعديل (${esc(fieldsTxt(Object.keys(d.new_values || {})))})${d.reason ? `<br>السبب: ${esc(d.reason)}` : ''}<div class="small">${fmtDate(d.at)}</div></div>`;
+      else {
+        const edited = Object.keys(d.final_values || {}).filter(k => JSON.stringify(d.final_values[k]) !== JSON.stringify((d.new_values || {})[k]));
+        h += `<div class="good" style="margin:8px 0 0">✅ اتوافق على تعديلك (${esc(fieldsTxt(Object.keys(d.final_values || {})))})
+          ${edited.length ? `<div class="small" style="margin-top:4px">✏️ المندوب عدّل قبل الموافقة:</div>${valsList(Object.fromEntries(edited.map(k => [k, d.final_values[k]])))}` : ''}
+          ${d.reason ? `<div class="small">ملاحظة: ${esc(d.reason)}</div>` : ''}<div class="small">${fmtDate(d.at)}</div></div>`;
+      }
+    }
+    h += '</div>';
+  }
+  if (!D.updates.length && !p && !D.decisions.length && !D.unread) h += '<div class="card empty">مفيش جديد 👌<br><button class="btn" style="margin-top:10px" onclick="go(\'me\')">افتح ملفي</button></div>';
+  app.innerHTML = h;
+  const su = $('#setup'); su && (su.onclick = setupApp);
+  const sr = $('#sendReply');
+  sr && (sr.onclick = async () => {
+    const r = $('#reply').value.trim(); if (!r) return toast('اكتب الرد الأول');
+    sr.disabled = true;
+    const { error } = await sb.rpc('t_submit', { p_code: code, p_values: {}, p_photos: [], p_reply: r });
+    if (error) { sr.disabled = false; return toast(errMsg(error)); }
+    toast('اتبعت ✅'); load();
+  });
+}
+async function setupApp() {
+  try { if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission(); } catch (e) { }
+  if (window.pushInit) try { await window.pushInit(); } catch (e) { }
+  if (instEvt) { instEvt.prompt(); try { await instEvt.userChoice; } catch (e) { } instEvt = null; }
+  else if (!matchMedia('(display-mode: standalone)').matches) toast('من قايمة Chrome (⋮) اختار «تثبيت التطبيق» أو «إضافة للشاشة الرئيسية»', 5000);
+  renderHome();
+}
+
+/* ---------- الرسائل ---------- */
+function bubble(m) {
+  if (m.kind === 'ring') return `<div class="bub ring">🔔 الأستاذ ${esc(m.sender || D.rep || '')} بينبّهك<span class="tm">${fmtDate(m.at)}</span></div>`;
+  return `<div class="bub ${m.me ? 'me' : 'them'}">${esc(m.body)}<span class="tm">${fmtDate(m.at)}${m.me ? (m.read ? ' ✓✓' : ' ✓') : ''}</span></div>`;
+}
+async function pullMsgs(first) {
+  const { data, error } = await sb.rpc('t_msgs', { p_code: code, p_after: first ? 0 : lastId });
+  if (error) return;
+  if (first) msgs = data; else if (data.length) { msgs = msgs.concat(data); if (data.some(m => !m.me)) ding(); }
+  if (msgs.length) lastId = msgs[msgs.length - 1].id;
+  const box = $('#chat'); if (!box) return;
+  box.innerHTML = msgs.map(bubble).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
+  if (first || data.length) scrollTo(0, document.body.scrollHeight);
+  D.unread = 0; $('#msgCnt').hidden = true;
+}
+function renderMsgs() {
+  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
+    <div class="small muted" style="text-align:center">الرسائل كتابة بس</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
+  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`;
+  const o = $('#ord'); o && (o.onclick = orderDlg);
+  $('#ms').onclick = async () => {
+    const t = $('#mt').value.trim(); if (!t) return;
+    $('#ms').disabled = true;
+    const { error } = await sb.rpc('t_send', { p_code: code, p_body: t });
+    $('#ms').disabled = false;
+    if (error) return toast(errMsg(error));
+    $('#mt').value = ''; pullMsgs(false); window.pushNotifyRep && window.pushNotifyRep('💬 ' + D.name + ': ' + t.slice(0, 80));
+  };
+  pullMsgs(true); pollT = setInterval(() => pullMsgs(false), 8000);
+}
+
+/* ---------- الكتب ---------- */
+function qtyRow(b, l, q, price) {
+  return `<div class="kv" data-b="${esc(b)}"><span>${esc(l)}${price ? `<br><span class="small muted">${esc(price)}</span>` : ''}</span>
+    <span class="qty"><button type="button" data-d="-1">−</button><b>${q}</b><button type="button" data-d="1">+</button></span></div>`;
+}
+function bindQty(box) { box.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const n = $('b', b.parentNode); n.textContent = Math.max(0, +n.textContent + +b.dataset.d); }); }
+const readQty = box => $$('[data-b]', box).map(r => ({ b: r.dataset.b, q: +$('b', r).textContent }));
+function orderDlg() {
+  const ps = prices();
+  if (!ps.length) return toast('قايمة الأسعار لسه مش متاحة — اسأل المندوب');
+  modal(`<h3>🛒 اطلب كتب بأسعار مميزة</h3><div class="small muted" style="margin-bottom:6px">اختار الكتب والعدد، والمندوب هيأكد معاك.</div>
+    <div id="ol">${ps.map(p => qtyRow(p.b, p.l, 0, p.post ? `السعر: ${p.post} ج${p.pre ? ` بدل ${p.pre} ج` : ''}` : '')).join('')}</div>
+    <div class="field"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div>
+    <div class="acts"><button class="btn pri" id="os">ابعت الطلب</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
+    bindQty($('#ol', box));
+    $('#os', box).onclick = async () => {
+      const its = readQty($('#ol', box)).filter(x => x.q > 0).map(x => ({ ...x, l: bookLabel(x.b) }));
+      if (!its.length) return toast('اختار كتاب واحد على الأقل');
+      const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'order', p_items: its, p_note: $('#on', box).value });
+      if (error) return toast(errMsg(error));
+      close(); toast('اتبعت الطلب ✅'); window.pushNotifyRep && window.pushNotifyRep('🛒 ' + D.name + ' طلب كتب'); load();
+    };
+  });
+}
+function renderBooks() {
+  const bk = D.books || [];
+  const ost = { pending: '<span class="pill owe">⏳ مستني</span>', approved: '<span class="pill ok">✅ اتوافق</span>', rejected: '<span class="pill bad">❌ اترفض</span>' };
+  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
+    <div class="card"><h3>📚 الكتب اللي حضرتك طلبتها</h3>
+    ${bk.length ? `<div class="small muted" style="margin-bottom:6px">لو عايز تغيّر الكمية، عدّلها وابعت طلب تعديل للمندوب.</div><div id="bl">${bk.map(x => qtyRow(x.b, x.l || bookLabel(x.b), x.q)).join('')}</div>
+      <button class="btn owe" id="be" style="width:100%;margin-top:10px">✏️ ابعت طلب تعديل الكمية</button>` : '<div class="small muted">لسه مفيش كتب متسجلة لحضرتك.</div>'}</div>
+    ${D.orders.length ? `<div class="card"><h3>طلباتك</h3>${D.orders.map(o => `<div class="kv" style="display:block">${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ تعديل كمية'} ${ost[o.status] || ''} <span class="small muted">${fmtDate(o.at)}</span>
+      <div class="small">${esc((o.items || []).map(i => `${i.l || bookLabel(i.b)}: ${i.q}`).join('، '))}</div>${o.reason ? `<div class="small">السبب: ${esc(o.reason)}</div>` : ''}</div>`).join('')}</div>` : ''}`;
+  const o = $('#ord'); o && (o.onclick = orderDlg);
+  const bl = $('#bl'); if (!bl) return; bindQty(bl);
+  $('#be').onclick = async () => {
+    const now = readQty(bl), ch = now.filter(x => (bk.find(y => y.b === x.b) || {}).q !== x.q).map(x => ({ ...x, l: bookLabel(x.b), was: (bk.find(y => y.b === x.b) || {}).q }));
+    if (!ch.length) return toast('مفيش تغيير');
+    const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'edit', p_items: ch, p_note: null });
+    if (error) return toast(errMsg(error));
+    toast('اتبعت طلب التعديل ✅'); window.pushNotifyRep && window.pushNotifyRep('✏️ ' + D.name + ' عايز يعدّل كمية كتب'); load();
+  };
+}
+
+/* ---------- ملفي ---------- */
+function renderMe() {
+  const req = new Set(D.updates.flatMap(u => u.fields || []));
+  const pend = D.pending ? D.pending.new_values : null;
+  st = {};
+  app.innerHTML = `<div class="card"><div class="muted small" style="margin-bottom:10px">أي تعديل بيروح للمندوب يراجعه الأول، وبعد الموافقة يتعتمد.</div>
+    <form id="pf" onsubmit="return false">${profileForm(vals(), { req, pend, remind: true })}
+    <div class="field${req.has('photos') ? ' req' : ''}"><label>📷 صور إضافية (اختياري)${req.has('photos') ? ' <span class="pill bad">مطلوب</span>' : ''}</label>
+      <div class="photos" id="phs"></div>
+      <label class="btn sm" style="margin-top:8px">➕ زوّد صور<input type="file" accept="image/*" multiple id="phIn" hidden></label>
+      ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div>
+    <button class="btn pri" id="save" style="width:100%;padding:14px">✅ تم — ابعت للمراجعة</button></form></div>`;
+  const f = $('#pf'); bindProfileForm(f, st, { remind: true }); drawPhotos();
+  $('#phIn').onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    for (const fl of files) { try { newPhotos.push(await compressImage(fl, 1280, 60000)); drawPhotos(); } catch (er) { toast(errMsg(er)); } }
+  };
+  $('#save').onclick = async () => {
+    const nv = readProfileForm(f, st), ch = changedOnly(vals(), nv);
+    if (!Object.keys(ch).length && !newPhotos.length) return toast('مفيش تغيير');
+    if ('name' in ch && !String(ch.name).trim()) return toast('الاسم مينفعش يبقى فاضي');
+    const b = $('#save'); b.disabled = true; b.textContent = 'جاري الإرسال…';
+    const { error } = await sb.rpc('t_submit', { p_code: code, p_values: ch, p_photos: newPhotos, p_reply: null });
+    if (error) { b.disabled = false; b.textContent = '✅ تم — ابعت للمراجعة'; return toast(errMsg(error)); }
+    newPhotos = []; toast('اتبعت للمراجعة ✅ — جزاك الله خيرًا'); window.pushNotifyRep && window.pushNotifyRep('📝 ' + D.name + ' عدّل ملفه'); view = 'home'; load();
+  };
+  const first = $('.field.req'); first && first.scrollIntoView({ block: 'center' });
+}
+function drawPhotos() {
+  const box = $('#phs'); if (!box) return;
+  box.innerHTML = newPhotos.map((p, i) => `<div class="ph"><img src="${p}" alt=""><button type="button" class="x" data-i="${i}">✕</button></div>`).join('');
+  $$('.x', box).forEach(b => b.onclick = () => { newPhotos.splice(+b.dataset.i, 1); drawPhotos(); });
+}
+
+$$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
+$('#reload').onclick = () => load();
+load();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+</script>
+<script src="push.js"></script>
+</body>
+</html>

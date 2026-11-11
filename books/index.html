@@ -480,7 +480,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 <input type="file" id="filePrice" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <input type="file" id="fileMerch" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <input type="file" id="fileLoc" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
-
+<script src="config.js"></script>
 <script>
 "use strict";
 /* ================= الكتب ================= */
@@ -903,7 +903,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles i8">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','✉️','رسائل المدرسين','g5','واتساب للمدرسين')}${ic('#/sent','📨','المرسلات','g9','حسابات المدرسين + التحديثات')}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','👣','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles i8">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','✉️','رسائل المدرسين','g5','واتساب للمدرسين')}${ic('admin.html','💬','المراسلات','g9','🔒 المدرسين والرسايل',sbBell||0)}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','👣','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -4268,12 +4268,27 @@ function editLogCard(tid){   // من غير tid = السجل كله (الإعد�
 }
 /* ---------- طلبات المدرسين 🔔: بتتكتب في صفحة المدرس (ملاحظات) وبتظهر في الجرس فوق ---------- */
 const pendReqs = () => (db.reqs||[]).filter(r=>!r.done && tById(r.t));
-function updateBell(){ const n=pendReqs().length+remoteReqs.length, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
+function updateBell(){ const n=pendReqs().length+remoteReqs.length+sbBell, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
+/* إشعارات «💬 المراسلات» (Supabase): بنقرا جلسة admin.html المحفوظة على نفس الموقع */
+var sbBell=0;
+async function pullSbBell(){
+  try{
+    const c=window.SILAH_CONFIG, s=JSON.parse(localStorage.getItem('selah-trial-auth')||'null');
+    if(!c || !s || !s.access_token) return;
+    if(s.expires_at && s.expires_at*1000<Date.now()+60000){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
+    const r=await fetch(c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:{apikey:c.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:'{}'});
+    if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0);
+    if(n>sbBell) try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){}
+    sbBell=n; updateBell();
+  }catch(e){}
+}
+setTimeout(pullSbBell, 3000); setInterval(pullSbBell, 60000);
 function bellModal(){
   document.getElementById('bellM')?.remove();
   const l=pendReqs().sort((a,b)=>b.at.localeCompare(a.at));
   const m=document.createElement('div'); m.className='modal'; m.id='bellM';
-  m.innerHTML=`<div class="box"><h3>🔔 طلبات المدرسين (${l.length+remoteReqs.length})</h3>
+  m.innerHTML=`<div class="box"><h3>🔔 طلبات المدرسين (${l.length+remoteReqs.length+sbBell})</h3>
+    ${sbBell ? `<a class="btn pri" style="width:100%;margin-bottom:10px;display:block;text-align:center" href="admin.html#/bell">💬 المراسلات: ${sbBell} جديد (رسايل / طلبات كتب / تعديلات) ←</a>` : ''}
     ${remoteReqs.length ? `<h3 class="sec-t">📥 تحديثات من حسابات المدرسين (${remoteReqs.length})</h3>` + remoteReqs.map(rreqCard).join('') : ''}
     ${l.length ? l.map(r=>{ const t=tById(r.t);
     return `<div class="card" style="margin-bottom:8px"><div class="tc-top" style="gap:8px"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}" data-bell="x"><b>${esc(t.name)}</b></a><div class="small muted">${esc([t.area,t.phone].filter(Boolean).join(' • '))}</div></div><div class="icos">${phoneBtns(t)}</div></div>
