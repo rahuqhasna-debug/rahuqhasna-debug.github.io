@@ -42,6 +42,10 @@ header.top .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;alig
 header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-btn{flex:none;border:0;border-radius:10px;padding:5px 10px;background:rgba(255,255,255,.18);color:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
 .bk-btn.due{background:var(--owe);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+.backrow{max-width:860px;margin:10px auto 0;padding:0 12px}
+.backrow[hidden]{display:none}
+.backbtn{width:100%;background:#ea580c;color:#fff;border:0;border-radius:12px;padding:11px 14px;font:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(234,88,12,.35)}
+.backbtn:active{transform:scale(.98)}
 header.top .back{background:rgba(255,255,255,.22);border:0;color:inherit;font-size:18px;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;flex:none}
 .areabar{position:sticky;top:50px;z-index:12;background:var(--bg);padding:6px 0 4px}
 .areabar select{width:100%;font-size:16px;font-weight:700;padding:10px;border-radius:12px}
@@ -257,6 +261,18 @@ header.top .logo{width:30px;height:30px;border-radius:7px;background:#fff;object
 .spec-subs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .spec-subs label{border:1.5px solid var(--line);background:var(--card);border-radius:20px;padding:5px 10px;font-size:14px;cursor:pointer;font-weight:700}
 .spec-subs input{margin:0 0 0 4px;vertical-align:middle}
+/* شبكة منتظمة لأزرار المواد والصفوف (3 في الصف، كلهم نفس المقاس) */
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 6px}
+.pgrid label{display:flex;align-items:center;justify-content:center;gap:5px;margin:0;padding:9px 4px;border-radius:12px;font-size:14px;font-weight:700;min-width:0;white-space:nowrap}
+.pgrid label:has(input:checked){background:var(--brand-soft);border-color:var(--brand)}
+.pgrid input{margin:0;width:17px;height:17px;flex:none}
+/* صورة المدرس جنب اسمه: بتفتح الكاميرا/المعرض */
+.avatar-btn{position:relative;border:0;padding:0;cursor:pointer;overflow:visible;font-family:inherit}
+.avatar-btn img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.avatar-btn .ph-badge{position:absolute;bottom:-3px;left:-3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:12px;display:flex;align-items:center;justify-content:center}
+.phgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
+.phgrid .ph{display:flex;flex-direction:column;gap:4px}
+.phgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in}
 details.others-t>summary{cursor:pointer;font-weight:800;padding:12px 2px;color:var(--brand);font-size:15px}
 details.ob{border-top:1px solid var(--line)}
 details.ob>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;padding:8px 0}
@@ -438,7 +454,8 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 </head>
 <body>
 <div class="splash" id="splash"><img src="icon-512.png" alt="" onerror="this.remove()"><div class="nm">سلاح التلميذ البحيرة</div><div class="sg">تصميم وتنفيذ: شريف حشيش</div></div>
-<header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→ رجوع</button><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bellBtn" data-act="bell" title="طلبات المدرسين" style="position:relative">🔔<b id="bellN" hidden style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:10px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></b></button><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
+<header class="top"><div class="in"><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bellBtn" data-act="bell" title="طلبات المدرسين" style="position:relative">🔔<b id="bellN" hidden style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:10px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></b></button><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
+<div class="backrow" id="backRow" hidden><button class="backbtn" id="backBtn" aria-label="رجوع">→ رجوع</button></div>
 <main class="wrap" id="app"></main>
 <div class="actbar" id="actbar"><div class="in">
   <button class="btn ok" data-act="commit-d" style="flex:2">✅ سلّمت <span class="n"></span></button>
@@ -481,13 +498,21 @@ const FROM = {'p-sci':4, 'p-stu':4};
 const BOOK_ORDER = [];
 for (const st of ['p','m']) for (const sb of STAGES[st].subjects) for (let g=FROM[st+'-'+sb]||1; g<=STAGES[st].grades; g++) BOOK_ORDER.push(`${st}-${sb}-${g}`);
 const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
+// مواد المدرس في فورم التعديل — «كشكول» مادة = ابتدائي كله ما عدا الإنجليزي
+const SUBJ_PICK = [['math','رياضة'],['ar','عربي'],['en','إنجليزي'],['sci','علوم'],['stu','دراسات'],['kash','كشكول']];
+const KASH = ['ar','math','stu','sci'];
+const subjLabel = ks => (ks||[]).map(k=>k==='kash'?'كشكول':SUBJ[k]).filter(Boolean).join('، ');
+// التخصص حسب المرحلة
+function specOpts(stage){ return stage==='p' ? ['فصل','صفوف عليا','كل الصفوف'] : stage==='m' ? ['كل الصفوف'] : stage==='pm' ? ['فصل','صفوف عليا','صفوف عليا وإعدادي','كل الصفوف'] : []; }
+function specSelOpts(stage, cur){ const o=specOpts(stage); if(!o.length) return '<option value="">— اختار المرحلة الأول —</option>';
+  return (o.length>1?'<option value="">— اختار التخصص —</option>':'') + o.map(v=>`<option ${cur===v?'selected':''}>${v}</option>`).join(''); }
 
 
 /* ================= التخزين ================= */
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
 const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
-function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], pinH:'', lastBackup:''}}
+function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], tlog:[], pinH:'', lastBackup:''}}
 /* ================= الإدارات التعليمية والقرى (البحيرة) =================
    كل إدارة: [قرى وبنادر]. القايمة دي اتراجعت مع شريف قبل ما تتحط. */
 const IDARAT = {
@@ -520,6 +545,7 @@ function load(){
   // البيع: sales = طلبات وبيع، payments = دفعات ومرتجعات المدرسين، prices = أسعار الكتب، merchants = بضاعة التجار، merchPays = دفعات التجار
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
   db.reqs ||= [];   // طلبات المدرسين (الجرس)
+  db.tlog ||= [];   // سجل المدرس: تعديل البيانات (القديم ← الجديد) والصور
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
   db.route ||= []; db.editLog ||= []; db.pinH ||= '';   // route = خط السير (أكواد المدرسين)، editLog = سجل تعديل فواتير التجار، pinH = الرقم السري (متشفّر)
   // days = أيام خط السير [{id, n:الاسم, t:[أكواد المدرسين]}]، reg = التسجيل على برنامج الشركة {كود التسليم: تاريخ التسجيل}
@@ -529,6 +555,9 @@ function fixDays(){
   if(!Array.isArray(db.days)) db.days=[]; if(!db.reg || typeof db.reg!=='object' || Array.isArray(db.reg)) db.reg={};
   if(Array.isArray(db.route) && db.route.length && !db.days.length) db.days=[{id:'d'+Date.now().toString(36), n:'اليوم الأول', t:db.route.slice()}];   // خط السير القديم بيبقى «اليوم الأول»
   db.route=[];
+  if(!Array.isArray(db.tlog)) db.tlog=[];
+  // كشكول بقى مادة مش تخصص: التخصص القديم «كشكول» → مادة كشكول + «كل الصفوف»
+  for(const t of db.teachers||[]) if(t && t.spec==='كشكول'){ t.subjects=[...new Set([...(t.subjects||[]),'kash'])]; t.subjectText=subjLabel(t.subjects); t.stage ||= 'p'; t.spec='كل الصفوف'; }
 }
 // رابط الـ Deploy بتاع Apps Script (درايف شريف). فاضي = البرنامج شغال من غير درايف
 const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbxvUtxpYVOskaw95PzGRTwj6bgNeDbt_cwXjys4U_7IiH2FKr_wjeayGTV8ncwkrc3A/exec';
@@ -593,7 +622,8 @@ function dupBlock(t){
 }
 function goDups(){ if(location.hash!=='#/settings') location.hash='#/settings'; else render();
   setTimeout(()=>{ const el=document.getElementById('dups'); if(el) el.scrollIntoView({block:'start'}); }, 80); }
-function delTeacherData(id){ db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
+function logT(tid, txt, k='تعديل'){ (db.tlog ||= []).push({id:uid(), t:tid, at:new Date().toISOString(), k, txt}); }
+function delTeacherData(id){ db.tlog=(db.tlog||[]).filter(x=>x.t!==id); db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
 function nameTags(t){ const L=clsLetter(t); return (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':'') + (t.isNew?' <span class="pill nw">🆕 مدرس جديد — مطلوب إضافته</span>':''); }
 
 /* ================= التصنيفات ================= */
@@ -626,14 +656,21 @@ function parseCls(raw){
 // عمود التصنيف في شيت المندوب فيه A أو B أو C (نوع المدرس)
 function clsLetter(t){ const s=String(t.cls||'').trim().toUpperCase(); return /^[ABC]$/.test(s) ? s : ''; }
 // التخصص: اللي المندوب اختاره (t.spec)، وإلا «كشكول» أو «فصل» لو مكتوبين في أي عمود، وإلا التصنيف لو مفهوم
+const ALL_CLS = {p:'ابتدائي', m:'اعدادي', pm:'ابتدائي واعدادي'};   // «كل الصفوف» حسب المرحلة
 function teacherCls(t){
-  if(t.spec){ const c=parseCls(t.spec); if(c) return c; }
+  if(t.spec){ const c = t.spec==='كل الصفوف' ? CLS_MAP[ALL_CLS[t.stage]] : parseCls(t.spec); if(c) return c; }
   for(const v of [t.cls, t.subjectText, t.stageText]){ const n=normText(v||'');
     if(/كشكول/.test(n)) return CLS_MAP['كشكول']; if(/فصل/.test(n)) return CLS_MAP['فصل']; }
   return clsLetter(t) ? null : parseCls(t.cls);
 }
 // المواد والمراحل بتاعته (للبحث وترتيب الكتب)
-function tSubs(t){ const c=teacherCls(t); return [...new Set([...(c?.subjects||[]), ...(t.subjects||[])])]; }
+function tSubs(t){ const c=teacherCls(t); return [...new Set([...(c?.subjects||[]), ...(t.subjects||[]).flatMap(x=>x==='kash'?KASH:[x])])]; }
+// مواد المدرس في مرحلة معينة: لو المندوب حدد التخصص بنفسه → المواد اللي علّم عليها، وإلا زي الأول (مواد التصنيف لو ليه)
+function subsFor(t, cls, st){
+  const base = (t.spec && (t.subjects||[]).length) ? t.subjects : (cls.subjects || t.subjects || []);
+  const s=new Set(); for(const x of base){ if(x==='kash'){ if(st==='p') KASH.forEach(k=>s.add(k)); } else s.add(x); }
+  return s;
+}
 function tStages(t){ const c=teacherCls(t); return [...new Set([...(c?.stages||[]), ...(t.stage||'').split('').filter(s=>STAGES[s])])]; }
 function myGroups(t){ return new Set(expectedBooks(t).map(k=>k.split('-').slice(0,2).join('-'))); }
 function expectedBooks(t){
@@ -643,12 +680,10 @@ function expectedBooks(t){
     if(!sts.length) return [];
     cls={stages:sts, gradeRange:{}};
   }
-  const subs = cls.subjects || t.subjects || [];
-  if(!subs.length) return [];
   const books = [];
   for(const st of cls.stages){
     const [gMin, gMax] = cls.gradeRange[st] || [1, STAGES[st].grades];
-    const stSubs = subs.filter(sb => STAGES[st].subjects.includes(sb));
+    const ss = subsFor(t, cls, st), stSubs = STAGES[st].subjects.filter(sb => ss.has(sb));
     for(const sb of stSubs){
       const from = Math.max(gMin, FROM[st+'-'+sb]||1);
       for(let g=from; g<=gMax; g++) books.push(`${st}-${sb}-${g}`);
@@ -724,9 +759,12 @@ let curTeacher = null, sel = {}, closedGroups = new Set(), openBox = '', forceCl
 try { closedGroups = new Set(JSON.parse(localStorage.getItem(KEY+'-closed')||'[]')); } catch(e){}
 const app = $('#app');
 
+// زرار «رجوع» بيظهر فوق في كل صفحة ما عدا الرئيسية (back بقى معناه بس «مش الرئيسية»)
 function setHeader(title, back){
   $('#title').textContent = title;
-  const b=$('#backBtn'); b.hidden=!back; b.onclick = back ? ()=>{ history.length>1 ? history.back() : (location.hash='#/'); } : null;
+  const home = !location.hash || location.hash==='#/' || location.hash==='#';
+  const r=$('#backRow'); if(r) r.hidden = home;
+  const b=$('#backBtn'); if(b) b.onclick = ()=>{ history.length>1 ? history.back() : (location.hash='#/'); };
 }
 function setTab(t){ document.querySelectorAll('nav.tabs a').forEach(a=>a.classList.toggle('on', a.dataset.tab===t)); }
 // النسخة الاحتياطية: تفكير كل 3 ساعات (لو فيه تعديل من آخر نسخة)، وبعد 8 بالليل لو فيه أي تعديل
@@ -1032,7 +1070,7 @@ function renderTeacher(id){
     t.spec&&`🎯 ${esc(t.spec)}`, t.area&&`📍 ${esc(t.area)}`, t.school&&`🏢 ${esc(t.school)}`, t.cls&&!clsLetter(t)&&`🏷️ ${esc(t.cls)}`,
     t.students&&`👨‍🎓 ${esc(t.students)} طالب`, t.plan&&`🗓️ خط السير ${fmtDay(t.plan)}`,
     t.active===true&&'✅ فعّال', t.active===false&&'⛔ مش فعّال'].filter(Boolean);
-  let html = `<div class="card tcard ${stc}"><div class="tc-top"><div class="avatar">${esc((t.name||'؟').trim().charAt(0)||'؟')}</div>
+  let html = `<div class="card tcard ${stc}"><div class="tc-top"><button class="avatar avatar-btn" data-act="photos" data-id="${esc(t.id)}" title="صور المدرس">${(t.photos||[]).length?`<img src="${t.photos[0]}" alt="">`:esc((t.name||'؟').trim().charAt(0)||'؟')}<span class="ph-badge">📷${(t.photos||[]).length>1?t.photos.length:''}</span></button>
       <div class="grow"><h2>${esc(t.name)}${nameTags(t)}</h2>${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:'<div class="lastv muted">لسه ما اتزارش</div>'}</div></div>
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">💬</a>`:''}
@@ -1073,7 +1111,7 @@ function renderTeacher(id){
     updateActbar(); return; }
   if(tTab==='hist'){ const vl=tVisitLog(id), KC={'تسليم':'ok','بيع':'sale','دفعة':'pay','مرتجع':'owe'};
     const vh=`<div class="card"><h3 class="sec-t">👣 الزيارات (${new Set(vl.map(v=>v.at.slice(0,16))).size})</h3>${vl.length ? vl.map(v=>`<div class="kv"><span>${visitLabel(v)}</span><span><span class="pill vk-${KC[v.k]}">${v.k}</span> ${esc(v.txt)}</span></div>`).join('') : '<div class="muted">لسه ما اتزارش.</div>'}</div>`;
-    app.innerHTML = html + vh + histHtml(t, ents) + editLogCard(id); updateActbar(); return; }
+    app.innerHTML = html + vh + histHtml(t, ents) + editLogCard(id) + tLogCard(id); updateActbar(); return; }
 
   html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين دوس «سلّمت». المستحق بيتحسب لوحده من التصنيف أو المرحلة والمادة.</p>`;
   // ترتيب الكتب: «⭐ تخصصه» فوق مفتوح (كل مواده في كل مراحله)، وتحته «باقي الكتب» مقفول
@@ -1132,27 +1170,82 @@ function histHtml(t, ents){
   return `<div class="card"><h3 class="sec-t">🕘 سجل التعاملات (${ev.length})</h3><div class="hist">` +
     (ev.length ? ev.map(x=>x.h).join('') : '<div class="muted">لسه مفيش.</div>') + `</div></div>`;
 }
+// سجل بيانات المدرس: تعديل البيانات (القديم ← الجديد) + الصور + الطلبات، بتاريخها
+function tLogCard(id){
+  const ev=[...(db.tlog||[]).filter(x=>x.t===id).map(x=>({at:x.at||'', h:`<span class="pill new">${x.k==='صور'?'📷':x.k==='إضافة'?'➕':'✏️'} ${esc(x.k||'تعديل')}</span> ${esc(x.txt)}`})),
+    ...(db.reqs||[]).filter(r=>r.t===id).map(r=>({at:r.at||'', h:`<span class="pill owe">🔔 طلب</span> ${esc(r.txt)}${r.done?' <span class="pill ok">خلص</span>':''}`}))]
+    .sort((a,b)=>b.at.localeCompare(a.at));
+  return `<div class="card"><h3 class="sec-t">🧾 تعديل البيانات والصور والطلبات (${ev.length})</h3><div class="hist">` +
+    (ev.length ? ev.map(x=>`<div class="hrow"><div class="grow">${x.h}<div class="small muted">${fmtDT(x.at)}</div></div></div>`).join('') : '<div class="muted">لسه مفيش.</div>') + `</div></div>`;
+}
+/* --- صور المدرس (أكتر من صورة، متخزنة على التليفون مع البيانات) --- */
+const PH_MAX=6;
+function shrinkImg(file, max=480, q=0.7){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file), im=new Image();
+  im.onload=()=>{ const s=Math.min(1, max/Math.max(im.width,im.height)), c=document.createElement('canvas'); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg',q)); };
+  im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('img')); }; im.src=url; }); }
+function openPhotos(tid){
+  const t=tById(tid); if(!t) return;
+  const m=document.createElement('div'); m.className='modal'; m.innerHTML='<div class="box"></div>'; document.body.appendChild(m);
+  const box=m.firstChild, close=()=>{ m.remove(); render(); };
+  const draw=()=>{ const ph=t.photos||[], full=ph.length>=PH_MAX;
+    box.innerHTML=`<h3>📷 صور ${esc(t.name)} (${ph.length})</h3>
+      ${ph.length?`<div class="phgrid">${ph.map((p,i)=>`<div class="ph"><img src="${p}" alt="" data-ph-view="${i}"><button class="btn sm danger" data-ph-del="${i}">🗑️ امسح</button></div>`).join('')}</div>`:'<div class="muted" style="margin:8px 0">مفيش صور لسه.</div>'}
+      <div class="small muted">لحد ${PH_MAX} صور للمدرس — الصور بتتصغّر وتتحفظ على التليفون مع البيانات.</div>
+      <div class="row2" style="margin-top:10px"><button class="btn pri" data-ph-add="cam" ${full?'disabled':''}>📷 الكاميرا</button><button class="btn ghost" data-ph-add="gal" ${full?'disabled':''}>🖼️ من المعرض</button></div>
+      <input type="file" accept="image/*" capture="environment" hidden data-ph-in="cam"><input type="file" accept="image/*" multiple hidden data-ph-in="gal">
+      <button class="btn ghost" data-ph-close style="width:100%;margin-top:10px">تم</button>`; };
+  m.addEventListener('click', e=>{ if(e.target===m){ close(); return; }
+    const v=e.target.closest('[data-ph-view]'); if(v){ const o=document.createElement('div'); o.className='modal'; o.style.zIndex='99';
+      o.innerHTML=`<img src="${t.photos[+v.dataset.phView]}" alt="" style="max-width:100%;max-height:90vh;margin:auto;border-radius:12px">`; o.onclick=()=>o.remove(); document.body.appendChild(o); return; }
+    const b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.phDel!==undefined){ if(!confirm('تمسح الصورة دي؟')) return; t.photos.splice(+b.dataset.phDel,1); logT(t.id,'اتمسحت صورة','صور'); save(); draw(); }
+    else if(b.dataset.phAdd) m.querySelector(`[data-ph-in="${b.dataset.phAdd}"]`).click();
+    else if(b.hasAttribute('data-ph-close')) close(); });
+  m.addEventListener('change', async e=>{ const inp=e.target; if(!inp.files || !inp.files.length) return;
+    t.photos ||= []; const files=[...inp.files].slice(0, Math.max(0, PH_MAX-t.photos.length)); inp.value='';
+    let n=0; for(const f of files){ try{ t.photos.push(await shrinkImg(f)); n++; }catch(err){} }
+    if(n){ logT(t.id, n>1?`اتضاف ${n} صور`:'اتضافت صورة', 'صور'); save();
+      if(!storageOk){ t.photos.splice(-n); db.tlog.pop(); save(false); alert('⚠️ مساحة التليفون للبرنامج مش كفاية للصورة دي — امسح صور قديمة الأول.'); }
+      else toast('📷 الصورة اتحفظت'); } else alert('مقدرتش أقرا الصورة — جرّب تاني');
+    draw(); });
+  draw();
+}
 /* --- اختيار التخصص (المادة + المرحلة/التصنيف) --- */
-const SPEC_OPTS=[['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي'],['فصل','فصل (أولى-تالتة، عربي ورياضة)'],['صفوف عليا','صفوف عليا (رابعة-ستة)'],['صفوف عليا وإعدادي','صفوف عليا وإعدادي'],['كشكول','كشكول (ابتدائي كله ما عدا الإنجليزي)']];
+const STAGE_OPTS=[['','— المرحلة —'],['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي']];
 function specPicker(t, saveAttr, title, cancel=''){
-  const cur=t.spec || t.stage || '', subs=t.subjects||[];
+  const subs=t.subjects||[], st0=t.stage||'';
   return `<div class="cls-bar" id="specbar"><h3>📋 ${title}</h3>
-    <div class="spec-subs">${Object.entries(SUBJ).map(([k,v])=>`<label style="color:var(--c-${k})"><input type="checkbox" data-spec-sub="${k}" ${subs.includes(k)?'checked':''}>${v}</label>`).join('')}</div>
-    <div class="acts"><select data-spec-st><option value="">— المرحلة / التصنيف —</option>${SPEC_OPTS.map(([v,l])=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`).join('')}</select>
-      <button class="btn sm pri" ${saveAttr}>حفظ التخصص</button>${cancel}</div>
-    <p class="hint" style="margin-bottom:0">علّم على مادته (أو أكتر) واختار المرحلة. الكشكول والفصل مش محتاجين مادة.</p></div>`;
+    <div class="spec-subs pgrid">${SUBJ_PICK.map(([k,v])=>`<label class="chip"${SUBJ[k]?` style="color:var(--c-${k})"`:''}><input type="checkbox" data-spec-sub="${k}" ${subs.includes(k)?'checked':''}>${v}</label>`).join('')}</div>
+    <div class="row2" style="margin-top:8px"><select data-spec-stage>${STAGE_OPTS.map(([v,l])=>`<option value="${v}" ${st0===v?'selected':''}>${l}</option>`).join('')}</select>
+      <select data-spec-st>${specSelOpts(st0, t.spec||'')}</select></div>
+    <div class="acts"><button class="btn sm pri" ${saveAttr}>حفظ التخصص</button>${cancel}</div>
+    <p class="hint" style="margin-bottom:0">علّم على مادته (أو أكتر)، واختار المرحلة وبعدين التخصص.</p></div>`;
 }
 function applySpec(t, root){
   const subs=[...root.querySelectorAll('[data-spec-sub]')].filter(x=>x.checked).map(x=>x.dataset.specSub);
-  const v=root.querySelector('[data-spec-st]').value;
-  if(!v){ alert('اختار المرحلة أو التصنيف'); return false; }
-  const isSt=['p','m','pm'].includes(v), c=isSt?null:parseCls(v);
-  if(!subs.length && !c?.subjects){ alert('علّم على مادة المدرس'); return false; }
-  const ch={stage: isSt ? v : c.stages.join(''), spec: isSt ? '' : v};
-  if(subs.length){ ch.subjects=subs; ch.subjectText=subs.map(s=>SUBJ[s]).join('، '); }
+  const st=root.querySelector('[data-spec-stage]').value, o=specOpts(st);
+  if(!st){ alert('اختار المرحلة'); return false; }
+  const spec = o.length>1 ? root.querySelector('[data-spec-st]').value : o[0];
+  if(!spec){ alert('اختار التخصص'); return false; }
+  if(!subs.length){ alert('علّم على مادة المدرس'); return false; }
+  const ch={stage:st, spec, subjects:subs, subjectText:subjLabel(subs)};
   if(!expectedBooks({...t, ...ch}).length){ alert('المادة دي مش موجودة في المرحلة دي — راجع الاختيار'); return false; }
-  Object.assign(t, ch); return true;
+  const before={...t}; Object.assign(t, ch);
+  const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
+  return true;
 }
+// سجل تعديل بيانات المدرس: القديم ← الجديد
+const TFIELDS=[['name','الاسم'],['phone','التليفون'],['stage','المرحلة',v=>STAGE_TXT[v||'']||''],['subjectText','المادة'],['spec','التخصص'],['cls','التصنيف'],
+  ['area','المنطقة'],['school','المدرسة'],['grades','الصفوف',v=>(v||[]).slice().sort((a,b)=>a-b).map(g=>GRADE[g-1]).join('، ')],['where','دروس / مدارس'],['students','عدد الطلاب']];
+function teacherDiff(a, b){ const out=[];
+  for(const [k,l,f] of TFIELDS){ const x=String((f?f(a[k]):a[k])??''), y=String((f?f(b[k]):b[k])??''); if(x!==y) out.push(`${l}: ${x||'—'} ← ${y||'—'}`); }
+  return out; }
+// المرحلة اتغيرت → خيارات التخصص تتغير معاها (فورم التعديل + شريط التخصص)
+document.addEventListener('change', e=>{ const el=e.target;
+  if(el.matches && el.matches('[data-spec-stage]')){ const s=el.closest('#specbar')?.querySelector('[data-spec-st]'); if(s) s.innerHTML=specSelOpts(el.value, s.value); }
+  else if(el.id==='f_stage'){ const s=document.getElementById('f_spec'); if(s) s.innerHTML=specSelOpts(el.value, s.value); }
+});
 function openSpec(){ forceCls=true; render(); setTimeout(()=>{ const b=$('#specbar'); if(b) b.scrollIntoView({block:'center'}); }, 30); }
 function rowHtml(k,b,q,left){
   const {g}=bookParts(k);
@@ -1454,14 +1547,15 @@ function teacherForm(t, preset={}){
         <option value="">—</option>
         ${['A','B','C'].map(v=>`<option ${clsLetter(t)===v?'selected':''}>${v}</option>`).join('')}
         ${t.cls && !clsLetter(t) ? `<option selected>${esc(t.cls)}</option>` : ''}
-      </select></div>
-      <div class="field"><label>المادة</label><input id="f_subj" placeholder="عربي، رياضة…" value="${esc(t.subjectText)}"></div></div>
-    <div class="field"><label>التخصص (اختياري)</label><select id="f_spec"><option value="">— حسب المرحلة والمادة —</option>
-      ${['فصل','صفوف عليا','صفوف عليا وإعدادي','كشكول'].map(v=>`<option ${(t.spec||'')===v?'selected':''}>${v}</option>`).join('')}</select></div>
+      </select></div></div>
+    <div class="field"><label>المادة (ممكن تختار أكتر من مادة)</label><div class="pgrid" id="f_subjs">
+      ${SUBJ_PICK.map(([k,l])=>`<label class="chip"${SUBJ[k]?` style="color:var(--c-${k})"`:''}><input type="checkbox" value="${k}" ${(t.subjects||[]).includes(k)?'checked':''}>${l}</label>`).join('')}</div>
+      ${t.subjectText && !(t.subjects||[]).length ? `<div class="small muted">المكتوب قبل كده: ${esc(t.subjectText)}</div>` : ''}</div>
+    <div class="field"><label>التخصص (حسب المرحلة)</label><select id="f_spec">${specSelOpts(t.stage||'', t.spec||'')}</select></div>
     <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" list="vl_f" autocomplete="off" placeholder="${villages().length?'اختار أو اكتب':''}" value="${esc(t.area)}">${vlist('vl_f')}</div>
       <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
-    <div class="field"><label>الصفوف اللي بيدرّسها</label><div class="chips" id="f_grades" style="margin:0">
-      ${[1,2,3,4,5,6].map(g=>`<label class="chip" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" value="${g}" ${(t.grades||[]).includes(g)?'checked':''}>${GRADE[g-1]}</label>`).join('')}</div></div>
+    <div class="field"><label>الصفوف اللي بيدرّسها</label><div class="pgrid" id="f_grades">
+      ${[1,2,3,4,5,6].map(g=>`<label class="chip"><input type="checkbox" value="${g}" ${(t.grades||[]).includes(g)?'checked':''}>${GRADE[g-1]}</label>`).join('')}</div></div>
     <div class="row2"><div class="field"><label>دروس / مدارس</label><select id="f_where">
       ${['','دروس','مدارس','دروس ومدارس'].map(v=>`<option value="${v}" ${(t.where||'')===v?'selected':''}>${v||'—'}</option>`).join('')}</select></div>
       <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div></div>
@@ -1477,16 +1571,20 @@ function teacherForm(t, preset={}){
     const phone=normPhone(m.querySelector('#f_phone').value);
     const dup = phone && db.teachers.find(x=>x.phone===phone && x.id!==t.id);
     if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تفتح حسابه؟`)){ close(); location.hash='#/t/'+encodeURIComponent(dup.id); } return; }
-    const subjectText=m.querySelector('#f_subj').value.trim();
-    const data={name, phone, stage:m.querySelector('#f_stage').value, subjectText, subjects:parseSubjects(subjectText),
+    const subjects=[...m.querySelectorAll('#f_subjs input:checked')].map(x=>x.value);
+    const stage=m.querySelector('#f_stage').value, so=specOpts(stage);
+    let spec=m.querySelector('#f_spec').value; if(so.length===1) spec=so[0]; if(!so.includes(spec)) spec='';
+    if(so.length>1 && !spec && !confirm('التخصص لسه ما اتحددش (فصل / صفوف عليا / …) — من غيره الكتب المستحقة ممكن متتحسبش صح.\nتحفظ كده؟')) return;
+    const subjectText = subjects.length ? subjLabel(subjects) : ((t.subjects||[]).length ? '' : (t.subjectText||''));
+    const data={name, phone, stage, subjectText, subjects,
       area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
-      cls:m.querySelector('#f_cls').value, spec:m.querySelector('#f_spec').value, students:m.querySelector('#f_students').value.trim(),
+      cls:m.querySelector('#f_cls').value, spec, students:m.querySelector('#f_students').value.trim(),
       grades:[...m.querySelectorAll('#f_grades input:checked')].map(x=>+x.value), where:m.querySelector('#f_where').value};
     if(isNew && (!data.grades.length || !data.where) && !confirm('الصفوف أو «دروس / مدارس» لسه ما اتحددوش — دول بيتكتبوا في شيت الإضافات.\nتحفظ كده؟')) return;
-    if(data.spec){ const c=parseCls(data.spec); if(c) data.stage=c.stages.join(''); }
     data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
-    if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
-    else { Object.assign(t,data); save(); close(); render(); toast('اتحفظ ✅'); }
+    if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); logT(nt.id, 'اتسجّل مدرس جديد', 'إضافة'); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
+    else { const before={...t}; Object.assign(t,data); const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
+      save(); close(); render(); toast('اتحفظ ✅'); }
   };
   const del=m.querySelector('#f_del');
   if(del) del.onclick=()=>{
@@ -1600,6 +1698,7 @@ document.addEventListener('click', e=>{
       withUndo(`⏳ اتسجّل ${books.length} كتاب مستحق تلقائي`, ()=>{ const now=new Date().toISOString();
         for(const k of books) db.entries.push({id:uid(), t:t.id, b:k, q:1, s:'o', dd:'', rd:now, rep:db.rep}); }); break; }
     case 'edit-teacher': teacherForm(tById(curTeacher)); break;
+    case 'photos': openPhotos(el.dataset.id); break;
     case 'new-teacher': e.preventDefault(); teacherForm(null, {name:el.dataset.name||'', phone:el.dataset.phone||''}); break;
     case 'filter': homeFilter=el.dataset.k; renderTeachers(); break;
     case 'copy-owed': copyText(owedText()); break;
@@ -1683,7 +1782,7 @@ $('#fileJson').addEventListener('change', async e=>{
     db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
-      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), pinH:d.pinH||db.pinH||'',
+      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), pinH:d.pinH||db.pinH||'',
       driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
@@ -1791,7 +1890,7 @@ $('#fileXlsx').addEventListener('change', async e=>{
   for(const r of data){
     const name=get(r,H.name), phone=normPhone(get(r,H.phone));
     const subjectText=get(r,H.subject), stageText=get(r,H.stage);
-    const rec={name, phone, stage:parseStage(stageText), stageText, subjectText, subjects:parseSubjects(subjectText),
+    const rec={name, phone, stage:parseStage(stageText), stageText, subjectText, subjects:[...parseSubjects(subjectText), ...(/كشكول/.test(normText(subjectText))?['kash']:[])],
       area:get(r,H.area), school:get(r,H.school), cls:get(r,H.cls), students:get(r,H.students), plan:parseDate(r[H.date])};
     // نفس الرقم مرتين في نفس الشيت → يتضاف مرة واحدة (السطر التاني يكمّل الخانات الفاضية بس)
     if(phone && seen.has(phone)){ const p=seen.get(phone).rec; for(const k of Object.keys(rec)) if(!p[k] || (Array.isArray(p[k]) && !p[k].length)) p[k]=rec[k]; twice++; continue; }
@@ -1979,22 +2078,29 @@ function exportExcel(all, part){
 
   /* ---------- 4) حسابات التجار: الكتب صفوف، وجنبها المستلمة والمرتجع والصافي ---------- */
   const N4='حسابات التجار';
-  const s4=[['التاجر','المادة','الصف','الكتب المستلمة','المرتجع','الصافي']], m4=[], mref={}, bkNet={};
+  const s4=[['التاجر','المادة','الصف','الكتب المستلمة','المرتجع','الصافي','السعر قبل الخصم','السعر بعد الخصم','الإجمالي']], m4=[], mref={}, bkNet={};
+  const rl4={}; for(const r of db.merchRets) for(const z of r.lots||[]) rl4[z.lot]=(rl4[z.lot]||0)+z.q;   // مرتجع كل فاتورة (عشان سعر الصافي)
+  const newX=()=>({q:0,r:0,v:0,ps:new Set(),miss:false});
   const mNames=[...new Set([...db.merchants.map(l=>l.m), ...db.merchRets.map(r=>r.m)])].sort((a,b)=>a.localeCompare(b,'ar'));
   { const c=colorer();
     for(const name of mNames){ const f=c(name), by=new Map();
-      for(const l of db.merchants) if(l.m===name){ if(!by.has(l.b)) by.set(l.b,{q:0,r:0}); by.get(l.b).q+=l.q; }
-      for(const r of db.merchRets) if(r.m===name){ if(!by.has(r.b)) by.set(r.b,{q:0,r:0}); by.get(r.b).r+=r.q; }
+      for(const l of db.merchants) if(l.m===name){ if(!by.has(l.b)) by.set(l.b,newX()); const x=by.get(l.b); x.q+=l.q; const n=l.q-(rl4[l.id]||0);
+        if(l.p!=null){ x.v+=n*l.p; x.ps.add(l.p); } else if(n) x.miss=true; }   // x.v = قيمة الباقي بسعر كل فاتورة
+      for(const r of db.merchRets) if(r.m===name){ if(!by.has(r.b)) by.set(r.b,newX()); by.get(r.b).r+=r.q; }
       if(!by.size) continue;
-      const a=s4.length+1; let tk=0, rt=0;
-      for(const k of [...by.keys()].sort((x,y)=>bookRank[x]-bookRank[y])){ const x=by.get(k), rn=s4.length+1;
-        const row=[name, SB(k), GR(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:x.q-x.r}]; row.fill=f; s4.push(row); tk+=x.q; rt+=x.r;
-        (bkNet[k] ||= {n:0}).n+=x.q-x.r; }
-      const rn=s4.length+1, tr=['إجمالي: '+name, '', '', {f:`SUM(D${a}:D${rn-1})`, v:tk}, {f:`SUM(E${a}:E${rn-1})`, v:rt}, {f:`SUM(F${a}:F${rn-1})`, v:tk-rt}];
+      const a=s4.length+1; let tk=0, rt=0, tv=0;
+      for(const k of [...by.keys()].sort((x,y)=>bookRank[x]-bookRank[y])){ const x=by.get(k), rn=s4.length+1, net=x.q-x.r, p=priceOf(k);
+        // السعر بعد الخصم: لو كل الفواتير بنفس السعر → معادلة الصافي × السعر، لو مختلف → متوسط بالقيمة الفعلية
+        const post = x.ps.size===1 ? [...x.ps][0] : (x.ps.size && net ? r2(x.v/net) : '');
+        const tot = x.ps.size===1 ? {f:`F${rn}*H${rn}`, v:r2(x.v)} : (x.ps.size ? r2(x.v) : '');
+        const row=[name, SB(k), GR(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:net}, p?.pre??'', post, tot]; row.fill=f; s4.push(row); tk+=x.q; rt+=x.r;
+        tv += typeof tot==='object' ? tot.v : (tot===''?0:tot);
+        (bkNet[k] ||= {n:0}).n+=net; }
+      const rn=s4.length+1, tr=['إجمالي: '+name, '', '', {f:`SUM(D${a}:D${rn-1})`, v:tk}, {f:`SUM(E${a}:E${rn-1})`, v:rt}, {f:`SUM(F${a}:F${rn-1})`, v:tk-rt}, '', '', {f:`SUM(I${a}:I${rn-1})`, v:r2(tv)}];
       tr.fill=f; tr.bold=true; s4.push(tr);
       const mt=merchTeachers(name);
-      const rr=[name, 'المدرسين اللي كتبه راحت لهم', {v:mt.length?mt.map(z=>`${z.t.name} (${z.n-z.r})`).join('، '):'—', wrap:true}, '', '', ''];
-      rr.fill=f; rr.bold=true; s4.push(rr); m4.push(`C${s4.length}:F${s4.length}`);
+      const rr=[name, 'المدرسين اللي كتبه راحت لهم', {v:mt.length?mt.map(z=>`${z.t.name} (${z.n-z.r})`).join('، '):'—', wrap:true}, '', '', '', '', '', ''];
+      rr.fill=f; rr.bold=true; s4.push(rr); m4.push(`C${s4.length}:I${s4.length}`);
       mref[name]={tr:rn, tkv:tk, rtv:rt}; } }
 
   /* ---------- 4-ب) أسعار الكتب: السعر قبل وبعد الخصم، وعدد الكتب × كل سعر، والإجماليات تحت ---------- */
@@ -2140,7 +2246,7 @@ function exportExcel(all, part){
     {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false}];
   // حساب التجار لوحده (حسابات التجار + صافي التجار)
   const mSheets=[
-    {name:N4, rows:s4, widths:[22,12,18,14,11,11], freezeCol:0, af:false, merges:m4},
+    {name:N4, rows:s4, widths:[22,12,18,14,11,11,13,13,14], freezeCol:0, af:false, merges:m4},
     {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false},
     {name:'أسعار الكتب', rows:s4b, widths:[26,14,18,18,20,20], freezeCol:0, af:false}];
   // حساب المدرسين = بيع المندوب للمدرسين (من غير التجار)
@@ -2500,10 +2606,11 @@ function retLines(tid){
 function retLots(tid, s, i, q){
   const prior={};
   for(const p of db.payments) if(p.k==='ret' && p.t===tid) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) for(const x of pt.lots||[]) prior[x.lot]=(prior[x.lot]||0)+x.q;
+  // المرتجع القديم بيتخصم من سطور نفس التاجر من الآخر (مرة واحدة بس — حتى لو التاجر متكرر في الفاتورة بعد تعديلها)
   const out=[];
   for(const x of [...(s.items[i].src||[])].reverse()){
-    if(!q) break; const can=x.q-(prior[x.lot]||0); if(can<=0) continue;
-    const n=Math.min(q,can); out.push({lot:x.lot, q:n}); prior[x.lot]=(prior[x.lot]||0)+n; q-=n;
+    if(!q) break; const r=Math.min(x.q, prior[x.lot]||0); prior[x.lot]=(prior[x.lot]||0)-r; const can=x.q-r; if(can<=0) continue;
+    const n=Math.min(q,can); out.push({lot:x.lot, q:n}); q-=n;
   }
   if(q) out.push({lot:null, q});
   return out;
@@ -3504,7 +3611,7 @@ async function cloudSync(manual){
   try{
     const {sales, pays, dels}=syncRows();
     await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels,
-      data:{app:'selah-books', ...db, savedAt:at}});
+      data:{app:'selah-books', ...db, teachers:db.teachers.map(({photos, ...x})=>x), savedAt:at}});   // صور المدرسين مش بتتبعت في المزامنة اليومية
     db.lastSync=at; save(false); if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
   }catch(e){ if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده'); }
   finally{ syncBusy=false; }
@@ -4098,7 +4205,8 @@ function shrinkSrc(s, i, d){   // ينقّص التقسيم على التجار 
   const prior={};
   for(const p of db.payments) if(p.k==='ret' && p.t===s.t) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) for(const x of pt.lots||[]) prior[x.lot]=(prior[x.lot]||0)+x.q;
   const src=s.items[i].src||[];
-  for(let j=src.length-1; j>=0 && d>0; j--){ const x=src[j], can=x.q-(prior[x.lot]||0); if(can<=0) continue; const n=Math.min(d,can); x.q-=n; d-=n; }
+  for(let j=src.length-1; j>=0 && d>0; j--){ const x=src[j], r=Math.min(x.q, prior[x.lot]||0); prior[x.lot]=(prior[x.lot]||0)-r;
+    const can=x.q-r; if(can<=0) continue; const n=Math.min(d,can); x.q-=n; d-=n; }
   s.items[i].src=src.filter(x=>x.q>0);
 }
 function editInvoice(sid){
