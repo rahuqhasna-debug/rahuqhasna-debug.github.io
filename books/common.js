@@ -66,8 +66,19 @@ const REMIND = [
   '«عليكم بالصدق فإن الصدق يهدي إلى البر» — شكرًا لدقتك.',
   'بياناتك أمانة، اكتبها كما هي، بارك الله فيك.',
   '«إن الصدق يهدي إلى البر، وإن البر يهدي إلى الجنة».',
-  'كلمة صادقة خير من ألف كلمة — جزاك الله خيرًا.'
+  'كلمة صادقة خير من ألف كلمة — جزاك الله خيرًا.',
+  'اعلم أن الله يراك 🤍',
+  '﴿وَالْآخِرَةُ خَيْرٌ وَأَبْقَى﴾',
+  'الدنيا عرض زائل، فاكتب ما يرضي الله.',
+  'اكتب الصدق، فالصدق منجاة.'
 ];
+const WARN_TXT = '⚠️ حرصًا على مصداقية الجميع: البيانات غير الصحيحة قد تؤدي لإيقاف الحساب.';
+// لوجو الواتساب الأصلي
+const WA_ICON = '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="#25D366" d="M16 2.5A13.5 13.5 0 0 0 4.4 22.9L2.6 29.5l6.8-1.8A13.5 13.5 0 1 0 16 2.5z"/><path fill="#fff" d="M11.7 9c-.3-.6-.6-.6-.9-.6h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 3.9 1.7 4.2c.2.3 2.9 4.6 7.1 6.3 3.5 1.4 4.2 1.1 5 1 .8-.1 2.5-1 2.8-2 .3-1 .3-1.8.2-2-.1-.2-.4-.3-.8-.5l-2.8-1.4c-.4-.1-.7-.2-.9.2-.3.4-1.1 1.4-1.3 1.6-.2.3-.5.3-.9.1-.4-.2-1.7-.6-3.3-2-1.2-1.1-2-2.4-2.3-2.8-.2-.4 0-.6.2-.8l.6-.7c.2-.2.3-.4.4-.7.1-.3 0-.5 0-.7L11.7 9z"/></svg>';
+// علامات المدرس: 💬 رسايل · 📝 تعديل ملف · 🛒 طلبات
+function badgesHtml(m, e, o) {
+  return (m ? `<span class="bdg m">💬 ${m}</span>` : '') + (e ? `<span class="bdg e">📝${e > 1 ? ' ' + e : ''}</span>` : '') + (o ? `<span class="bdg o">🛒 ${o}</span>` : '');
+}
 
 function gradesText(g) { return Array.isArray(g) && g.length ? g.slice().sort((a, b) => a - b).map(x => GRADE_N[x - 1] + (x <= 6 ? ' ابتدائي' : '')).join('، ') : '—'; }
 function daysText(d) {
@@ -87,7 +98,7 @@ function valText(k, v) {
 }
 function fmtVal(k, v) {
   if (k === 'avatar' && typeof v === 'string' && v.startsWith('data:')) return `<img class="av" src="${v}" alt="">`;
-  if (k === 'loc' && v && v.lat) return `<a target="_blank" rel="noopener" href="https://maps.google.com/?q=${+v.lat},${+v.lng}">📍 افتح الموقع</a>`;
+  if (k === 'loc' && v && v.lat) return `<a target="_blank" rel="noopener" href="https://maps.google.com/?q=${+v.lat},${+v.lng}">📍 افتح الموقع</a>${v.at ? ` <span class="small muted">(اتبعت ${esc(fmtDate(v.at))}${v.acc ? ` · دقة ±${v.acc} متر` : ''})</span>` : ''}`;
   const t = valText(k, v);
   return t === '—' ? '<span class="muted">—</span>' : esc(t);
 }
@@ -146,11 +157,13 @@ function compressImage(file, maxDim, maxBytes) {
 
 /* ---------- نموذج الملف ----------
    opts: {only:[keys], req:Set, pend:{k:v}, remind:true (عند المدرس)} */
-function fieldInput(f, v, stage) {
+function locMap(v) { return v && v.lat ? `<iframe class="locmap" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${+v.lng - 0.004},${+v.lat - 0.003},${+v.lng + 0.004},${+v.lat + 0.003}&layer=mapnik&marker=${+v.lat},${+v.lng}"></iframe>` : ''; }
+function fieldInput(f, v, stage, opts = {}) {
   switch (f.t) {
     case 'avatar':
       return `<div style="display:flex;align-items:center;gap:10px"><span data-avprev>${v ? `<img class="av lg" src="${v}" alt="">` : '<span class="av lg">👤</span>'}</span>
-        <label class="btn sm">📷 اختار صورة<input type="file" accept="image/*" data-av hidden></label></div>`;
+        <label class="btn sm">📷 اختار صورة<input type="file" accept="image/*" data-av hidden></label></div>
+        ${opts.remind ? '<div class="avnote">📸 محتاجين صورتك الشخصية إنت، مش أي صورة تانية — عشان نتعرف على حضرتك. بعد إذنك ده ضروري 🙏</div>' : ''}`;
     case 'stage':
       return `<select name="stage"><option value="">—</option>${Object.entries(STAGE_L).map(([k, l]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     case 'subjects':
@@ -165,13 +178,14 @@ function fieldInput(f, v, stage) {
       return `<textarea name="address" placeholder="مثال: شارع المدرسة، فوق صيدلية النور، جنب مسجد الرحمة">${esc(v || '')}</textarea>
         <div class="hint small muted">اكتب العنوان بالتفصيل واذكر علامة مميزة جنبه (مسجد، صيدلية، مدرسة…)</div>`;
     case 'loc':
-      return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn sm" data-locbtn>📍 اضغط هنا عشان نعرف موقع الدرس</button>
-        <span class="small" data-locv>${v && v.lat ? fmtVal('loc', v) : '<span class="muted">لسه ما اتحددش</span>'}</span></div>
-        <div class="hint small muted">افتحها وانت في مكان الدرس.</div>`;
+      return `<div class="warnbox">⚠️ دوس الزرار ده وإنت واقف في مكان الدرس نفسه — مش من البيت ولا من الشارع</div>
+        <button type="button" class="btn pri" data-locbtn>📍 اضغط هنا لما تكون في مكان الدرس عشان نعرف مكانه على الخريطة</button>
+        <div class="small" data-locv style="margin-top:6px">${v && v.lat ? '✅ تم تحديد الموقع — ' + fmtVal('loc', v) : '<span class="muted">لسه ما اتحددش</span>'}</div>
+        <div data-locmap>${locMap(v)}</div>`;
     case 'days': {
       const d = v || {};
-      return `<div class="days" data-days>${DAYS.map(([k, l]) => `<div class="dayrow"><label class="chip ${d[k] ? 'on' : ''}"><input type="checkbox" value="${k}" ${d[k] ? 'checked' : ''}>${l}</label>
-        <span class="dtimes" ${d[k] ? '' : 'hidden'}>من <input type="time" data-f="${k}" value="${esc(d[k]?.f || '')}"> إلى <input type="time" data-t="${k}" value="${esc(d[k]?.t || '')}"></span></div>`).join('')}</div>`;
+      return `<div class="hint small muted" style="margin-bottom:6px">علّم اليوم واكتب من الساعة كام لكام</div><div class="days" data-days>${DAYS.map(([k, l]) => `<div class="dayrow"><label class="chip ${d[k] ? 'on' : ''}"><input type="checkbox" value="${k}" ${d[k] ? 'checked' : ''}>${l}</label>
+        <span class="dtimes" ${d[k] ? '' : 'hidden'}>من <input type="time" data-f="${k}" value="${esc(d[k]?.f || '')}"> لـ <input type="time" data-t="${k}" value="${esc(d[k]?.t || '')}"></span></div>`).join('')}</div>`;
     }
     default:
       return `<input name="${f.k}" type="${f.t === 'number' ? 'number' : f.t === 'tel' ? 'tel' : 'text'}" ${f.t === 'number' ? 'inputmode="numeric" min="0"' : ''} ${f.t === 'tel' ? 'dir="ltr"' : ''} value="${esc(v ?? '')}">`;
@@ -188,11 +202,17 @@ function profileForm(vals, opts = {}) {
   const keys = opts.only || FIELDS.map(f => f.k);
   // لو بيعدّل الصفوف/التخصص لازم المرحلة تبقى موجودة
   const stage = vals.stage || '';
-  return FIELDS.filter(f => keys.includes(f.k)).map(f => {
+  const DISP = { days: '🕒 أيام تواجدك في السنتر — من الساعة كام لكام', address: '🏠 عنوان مكان الدرس بالتفصيل', loc: '📍 موقع مكان الدرس على الخريطة <span class="star">⭐ دي أهم خطوة في تحديث بياناتك</span>' };
+  const fl = FIELDS.filter(f => keys.includes(f.k));
+  // العنوان والموقع في قسم لوحده بشكل مميز
+  const secKeys = fl.filter(f => f.k === 'address' || f.k === 'loc').map(f => f.k);
+  return (opts.remind ? `<div class="warnbox">${WARN_TXT}</div>` : '') + fl.map(f => {
     const v = vals[f.k], req = opts.req && opts.req.has(f.k) ? ' req' : '';
     const pend = opts.pend && f.k in opts.pend ? `<div class="pend">⏳ تعديلك في انتظار المراجعة: ${esc(valText(f.k, opts.pend[f.k]))}</div>` : '';
     const reqTxt = req ? ' <span class="pill bad">مطلوب تحديثه</span>' : '';
-    return `<div class="field${req}" data-f="${f.k}"><label>${f.l}${reqTxt}</label>${fieldInput(f, v, stage)}${pend}${opts.remind ? '<div class="remind" hidden></div>' : ''}</div>`;
+    const open = secKeys[0] === f.k ? '<div class="locsec"><div class="lsh">🚚 عايزين نوصّلك نسختك لحد مكانك</div>' : '';
+    const close = secKeys[secKeys.length - 1] === f.k ? '</div>' : '';
+    return `${open}<div class="field${req}" data-f="${f.k}"><label>${DISP[f.k] || f.l}${reqTxt}</label>${fieldInput(f, v, stage, opts)}${pend}${opts.remind ? '<div class="remind" hidden></div>' : ''}</div>${close}`;
   }).join('');
 }
 // أحداث النموذج. state.avatar / state.loc بيتحدثوا
@@ -222,14 +242,28 @@ function bindProfileForm(root, state, opts = {}) {
     catch (e) { toast(errMsg(e)); }
   });
   const lb = $('[data-locbtn]', root);
-  lb && (lb.onclick = () => {
-    if (!navigator.geolocation) return toast('الموبايل ده مش بيدعم تحديد الموقع');
+  const LB0 = lb ? lb.textContent : '';
+  const locate = () => {
     lb.disabled = true; lb.textContent = '⏳ بنحدد الموقع…';
     navigator.geolocation.getCurrentPosition(p => {
-      state.loc = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6) };
-      $('[data-locv]', root).innerHTML = fmtVal('loc', state.loc); lb.disabled = false; lb.textContent = '📍 حدّد تاني'; remind(lb.closest('.field'));
-    }, () => { lb.disabled = false; lb.textContent = '📍 اضغط هنا عشان نعرف موقع الدرس'; toast('ماقدرناش نحدد الموقع — اسمح للبرنامج بالموقع وشغّل الـ GPS'); },
-      { enableHighAccuracy: true, timeout: 20000 });
+      lb.disabled = false;
+      const acc = Math.round(p.coords.accuracy || 0);
+      if (acc > 200) { lb.textContent = LB0; return toast(`الموقع مش دقيق (±${acc} متر) — افتح الـ GPS واطلع جنب شباك أو برّه المبنى وجرّب تاني`, 6000); }
+      state.loc = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc, at: new Date().toISOString() };
+      $('[data-locv]', root).innerHTML = '✅ تم تحديد الموقع — ' + fmtVal('loc', state.loc) + '<div class="small">بص على الخريطة: ده مكان الدرس؟ لو لأ دوس «حدّد تاني» وانت هناك.</div>';
+      const mp = $('[data-locmap]', root); mp && (mp.innerHTML = locMap(state.loc));
+      lb.textContent = '📍 حدّد تاني'; remind(lb.closest('.field'));
+    }, () => { lb.disabled = false; lb.textContent = LB0; toast('ماقدرناش نحدد الموقع — اسمح للبرنامج بالموقع وشغّل الـ GPS وجرّب تاني', 5000); },
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+  };
+  lb && (lb.onclick = () => {
+    if (!navigator.geolocation) return toast('الموبايل ده مش بيدعم تحديد الموقع');
+    if (!opts.remind) return locate();
+    modal(`<h3>📍 إنت دلوقتي في مكان الدرس نفسه؟</h3><div class="small muted" style="margin-bottom:10px">الموقع لازم يتبعت وإنت واقف في مكان الدرس، عشان نوصّلك نسختك صح.</div>
+      <div class="acts"><button class="btn ok" id="locY">✅ أيوه، أنا هناك</button><button class="btn ghost" id="locN">❌ لأ، هبعته بعدين</button></div>`, (box, close) => {
+      $('#locY', box).onclick = () => { close(); locate(); };
+      $('#locN', box).onclick = () => { close(); toast('تمام 👍 ابعته لما تكون في مكان الدرس'); };
+    });
   });
 }
 function readProfileForm(root, state) {

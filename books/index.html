@@ -627,7 +627,7 @@ function goDups(){ if(location.hash!=='#/settings') location.hash='#/settings'; 
   setTimeout(()=>{ const el=document.getElementById('dups'); if(el) el.scrollIntoView({block:'start'}); }, 80); }
 function logT(tid, txt, k='تعديل'){ (db.tlog ||= []).push({id:uid(), t:tid, at:new Date().toISOString(), k, txt}); }
 function delTeacherData(id){ try{ phDel(id); }catch(e){} db.tlog=(db.tlog||[]).filter(x=>x.t!==id); db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
-function nameTags(t){ const L=clsLetter(t); return (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':'') + (t.isNew?' <span class="pill nw">🆕 مدرس جديد — مطلوب إضافته</span>':''); }
+function nameTags(t){ const L=clsLetter(t); return sbTags(t) + (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':'') + (t.isNew?' <span class="pill nw">🆕 مدرس جديد — مطلوب إضافته</span>':''); }
 
 /* ================= التصنيفات ================= */
 const CLS_MAP = {
@@ -903,7 +903,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles i8">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','✉️','رسائل المدرسين','g5','واتساب للمدرسين')}${ic('admin.html','💬','المراسلات','g9','🔒 المدرسين والرسايل',sbBell||0)}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','👣','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles i8">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','📬','الرسائل','g5',sbBell?`${sbBell} جديد في المراسلات`:'واتساب + المراسلات',sbBell||0)}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','🚗','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -997,7 +997,25 @@ function phoneBtns(t){
   // 📨 = رسايل عبر تطبيق سلاح التلميذ (بتظهر بس للي داخل «💬 المراسلات» بالرقم السري على الموبايل ده)
   const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>` : '';
   if(!t.phone) return app;
-  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico" data-act="noop" href="https://wa.me/2${esc(t.phone)}" target="_blank" rel="noopener" title="واتساب">🟢</a>${app}`;
+  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico wa" data-act="noop" href="https://wa.me/2${esc(t.phone)}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>${app}`;
+}
+// لوجو الواتساب الأصلي
+var WA_ICON='<svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true" style="vertical-align:middle"><path fill="#25D366" d="M16 2.5A13.5 13.5 0 0 0 4.4 22.9L2.6 29.5l6.8-1.8A13.5 13.5 0 1 0 16 2.5z"/><path fill="#fff" d="M11.7 9c-.3-.6-.6-.6-.9-.6h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 3.9 1.7 4.2c.2.3 2.9 4.6 7.1 6.3 3.5 1.4 4.2 1.1 5 1 .8-.1 2.5-1 2.8-2 .3-1 .3-1.8.2-2-.1-.2-.4-.3-.8-.5l-2.8-1.4c-.4-.1-.7-.2-.9.2-.3.4-1.1 1.4-1.3 1.6-.2.3-.5.3-.9.1-.4-.2-1.7-.6-3.3-2-1.2-1.1-2-2.4-2.3-2.8-.2-.4 0-.6.2-.8l.6-.7c.2-.2.3-.4.4-.7.1-.3 0-.5 0-.7L11.7 9z"/></svg>';
+/* علامات المراسلات جنب اسم المدرس في كل مكان: 💬 رسايل · 📝 تعديل ملف · 🛒 طلبات (على الموبايل اللي داخل المراسلات بس) */
+var sbCnt=(()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-cnt')||'{}'); }catch(e){ return {}; } })();
+function sbTags(t){ const x=sbHas()&&sbCnt[t.id]; if(!x) return '';
+  const s=(bg,txt)=>` <span style="background:${bg};color:#fff;border-radius:10px;padding:0 6px;font-size:12px;font-weight:700;white-space:nowrap">${txt}</span>`;
+  return (x.m?s('#16a34a','💬 '+x.m):'')+(x.e?s('#7c3aed','📝'+(x.e>1?' '+x.e:'')):'')+(x.o?s('#ea580c','🛒 '+x.o):''); }
+async function sbCntPull(S){
+  try{
+    const rev={}; for(const k in sbIds) rev[sbIds[k]]=k;
+    const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-1999'}}); return r.ok?r.json():[]; };
+    const [m,e,o]=await Promise.all([q('messages?select=teacher_id&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id&status=eq.pending'), q('orders?select=teacher_id&status=eq.pending')]);
+    const c={}, add=(l,k)=>l.forEach(x=>{ const id=rev[x.teacher_id]; if(id){ (c[id] ||= {m:0,e:0,o:0})[k]++; } });
+    add(m,'m'); add(e,'e'); add(o,'o');
+    const ch=JSON.stringify(c)!==JSON.stringify(sbCnt); sbCnt=c; try{ localStorage.setItem('selah-trial-cnt', JSON.stringify(c)); }catch(er){}
+    if(ch && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.querySelector('.modal')){ const y=scrollY; render(); scrollTo(0,y); }
+  }catch(er){}
 }
 /* خريطة: id المدرس في البرنامج ← id بتاعه في المراسلات (عشان أيقونة 📨 تفتح الشات بتاعه على طول) */
 var sbIds = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-ids')||'{}'); }catch(e){ return {}; } })();
@@ -4305,13 +4323,15 @@ function updateBell(){ const n=pendReqs().length+remoteReqs.length+sbBell, el=$(
 var sbBell=0;
 async function pullSbBell(){
   try{
-    const c=window.SILAH_CONFIG, s=JSON.parse(localStorage.getItem('selah-trial-auth')||'null');
-    if(!c || !s || !s.access_token) return;
-    if(s.expires_at && s.expires_at*1000<Date.now()+60000){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
-    const r=await fetch(c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:{apikey:c.SUPABASE_ANON_KEY,Authorization:'Bearer '+s.access_token,'Content-Type':'application/json'},body:'{}'});
+    if(!sbHas() || !navigator.onLine) return;
+    const S=await sbSession();
+    if(!S){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:S.h,body:'{}'});
     if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0);
     if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} try{ new Audio('ring.mp3').play().catch(()=>{}); }catch(e){} }
-    sbBell=n; updateBell();
+    const was=sbBell; sbBell=n; updateBell();
+    if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»
+    sbCntPull(S);
   }catch(e){}
 }
 setTimeout(pullSbBell, 3000); setInterval(pullSbBell, 60000);
@@ -4539,14 +4559,18 @@ function msgShown(){ const ws=qWords(msgF.q);
     .sort((a,b)=>(a.area||'').localeCompare(b.area||'','ar') || a.name.localeCompare(b.name,'ar')); }
 function msgText(){ try{ return localStorage.getItem(KEY+'-msg')||''; }catch(e){ return ''; } }
 function renderMsgs(){
-  setHeader('✉️ رسائل المدرسين', false);
+  setHeader('📬 الرسائل', false);
   for(const id of [...msgSel]) if(!tById(id)) msgSel.delete(id);
+  const hasSb=sbHas();
+  // تبويبين: واتساب (هنا) و 💬 المراسلات (admin.html — بتطلب الرقم السري لو مش داخل)
+  const tabsH=`<div class="row2" style="margin-bottom:10px"><button class="btn ok" style="font-size:16px" disabled>${WA_ICON} واتساب</button>
+    <a class="btn" href="admin.html" style="font-size:16px;text-align:center;position:relative">💬 المراسلات${hasSb?'':' 🔒'}${sbBell?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:0 7px;font-size:13px">${sbBell}</span>`:''}</a></div>`;
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const chip=(k,v,l)=>`<button class="chip ${msgF[k]===v?'on':''}" data-act="msg-f" data-k="${k}" data-v="${esc(v)}">${l}</button>`;
-  app.innerHTML=`<div class="card"><h3 class="sec-t">✍️ الرسالة</h3>
+  app.innerHTML=tabsH+`<div class="card"><h3 class="sec-t">✍️ الرسالة</h3>
       <textarea id="msg_t" rows="5" style="width:100%" placeholder="اكتب الرسالة هنا… ولو كتبت {الاسم} هيتحط مكانها اسم المدرس">${esc(msgText())}</textarea>
-      <button class="btn sm" id="msg_link" style="margin-top:6px">🔗 حط [رابط المدرس]</button>
-      <div class="hint">[رابط المدرس] بيتبدل لوحده برابط كل مدرس (صفحته في 💬 المراسلات).</div></div>
+      ${hasSb?`<button class="btn sm" id="msg_link" style="margin-top:6px">🔗 حط [رابط المدرس]</button>
+      <div class="hint">[رابط المدرس] بيتبدل لوحده برابط كل مدرس (صفحته في 💬 المراسلات).</div>`:''}</div>
     <div class="card"><h3 class="sec-t">👥 اختار المدرسين</h3>
       ${areaChips(areas, 'msa')}
       <div class="chips">${chip('c','','كل التصنيفات')}${['A','B','C'].map(c=>chip('c',c,c)).join('')}</div>
@@ -4557,7 +4581,7 @@ function renderMsgs(){
     <button class="btn ok" id="msg_go" style="width:100%;font-size:17px" data-act="msg-send"></button>
     <p class="hint">الواتساب مش بيسمح يبعت لكذا حد مرة واحدة لوحده — البرنامج هيفتحلك المدرسين واحد ورا التاني والرسالة مكتوبة، وإنت تدوس إرسال وترجع تدوس «التالي».</p>`;
   const ta=$('#msg_t'); ta.addEventListener('input', ()=>{ try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} });
-  $('#msg_link').onclick=()=>{ const p=ta.selectionStart??ta.value.length; ta.value=ta.value.slice(0,p)+'[رابط المدرس]'+ta.value.slice(p); try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} ta.focus(); };
+  if(hasSb) $('#msg_link').onclick=()=>{ const p=ta.selectionStart??ta.value.length; ta.value=ta.value.slice(0,p)+'[رابط المدرس]'+ta.value.slice(p); try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} ta.focus(); };
   for(const a of [...msgA]) if(!areas.includes(a)) msgA.delete(a);
   bindAreaChips(app, 'msa', msgA, msgDraw);
   $('#msg_q').addEventListener('input', e=>{ msgF.q=e.target.value; msgDraw(); });
@@ -4580,7 +4604,8 @@ async function sbSession(){
   return {c, s, h:{apikey:c.SUPABASE_ANON_KEY, Authorization:'Bearer '+s.access_token, 'Content-Type':'application/json'}};
 }
 function sbProfile(t){ return {name:t.name||'', phone:t.phone||'', stage:t.stage||'', subjects:(t.subjects||[]).filter(x=>x!=='kash').slice(0,2), spec:t.spec||'',
-  area:t.area||'', school:t.school||'', grades:(t.grades||[]).filter(g=>g>=1&&g<=6), where:t.where||'', students:t.students||''}; }
+  area:t.area||'', school:t.school||'', grades:(t.tGrades&&t.tGrades.length?t.tGrades:(t.grades||[]).filter(g=>g>=1&&g<=6)), where:t.where||'', students:t.students||'',
+  ...(t.tAddress?{address:t.tAddress}:{}), ...(t.tLoc?{loc:t.tLoc}:{}), ...(t.tDays?{days:t.tDays}:{})}; }
 function sbBooks(tid){ const m={}; for(const s of db.sales||[]) if(s.t===tid) for(const it of s.items||[]) m[it.b]=(m[it.b]||0)+(+it.q||0);
   return Object.entries(m).filter(([,q])=>q>0).map(([b,q])=>({b, l:bookLabel(b), q})); }
 async function sbLinks(list){
@@ -4603,7 +4628,7 @@ async function msgSend(){
   const txt=($('#msg_t')?.value||'').trim(); if(!txt){ alert('اكتب الرسالة الأول'); return; }
   const list=[...msgSel].map(tById).filter(t=>t && t.phone); if(!list.length){ alert('اختار مدرس واحد على الأقل'); return; }
   let links={};
-  if(txt.includes('[رابط المدرس]')){
+  if(txt.includes('[رابط المدرس]') && sbHas()){
     const b=$('#msg_go'); if(b){ b.disabled=true; b.textContent='⏳ بجهّز روابط المدرسين…'; }
     try{ links=await sbLinks(list); }
     catch(e){ if(b) b.disabled=false; msgCount();

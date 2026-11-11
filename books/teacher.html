@@ -25,7 +25,7 @@
 </nav>
 <script>
 "use strict";
-const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode';
+const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode', DISMISS = 'selah-trial-tdismiss';
 (function () {
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
@@ -49,6 +49,9 @@ async function load() {
     if (error) throw error;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
     const first = !D; D = data; $('#tabs').hidden = false; render(); setBadge();
+    // طلب تحديث جديد من آخر مرة ← صوت
+    const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);
+    if (ids.some(i => !seen.includes(i))) ding(); LS.set('selah-trial-tupd', ids);
     if (first) {
       const { data: rep } = await sb.rpc('t_rep', { p_code: code });
       window.TP = { id: D.id, rep, name: D.name }; window.pushReady && window.pushReady();
@@ -93,14 +96,23 @@ function renderHome() {
     <textarea id="reply" placeholder="اكتب ردك هنا…" style="margin-top:8px"></textarea>
     <div class="acts"><button class="btn owe" id="sendReply">ابعت الرد</button><button class="btn ghost" onclick="go('me')">عدّل ملفي</button></div></div>`;
   else if (p) h += `<div class="note"><b>⏳ تعديلك في انتظار المراجعة</b><div class="small" style="margin-top:4px">${esc(fieldsTxt(Object.keys(p.new_values || {})))}${p.photos ? ` + ${p.photos} صورة` : ''}</div></div>`;
-  for (const o of D.orders.filter(o => o.status !== 'pending').slice(0, 3)) h += `<div class="${o.status === 'approved' ? 'good' : 'alert'}">${o.status === 'approved' ? '✅ اتوافق على' : '❌ اترفض'} ${o.kind === 'order' ? 'طلب الكتب' : 'تعديل الكميات'}${o.reason ? ' — ' + esc(o.reason) : ''}<div class="small">${fmtDate(o.at)}</div></div>`;
-  if (D.decisions.length) {
+  // كارت الأسعار المميزة (لافت للنظر)
+  const ps = prices().filter(x => x.post);
+  if (canOrder(D.profile) && ps.length) h += `<div class="promo" id="promo"><b>🔥 أسعار مميزة لحضرتك!</b><div class="small">شوف السعر قبل وبعد الخصم واطلب كتبك دلوقتي</div>
+    ${ps.slice(0, 3).map(x => `<div class="pr"><span>${esc(x.l || bookLabel(x.b))}</span><span>${x.pre ? `<s>${x.pre} ج</s> ← ` : ''}<b>${x.post} ج</b></span></div>`).join('')}
+    <span class="go">🛒 اطلب منا الكتب بأسعار مميزة ←</span></div>`;
+  // الكروت الخلصانة: عليها ❌ والمدرس يشيلها
+  const gone = new Set(LS.get(DISMISS, []));
+  const xb = k => `<button class="xbtn" data-x="${esc(k)}" aria-label="شيل">✕</button>`;
+  for (const o of D.orders.filter(o => o.status !== 'pending' && !gone.has('o' + o.id)).slice(0, 3)) h += `<div class="${o.status === 'approved' ? 'good' : 'alert'}">${xb('o' + o.id)}${o.status === 'approved' ? '✅ اتوافق على' : '❌ اترفض'} ${o.kind === 'order' ? 'طلب الكتب' : 'تعديل الكميات'}${o.reason ? ' — ' + esc(o.reason) : ''}<div class="small">${fmtDate(o.at)}</div></div>`;
+  const decs = D.decisions.filter(d => !gone.has('d' + d.at));
+  if (decs.length) {
     h += '<div class="card"><h3>آخر القرارات على تعديلاتك</h3>';
-    for (const d of D.decisions) {
-      if (d.status === 'rejected') h += `<div class="alert" style="margin:8px 0 0">❌ اترفض تعديل (${esc(fieldsTxt(Object.keys(d.new_values || {})))})${d.reason ? `<br>السبب: ${esc(d.reason)}` : ''}<div class="small">${fmtDate(d.at)}</div></div>`;
+    for (const d of decs) {
+      if (d.status === 'rejected') h += `<div class="alert" style="margin:8px 0 0">${xb('d' + d.at)}❌ اترفض تعديل (${esc(fieldsTxt(Object.keys(d.new_values || {})))})${d.reason ? `<br>السبب: ${esc(d.reason)}` : ''}<div class="small">${fmtDate(d.at)}</div></div>`;
       else {
         const edited = Object.keys(d.final_values || {}).filter(k => JSON.stringify(d.final_values[k]) !== JSON.stringify((d.new_values || {})[k]));
-        h += `<div class="good" style="margin:8px 0 0">✅ اتوافق على تعديلك (${esc(fieldsTxt(Object.keys(d.final_values || {})))})
+        h += `<div class="good" style="margin:8px 0 0">${xb('d' + d.at)}✅ اتوافق على تعديلك (${esc(fieldsTxt(Object.keys(d.final_values || {})))})
           ${edited.length ? `<div class="small" style="margin-top:4px">✏️ المندوب عدّل قبل الموافقة:</div>${valsList(Object.fromEntries(edited.map(k => [k, d.final_values[k]])))}` : ''}
           ${d.reason ? `<div class="small">ملاحظة: ${esc(d.reason)}</div>` : ''}<div class="small">${fmtDate(d.at)}</div></div>`;
       }
@@ -108,6 +120,15 @@ function renderHome() {
     h += '</div>';
   }
   app.innerHTML = h;
+  const pm = $('#promo'); pm && (pm.onclick = orderDlg);
+  $$('[data-x]').forEach(b => b.onclick = () => { const a = LS.get(DISMISS, []); a.push(b.dataset.x); LS.set(DISMISS, a.slice(-200)); renderHome(); });
+  // متابعة الجديد والصفحة مفتوحة (طلب تحديث / رسالة / قرار) — صوت + تحديث
+  pollT = setInterval(async () => {
+    if (document.hidden) return;
+    const { data } = await sb.rpc('t_get', { p_code: code }); if (!data || view !== 'home') return;
+    const sig = x => [x.unread, x.updates.length, x.decisions.length, (x.pending || {}).status, x.orders.filter(o => o.status !== 'pending').length].join('|');
+    if (sig(data) !== sig(D)) { const more = data.unread > D.unread || data.updates.length > D.updates.length; D = data; render(); setBadge(); if (more) ding(); }
+  }, 30000);
   const su = $('#setup'); su && (su.onclick = setupApp);
   const sr = $('#sendReply');
   sr && (sr.onclick = async () => {
@@ -142,7 +163,7 @@ async function pullMsgs(first) {
   D.unread = 0; $('#msgCnt').hidden = true; setBadge();
 }
 function renderMsgs() {
-  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
+  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn stick" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
     <div class="small muted" style="text-align:center">الرسائل كتابة بس</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
   $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`;
   const o = $('#ord'); o && (o.onclick = orderDlg);
@@ -162,13 +183,18 @@ function qtyRow(b, l, q, price) {
   return `<div class="kv" data-b="${esc(b)}"><span>${esc(l)}${price ? `<br><span class="small muted">${esc(price)}</span>` : ''}</span>
     <span class="qty"><button type="button" data-d="-1">−</button><b>${q}</b><button type="button" data-d="1">+</button></span></div>`;
 }
+// نفس qtyRow بس السطر التاني HTML جاهز (للسعر قبل/بعد الخصم)
+function qtyRowH(b, l, q, priceHtml) {
+  return `<div class="kv" data-b="${esc(b)}"><span>${esc(l)}${priceHtml ? `<br><span class="small">${priceHtml}</span>` : ''}</span>
+    <span class="qty"><button type="button" data-d="-1">−</button><b>${q}</b><button type="button" data-d="1">+</button></span></div>`;
+}
 function bindQty(box) { box.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const n = $('b', b.parentNode); n.textContent = Math.max(0, +n.textContent + +b.dataset.d); }); }
 const readQty = box => $$('[data-b]', box).map(r => ({ b: r.dataset.b, q: +$('b', r).textContent }));
 function orderDlg() {
   const ps = prices();
   if (!ps.length) return toast('قايمة الأسعار لسه مش متاحة — اسأل المندوب');
   modal(`<h3>🛒 اطلب كتب بأسعار مميزة</h3><div class="small muted" style="margin-bottom:6px">اختار الكتب والعدد، والمندوب هيأكد معاك.</div>
-    <div id="ol">${ps.map(p => qtyRow(p.b, p.l, 0, p.post ? `السعر: ${p.post} ج${p.pre ? ` بدل ${p.pre} ج` : ''}` : '')).join('')}</div>
+    <div id="ol">${ps.map(p => qtyRowH(p.b, p.l, 0, p.post ? `🔥 <b style="color:#dc2626">${p.post} ج</b>${p.pre ? ` بدل <s>${p.pre} ج</s>` : ''}` : '')).join('')}</div>
     <div class="field"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div>
     <div class="acts"><button class="btn pri" id="os">ابعت الطلب</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
     bindQty($('#ol', box));
@@ -212,7 +238,8 @@ function renderMe() {
   st = {};
   app.innerHTML = `<div class="card"><div class="muted small" style="margin-bottom:10px">أي تعديل بيروح للمندوب يراجعه الأول، وبعد الموافقة يتعتمد.</div>
     <form id="pf" onsubmit="return false">${profileForm(vals(), { req, pend, remind: true })}
-    <div class="field${req.has('photos') ? ' req' : ''}"><label>📷 صور إضافية (اختياري)${req.has('photos') ? ' <span class="pill bad">مطلوب</span>' : ''}</label>
+    <div class="field${req.has('photos') ? ' req' : ''}"><label>📷 صور إضافية${req.has('photos') ? ' <span class="pill bad">مطلوب</span>' : ''}</label>
+      <div class="avnote">📷 صورة سيلفي ليك مع طلبتك وهم ماسكين كتبنا 📚 — لازم حضرتك تكون في الصورة</div>
       <div class="photos" id="phs"></div>
       <label class="btn sm" style="margin-top:8px">➕ زوّد صور<input type="file" accept="image/*" multiple id="phIn" hidden></label>
       ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div>

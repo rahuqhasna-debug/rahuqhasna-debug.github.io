@@ -23,6 +23,7 @@
 <div id="cbar"></div>
 <nav class="tabs" id="tabs" hidden>
   <a href="index.html"><span class="i">🏠</span>البرنامج</a>
+  <a href="index.html#/msgs"><span class="i" style="display:inline-block;width:22px;height:22px">🟩</span>واتساب</a>
   <a href="#/" data-tab="list"><span class="i">👥</span>المدرسين</a>
   <a href="#/invite" data-tab="invite"><span class="i">✉️</span>رسالة الدعوة</a>
   <a href="#/bell" data-tab="bell"><span class="i">🔔</span>الإشعارات</a>
@@ -47,7 +48,8 @@ function gBooks(db, tid) {
 }
 function gProfile(t) {
   return { name: t.name || '', phone: t.phone || '', stage: t.stage || '', subjects: (t.subjects || []).filter(x => x !== 'kash').slice(0, 2), spec: t.spec || '',
-    area: t.area || '', school: t.school || '', grades: (t.grades || []).filter(g => g >= 1 && g <= 6), where: t.where || '', students: t.students || '' };
+    area: t.area || '', school: t.school || '', grades: (t.tGrades && t.tGrades.length ? t.tGrades : (t.grades || []).filter(g => g >= 1 && g <= 6)), where: t.where || '', students: t.students || '',
+    ...(t.tAddress ? { address: t.tAddress } : {}), ...(t.tLoc ? { loc: t.tLoc } : {}), ...(t.tDays ? { days: t.tDays } : {}) };
 }
 function gApply(localId, fin) {   // الموافقة تتكتب في البرنامج الأخضر كمان
   const db = gdb(); if (!db || !localId) return false;
@@ -92,6 +94,7 @@ function inviteLink(t) {
 }
 const INV_DEF = 'أهلًا أ/ {الاسم} 👋\nده رابط ملفك في «سلاح التلميذ»، افتحه وثبّته على موبايلك وكمّل بياناتك:\n[رابط المدرس]';
 function inviteMsg(t, tpl) { tpl = tpl || LS.get('selah-trial-inv') || INV_DEF; if (!tpl.includes('[رابط المدرس]')) tpl += '\n[رابط المدرس]'; return tpl.replace(/\{الاسم\}/g, t.name).replace(/\[رابط المدرس\]/g, inviteLink(t)); }
+const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy[id] || 0);   // علامات المدرس جنب اسمه في أي مكان
 function avHtml(t, cls = '') { return t.avatar ? `<img class="av ${cls}" src="${t.avatar}" alt="">` : `<span class="av ${cls}">${esc((t.name || '؟').trim()[0] || '👤')}</span>`; }
 async function fetchAll(make) {
   let out = [];
@@ -132,6 +135,7 @@ async function loadMe() {
     me = data;
     $('#bellBtn').hidden = false; $('#outBtn').hidden = false; $('#tabs').hidden = false; $('#setTab').hidden = !isAdmin();
     await loadAll(); route();
+    importGreen().then(ch => { if (ch) refresh(); }).catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
     setInterval(() => counts().catch(() => { }), 30000);
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="boot()">حاول تاني</button>`; }
@@ -214,25 +218,26 @@ function route() {
 window.addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
 
 /* ---------- استيراد من البرنامج الأخضر ---------- */
+// بيحصل لوحده مع كل فتح (لو البرنامج اتغيّر من آخر مرة) — من غير زرار
 async function importGreen() {
   const db = gdb();
-  if (!db || !(db.teachers || []).length) return toast('مفيش مدرسين في البرنامج على الموبايل ده');
+  if (!db || !(db.teachers || []).length) return false;
+  const sig = me.id + '|' + (db.lastChange || '') + '|' + db.teachers.length;
+  if (LS.get('selah-trial-isync') === sig && T.some(t => t.rep_id === me.id)) return false;
   const mine = new Map(T.filter(t => t.rep_id === me.id && t.local_id).map(t => [t.local_id, t]));
   const rows = db.teachers.filter(t => t && t.id && t.name).map(t => {
     const old = mine.get(t.id), prof = { ...(old ? old.profile : {}), ...gProfile(t) };
     return { rep_id: me.id, local_id: t.id, name: t.name, phone: t.phone || '', profile: prof, books: gBooks(db, t.id) };
   });
-  if (!confirm(`هنجيب ${rows.length} مدرس من البرنامج (الجداد يتضافوا، والموجودين بياناتهم وكتبهم تتحدّث). نكمّل؟`)) return;
-  toast('جاري النقل…', 6000);
   for (let i = 0; i < rows.length; i += 300) {
     const { error } = await sb.from('teachers').upsert(rows.slice(i, i + 300), { onConflict: 'rep_id,local_id' });
-    if (error) return toast(errMsg(error), 5000);
+    if (error) { console.warn(error); return false; }
   }
   if (isAdmin() && db.prices) {
     const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? null }));
     if (items.length) await sb.from('app_settings').upsert({ key: 'prices', value: { items, at: new Date().toISOString() } });
   }
-  await loadAll(); viewList(); toast(`✅ اتنقل ${rows.length} مدرس`);
+  LS.set('selah-trial-isync', sig); return true;
 }
 
 /* ---------- قائمة المدرسين ---------- */
@@ -258,12 +263,11 @@ function viewList() {
   setHeader(`المدرسين — ${me.name}`, false);
   const list = filtered(), nNotes = T.filter(t => notesBy[t.id]).length, nUn = Object.keys(unreadBy).length;
   const chip = (k, txt) => `<button class="chip ${ui.filter === k ? 'on' : ''}" data-f="${k}">${txt}</button>`;
-  app.innerHTML = `${T.length ? '' : '<div class="note"><b>ابدأ بنقل مدرسينك من البرنامج</b><div class="small">بيتنقلوا ببياناتهم وكتبهم زي ما هي عندك.</div></div>'}
+  app.innerHTML = `${T.length ? '' : '<div class="note"><b>⏳ بننقل مدرسينك من البرنامج…</b><div class="small">بيتنقلوا لوحدهم ببياناتهم وكتبهم. لو مفيش مدرسين في البرنامج على الموبايل ده، ضيفهم هناك الأول.</div></div>'}
   <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بالاسم أو الرقم أو المنطقة أو الرسائل المحفوظة" value="${esc(ui.q)}"></div>
   <div class="chips">${chip('all', `الكل (${T.length})`)}${chip('unread', `💬 رسايل جديدة (${nUn})`)}${chip('notes', `📌 رسائل محفوظة (${nNotes})`)}${chip('pend', `⏳ تعديلات (${pendSet.size})`)}${chip('new', 'لسه ما فتحوش')}${chip('off', '⛔ موقوفين')}
    ${isAdmin() && staffList.length > 1 ? `<select class="chip" id="repF"><option value="">كل المناديب</option>${staffList.map(s => `<option value="${s.id}" ${ui.rep === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}</div>
-  <div class="acts" style="margin:0 0 10px"><button class="btn sm pri" id="imp">📥 هات مدرسيني من البرنامج</button>
-   <button class="btn sm ${ui.selMode ? 'pri' : ''}" id="selT">☑️ تحديد</button><button class="btn sm" id="updAll">🔄 اطلب تحديث للظاهرين (${list.length})</button></div>
+  <div class="acts" style="margin:0 0 10px"><button class="btn sm ${ui.selMode ? 'pri' : ''}" id="selT">☑️ تحديد</button><button class="btn sm" id="updAll">🔄 اطلب تحديث للظاهرين (${list.length})</button></div>
   <div class="tlist" id="tl">${list.slice(0, ui.shown).map(tItem).join('') || '<div class="empty">مفيش مدرسين هنا</div>'}</div>
   ${list.length > ui.shown ? `<button class="btn ghost" id="more" style="width:100%;margin-top:10px">اعرض أكتر (${list.length - ui.shown})</button>` : ''}
   <div id="selbar"></div>`;
@@ -271,13 +275,13 @@ function viewList() {
   qi.oninput = () => { ui.q = qi.value; ui.shown = 200; const l = filtered(); $('#tl').innerHTML = l.slice(0, ui.shown).map(tItem).join('') || '<div class="empty">مفيش نتائج</div>'; $('#updAll').textContent = `🔄 اطلب تحديث للظاهرين (${l.length})`; };
   $$('[data-f]').forEach(b => b.onclick = () => { ui.filter = b.dataset.f; ui.shown = 200; viewList(); });
   const rf = $('#repF'); rf && (rf.onchange = () => { ui.rep = rf.value; viewList(); });
-  $('#imp').onclick = importGreen;
   $('#selT').onclick = () => { ui.selMode = !ui.selMode; ui.sel.clear(); viewList(); };
   $('#updAll').onclick = () => { const l = filtered(); if (l.length) reqUpdateDlg(l.map(t => t.id)); };
   const mo = $('#more'); mo && (mo.onclick = () => { ui.shown += 300; viewList(); });
   $('#tl').onclick = e => {
     const it = e.target.closest('.titem'); if (!it) return;
-    if (e.target.closest('[data-chat]')) { location.hash = '#/c/' + it.dataset.id; return; }
+    if (e.target.closest('[data-ic]')) return;
+    if (e.target.closest('[data-chat]')) { e.preventDefault(); location.hash = '#/c/' + it.dataset.id; return; }
     if (ui.selMode) { const id = it.dataset.id; ui.sel.has(id) ? ui.sel.delete(id) : ui.sel.add(id); it.classList.toggle('sel'); drawSelbar(); }
     else location.hash = '#/t/' + it.dataset.id;
   };
@@ -286,11 +290,11 @@ function viewList() {
 function tItem(t) {
   const pr = t.profile || {}, nn = (notesBy[t.id] || []).length, un = unreadBy[t.id] || 0;
   const lm = lastMsg[t.id];
-  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" ${un ? 'style="border-color:#16a34a;background:color-mix(in srgb,#16a34a 8%,var(--card))"' : ''}>${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)}${un ? ` <span style="background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">💬 ${un}</span>` : ''}${ordersBy[t.id] ? ` <span style="background:#ea580c;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">🛒 ${ordersBy[t.id]} طلب</span>` : ''}</div>
+  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" ${un ? 'style="border-color:#16a34a;background:color-mix(in srgb,#16a34a 8%,var(--card))"' : ''}>${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${badgesHtml(un, pendSet.has(t.id) ? 1 : 0, ordersBy[t.id] || 0)}</div>
     ${lm ? `<div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
-    <div class="sub">${esc([t.phone, valText('subjects', pr.subjects), pr.area].filter(x => x && x !== '—').join(' · '))}${isAdmin() ? ' · ' + esc(repName(t.rep_id)) : ''}</div></div>
-    ${pendSet.has(t.id) ? '<span class="pill owe" title="تعديل ملف">⏳</span>' : ''}${nn ? `<span class="pill new">📌${nn}</span>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔</span>'}${t.last_seen ? '' : '<span class="pill new">لسه ما فتحش</span>'}
-    <button class="btn sm ${un ? 'danger' : 'ghost'}" data-chat>💬${un ? ' ' + un : ''}</button></div>`;
+    <div class="sub">${esc([valText('subjects', pr.subjects), pr.area].filter(x => x && x !== '—').join(' · '))}${isAdmin() ? ' · ' + esc(repName(t.rep_id)) : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div></div>
+    ${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}
+    <a class="tic" data-chat href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a></div>`;
 }
 function drawSelbar() {
   const b = $('#selbar'); if (!b) return;
@@ -445,13 +449,13 @@ async function viewTeacher(id) {
   setHeader(t.name, true);
   const pr = t.profile || {}, link = inviteLink(t), inGreen = t.local_id && (gdb()?.teachers || []).some(x => x.id === t.local_id);
   app.innerHTML = `<div class="card"><div style="display:flex;gap:12px;align-items:center">${avHtml(t, 'lg')}<div class="grow">
-      <b style="font-size:20px">${esc(t.name)}</b><div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
+      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)}<div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
       ${isAdmin() ? `<div class="small muted">المندوب: ${esc(repName(t.rep_id))}</div>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
     <div style="margin-top:10px">${FIELDS.filter(f => !['name', 'avatar', 'phone'].includes(f.k)).map(f => `<div class="kv"><span>${FIELD_LABEL[f.k]}</span><span>${fmtVal(f.k, pr[f.k])}</span></div>`).join('')}</div>
     ${(t.books || []).length ? `<div class="kv"><span>الكتب المسجلة</span><span class="small">${esc(t.books.map(b => `${b.l || bookLabel(b.b)}: ${b.q}`).join('، '))}</span></div>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <a class="btn pri" style="text-align:center" href="#/c/${t.id}">💬 محادثة سلاح التلميذ</a>
-      ${t.phone ? `<a class="btn ok" style="text-align:center" target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}">🟢 محادثة واتساب</a>` : '<span></span>'}
+      ${t.phone ? `<a class="btn ok" style="text-align:center" target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}"><span style="display:inline-block;width:20px;height:20px;vertical-align:middle">${WA_ICON}</span> محادثة واتساب</a>` : '<span></span>'}
       <button class="btn owe" id="ru">🔄 اطلب تحديث</button>
       ${inGreen ? `<a class="btn ghost" style="text-align:center" href="index.html#/t/${encodeURIComponent(t.local_id)}">📒 صفحته في البرنامج</a>` : '<span></span>'}
       ${isAdmin() && staffList.filter(s => s.active).length > 1 ? '<button class="btn ghost" id="tr" style="grid-column:1/-1">🔁 نقل لمندوب تاني</button>' : ''}</div></div>
@@ -509,15 +513,14 @@ function diffRows(e) {
 }
 function reviewCard(e, inTeacher) {
   REQS[e.id] = e;
-  const t = e.teachers || {}, ph = e.photos || [];
-  return `<div class="card" data-req="${e.id}" style="border-color:var(--owe)">
+  const t = e.teachers || {}, ph = e.photos || [];  return `<div class="card" data-req="${e.id}" style="border-color:var(--owe)">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${avHtml(t)}<div class="grow">
-      ${inTeacher ? '<b>📝 طلب تعديل الملف</b>' : `<a href="#/t/${e.teacher_id}"><b>${esc(t.name || '')}</b></a>`}<div class="small muted">${fmtDate(e.updated_at)}</div></div>
+      ${inTeacher ? '<b>📝 طلب تعديل الملف</b>' : `<a href="#/t/${e.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(e.teacher_id)}`}<div class="small muted">${fmtDate(e.updated_at)}</div></div>
       ${e.status === 'question' ? '<span class="pill owe">❓ مستني رده</span>' : '<span class="pill new">جديد</span>'}</div>
     ${e.reason && (e.status === 'question' || e.teacher_reply) ? `<div class="small">❓ سؤالك: ${esc(e.reason)}</div>` : ''}
     ${e.teacher_reply ? `<div class="good small" style="padding:8px;margin:6px 0">💬 رد المدرس: ${esc(e.teacher_reply)}</div>` : ''}
     ${Object.keys(e.new_values || {}).length ? `<table class="diff">${diffRows(e)}</table>` : ''}
-    ${ph.length ? `<div class="small muted" style="margin:8px 0 4px">📷 ${ph.length} صورة — علّم اللي عايز تحتفظ بيها (هتتنزل على جهازك، والباقي يتمسح):</div>
+    ${ph.length ? `<div class="small muted" style="margin:8px 0 4px">📷 ${ph.length} صورة — علّم اللي عايز تحتفظ بيها (هتتحفظ على الدرايف، والباقي يتمسح):</div>
       <div class="photos">${ph.map(p => `<label class="ph on"><img src="${p.d}" alt=""><input type="checkbox" checked data-ph="${p.id}"></label>`).join('')}</div>` : ''}
     <div class="acts"><button class="btn sm ok" data-act="approve">✅ موافقة</button><button class="btn sm" data-act="edit">✏️ عدّل ووافق</button>
       <button class="btn sm danger" data-act="reject">❌ رفض</button><button class="btn sm ghost" data-act="question">❓ اسأله</button></div></div>`;
@@ -526,7 +529,7 @@ function orderCard(o, inTeacher) {
   ORDS[o.id] = o;
   const t = o.teachers || {};
   return `<div class="card" data-ord="${o.id}" style="border-color:#b45309">
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="grow">${inTeacher ? '' : `<a href="#/t/${o.teacher_id}"><b>${esc(t.name || '')}</b></a> — `}
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="grow">${inTeacher ? '' : `<a href="#/t/${o.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(o.teacher_id)} — `}
       <b>${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ طلب تعديل كمية'}</b><div class="small muted">${fmtDate(o.created_at)}</div></div></div>
     ${o.kind === 'edit' ? '<div class="small muted" style="margin-bottom:4px">الطلب كله — اللي اتغيّر متعلّم بالبرتقاني:</div>' : ''}
     <div id="oi-${o.id}">${(o.items || []).map(i => { const chg = o.kind === 'edit' && i.was != null && i.was !== i.q;
@@ -566,7 +569,15 @@ function bindReviews(root) {
     const card = b.closest('[data-req]'), r = REQS[card.dataset.req], act = b.dataset.act;
     const keep = $$('[data-ph]:checked', card).map(c => c.dataset.ph);
     const photos = (r.photos || []).filter(p => keep.includes(p.id));
-    const savePhotos = () => photos.forEach((p, i) => downloadDataUrl(p.d, `${(r.teachers && r.teachers.name || 'مدرس').replace(/[\\/:*?"<>|]/g, '')}-${new Date().toISOString().slice(0, 10)}-${i + 1}.jpg`));
+    // الصور اللي اتعلّمت تتحفظ على درايف المالك (فولدر «صور المدرسين/<الاسم>»)، وبعد القرار بتتمسح من القاعدة لوحدها
+    const savePhotos = () => {
+      if (!photos.length) return;
+      const nm = (r.teachers && r.teachers.name || 'مدرس').replace(/[\\/:*?"<>|]/g, ''), C = window.SILAH_CONFIG || {};
+      const dl = () => photos.forEach((p, i) => downloadDataUrl(p.d, `${nm}-${new Date().toISOString().slice(0, 10)}-${i + 1}.jpg`));
+      if (!C.CLOUD_URL || !navigator.onLine) return dl();
+      fetch(C.CLOUD_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'tphoto', tid: r.teacher_id, name: nm, photos: photos.map(p => p.d) }) })
+        .then(() => toast(`☁️ ${photos.length} صورة اتحفظت على الدرايف`, 3000)).catch(dl);
+    };
     const send = async (action, final, reason) => {
       $$('button', card).forEach(x => x.disabled = true);
       const { error } = await sb.rpc('review_edit', { p_id: r.id, p_action: action, p_final: final || null, p_reason: reason || null });
@@ -576,7 +587,7 @@ function bindReviews(root) {
       card.remove(); loadAll().then(() => { if (!location.hash.startsWith('#/bell')) route(); });
     };
     if (act === 'approve') {
-      if ((r.photos || []).length && !confirm(`${photos.length} صورة هتتنزل على جهازك و${r.photos.length - photos.length} هتتمسح. موافق؟`)) return;
+      if ((r.photos || []).length && !confirm(`${photos.length} صورة هتتحفظ على الدرايف و${r.photos.length - photos.length} هتتمسح. موافق؟`)) return;
       savePhotos(); send('approve');
     } else if (act === 'edit') {
       const st = {}, keys = Object.keys(r.new_values || {});
@@ -616,7 +627,7 @@ async function viewBell() {
   if (ui.bellTab === 'msgs') {
     const ids = Object.keys(unreadBy);
     ids.sort((a, b) => (lastMsg[b]?.id || 0) - (lastMsg[a]?.id || 0));
-    bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<a class="titem" href="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} <span style="background:#16a34a;color:#fff;border-radius:10px;padding:0 7px;font-size:12px">${unreadBy[t.id]}</span></div>
+    bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<a class="titem" href="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
       <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div></div></a>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
     return;
   }
