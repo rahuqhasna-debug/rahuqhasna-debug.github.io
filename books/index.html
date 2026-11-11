@@ -707,7 +707,7 @@ function owedEntries(){
 function stockMap(){ const m={}; for(const s of db.stock) m[s.b]=(m[s.b]||0)+s.q; return m; }
 function deliveredMap(){ const m={}; for(const e of db.entries) if(e.s==='d') m[e.b]=(m[e.b]||0)+e.q; return m; }
 function stockLeft(){
-  if(!db.stock.length) return null;
+  // مفيش استلام متسجّل = الرصيد صفر (مش «مفيش فحص») — عشان البرنامج ما يسلّمش كتب مش موجودة
   const r=stockMap(), d=deliveredMap(), o={};
   for(const k of BOOK_ORDER) o[k]=(r[k]||0)-(d[k]||0);
   return o;
@@ -3715,7 +3715,7 @@ function unmark(root){ root.querySelectorAll('mark.hl').forEach(m=>{ const p=m.p
 /* ---------- ٢) النقص: الناقص يتساب والباقي يكمل ---------- */
 // البيع (من بضاعة التجار): الموجود يتباع، والناقص يتسجّل طلب مستني التنفيذ
 function splitAvail(items){
-  if(!db.merchants.length) return {sell:items.map(it=>({b:it.b, q:it.q})), rest:[]};
+  // مفيش بضاعة تجار متسجّلة = مفيش حاجة تتباع (الكل يتسجّل طلب)
   const left=lotLeft(), sell=[], rest=[];
   for(const it of items){ const a=Math.max(0, merchAvail(it.b,left).reduce((s,[,n])=>s+n,0)), q=Math.min(it.q,a);
     if(q) sell.push({b:it.b, q}); if(it.q>q) rest.push({b:it.b, q:it.q-q, want:it.q, a}); }
@@ -3732,7 +3732,7 @@ function sellRest(s, sp){
 // التسليم (من مخزن الشركة): الكتاب الناقص يتقال عليه ويتساب، والباقي يتسلّم. لو مفيش استلام من المخزن متسجّل خالص → مفيش فحص
 function doDeliver(t, map, after){
   const left=stockLeft(), ok={}, short=[];
-  for(const [b,q] of Object.entries(map)){ const a=left?Math.max(0,left[b]||0):q, n=Math.min(q,a); if(n) ok[b]=n; if(q>n) short.push({b, want:q, a}); }
+  for(const [b,q] of Object.entries(map)){ const a=Math.max(0,left[b]||0), n=Math.min(q,a); if(n) ok[b]=n; if(q>n) short.push({b, want:q, a}); }
   const keys=Object.keys(ok).sort((a,b)=>bookRank[a]-bookRank[b]);
   if(short.length) alert('⚠️ الكتاب ده مش موجود في المخزن:\n'+short.map(x=>`• ${bookLabel(x.b)} — المطلوب ${x.want}، المتاح ${x.a}`).join('\n')+(keys.length?'\n\nهيتسلّم الباقي عادي.':''));
   if(!keys.length) return;
