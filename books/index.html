@@ -626,7 +626,7 @@ function dupBlock(t){
 function goDups(){ if(location.hash!=='#/settings') location.hash='#/settings'; else render();
   setTimeout(()=>{ const el=document.getElementById('dups'); if(el) el.scrollIntoView({block:'start'}); }, 80); }
 function logT(tid, txt, k='تعديل'){ (db.tlog ||= []).push({id:uid(), t:tid, at:new Date().toISOString(), k, txt}); }
-function delTeacherData(id){ db.tlog=(db.tlog||[]).filter(x=>x.t!==id); db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
+function delTeacherData(id){ try{ phDel(id); }catch(e){} db.tlog=(db.tlog||[]).filter(x=>x.t!==id); db.teachers=db.teachers.filter(x=>x.id!==id); db.entries=db.entries.filter(e=>e.t!==id); db.sales=db.sales.filter(s=>s.t!==id); db.payments=db.payments.filter(p=>p.t!==id); }
 function nameTags(t){ const L=clsLetter(t); return (L?` <span class="pill abc">${L}</span>`:'') + (isDup(t)?' <span class="pill dup">⚠️ متكرر</span>':'') + (t.isNew?' <span class="pill nw">🆕 مدرس جديد — مطلوب إضافته</span>':''); }
 
 /* ================= التصنيفات ================= */
@@ -1077,7 +1077,7 @@ function renderTeacher(id){
     t.spec&&`🎯 ${esc(t.spec)}`, t.area&&`📍 ${esc(t.area)}`, t.school&&`🏢 ${esc(t.school)}`, t.cls&&!clsLetter(t)&&`🏷️ ${esc(t.cls)}`,
     t.students&&`👨‍🎓 ${esc(t.students)} طالب`, t.plan&&`🗓️ خط السير ${fmtDay(t.plan)}`,
     t.active===true&&'✅ فعّال', t.active===false&&'⛔ مش فعّال'].filter(Boolean);
-  let html = `<div class="card tcard ${stc}"><div class="tc-top"><button class="avatar avatar-btn" data-act="photos" data-id="${esc(t.id)}" title="صور المدرس">${(t.photos||[]).length?`<img src="${t.photos[0]}" alt="">`:esc((t.name||'؟').trim().charAt(0)||'؟')}<span class="ph-badge">📷${(t.photos||[]).length>1?t.photos.length:''}</span></button>
+  let html = `<div class="card tcard ${stc}"><div class="tc-top"><button class="avatar avatar-btn" data-act="photos" data-id="${esc(t.id)}" title="صور المدرس">${t.thumb?`<img src="${t.thumb}" alt="" loading="lazy" decoding="async">`:esc((t.name||'؟').trim().charAt(0)||'؟')}<span class="ph-badge">📷${(t.phN||0)>1?t.phN:''}</span></button>
       <div class="grow"><h2>${esc(t.name)}${nameTags(t)}</h2>${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:'<div class="lastv muted">لسه ما اتزارش</div>'}</div></div>
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">💬</a>`:''}
@@ -1185,17 +1185,35 @@ function tLogCard(id){
   return `<div class="card"><h3 class="sec-t">🧾 تعديل البيانات والصور والطلبات (${ev.length})</h3><div class="hist">` +
     (ev.length ? ev.map(x=>`<div class="hrow"><div class="grow">${x.h}<div class="small muted">${fmtDT(x.at)}</div></div></div>`).join('') : '<div class="muted">لسه مفيش.</div>') + `</div></div>`;
 }
-/* --- صور المدرس (أكتر من صورة، متخزنة على التليفون مع البيانات) --- */
+/* --- صور المدرس (أكتر من صورة) — بتتخزن في IndexedDB لوحدها عشان البيانات الأساسية تفضل خفيفة والبرنامج مايهنجش.
+   في db بيفضل بس t.thumb (صورة صغيرة جدًا للقائمة) و t.phN (العدد). النسخة الاحتياطية على الدرايف فيها الصور كاملة. --- */
 const PH_MAX=6;
+let _pdb=null;
+function pdb(){ return _pdb ||= new Promise((res,rej)=>{ const r=indexedDB.open('selah-photos',1); r.onupgradeneeded=()=>r.result.createObjectStore('p'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function pdo(mode, fn){ const d=await pdb(); return new Promise((res,rej)=>{ const tx=d.transaction('p',mode), st=tx.objectStore('p'); const r=fn(st); tx.oncomplete=()=>res(r&&r.result); tx.onerror=()=>rej(tx.error); }); }
+const phGet = id => pdo('readonly', s=>s.get(id)).then(v=>v||[]).catch(()=>[]);
+const phSet = (id, arr) => arr.length ? pdo('readwrite', s=>s.put(arr, id)) : phDel(id);
+const phDel = id => pdo('readwrite', s=>s.delete(id)).catch(()=>{});
+async function phAll(){ const o={}; try{ const d=await pdb(); await new Promise((res,rej)=>{ const tx=d.transaction('p','readonly'), c=tx.objectStore('p').openCursor(); c.onsuccess=()=>{ const x=c.result; if(x){ o[x.key]=x.value; x.continue(); } }; tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }catch(e){} return o; }
+function thumbOf(src){ return new Promise(res=>{ const im=new Image(); im.onload=()=>{ const s=Math.min(1, 72/Math.max(im.width,im.height)), c=document.createElement('canvas'); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s); c.getContext('2d').drawImage(im,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',0.6)); }; im.onerror=()=>res(''); im.src=src; }); }
+async function phSync(t, arr){ await phSet(t.id, arr); t.phN=arr.length; t.thumb=arr.length?await thumbOf(arr[0]):''; delete t.photos; }
+// نقل الصور القديمة من البيانات الأساسية لـ IndexedDB (مرة واحدة، ومع أي استرجاع نسخة)
+async function migratePhotos(){
+  if(!window.indexedDB) return; let n=0;
+  for(const t of db.teachers||[]) if(t && Array.isArray(t.photos)){ try{ if(t.photos.length) await phSync(t, t.photos); else delete t.photos; n++; }catch(e){ return; } }
+  if(n){ save(false); render(); }
+}
 function shrinkImg(file, max=480, q=0.7){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file), im=new Image();
   im.onload=()=>{ const s=Math.min(1, max/Math.max(im.width,im.height)), c=document.createElement('canvas'); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s);
     c.getContext('2d').drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg',q)); };
   im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('img')); }; im.src=url; }); }
-function openPhotos(tid){
+async function openPhotos(tid){
   const t=tById(tid); if(!t) return;
+  const ph = Array.isArray(t.photos) ? t.photos : await phGet(t.id);
   const m=document.createElement('div'); m.className='modal'; m.innerHTML='<div class="box"></div>'; document.body.appendChild(m);
   const box=m.firstChild, close=()=>{ m.remove(); render(); };
-  const draw=()=>{ const ph=t.photos||[], full=ph.length>=PH_MAX;
+  const store=async()=>{ try{ await phSync(t, ph); save(); return true; }catch(e){ alert('⚠️ مساحة التليفون مش كفاية للصورة دي — امسح صور قديمة الأول.'); return false; } };
+  const draw=()=>{ const full=ph.length>=PH_MAX;
     box.innerHTML=`<h3>📷 صور ${esc(t.name)} (${ph.length})</h3>
       ${ph.length?`<div class="phgrid">${ph.map((p,i)=>`<div class="ph"><img src="${p}" alt="" data-ph-view="${i}"><button class="btn sm danger" data-ph-del="${i}">🗑️ امسح</button></div>`).join('')}</div>`:'<div class="muted" style="margin:8px 0">مفيش صور لسه.</div>'}
       <div class="small muted">لحد ${PH_MAX} صور للمدرس — الصور بتتصغّر وتتحفظ على التليفون مع البيانات.</div>
@@ -1204,17 +1222,16 @@ function openPhotos(tid){
       <button class="btn ghost" data-ph-close style="width:100%;margin-top:10px">تم</button>`; };
   m.addEventListener('click', e=>{ if(e.target===m){ close(); return; }
     const v=e.target.closest('[data-ph-view]'); if(v){ const o=document.createElement('div'); o.className='modal'; o.style.zIndex='99';
-      o.innerHTML=`<img src="${t.photos[+v.dataset.phView]}" alt="" style="max-width:100%;max-height:90vh;margin:auto;border-radius:12px">`; o.onclick=()=>o.remove(); document.body.appendChild(o); return; }
+      o.innerHTML=`<img src="${ph[+v.dataset.phView]}" alt="" style="max-width:100%;max-height:90vh;margin:auto;border-radius:12px">`; o.onclick=()=>o.remove(); document.body.appendChild(o); return; }
     const b=e.target.closest('button'); if(!b) return;
-    if(b.dataset.phDel!==undefined){ if(!confirm('تمسح الصورة دي؟')) return; t.photos.splice(+b.dataset.phDel,1); logT(t.id,'اتمسحت صورة','صور'); save(); draw(); }
+    if(b.dataset.phDel!==undefined){ if(!confirm('تمسح الصورة دي؟')) return; ph.splice(+b.dataset.phDel,1); logT(t.id,'اتمسحت صورة','صور'); store().then(draw); }
     else if(b.dataset.phAdd) m.querySelector(`[data-ph-in="${b.dataset.phAdd}"]`).click();
     else if(b.hasAttribute('data-ph-close')) close(); });
   m.addEventListener('change', async e=>{ const inp=e.target; if(!inp.files || !inp.files.length) return;
-    t.photos ||= []; const files=[...inp.files].slice(0, Math.max(0, PH_MAX-t.photos.length)); inp.value='';
-    let n=0; for(const f of files){ try{ t.photos.push(await shrinkImg(f)); n++; }catch(err){} }
-    if(n){ logT(t.id, n>1?`اتضاف ${n} صور`:'اتضافت صورة', 'صور'); save();
-      if(!storageOk){ t.photos.splice(-n); db.tlog.pop(); save(false); alert('⚠️ مساحة التليفون للبرنامج مش كفاية للصورة دي — امسح صور قديمة الأول.'); }
-      else toast('📷 الصورة اتحفظت'); } else alert('مقدرتش أقرا الصورة — جرّب تاني');
+    const files=[...inp.files].slice(0, Math.max(0, PH_MAX-ph.length)); inp.value='';
+    let n=0; for(const f of files){ try{ ph.push(await shrinkImg(f)); n++; }catch(err){} }
+    if(n){ logT(t.id, n>1?`اتضاف ${n} صور`:'اتضافت صورة', 'صور');
+      if(await store()) toast('📷 الصورة اتحفظت'); else { ph.splice(-n); db.tlog.pop(); save(false); } } else alert('مقدرتش أقرا الصورة — جرّب تاني');
     draw(); });
   draw();
 }
@@ -1790,7 +1807,7 @@ $('#fileJson').addEventListener('change', async e=>{
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
       route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), pinH:d.pinH||db.pinH||'', repKey:d.repKey||db.repKey||'',
-      driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
+      driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); try{ await migratePhotos(); }catch(e){} save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
 
@@ -3524,7 +3541,8 @@ async function driveBackup(manual){
   // اسم واضح: التاريخ (سنة-شهر-يوم) والساعة 24 ساعة فيبقى مترتب صح، وبعدها اليوم والوقت بالعربي
   const name=`نسخة ${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} الساعة ${pad(d.getHours())}-${pad(d.getMinutes())} — ${dayName(k)} ${timeStr(d).replace(':','-')}.json`;
   try{
-    const j=await cloudPost({k:'bk', mail:db.mail, rep:db.rep, key:db.driveKey, name, days:DBK_DAYS, data:{app:'selah-books', ...db, savedAt:at}});
+    const P=await phAll();   // الصور كاملة جوه النسخة الاحتياطية
+    const j=await cloudPost({k:'bk', mail:db.mail, rep:db.rep, key:db.driveKey, name, days:DBK_DAYS, data:{app:'selah-books', ...db, teachers:db.teachers.map(t=>P[t.id]?{...t, photos:P[t.id]}:t), savedAt:at}});
     db.lastDriveBk=at; db.lastBackup=at; db.driveCount=j.count||0; db.chgN=0; save(false); updateBkBtn();
     if(manual){ toast(`✅ النسخة اترفعت على الدرايف بتاعك (${j.count||''} نسخة)`); }
     if(location.hash==='#/settings') render();
@@ -3618,7 +3636,7 @@ async function cloudSync(manual){
   try{
     const {sales, pays, dels}=syncRows();
     await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels,
-      data:{app:'selah-books', ...db, teachers:db.teachers.map(({photos, ...x})=>x), savedAt:at}});   // صور المدرسين مش بتتبعت في المزامنة اليومية
+      data:{app:'selah-books', ...db, teachers:db.teachers.map(({photos, thumb, ...x})=>x), savedAt:at}});   // صور المدرسين مش بتتبعت في المزامنة اليومية
     db.lastSync=at; save(false); if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
   }catch(e){ if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده'); }
   finally{ syncBusy=false; }
@@ -4283,6 +4301,7 @@ async function pullSbBell(){
   }catch(e){}
 }
 setTimeout(pullSbBell, 3000); setInterval(pullSbBell, 60000);
+setTimeout(()=>migratePhotos().catch(()=>{}), 1500);
 function bellModal(){
   document.getElementById('bellM')?.remove();
   const l=pendReqs().sort((a,b)=>b.at.localeCompare(a.at));
