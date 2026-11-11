@@ -42,7 +42,13 @@ header.top .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;alig
 header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-btn{flex:none;border:0;border-radius:10px;padding:5px 10px;background:rgba(255,255,255,.18);color:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
 .bk-btn.due{background:var(--owe);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
-header.top .back{background:none;border:0;color:inherit;font-size:22px;padding:2px 6px;cursor:pointer}
+header.top .back{background:rgba(255,255,255,.22);border:0;color:inherit;font-size:18px;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;flex:none}
+.areabar{position:sticky;top:50px;z-index:12;background:var(--bg);padding:6px 0 4px}
+.areabar select{width:100%;font-size:16px;font-weight:700;padding:10px;border-radius:12px}
+.stickytop{position:sticky;top:-16px;z-index:6;background:var(--card);padding-top:8px}
+html,body{max-width:100%;overflow-x:hidden}   /* الصفحة بعرض التليفون، من غير تمرير يمين وشمال — التمرير فوق وتحت بس */
+img,svg,video,canvas{max-width:100%}
+.card,.box,main,#app{max-width:100%;min-width:0;overflow-wrap:anywhere}
 nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs a{flex:1;max-width:215px;text-align:center;padding:8px 4px 9px;text-decoration:none;color:var(--muted);font-size:13px;position:relative}
 nav.tabs a .i{display:block;font-size:20px;line-height:1.2}
@@ -432,7 +438,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 </head>
 <body>
 <div class="splash" id="splash"><img src="icon-512.png" alt="" onerror="this.remove()"><div class="nm">سلاح التلميذ البحيرة</div><div class="sg">تصميم وتنفيذ: شريف حشيش</div></div>
-<header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→</button><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
+<header class="top"><div class="in"><button class="back" id="backBtn" hidden aria-label="رجوع">→ رجوع</button><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bellBtn" data-act="bell" title="طلبات المدرسين" style="position:relative">🔔<b id="bellN" hidden style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:10px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></b></button><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
 <main class="wrap" id="app"></main>
 <div class="actbar" id="actbar"><div class="in">
   <button class="btn ok" data-act="commit-d" style="flex:2">✅ سلّمت <span class="n"></span></button>
@@ -481,7 +487,7 @@ const bookRank = Object.fromEntries(BOOK_ORDER.map((k,i)=>[k,i]));
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
 const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
-function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], pinH:'', lastBackup:''}}
+function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], pinH:'', lastBackup:''}}
 /* ================= الإدارات التعليمية والقرى (البحيرة) =================
    كل إدارة: [قرى وبنادر]. القايمة دي اتراجعت مع شريف قبل ما تتحط. */
 const IDARAT = {
@@ -513,6 +519,7 @@ function load(){
   db.teachers ||= []; db.entries ||= []; db.stock ||= []; db.rep ||= ''; db.mail ||= ''; db.lastBackup ||= '';
   // البيع: sales = طلبات وبيع، payments = دفعات ومرتجعات المدرسين، prices = أسعار الكتب، merchants = بضاعة التجار، merchPays = دفعات التجار
   db.sales ||= []; db.payments ||= []; db.prices ||= {}; db.merchants ||= []; db.merchPays ||= [];
+  db.reqs ||= [];   // طلبات المدرسين (الجرس)
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
   db.route ||= []; db.editLog ||= []; db.pinH ||= '';   // route = خط السير (أكواد المدرسين)، editLog = سجل تعديل فواتير التجار، pinH = الرقم السري (متشفّر)
   // days = أيام خط السير [{id, n:الاسم, t:[أكواد المدرسين]}]، reg = التسجيل على برنامج الشركة {كود التسليم: تاريخ التسجيل}
@@ -526,7 +533,7 @@ function fixDays(){
 // رابط الـ Deploy بتاع Apps Script (درايف شريف). فاضي = البرنامج شغال من غير درايف
 const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbxvUtxpYVOskaw95PzGRTwj6bgNeDbt_cwXjys4U_7IiH2FKr_wjeayGTV8ncwkrc3A/exec';
 function save(changed=true){
-  if(changed) db.lastChange = new Date().toISOString();
+  if(changed){ db.lastChange = new Date().toISOString(); db.chgN = (db.chgN||0) + 1; }   // chgN = عدد التعديلات من آخر نسخة على الدرايف
   try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; if(changed) scheduleSync(); }
   catch(e){ storageOk = false; alert('⚠️ مش قادر أحفظ البيانات على الجهاز ده. اعمل نسخة احتياطية حالاً من الإعدادات.'); }
 }
@@ -731,6 +738,7 @@ function backupDue(){
   return hrs>=3 || new Date().getHours()>=20;
 }
 function updateBkBtn(){
+  try{ updateBell(); }catch(e){}
   const b=$('#bkBtn'), due=backupDue();
   b.classList.toggle('due', due); b.textContent = due ? '💾 اعمل نسخة' : '💾';
   b.title = db.lastBackup ? `آخر نسخة ${fmtDT(db.lastBackup)}` : 'ما عملتش نسخة لسه';
@@ -886,6 +894,7 @@ function renderTeachers(){
   const owedT=db.teachers.filter(t=>idx[t.id]?.o).length;
   const chip=(k,txt)=>`<button class="chip ${homeFilter===k?'on':''}" data-act="filter" data-k="${k}">${txt}</button>`;
   app.innerHTML = topBanners() + `
+    ${areas.length>1?`<div class="areabar"><select class="area" id="area"><option value="">📍 كل المناطق</option>${areas.map(a=>`<option ${a===homeArea?'selected':''}>${esc(a)}</option>`).join('')}</select></div>`:''}
     <div class="search">
       <input id="q" type="search" placeholder="🔎 أي حاجة: اسم، تليفون، قرية، «عربي إعدادي A»، «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button>
@@ -898,7 +907,6 @@ function renderTeachers(){
       ${chip('done',`✅ خلّصوا كتبهم (${db.teachers.filter(t=>idx[t.id]?.d && !idx[t.id].o).length})`)}
       ${chip('part',`🟠 خدوا جزء وباقيلهم (${db.teachers.filter(t=>idx[t.id]?.d && idx[t.id].o).length})`)}
       ${chip('none',`⚪ لسه ما استلموش خالص (${db.teachers.filter(t=>!idx[t.id]?.d).length})`)}
-      ${areas.length>1?`<select class="area" id="area"><option value="">كل المناطق</option>${areas.map(a=>`<option ${a===homeArea?'selected':''}>${esc(a)}</option>`).join('')}</select>`:''}
     </div>
     <div class="tlist" id="tlist"></div>`;
   const q=$('#q');
@@ -954,6 +962,11 @@ function teacherCard(t, x, extra=''){
       ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:''}${extra}</div>
     <div class="side"><div>${badges}</div><div class="icos">${phoneBtns(t)}</div></div></div>`;
 }
+// 0 = لسه ما استلمش النهارده (يفضل فوق)، 1 = استلم النهارده أو خلّص كتبه (ينزل تحت)
+function recvRankFn(){
+  const idx=indexEntries(), today=dayKey(), v=new Set(db.entries.filter(e=>e.s==='d' && dk(e.dd)===today).map(e=>e.t));
+  return t=>{ const x=idx[t.id]; return (v.has(t.id) || (x?.d && !x.o)) ? 1 : 0; };
+}
 function renderList(){
   const idx=indexEntries(), today=dayKey();
   const raw=homeQuery.trim(); const qd=normPhone(raw).replace(/^0/,'');
@@ -974,7 +987,9 @@ function renderList(){
     if(isNum) return !!qd && (t.phone||'').includes(qd);
     return matchTeacher(t, Q, owedBy[t.id]||[]);
   });
+  const rk=(homeArea || homeFilter==='plan') ? recvRankFn() : null;   // شغال على قرية/خط سير: اللي استلم ينزل تحت واللي لسه فوق
   list.sort((a,b)=>{
+    if(rk){ const d=rk(a)-rk(b); if(d) return d; }
     const la=idx[a.id]?.last||'', lb=idx[b.id]?.last||'';
     if(homeFilter==='all' && !raw && la!==lb) return lb.localeCompare(la);
     return a.name.localeCompare(b.name,'ar');
@@ -1049,12 +1064,16 @@ function renderTeacher(id){
   html += `<div class="ttabs">${tb('del','📚 التسليم')}${tb('sale',`💰 البيع${acc?.orders?` (${acc.orders})`:''}`)}${tb('hist','🕘 السجل')}${tb('notes','📝 ملاحظات')}</div>`;
   if(tTab==='sale'){ app.innerHTML = html + tSaleHtml(t); updateActbar(); return; }
   if(tTab==='notes'){
+    const rqs=(db.reqs||[]).filter(r=>r.t===id).sort((a,b)=>b.at.localeCompare(a.at));
+    html += `<div class="card"><h3 class="sec-t">🔔 طلبات المدرس (بتظهر في الجرس فوق)</h3>
+      <div style="display:flex;gap:8px"><input id="rq_t" class="grow" style="flex:1;min-width:0" placeholder="اللي طلبه منك… مثلاً: كتاب رياضة تالتة" autocomplete="off"><button class="btn ok" data-act="req-add" data-id="${esc(id)}">➕ ضيف</button></div>
+      ${rqs.map(r=>`<div class="hrow"><div class="grow">${r.done?`<s class="muted">${esc(r.txt)}</s> <span class="pill ok">خلص</span>`:esc(r.txt)}<div class="small muted">${fmtDT(r.at)}</div></div>${r.done?'':`<button class="btn sm ok" data-act="req-done" data-id="${esc(r.id)}">✔️</button>`}<button class="btn sm danger" data-act="req-del" data-id="${esc(r.id)}">🗑️</button></div>`).join('')}</div>`;
     app.innerHTML = html + `<div class="card"><h3 class="sec-t">📝 ملاحظات</h3><textarea id="notes" style="min-height:160px" placeholder="مثلاً: عايز كتاب لابنه في رابعة…">${esc(t.notes||'')}</textarea></div>`;
     const n=$('#notes'); let nt; n.addEventListener('input',()=>{ clearTimeout(nt); nt=setTimeout(()=>{ t.notes=n.value; save(); },400); });
     updateActbar(); return; }
   if(tTab==='hist'){ const vl=tVisitLog(id), KC={'تسليم':'ok','بيع':'sale','دفعة':'pay','مرتجع':'owe'};
     const vh=`<div class="card"><h3 class="sec-t">👣 الزيارات (${new Set(vl.map(v=>v.at.slice(0,16))).size})</h3>${vl.length ? vl.map(v=>`<div class="kv"><span>${visitLabel(v)}</span><span><span class="pill vk-${KC[v.k]}">${v.k}</span> ${esc(v.txt)}</span></div>`).join('') : '<div class="muted">لسه ما اتزارش.</div>'}</div>`;
-    app.innerHTML = html + vh + histHtml(t, ents); updateActbar(); return; }
+    app.innerHTML = html + vh + histHtml(t, ents) + editLogCard(id); updateActbar(); return; }
 
   html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين دوس «سلّمت». المستحق بيتحسب لوحده من التصنيف أو المرحلة والمادة.</p>`;
   // ترتيب الكتب: «⭐ تخصصه» فوق مفتوح (كل مواده في كل مراحله)، وتحته «باقي الكتب» مقفول
@@ -1664,7 +1683,7 @@ $('#fileJson').addEventListener('change', async e=>{
     db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
-      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), pinH:d.pinH||db.pinH||'',
+      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), pinH:d.pinH||db.pinH||'',
       driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
@@ -1897,17 +1916,17 @@ function exportExcel(all, part){
   });
   const linesByT=groupBy(lines, l=>l.t), tids=[...linesByT.keys()].sort(tsort);
 
-  /* ---------- 1) فواتير البيع بمرتجعات ---------- */
-  const s1=[['المدرس','التليفون','رقم الفاتورة','تاريخ الفاتورة','تاريخ المرتجع','اللي رجع','عدد المرتجع']];
-  { const c=colorer();
-    for(const tid of [...new Set(sold.map(s=>s.t))].sort(tsort)){ const f=c(tid);
-      for(const s of sold.filter(x=>x.t===tid)){ const G=new Map();
-        s.items.forEach((it,i)=>{ for(const r of retBy[s.id+':'+i]||[]){ if(!G.has(r.g)) G.set(r.g,{d:r.d, b:{}}); const g=G.get(r.g); g.b[it.b]=(g.b[it.b]||0)+r.q; } });
-        for(const g of [...G.values()].sort((a,b)=>a.d.localeCompare(b.d))){
-          const ks=Object.keys(g.b).sort((a,b)=>bookRank[a]-bookRank[b]);
-          const row=[TN(tid), TP(tid), `فاتورة ${invNo[s.id]}`, {date:s.sd||s.d}, {date:g.d}, ks.map(k=>`${bookLabel(k)} × ${g.b[k]}`).join('، '), ks.reduce((a,k)=>a+g.b[k],0)];
-          row.fill=f; s1.push(row); } } } }
-
+  /* ---------- 1) فواتير البيع بمرتجعات: الكتب صفوف، وجنبها المستلم والمرتجع والصافي ---------- */
+  const s1=[['المدرس','التليفون','الكتاب','المستلم','المرتجع','الصافي']];
+  { const c=colorer(), totRows=[], GT={q:0,r:0};
+    for(const tid of tids){ const f=c(tid), by=new Map();
+      for(const ln of linesByT.get(tid)){ if(!by.has(ln.b)) by.set(ln.b,{q:0,r:0}); const x=by.get(ln.b); x.q+=ln.q; x.r+=ln.rq; }
+      const a=s1.length+1; let tq=0, tr_=0;
+      for(const k of [...by.keys()].sort((x,y)=>bookRank[x]-bookRank[y])){ const x=by.get(k), rn=s1.length+1;
+        const row=[TN(tid), TP(tid), bookLabel(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:x.q-x.r}]; row.fill=f; s1.push(row); tq+=x.q; tr_+=x.r; }
+      const rn=s1.length+1, tr=['إجمالي: '+TN(tid), '', '', {f:`SUM(D${a}:D${rn-1})`, v:tq}, {f:`SUM(E${a}:E${rn-1})`, v:tr_}, {f:`SUM(F${a}:F${rn-1})`, v:tq-tr_}];
+      tr.fill=f; tr.bold=true; s1.push(tr); totRows.push(rn); GT.q+=tq; GT.r+=tr_; }
+    if(totRows.length){ const tr=['الإجمالي العام', '', '', {f:plus('D',totRows), v:GT.q}, {f:plus('E',totRows), v:GT.r}, {f:plus('F',totRows), v:GT.q-GT.r}]; tr.fill=TOTF; tr.bold=true; s1.push(tr); } }
   /* ---------- 2) حسابات المدرسين: سطر لكل دفعة مرتجع، والكتاب الأصلي بيتكرر ---------- */
   const s2=[['المدرس','التليفون','المادة','الصف','التاجر اللي اتسحب منه','تاريخ التسليم','المسحوب','السعر','السعر بعد الخصم','تاريخ الدفعة','عدد الدفعة','التاجر اللي رجع له','المرتجع التراكمي','الباقي بعد الدفعة','المبلغ قبل الخصم','المبلغ بعد الخصم']];
   { const c=colorer(), totRows=[], GT={G:0,M:0,N:0,O:0,P:0};
@@ -1958,27 +1977,33 @@ function exportExcel(all, part){
         const r=['إجمالي '+nm, '', '', '', '', {f:sf(nm,'F'), v:vs(p,5)}, '', '', {f:sf(nm,'I'), v:vs(p,8)}, {f:sf(nm,'J'), v:vs(p,9)}]; r.fill=TOTF; r.bold=true; s3.push(r); }
       const g=['الإجمالي العام', '', '', '', '', {f:sf('<>','F'), v:vs(()=>true,5)}, '', '', {f:sf('<>','I'), v:vs(()=>true,8)}, {f:sf('<>','J'), v:vs(()=>true,9)}]; g.fill=TOTF; g.bold=true; s3.push(g); } }
 
-  /* ---------- 4) حسابات التجار ---------- */
+  /* ---------- 4) حسابات التجار: الكتب صفوف، وجنبها المستلمة والمرتجع والصافي ---------- */
   const N4='حسابات التجار';
-  const s4=[['التاجر','التاريخ','نوع المعاملة','المادة','الصف','عدد الكتب']], m4=[], mref={};
+  const s4=[['التاجر','المادة','الصف','الكتب المستلمة','المرتجع','الصافي']], m4=[], mref={}, bkNet={};
   const mNames=[...new Set([...db.merchants.map(l=>l.m), ...db.merchRets.map(r=>r.m)])].sort((a,b)=>a.localeCompare(b,'ar'));
   { const c=colorer();
-    for(const name of mNames){ const f=c(name), ev=[];
-      for(const l of db.merchants) if(l.m===name) ev.push({d:l.d, k:'أخدت', b:l.b, q:l.q});
-      for(const r of db.merchRets) if(r.m===name) ev.push({d:r.d, k:'رجّعت', b:r.b, q:r.q});
-      if(!ev.length) continue;
-      const a=s4.length+1;
-      for(const e of ev.sort((x,y)=>(x.d||'').localeCompare(y.d||'') || bookRank[x.b]-bookRank[y.b])){ const row=[name, {date:e.d}, e.k, SB(e.b), GR(e.b), e.q]; row.fill=f; s4.push(row); }
-      const b=s4.length, tk=ev.filter(e=>e.k==='أخدت').reduce((s,e)=>s+e.q,0), rt=ev.filter(e=>e.k==='رجّعت').reduce((s,e)=>s+e.q,0);
-      const T=(lbl, cell)=>{ const r=[name, lbl, '', '', '', cell]; r.fill=f; r.bold=true; s4.push(r); return s4.length; };
-      const r1=T('إجمالي المأخوذ', {f:`SUMIF(C${a}:C${b},"أخدت",F${a}:F${b})`, v:tk});
-      const r2_=T('إجمالي المرتجع', {f:`SUMIF(C${a}:C${b},"رجّعت",F${a}:F${b})`, v:rt});
-      T('الصافي', {f:`F${r1}-F${r2_}`, v:tk-rt});
+    for(const name of mNames){ const f=c(name), by=new Map();
+      for(const l of db.merchants) if(l.m===name){ if(!by.has(l.b)) by.set(l.b,{q:0,r:0}); by.get(l.b).q+=l.q; }
+      for(const r of db.merchRets) if(r.m===name){ if(!by.has(r.b)) by.set(r.b,{q:0,r:0}); by.get(r.b).r+=r.q; }
+      if(!by.size) continue;
+      const a=s4.length+1; let tk=0, rt=0;
+      for(const k of [...by.keys()].sort((x,y)=>bookRank[x]-bookRank[y])){ const x=by.get(k), rn=s4.length+1;
+        const row=[name, SB(k), GR(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:x.q-x.r}]; row.fill=f; s4.push(row); tk+=x.q; rt+=x.r;
+        (bkNet[k] ||= {n:0}).n+=x.q-x.r; }
+      const rn=s4.length+1, tr=['إجمالي: '+name, '', '', {f:`SUM(D${a}:D${rn-1})`, v:tk}, {f:`SUM(E${a}:E${rn-1})`, v:rt}, {f:`SUM(F${a}:F${rn-1})`, v:tk-rt}];
+      tr.fill=f; tr.bold=true; s4.push(tr);
       const mt=merchTeachers(name);
       const rr=[name, 'المدرسين اللي كتبه راحت لهم', {v:mt.length?mt.map(z=>`${z.t.name} (${z.n-z.r})`).join('، '):'—', wrap:true}, '', '', ''];
       rr.fill=f; rr.bold=true; s4.push(rr); m4.push(`C${s4.length}:F${s4.length}`);
-      mref[name]={tk:r1, rt:r2_, tkv:tk, rtv:rt}; } }
+      mref[name]={tr:rn, tkv:tk, rtv:rt}; } }
 
+  /* ---------- 4-ب) أسعار الكتب: السعر قبل وبعد الخصم، وعدد الكتب × كل سعر، والإجماليات تحت ---------- */
+  const s4b=[['الكتاب','العدد (الصافي)','سعر الكتاب قبل الخصم','سعر الكتاب بعد الخصم','العدد × السعر قبل الخصم','العدد × السعر بعد الخصم']];
+  { const TV={n:0, pre:0, post:0};
+    for(const k of Object.keys(bkNet).sort((x,y)=>bookRank[x]-bookRank[y])){ const n=bkNet[k].n, p=priceOf(k), rn=s4b.length+1;
+      const row=[bookLabel(k), n, p?.pre??'', p?.post??'', p?.pre!=null?{f:`B${rn}*C${rn}`, v:r2(n*p.pre)}:'', p?.post!=null?{f:`B${rn}*D${rn}`, v:r2(n*p.post)}:''];
+      row.fill=XP[hashC(bookParts(k).sb)%XP.length]; s4b.push(row); TV.n+=n; if(p?.pre!=null) TV.pre+=n*p.pre; if(p?.post!=null) TV.post+=n*p.post; }
+    if(s4b.length>1){ const b=s4b.length, tr=['الإجماليات', {f:`SUM(B2:B${b})`, v:TV.n}, '', '', {f:`SUM(E2:E${b})`, v:r2(TV.pre)}, {f:`SUM(F2:F${b})`, v:r2(TV.post)}]; tr.fill=TOTF; tr.bold=true; s4b.push(tr); } }
   /* ---------- 5) صافي التجار ---------- */
   const s5=[['التاجر','إجمالي المأخوذ','إجمالي المرتجع','الصافي','السعر قبل الخصم','السعر بعد الخصم']];
   { const rl={}; for(const r of db.merchRets) for(const z of r.lots||[]) rl[z.lot]=(rl[z.lot]||0)+z.q;
@@ -1987,7 +2012,7 @@ function exportExcel(all, part){
       for(const l of db.merchants) if(l.m===name){ const n=l.q-(rl[l.id]||0); const p=priceOf(l.b);
         if(p?.pre!=null) pre+=n*p.pre; else pm=true; if(l.p!=null) post+=n*l.p; else qm=true; }
       const rn=s5.length+1;
-      const row=[name, {f:`'${N4}'!F${x.tk}`, v:x.tkv}, {f:`'${N4}'!F${x.rt}`, v:x.rtv}, {f:`B${rn}-C${rn}`, v:x.tkv-x.rtv}, pre||!pm?r2(pre):'', post||!qm?r2(post):''];
+      const row=[name, {f:`'${N4}'!D${x.tr}`, v:x.tkv}, {f:`'${N4}'!E${x.tr}`, v:x.rtv}, {f:`B${rn}-C${rn}`, v:x.tkv-x.rtv}, pre||!pm?r2(pre):'', post||!qm?r2(post):''];
       row.fill=c(name); s5.push(row); }
     if(s5.length>1){ const b=s5.length; const sum=(col,i)=>({f:`SUM(${col}${a}:${col}${b})`, v:r2(s5.slice(1).reduce((s,r)=>s+(typeof r[i]==='object'?r[i].v:(+r[i]||0)),0))});
       const tr=['الإجمالي', sum('B',1), sum('C',2), sum('D',3), sum('E',4), sum('F',5)]; tr.fill=TOTF; tr.bold=true; s5.push(tr); } }
@@ -2115,14 +2140,15 @@ function exportExcel(all, part){
     {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false}];
   // حساب التجار لوحده (حسابات التجار + صافي التجار)
   const mSheets=[
-    {name:N4, rows:s4, widths:[18,24,13,10,16,11], freezeCol:0, af:false, merges:m4},
-    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false}];
+    {name:N4, rows:s4, widths:[22,12,18,14,11,11], freezeCol:0, af:false, merges:m4},
+    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false},
+    {name:'أسعار الكتب', rows:s4b, widths:[26,14,18,18,20,20], freezeCol:0, af:false}];
   // حساب المدرسين = بيع المندوب للمدرسين (من غير التجار)
   const sheets=[
     {name:'طلبات مستنية التنفيذ', rows:s11, widths:[22,14,12,10,16,12,9,9,15,13,14,24], freezeCol:2, af:false,
       dvs:R11?[{rg:R11, list:Object.values(ST)}]:[], cfs:R11?[{rg:R11, rules:[{eq:ST.order, dx:'wait'}, {eq:ST.sold, dx:'ok'}, {eq:ST.cancel, dx:'bad'}, {eq:ST.refused, dx:'bad'}]}]:[]},
     {name:'الملخص اليومي للكتب', rows:s8, widths:s8w, freezeCol:0, af:false},
-    {name:'فواتير البيع بمرتجعات', rows:s1, widths:[22,14,12,13,13,50,11], freezeCol:2, af:false},
+    {name:'فواتير البيع بمرتجعات', rows:s1, widths:[24,14,28,11,11,11], freezeCol:2, af:false},
     {name:'حسابات المدرسين', rows:s2, widths:[24,14,10,16,18,13,10,9,12,13,10,18,13,13,14,14], freezeCol:2, af:false},
     {name:N3, rows:s3, widths:[24,14,10,16,18,10,9,12,14,14], freezeCol:2, af:false},
     {name:'ترتيب الهدايا', rows:s12, widths:[24,14,15,18,18,9], freezeCol:2, af:false}
@@ -2289,14 +2315,14 @@ function exportTeachersData(){
   const cr=t=>({A:0,B:1,C:2}[clsLetter(t)||String(t.cls||'').toUpperCase()] ?? 3);
   const ts=[...db.teachers].sort((a,b)=>vi(a.area)-vi(b.area) || (a.area||'').localeCompare(b.area||'','ar') || cr(a)-cr(b) || (a.name||'').localeCompare(b.name||'','ar'));
   const XP=['DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','FDE2E4','E0F2FE'];
-  const rows=[['اسم المدرس','التليفون','التصنيف','المنطقة','المدرسة','التخصص','المادة','المرحلة','عدد الطلاب','على البرنامج','ملاحظات']];
+  const rows=[['اسم المدرس','التليفون','التصنيف','المنطقة','المدرسة','التخصص','المادة','المرحلة','عدد الطلاب','على البرنامج','ملاحظات','الموقع']];
   let prev=null, ci=-1;
   for(const t of ts){ if(t.area!==prev){ prev=t.area; ci=(ci+1)%XP.length; }
     const stg=STAGE_TXT[t.stage]||t.stageText||'', sp=t.spec||[t.subjectText, stg].filter(Boolean).join(' — ');
-    const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||''];
+    const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||'', t.loc?`https://maps.google.com/?q=${t.loc.lat},${t.loc.lng}`:''];
     row.fill=XP[ci]; rows.push(row); }
   const nm=('بيانات المدرسين — '+(db.idara||'')).trim();
-  sendSheet(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,10,13,24], freezeCol:2, af:false}]), `${nm} — ${stamp()}.xlsx`, 'بيانات المدرسين');
+  sendSheet(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,10,13,24,38], freezeCol:2, af:false}]), `${nm} — ${stamp()}.xlsx`, 'بيانات المدرسين');
 }
 
 /* ================= شيت بيع الشركة (نفس شكل «بيع مباشر»: English • Prim • Prep • Summary) ================= */
@@ -2530,10 +2556,10 @@ function renderSales(sub, focus){
   if(['orders','acc','merch'].includes(sub)) salesTab=sub;
   const orders=db.sales.filter(s=>s.st==='order').sort((a,b)=>b.d.localeCompare(a.d));
   const tab=(k,txt)=>`<button class="chip ${salesTab===k?'on':''}" data-act="sales-tab" data-k="${k}">${txt}</button>`;
-  let html=`<button class="btn pri" data-act="new-sale" style="width:100%;font-size:18px;padding:14px;margin-bottom:12px">➕ بيع / طلب جديد</button>
+  let html=`<button class="btn pri" data-act="new-sale" style="width:100%;font-size:18px;padding:14px;margin-bottom:8px">➕ بيع / طلب جديد</button>
+    <button class="btn ok" data-act="my-stock" style="width:100%;margin-bottom:12px;font-size:17px">📦 الكتب المتاحة معايا — اختار الكتب وشوف الفاضل من كل تاجر</button>
     <div class="chips">${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('acc','🧾 حسابات المدرسين')}${tab('merch','🏪 التجار')}</div>`;
   const sid='sq_'+salesTab;
-  if(salesTab==='merch') html += '<button class="btn ok" data-act="my-stock" style="width:100%;margin-bottom:10px;font-size:17px">📦 مخزني — اللي معايا من كل كتاب ومن أنهي تاجر</button>';
   html += searchBar(sid, salesTab==='merch'?'🔎 دوّر باسم التاجر (أو اسم مدرس خد من بضاعته)':undefined) + '<div id="slist">' +
     (salesTab==='orders' ? ordersHtml(orders) : salesTab==='acc' ? accHtml() : merchHtml()) + '</div>';
   app.innerHTML=html;
@@ -2603,16 +2629,18 @@ function accHtml(){
     ${a.noPrice?'<div class="small muted" style="margin-top:6px">⚠️ فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}
     <div class="mlinks">${merchLines(t.id)}</div>
     <div class="acts"><a class="btn sm pri" href="#/sale-t/${encodeURIComponent(t.id)}">📂 صفحته</a><button class="btn sm" data-act="invoice" data-id="${esc(t.id)}">🧾 الفاتورة</button><button class="btn sm ok" data-act="pay" data-id="${esc(t.id)}">💵 دفعة</button><button class="btn sm ghost" data-act="ret" data-id="${esc(t.id)}">↩️ مرتجع</button></div></div>`;
-  return `<div class="sumline">برة عند المدرسين <b style="color:var(--bad)">${fmtM(out)}</b></div>` + open.map(card).join('') +
+  const coll=list.reduce((s,x)=>s+(x.a.paid||0),0);
+  return `<div class="sumline">برة عند المدرسين <b style="color:var(--bad)">${fmtM(out)}</b> • حصّلت <b style="color:var(--ok)">${fmtM(coll)}</b></div>` + open.map(card).join('') +
     (done.length?`<details class="done" data-hgrp><summary>✅ خلّصوا (${done.length})</summary>${done.map(card).join('')}</details>`:'');
 }
 function merchHtml(){
   const ms=merchSum();
   if(!ms.length) return '<div class="card empty">لسه ما رفعتش بضاعة تجار.<br><br><a class="btn" href="#/settings">🏪 ارفع فاتورة تاجر من الإعدادات</a></div>';
   const tot=ms.reduce((s,x)=>s+Math.max(0,x.owe),0);
-  return `<div class="sumline">عليك للتجار كلهم <b style="color:var(--bad)">${fmtM(tot)}</b></div>` + ms.map(x=>`<div class="card scard" data-act="open-m" data-m="${esc(x.name)}" data-hay="${esc(normText(x.name+' '+merchTeachers(x.name).map(z=>z.t.name+' '+(z.t.phone||'')).join(' ')))}" style="cursor:pointer">
+  const wsl=ms.reduce((s,x)=>s+(x.paid||0),0);
+  return `<div class="sumline">عليك للتجار كلهم <b style="color:var(--bad)">${fmtM(tot)}</b> • وصّلت للتجار <b style="color:var(--ok)">${fmtM(wsl)}</b></div>` + ms.map(x=>`<div class="card scard" data-act="open-m" data-m="${esc(x.name)}" data-hay="${esc(normText(x.name+' '+merchTeachers(x.name).map(z=>z.t.name+' '+(z.t.phone||'')).join(' ')))}" style="cursor:pointer">
       <div class="hd"><b>🏪 ${esc(x.name)}</b><span class="btn sm pri">📂 صفحته</span></div>
-      <div class="small">خدت ${x.q} كتاب بـ ${fmtM(x.total)}${x.noPrice?' (فيه أسعار ناقصة)':''} • رجّعت ${x.rq}${x.rv?` بـ ${fmtM(x.rv)}`:''} • دفعت ${fmtM(x.paid)} • فاضل معاك ${x.left} • ${x.owe<0?`<b style="color:var(--ok)">ليك عنده ${fmtM(-x.owe)}</b>`:`عليك <b style="color:${x.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(x.owe)}</b>`}</div></div>`).join('');
+      <div class="small">خدت ${x.q} كتاب بـ ${fmtM(x.total)}${x.noPrice?' (فيه أسعار ناقصة)':''} • رجّعت ${x.rq}${x.rv?` بـ ${fmtM(x.rv)}`:''} • وصّلت له <b style="color:var(--ok)">${fmtM(x.paid)}</b> • فاضل معاك ${x.left} • ${x.owe<0?`<b style="color:var(--ok)">ليك عنده ${fmtM(-x.owe)}</b>`:`عليك <b style="color:${x.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(x.owe)}</b>`}</div></div>`).join('');
 }
 /* ================= بند ص: المدرس خد من أنهي تاجر ================= */
 const MNONE='من غير تاجر';
@@ -3361,7 +3389,7 @@ function scheduleSync(ms=15000){ if(!CLOUD_URL) return; clearTimeout(syncTimer);
    الربط مرة واحدة: المندوب يوافق بحساب جوجل بتاعه (صلاحية drive.file = الملفات اللي البرنامج عملها بس)،
    والسكريبت بيحفظ الصلاحية ويرفع النسخ بعد كده لوحده. */
 const GCLIENT_ID = '1017677782441-dhfvp69vnhq7tes5stvkqqedm7kvgb5q.apps.googleusercontent.com';   // Client ID من Google Cloud (شريف بيحطه). فاضي = النسخ على الدرايف مقفولة
-const DBK_MIN = 30, DBK_VISITS = 4, DBK_KEEP = 40;
+const DBK_MIN = 20, DBK_CHANGES = 3, DBK_DAYS = 2;   // نسخة بعد كل 3 تعديلات أو كل 20 دقيقة، والنسخ الأقدم من يومين بتتمسح من الدرايف
 function visitsSince(iso){
   const v=new Set();
   for(const e of db.entries){ if((e.s==='d' && (e.dd||'')>iso) || (e.rd && e.rd>iso)) v.add(e.t); }
@@ -3373,16 +3401,17 @@ function driveDue(){
   if(!db.entries.length && !db.stock.length && !db.sales.length && !db.merchants.length) return false;
   if(db.lastDriveBk && (db.lastChange||'') <= db.lastDriveBk) return false;   // مفيش جديد
   if(!db.lastDriveBk) return true;
-  return (Date.now()-new Date(db.lastDriveBk).getTime())/60000 >= DBK_MIN || visitsSince(db.lastDriveBk) >= DBK_VISITS;
+  return (Date.now()-new Date(db.lastDriveBk).getTime())/60000 >= DBK_MIN || (db.chgN||0) >= DBK_CHANGES;
 }
 async function driveBackup(manual){
   if(!GCLIENT_ID || !CLOUD_URL || !db.driveKey || dbkBusy) return false;
   if(!navigator.onLine){ if(manual) toast('📵 مفيش نت — النسخة هتترفع لوحدها أول ما النت يرجع'); return false; }
   dbkBusy=true; const at=new Date().toISOString(), d=new Date(at), k=dayKey(d);
-  const name=`نسخة — ${dayName(k)} ${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()} — ${timeStr(d).replace(':','-')}.json`;
+  // اسم واضح: التاريخ (سنة-شهر-يوم) والساعة 24 ساعة فيبقى مترتب صح، وبعدها اليوم والوقت بالعربي
+  const name=`نسخة ${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} الساعة ${pad(d.getHours())}-${pad(d.getMinutes())} — ${dayName(k)} ${timeStr(d).replace(':','-')}.json`;
   try{
-    const j=await cloudPost({k:'bk', mail:db.mail, rep:db.rep, key:db.driveKey, name, keep:DBK_KEEP, data:{app:'selah-books', ...db, savedAt:at}});
-    db.lastDriveBk=at; db.lastBackup=at; db.driveCount=j.count||0; save(false); updateBkBtn();
+    const j=await cloudPost({k:'bk', mail:db.mail, rep:db.rep, key:db.driveKey, name, days:DBK_DAYS, data:{app:'selah-books', ...db, savedAt:at}});
+    db.lastDriveBk=at; db.lastBackup=at; db.driveCount=j.count||0; db.chgN=0; save(false); updateBkBtn();
     if(manual){ toast(`✅ النسخة اترفعت على الدرايف بتاعك (${j.count||''} نسخة)`); }
     if(location.hash==='#/settings') render();
     return true;
@@ -3418,14 +3447,14 @@ function linkDrive(){
 function driveCard(){
   if(!GCLIENT_ID || !CLOUD_URL) return '';
   if(!db.driveKey) return `<div class="card"><h3 class="sec-t">🗂️ النسخة الاحتياطية على الدرايف بتاعك</h3>
-    <p class="hint" style="margin-top:0">اربط حساب جوجل بتاعك مرة واحدة، والبرنامج هيرفع نسخة لوحده على الدرايف بتاعك كل نص ساعة أو كل ${DBK_VISITS} زيارات، ويحتفظ بآخر ${DBK_KEEP} نسخة في فولدر «سلاح التلميذ البحيرة».</p>
+    <p class="hint" style="margin-top:0">اربط حساب جوجل بتاعك مرة واحدة، والبرنامج هيرفع نسخة لوحده على الدرايف بتاعك بعد كل ${DBK_CHANGES} تعديلات أو كل ${DBK_MIN} دقيقة، وبتتمسح لوحدها بعد ${DBK_DAYS} يوم من فولدر «سلاح التلميذ البحيرة».</p>
     <button class="btn pri" style="width:100%" data-act="drive-link">🔗 اربط الدرايف بتاعي</button></div>`;
   return `<div class="card"><h3 class="sec-t">🗂️ النسخة الاحتياطية على الدرايف بتاعك</h3>
     <div class="kv"><span>الحساب</span><b>${esc(db.driveMail||db.mail)}</b></div>
     <div class="kv"><span>آخر نسخة</span><b>${db.lastDriveBk?fmtDT(db.lastDriveBk):'لسه'}</b></div>
-    ${db.driveCount?`<div class="kv"><span>النسخ اللي على الدرايف</span><b>${db.driveCount} من ${DBK_KEEP}</b></div>`:''}
+    ${db.driveCount?`<div class="kv"><span>النسخ اللي على الدرايف</span><b>${db.driveCount}</b></div>`:''}
     <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="drive-now">⬆️ ارفع نسخة دلوقتي</button><button class="btn ghost" data-act="drive-link">🔗 اربط تاني</button></div>
-    <p class="hint">بتترفع لوحدها كل نص ساعة أو كل ${DBK_VISITS} زيارات (أيهما الأول) لو فيه شغل جديد. لو مفيش نت بتستنى لحد ما النت يرجع. هتلاقيها في الدرايف ← فولدر «سلاح التلميذ البحيرة»، ولو احتجت ترجّع نسخة نزّلها ورجّعها من «استرجاع نسخة».</p></div>`;
+    <p class="hint">بتترفع لوحدها بعد كل ${DBK_CHANGES} تعديلات أو كل ${DBK_MIN} دقيقة (أيهما الأول) لو فيه شغل جديد. لو مفيش نت بتستنى لحد ما النت يرجع. هتلاقيها في الدرايف ← فولدر «سلاح التلميذ البحيرة»، ولو احتجت ترجّع نسخة نزّلها ورجّعها من «استرجاع نسخة».</p></div>`;
 }
 async function cloudPost(body){
   const r=await fetch(CLOUD_URL, {method:'POST', body:JSON.stringify(body)});   // text/plain → من غير preflight
@@ -3899,7 +3928,7 @@ function renderRoute(){
 function renderDay(id){
   const d=dayById(id); if(!d){ location.hash='#/route'; return; }
   cleanDays(); setHeader('📅 '+d.n, true);
-  const idx=indexEntries(), list=d.t.map(tById).filter(Boolean);
+  const idx=indexEntries(), rkD=recvRankFn(), list=d.t.map(tById).filter(Boolean).sort((a,b)=>rkD(a)-rkD(b));   // اللي استلم ينزل تحت
   const others=id2=>db.days.filter(x=>x.id!==d.id && x.t.includes(id2)).map(x=>x.n);
   const today=dayKey(), vt=id2=>LV[id2] && dk(LV[id2].at)===today, nv=list.filter(t=>vt(t.id)).length;
   app.innerHTML=`<div class="card"><div class="kv"><span>مدرسين ${esc(d.n)}</span><b style="font-size:20px">${list.length}</b></div>
@@ -3924,8 +3953,8 @@ function routePick(dayId){
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const m=document.createElement('div'); m.className='modal';
   m.innerHTML=`<div class="box"><h3>🧭 مدرسين ${esc(day.n)}</h3>
-    <div class="search" style="margin:0 0 8px"><input id="rp_q" type="search" placeholder="🔎 دوّر على أي مدرس: اسم، تليفون، قرية، تصنيف…" autocomplete="off"></div>
-    ${areaChips(areas, 'rpa')}
+    <div class="stickytop"><div class="search" style="margin:0 0 8px"><input id="rp_q" type="search" placeholder="🔎 دوّر على أي مدرس: اسم، تليفون، قرية، تصنيف…" autocomplete="off"></div>
+    ${areaChips(areas, 'rpa')}</div>
     <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="rp_n"> ⏳ اللي محتاجين زيارة بس (باقيلهم كتب أو فلوس أو طلب)</label>
     <div class="row2" style="margin-top:8px"><button class="btn sm" data-rp="all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-rp="none">⬜ شيل كل اللي ظاهرين</button></div>
     <div class="pickl" id="rp_l"></div>
@@ -3935,7 +3964,8 @@ function routePick(dayId){
   const inDays=id=>db.days.filter(x=>x.id!==day.id && x.t.includes(id)).map(x=>x.n);
   const shown=()=>{ const ws=qWords(q);
     if(!AS.size && !ws.length && !needOnly) return day.t.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !day.t.includes(t.id)));
-    return db.teachers.filter(t=>(!AS.size || AS.has(t.area)) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>a.name.localeCompare(b.name,'ar')); };
+    const rk=recvRankFn();
+    return db.teachers.filter(t=>(!AS.size || AS.has(t.area)) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>rk(a)-rk(b) || a.name.localeCompare(b.name,'ar')); };
   const draw=()=>{ const l=shown(), box=m.querySelector('#rp_l');
     box.innerHTML = l.length ? l.slice(0,300).map(t=>{ const o=inDays(t.id); return `<label><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}><div class="grow"><b>${esc(t.name)}</b>${nameTags(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div>${o.length?`<div class="small" style="color:var(--owe)">📅 موجود في: ${esc(o.join('، '))}</div>`:''}</div></label>`; }).join('')
       : `<div class="empty small">${AS.size||q.trim()?'مفيش مدرس بالاختيار ده':'اختار قرية أو أكتر، أو دوّر على مدرس — والمختارين بيظهروا هنا'}</div>`;
@@ -4112,11 +4142,29 @@ function editInvoice(sid){
   };
   paintList();
 }
-function editLogCard(){
-  if(!db.editLog.length) return '';
-  return `<div class="card"><details class="stk"><summary>🕘 سجل التعديلات (${db.editLog.length})</summary>${[...db.editLog].reverse().map(x=>{ const t=x.t?tById(x.t):null, nm=t?esc(t.name):'';
-    const hd = x.kind==='visit' ? `🚚 تسليم ${nm}${x.day?` — زيارة ${fmtDay(x.day)}`:''}` : x.kind==='invoice' ? `🧾 فاتورة ${nm}${x.inv?` — ${esc(x.inv)}`:''}` : '🏪 فاتورة تاجر';
-    return `<div class="hrow"><div class="grow"><div><b>${hd}</b></div><div class="small muted">${fmtDT(x.at)}</div>${x.ch.map(c=>`<div class="small"><b>${esc(c.f)}:</b> <s class="muted">${esc(c.o)}</s> ← <b>${esc(c.n)}</b></div>`).join('')}</div></div>`; }).join('')}</details></div>`;
+function editLogCard(tid){   // من غير tid = السجل كله (الإعدادات)، ومعاه tid = تعديلات المدرس ده (صفحته ← السجل)
+  const Lg=(db.editLog||[]).filter(x=>!tid || x.t===tid);
+  if(!Lg.length) return '';
+  const items=[...Lg].reverse().map(x=>{ const t=x.t?tById(x.t):null, nm=t&&!tid?esc(t.name):'';
+    const hd = x.kind==='visit' ? `🚚 تعديل تسليم ${nm}${x.day?` — زيارة ${fmtDay(x.day)}`:''}` : x.kind==='invoice' ? `🧾 تعديل فاتورة ${nm}${x.inv?` — ${esc(x.inv)}`:''}` : '🏪 تعديل فاتورة تاجر';
+    return `<div class="hrow"><div class="grow"><div><b>${hd}</b></div><div class="small muted">${fmtDT(x.at)}</div>${x.ch.map(c=>`<div class="small"><b>${esc(c.f)}:</b> <s class="muted">${esc(c.o)}</s> ← <b>${esc(c.n)}</b></div>`).join('')}</div></div>`; }).join('');
+  return tid ? `<div class="card"><h3 class="sec-t">✏️ التعديلات اللي حصلت (${Lg.length})</h3>${items}</div>`
+    : `<div class="card"><details class="stk"><summary>🕘 سجل التعديلات (${Lg.length})</summary>${items}</details></div>`;
+}
+/* ---------- طلبات المدرسين 🔔: بتتكتب في صفحة المدرس (ملاحظات) وبتظهر في الجرس فوق ---------- */
+const pendReqs = () => (db.reqs||[]).filter(r=>!r.done && tById(r.t));
+function updateBell(){ const n=pendReqs().length, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
+function bellModal(){
+  document.getElementById('bellM')?.remove();
+  const l=pendReqs().sort((a,b)=>b.at.localeCompare(a.at));
+  const m=document.createElement('div'); m.className='modal'; m.id='bellM';
+  m.innerHTML=`<div class="box"><h3>🔔 طلبات المدرسين (${l.length})</h3>${l.length ? l.map(r=>{ const t=tById(r.t);
+    return `<div class="card" style="margin-bottom:8px"><div class="tc-top" style="gap:8px"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}" data-bell="x"><b>${esc(t.name)}</b></a><div class="small muted">${esc([t.area,t.phone].filter(Boolean).join(' • '))}</div></div><div class="icos">${phoneBtns(t)}</div></div>
+      <div style="margin:6px 0">${esc(r.txt)}</div><div class="small muted">${fmtDT(r.at)}</div>
+      <button class="btn sm ok" style="width:100%;margin-top:6px" data-act="req-done" data-id="${esc(r.id)}">✔️ خلّصت</button></div>`; }).join('') : '<div class="empty small">مفيش طلبات مستنية 🎉</div>'}
+    <button class="btn ghost" style="width:100%" data-bell="x">قفل</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ if(e.target===m || e.target.closest('[data-bell]')) m.remove(); });
 }
 
 /* ---------- رسائل للمدرسين (واتساب واحد ورا التاني) ---------- */
@@ -4186,6 +4234,12 @@ document.addEventListener('click', e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   switch(el.dataset.act){
     case 'reg-visit': regVisit(el.dataset.k); break;
+    case 'bell': bellModal(); break;
+    case 'req-add': { const inp=$('#rq_t'), v=(inp?.value||'').trim(); if(!v){ toast('اكتب الطلب الأول'); break; }
+      (db.reqs ||= []).push({id:uid(), t:el.dataset.id, txt:v, at:new Date().toISOString(), done:false}); save(); render(); toast('🔔 الطلب اتسجّل وظاهر في الجرس'); break; }
+    case 'req-done': { const r=(db.reqs||[]).find(x=>x.id===el.dataset.id); if(!r) break; const open=!!document.getElementById('bellM');
+      r.done=true; r.doneAt=new Date().toISOString(); save(); render(); if(open) bellModal(); break; }
+    case 'req-del': { if(!confirm('تمسح الطلب ده؟')) break; db.reqs=(db.reqs||[]).filter(x=>x.id!==el.dataset.id); save(); render(); break; }
     case 'vis-edit': editVisit(el.dataset.k); break;
     case 'inv-edit': editInvoice(el.dataset.id); break;
     case 'reg-undo': { const v=visitGroups().find(x=>x.k===el.dataset.k); if(!v || !confirm('ترجّع الزيارة دي للزيارات (كأنها ما اتسجلتش)؟')) break;
@@ -4244,15 +4298,15 @@ function lotEditForm(id){
   m.innerHTML=`<div class="box"><h3>✏️ تعديل فاتورة تاجر</h3>
     <div class="field"><label>التاجر</label><input id="le_m" list="le_ml" value="${esc(l.m)}"><datalist id="le_ml">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
     <div class="field"><label>الكتاب</label><div style="font-weight:800;color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</div><input type="hidden" id="le_b" value="${esc(l.b)}"></div>
-    <div class="row2"><div class="field"><label>الكمية</label><input id="le_q" inputmode="numeric" value="${l.q}"></div><div class="field"><label>السعر</label><input id="le_p" inputmode="decimal" value="${l.p??''}"></div></div>
+    <div class="row2"><div class="field"><label>الكمية</label><input id="le_q" inputmode="numeric" value="${l.q}"></div><div class="field"><label>السعر 🔒 (مقفول)</label><input id="le_p" value="${l.p!=null?fmtN(l.p):'—'}" disabled></div></div>
     <div class="field"><label>التاريخ</label><input id="le_d" type="date" value="${dk(l.d)}"></div>
     <div class="row2"><button class="btn pri" id="le_ok">التالي ←</button><button class="btn ghost" id="le_x">إلغاء</button></div></div>`;
   document.body.appendChild(m); const close=()=>m.remove();
   m.addEventListener('click', e=>{ if(e.target===m) close(); }); m.querySelector('#le_x').onclick=close;
   m.querySelector('#le_ok').onclick=()=>{
     const nm=m.querySelector('#le_m').value.trim(), b=m.querySelector('#le_b').value, q=parseInt(digits(m.querySelector('#le_q').value).replace(/\D/g,''),10);
-    const pv=m.querySelector('#le_p').value.trim(), p=pv===''?null:parseNum(pv), dv=m.querySelector('#le_d').value;
-    if(!nm){ alert('اكتب اسم التاجر'); return; } if(!q || q<=0){ alert('اكتب الكمية'); return; } if(pv!=='' && (p==null || p<0)){ alert('السعر مش مظبوط'); return; }
+    const p=l.p??null, dv=m.querySelector('#le_d').value;   // السعر مقفول: المندوب يعدّل العدد بس
+    if(!nm){ alert('اكتب اسم التاجر'); return; } if(!q || q<=0){ alert('اكتب الكمية'); return; }
     const nw={m:nm, b, q, p, d: dv && dv!==dk(l.d) ? new Date(dv+'T12:00:00').toISOString() : l.d};
     const F=[['m','التاجر',x=>x],['b','الكتاب',bookLabel],['q','الكمية',x=>x],['p','السعر',x=>x==null?'—':fmtN(x)],['d','التاريخ',x=>fmtDay(dk(x))]];
     const ch=[]; for(const [k,lb,fm] of F) if(String(nw[k]??'')!==String(l[k]??'')) ch.push({f:lb, o:String(fm(l[k])), n:String(fm(nw[k]))});
@@ -4313,14 +4367,15 @@ function remSysNotify(txt){   // إشعار النظام: صوته بيتبع ا
 }
 function pbShow(n){
   const h=new Date().getHours(), cat=REM_CATS[n%REM_CATS.length], items=cat.items(h);
-  const [txt, sp]=items[Math.floor(n/REM_CATS.length)%items.length];
+  let [txt, sp]=items[Math.floor(n/REM_CATS.length)%items.length];
+  const pend=pendReqs().length; if(pend && n%3===2){ txt=`🔔 عندك ${pend} طلب من المدرسين — دوس الجرس فوق`; sp=''; }
   remSysNotify(txt);
   if(document.hidden) return;   // البرنامج مش ظاهر: الإشعار بس
   const el=document.createElement('div'); el.className='hello-s pb-s out'; el.textContent=txt; document.body.appendChild(el);
   const bye=()=>{ el.classList.add('out'); setTimeout(()=>el.remove(), 600); };
   el.onclick=bye; setTimeout(()=>el.classList.remove('out'), 60); setTimeout(bye, 7000);
   remChime();
-  if(cat.k==='sal' && !(NAV && !NAV.done)) speakRem(sp);
+  if(cat.k==='sal' && sp && !(NAV && !NAV.done)) speakRem(sp);
 }
 function remPermBar(){   // مش مجبر، بس شريط دايم لحد ما يفعّل الإشعارات
   if(!('Notification' in window) || Notification.permission==='granted' || document.getElementById('remPerm')) return;
