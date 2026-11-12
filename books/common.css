@@ -1,19 +1,19 @@
 /* نفس ألوان «دفتر التسليمات» */
 :root{
   --bg:#f3f5f4;--card:#ffffff;--ink:#14201e;--muted:#5d6b68;--line:#dde4e2;
-  --brand:#0f766e;--brand-ink:#ffffff;--brand-soft:#e2f2ef;
+  --brand:#6d28d9;--brand-ink:#ffffff;--brand-soft:#ede9fe;
   --ok:#15803d;--ok-soft:#e4f4e9;--owe:#b45309;--owe-soft:#fdf0dc;--bad:#b91c1c;--bad-soft:#fde7e7;
   --sel:#dbeafe;--sel-ink:#1d4ed8;--trial:#7c3aed;
   --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 10px rgba(0,0,0,.04);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;
-  --brand:#2dd4bf;--brand-ink:#04201c;--brand-soft:#11322e;
+  --brand:#a78bfa;--brand-ink:#1e0b3a;--brand-soft:#2a1f4a;
   --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
   --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none}}
 :root[data-theme="dark"]{
   --bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;
-  --brand:#2dd4bf;--brand-ink:#04201c;--brand-soft:#11322e;
+  --brand:#a78bfa;--brand-ink:#1e0b3a;--brand-soft:#2a1f4a;
   --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
   --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none}
 *{box-sizing:border-box}
@@ -136,8 +136,8 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 /* ===== 2026-11-12: ثابت + أقسام الملف + الأيقونات ===== */
 .ordbtn.stick{position:sticky;top:52px;z-index:15;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .warnbox{background:#fff7ed;color:#9a3412;border:1.5px solid #fb923c;border-radius:10px;padding:8px 10px;font-size:13.5px;font-weight:700;margin-bottom:10px}
-.locsec{border:2px solid #0f766e;border-radius:14px;padding:10px 12px;margin:14px 0;background:color-mix(in srgb,#0f766e 6%,var(--card))}
-.locsec .lsh{font-size:18px;font-weight:800;color:#0f766e;margin-bottom:6px}
+.locsec{border:2px solid #6d28d9;border-radius:14px;padding:10px 12px;margin:14px 0;background:color-mix(in srgb,#6d28d9 6%,var(--card))}
+.locsec .lsh{font-size:18px;font-weight:800;color:#6d28d9;margin-bottom:6px}
 .locsec .star{display:inline-block;background:#fde68a;color:#92400e;border-radius:8px;padding:2px 8px;font-size:12.5px;font-weight:800}
 .locsec [data-locbtn]{font-size:16px;padding:12px;width:100%}
 .locmap{width:100%;height:170px;border:0;border-radius:10px;margin-top:8px}
@@ -163,7 +163,7 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 .icard .ic-ico{font-size:52px;line-height:1;animation:bob 2s ease-in-out infinite}
 .icard .ic-t{font-size:19px;font-weight:800;margin:8px 0 4px;color:#0f172a}
 .icard .ic-s{font-size:15px;color:#334155;margin-bottom:12px}
-.icard .stepn{display:inline-block;background:#0f766e;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700}
+.icard .stepn{display:inline-block;background:#6d28d9;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700}
 .gobtn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font-size:18px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(90deg,#ff2d55,#ff6b00,#ff2d55);background-size:200% 100%;animation:shine 2.5s linear infinite,pulseb 1.6s ease-in-out infinite;box-shadow:0 6px 18px rgba(255,45,85,.45)}
 .gobtn.sm{font-size:15px;padding:12px}
 .iosbtn{display:block;width:100%;margin-top:10px;border:2px solid #0f172a;background:#fff;color:#0f172a;border-radius:14px;padding:12px;font-size:16px;font-weight:800;cursor:pointer}
@@ -183,7 +183,7 @@ input,select,textarea{max-width:100%}
 .pgrid.rad input,.pgrid input[type=radio]{display:none}
 /* ملفي */
 .pform{padding-bottom:90px}
-.psec{background:var(--card);border-radius:20px;padding:14px 14px 6px;margin-bottom:14px;box-shadow:0 6px 18px -8px rgba(15,23,42,.18);border-top:5px solid var(--sc,#0f766e);animation:icIn .4s ease both}
+.psec{background:var(--card);border-radius:20px;padding:14px 14px 6px;margin-bottom:14px;box-shadow:0 6px 18px -8px rgba(15,23,42,.18);border-top:5px solid var(--sc,#6d28d9);animation:icIn .4s ease both}
 .psh{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;margin-bottom:10px;color:var(--sc)}
 .pdot{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:21px;background:color-mix(in srgb,var(--sc) 16%,#fff);flex:none}
 .s-me{--sc:#6366f1}.s-work{--sc:#0ea5e9}.s-place{--sc:#f97316}.s-days{--sc:#16a34a}.s-ph{--sc:#ec4899}
@@ -224,7 +224,7 @@ input,select,textarea{max-width:100%}
 .t-bk{background:linear-gradient(140deg,#38bdf8,#2563eb)}.t-me{background:linear-gradient(140deg,#a78bfa,#6d28d9)}
 @keyframes bdg{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 /* الأسعار والطلب */
-.phead{background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border-radius:20px;padding:14px;margin-bottom:12px;font-size:20px;font-weight:800;text-align:center}
+.phead{background:linear-gradient(135deg,#6d28d9,#3b82f6);color:#fff;border-radius:20px;padding:14px;margin-bottom:12px;font-size:20px;font-weight:800;text-align:center}
 .phead.hot{background:linear-gradient(120deg,#ff2d55,#ff6b00)}
 .phead .small{font-size:13px;font-weight:600;opacity:.95}
 .bklist{display:grid;gap:10px;padding-bottom:120px}
@@ -236,12 +236,24 @@ input,select,textarea{max-width:100%}
 .off{background:#dcfce7;color:#15803d;border-radius:8px;padding:0 6px;font-size:12px;font-weight:800}
 .bk-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
 .bk-row .qty{display:inline-flex;align-items:center;border:1.5px solid var(--line,#d1d5db);border-radius:12px;overflow:hidden}
-.bk-row .qty button{width:40px;height:40px;border:0;background:var(--brand-soft,#e2f2ef);font-size:20px;font-weight:800;cursor:pointer;color:var(--ink)}
+.bk-row .qty button{width:40px;height:40px;border:0;background:var(--brand-soft,#ede9fe);font-size:20px;font-weight:800;cursor:pointer;color:var(--ink)}
 .bk-row .qty input{width:64px;height:40px;border:0;text-align:center;font-size:18px;font-weight:800;background:var(--card);color:var(--ink)}
 .bk-sum{font-size:13.5px;line-height:1.5;flex:1;min-width:130px}.bk-sum s{opacity:.6}.bk-sum b{color:#dc2626}
 /* زرار الموقع كبير والكلام تحت بعضه + كاميرا/معرض */
-.locsec .locbig,.psec .locbig{display:block;width:100%;white-space:normal;font-size:19px;font-weight:800;line-height:1.5;padding:18px 12px;border-radius:16px;text-align:center;box-shadow:0 8px 18px -8px rgba(15,118,110,.6)}
+.locsec .locbig,.psec .locbig{display:block;width:100%;white-space:normal;font-size:19px;font-weight:800;line-height:1.5;padding:18px 12px;border-radius:16px;text-align:center;box-shadow:0 8px 18px -8px rgba(109,40,217,.6)}
 .locbig .lb-i{display:block;font-size:34px;line-height:1.1;margin-bottom:4px}
 .locbig .lb-s{font-size:15px;font-weight:600;opacity:.95}
 .avbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:0}
 .avbtns .btn{text-align:center;font-size:16px;padding:12px 6px;border-radius:12px}
+/* 2026-11-12: كارت المدرس زي البرنامج الأخضر (لون الاستلام في الخلفية) */
+.titem.st-part{background:var(--owe-soft);border-color:color-mix(in srgb,var(--owe) 35%,transparent)}
+.titem.st-done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.titem.sel{background:var(--sel)!important}
+.titem .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.titem .icos{display:flex;gap:6px}
+.lastv{font-size:12px;color:var(--brand);font-weight:700;margin-top:2px}
+.pill.abc{background:var(--sel,#dbeafe);color:var(--sel-ink,#1d4ed8)}
+header.top{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);color:#fff}
+/* 2026-11-12: زرار الرجوع صغير وبلون بينك */
+header.top .hb.backpill{background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;font-size:14px;font-weight:800;border-radius:20px;padding:4px 12px;white-space:nowrap;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+header.top .hb.backpill[hidden]{display:none}

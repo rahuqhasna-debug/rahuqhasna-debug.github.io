@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#6d28d9">
 <title>سلاح التلميذ - المدرس</title>
 <link rel="manifest" href="teacher.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -299,7 +299,7 @@ const myPrices = () => prices().filter(p => p.post && bookAllowed(p.b, D.profile
 const SUBJ_COL = { ar: '#2563eb', math: '#16a34a', stu: '#b45309', en: '#7c3aed', sci: '#ea580c' };
 function bookHead(p) {
   const sb = String(p.b).split('-')[1];
-  return `<div class="bk-n"><span class="bk-dot" style="background:${SUBJ_COL[sb] || '#0f766e'}"></span>${esc(p.l || bookLabel(p.b))}</div>
+  return `<div class="bk-n"><span class="bk-dot" style="background:${SUBJ_COL[sb] || '#6d28d9'}"></span>${esc(p.l || bookLabel(p.b))}</div>
     <div class="bk-p">${p.pre ? `<s>${money(p.pre)}</s> ` : ''}<b>${money(p.post)}</b>${p.pre && p.pre > p.post ? ` <span class="off">خصم ${Math.round((1 - p.post / p.pre) * 100)}%</span>` : ''}</div>`;
 }
 function renderPrices() {

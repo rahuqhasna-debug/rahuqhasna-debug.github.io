@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#6d28d9">
 <title>سلاح التلميذ البحيرة</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -13,7 +13,7 @@
 <style>
 :root{
   --bg:#f3f5f4;--card:#ffffff;--ink:#14201e;--muted:#5d6b68;--line:#dde4e2;
-  --brand:#0f766e;--brand-ink:#ffffff;--brand-soft:#e2f2ef;
+  --brand:#6d28d9;--brand-ink:#ffffff;--brand-soft:#ede9fe;
   --ok:#15803d;--ok-soft:#e4f4e9;--owe:#b45309;--owe-soft:#fdf0dc;--bad:#b91c1c;--bad-soft:#fde7e7;
   --sel:#dbeafe;--sel-ink:#1d4ed8;
   --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 10px rgba(0,0,0,.04);
@@ -21,13 +21,13 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;
-  --brand:#2dd4bf;--brand-ink:#04201c;--brand-soft:#11322e;
+  --brand:#a78bfa;--brand-ink:#1e0b3a;--brand-soft:#2a1f4a;
   --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
   --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none;
   --c-ar:#60a5fa;--c-math:#4ade80;--c-stu:#d6a35c;--c-en:#c084fc;--c-sci:#fb923c}}
 :root[data-theme="dark"]{
   --bg:#0e1413;--card:#17201e;--ink:#e5eeec;--muted:#93a39f;--line:#283432;
-  --brand:#2dd4bf;--brand-ink:#04201c;--brand-soft:#11322e;
+  --brand:#a78bfa;--brand-ink:#1e0b3a;--brand-soft:#2a1f4a;
   --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
   --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none;
   --c-ar:#60a5fa;--c-math:#4ade80;--c-stu:#d6a35c;--c-en:#c084fc;--c-sci:#fb923c}
@@ -44,7 +44,7 @@ header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;
 .bk-btn.due{background:var(--owe);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 .backrow{max-width:860px;margin:10px auto 0;padding:0 12px}
 .backrow[hidden]{display:none}
-.backbtn{width:100%;background:#ea580c;color:#fff;border:0;border-radius:12px;padding:11px 14px;font:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(234,88,12,.35)}
+.backbtn{display:inline-flex;align-items:center;gap:4px;width:auto;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:20px;padding:5px 16px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(219,39,119,.3)}
 .backbtn:active{transform:scale(.98)}
 header.top .back{background:rgba(255,255,255,.22);border:0;color:inherit;font-size:18px;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;flex:none}
 .areabar{position:sticky;top:50px;z-index:12;background:var(--bg);padding:6px 0 4px}
@@ -135,6 +135,7 @@ details.subj.mine>summary{background:var(--brand-soft)}
 .step button.plus{border-color:var(--brand);color:var(--brand)}
 .step .q{min-width:20px;text-align:center;font-weight:800;font-size:17px}
 .titem{cursor:pointer}
+.tav{width:44px;height:44px;border-radius:50%;flex:none;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#a78bfa,#60a5fa);color:#fff;font-weight:800;font-size:20px;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.15)}
 .titem .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
 .icos{display:flex;gap:6px}
 .ico{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:var(--brand-soft);text-decoration:none;font-size:18px}
@@ -220,15 +221,15 @@ details.done>summary{cursor:pointer;font-weight:700;color:var(--muted);padding:8
 details.others>summary{cursor:pointer;font-weight:700;padding:10px 2px;color:var(--brand)}
 .inv-wrap{position:fixed;inset:0;z-index:55;background:#e5e7eb;overflow:auto;padding:16px 12px 24px}
 .inv{background:#fff;color:#111;max-width:560px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15)}
-.inv-h{background:#0f766e;color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px}
+.inv-h{background:#6d28d9;color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px}
 .inv-h .brand{font-weight:800;font-size:21px;flex:1}
 .inv-h h2{margin:0;font-size:17px}
 .inv-h .d{font-size:13px;opacity:.9}
 .inv-b{padding:14px 16px 18px}
-.inv-who{background:#e2f2ef;border-radius:10px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:15px}
+.inv-who{background:#ede9fe;border-radius:10px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:15px}
 .inv-who span{color:#555}
 .inv .tbl{margin:12px 0;border-radius:8px;overflow:hidden}
-.inv .tbl th{background:#0f766e;color:#fff;font-size:13px;border:0;padding:8px 4px}
+.inv .tbl th{background:#6d28d9;color:#fff;font-size:13px;border:0;padding:8px 4px}
 .inv .tbl td{border:0;color:#111}
 .inv .tbl tbody tr:nth-child(even) td{background:#f3f4f6}
 .inv .tbl s{color:#888}
@@ -240,7 +241,7 @@ details.others>summary{cursor:pointer;font-weight:700;padding:10px 2px;color:var
 .inv-acts .btn{flex:1 1 40%;text-align:center;text-decoration:none}
 /* اللوجو والتوقيع */
 header.top .logo{width:30px;height:30px;border-radius:7px;background:#fff;object-fit:contain;flex:none}
-.splash{position:fixed;inset:0;z-index:100;background:#fff;color:#0f766e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s}
+.splash{position:fixed;inset:0;z-index:100;background:#fff;color:#6d28d9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s}
 .splash img{width:150px;height:150px;object-fit:contain}
 .splash .nm{font-size:22px;font-weight:800}
 .splash .sg{font-size:14px;color:#5d6b68}
@@ -283,7 +284,7 @@ details.ob>summary::after{content:"▾";color:var(--muted);margin-inline-start:6
 .ob-t .ico{width:32px;height:32px;font-size:15px}
 /* ===== دفعة 3: تنسيق عام ===== */
 body{font-family:"Cairo","Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",Arial,sans-serif}
-header.top{background:linear-gradient(135deg,#0f766e,#0d9488 55%,#14b8a6);color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+header.top{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}
 .card{border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05)}
 .btn{padding:12px 18px;border-radius:14px}
 .btn.sm{padding:8px 14px;border-radius:11px}
@@ -292,7 +293,7 @@ nav.tabs[hidden]{display:none}
 nav.tabs a{font-size:12px}
 .grow{flex:1;min-width:0}
 /* الرئيسية */
-.hello{background:linear-gradient(135deg,#0f766e,#0d9488 50%,#16a34a);color:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(15,118,110,.25)}
+.hello{background:linear-gradient(135deg,#6d28d9,#7c3aed 50%,#3b82f6);color:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 16px rgba(109,40,217,.25)}
 .hello h2{margin:0;font-size:18px;line-height:1.5}
 .hello .enc{margin-top:4px;opacity:.95}
 .prog{height:12px;background:rgba(255,255,255,.28);border-radius:8px;overflow:hidden;margin-top:12px}
@@ -328,7 +329,7 @@ nav.tabs a{font-size:12px}
 .wrap.home .sign{margin:0;font-size:11px}
 .wrap.home .backup-bar,.wrap.home .banner{padding:6px 10px;font-size:13px}
 /* الترحيب: شريط صغير بيظهر شوية ويختفي (3–4 مرات في اليوم بالكتير) */
-.hello-s{position:fixed;top:58px;left:12px;right:12px;z-index:40;max-width:620px;margin:0 auto;background:linear-gradient(135deg,#0f766e,#16a34a);color:#fff;border-radius:14px;padding:8px 12px;font-size:14px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.2);transition:opacity .5s,transform .5s;cursor:pointer}
+.hello-s{position:fixed;top:58px;left:12px;right:12px;z-index:40;max-width:620px;margin:0 auto;background:linear-gradient(135deg,#6d28d9,#3b82f6);color:#fff;border-radius:14px;padding:8px 12px;font-size:14px;font-weight:700;box-shadow:0 6px 18px rgba(0,0,0,.2);transition:opacity .5s,transform .5s;cursor:pointer}
 .hello-s .enc{font-weight:400;font-size:13px;opacity:.95}
 .hello-s.out{opacity:0;transform:translateY(-12px);pointer-events:none}
 /* صفحة المدرس */
@@ -379,7 +380,7 @@ nav.tabs a{font-size:12px}
 [data-hay][hidden],[data-hgrp][hidden]{display:none!important}
 mark.hl{background:#fde047;color:#000;border-radius:3px;padding:0 1px}
 .nores{margin:6px 0 10px}
-.g7{background:linear-gradient(135deg,#be123c,#fb7185)}.g8{background:linear-gradient(135deg,#0f766e,#5eead4)}.g9{background:linear-gradient(135deg,#7c3aed,#c4b5fd)}
+.g7{background:linear-gradient(135deg,#be123c,#fb7185)}.g8{background:linear-gradient(135deg,#6d28d9,#c4b5fd)}.g9{background:linear-gradient(135deg,#7c3aed,#c4b5fd)}
 .wrap.home .igrid.i8{grid-template-rows:repeat(4,1fr)}
 .igrid.i8>:last-child:nth-child(odd){grid-column:1/-1}
 .wrap.home .igrid.i8 .icon-b .e{font-size:clamp(24px,4.6dvh,40px)}
@@ -398,12 +399,12 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 .regd{color:var(--ok);font-weight:700;font-size:13px;margin-top:4px}
 .pickl label.off{opacity:.55}
 /* دفعة 7: شكل الرئيسية — كارت ملون للأرقام + كروت بيضا للأقسام */
-.hero{background:linear-gradient(135deg,#0f766e,#0d9488 55%,#14b8a6);border-radius:18px;padding:8px 8px 4px;box-shadow:0 4px 16px rgba(15,118,110,.25)}
+.hero{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);border-radius:18px;padding:8px 8px 4px;box-shadow:0 4px 16px rgba(109,40,217,.25)}
 .hero .stats{margin-bottom:6px}
 .hero .stat{background:rgba(255,255,255,.16);border:0;color:#fff}
-.hero .stat span{color:#e6fffa}
+.hero .stat span{color:#f3e8ff}
 .hero .hprog{background:rgba(255,255,255,.25)}.hero .hprog>i{background:#4ade80}
-.hero .hprog-t{color:#e6fffa;margin-bottom:2px}
+.hero .hprog-t{color:#f3e8ff;margin-bottom:2px}
 .igrid.tiles{gap:10px}
 .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--card);border:1px solid var(--line);border-radius:20px;text-decoration:none;color:inherit;box-shadow:0 2px 10px rgba(0,0,0,.06);min-height:110px;padding:8px 6px;transition:transform .12s;text-align:center}
 .tile:active{transform:scale(.97)}
@@ -427,8 +428,26 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 .v2 .tile:nth-child(3){background:linear-gradient(140deg,#4ade80,#059669);--sh:#059669}
 .v2 .tile:nth-child(4){background:linear-gradient(140deg,#a78bfa,#6d28d9);--sh:#6d28d9}
 .v2 .tile:nth-child(5){background:linear-gradient(140deg,#fb7185,#db2777);--sh:#db2777}
-.v2 .tile:nth-child(6){background:linear-gradient(140deg,#2dd4bf,#0f766e);--sh:#0f766e}
+.v2 .tile:nth-child(6){background:linear-gradient(140deg,#a78bfa,#6d28d9);--sh:#6d28d9}
 .v2 .tile:nth-child(2){animation-delay:.05s}.v2 .tile:nth-child(3){animation-delay:.1s}.v2 .tile:nth-child(4){animation-delay:.15s}.v2 .tile:nth-child(5){animation-delay:.2s}.v2 .tile:nth-child(6){animation-delay:.25s}
+/* 2026-11-12 (تاني): أيقونات بصور كرتونية — كارت فاتح لكل قسم بلون، والصورة كبيرة في النص */
+.igrid.tiles.v3{gap:12px}
+.v3 .tile{border:2px solid var(--bd,#e9d5ff);background:linear-gradient(160deg,#fff,var(--bg2,#f5f3ff));border-radius:24px;animation:tileIn .45s cubic-bezier(.2,.8,.2,1) both;box-shadow:0 8px 18px -10px var(--bd,#a78bfa);gap:2px}
+.v3 .tile .ti{width:auto;height:clamp(48px,11dvh,86px);aspect-ratio:1;border-radius:0;background:none;box-shadow:none;transition:transform .2s}
+.v3 .tile .ti svg{width:100%;height:100%;filter:drop-shadow(0 3px 3px rgba(0,0,0,.12))}
+.v3 .tile:active .ti{transform:scale(1.08) rotate(-3deg)}
+.v3 .tile .tl{font-size:17px;color:var(--tc,#5b21b6)}
+.v3 .tile .ts{font-weight:600}
+.v3 .tile .badge{animation:bdg 1.6s ease-in-out infinite;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.v3 .tile:nth-child(1){--bg2:#dcfce7;--bd:#86efac;--tc:#15803d}
+.v3 .tile:nth-child(2){--bg2:#fce7f3;--bd:#f9a8d4;--tc:#be185d}
+.v3 .tile:nth-child(3){--bg2:#dbeafe;--bd:#93c5fd;--tc:#1d4ed8}
+.v3 .tile:nth-child(4){--bg2:#ede9fe;--bd:#c4b5fd;--tc:#6d28d9}
+.v3 .tile:nth-child(5){--bg2:#fef9c3;--bd:#fde047;--tc:#a16207}
+.v3 .tile:nth-child(6){--bg2:#e0f2fe;--bd:#7dd3fc;--tc:#0369a1}
+.v3 .tile:nth-child(2){animation-delay:.05s}.v3 .tile:nth-child(3){animation-delay:.1s}.v3 .tile:nth-child(4){animation-delay:.15s}.v3 .tile:nth-child(5){animation-delay:.2s}.v3 .tile:nth-child(6){animation-delay:.25s}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .v3 .tile{background:linear-gradient(160deg,var(--card),color-mix(in srgb,var(--bd) 22%,var(--card)))}:root:not([data-theme="light"]) .v3 .tile .tl{color:var(--bd)}}
+:root[data-theme="dark"] .v3 .tile{background:linear-gradient(160deg,var(--card),color-mix(in srgb,var(--bd) 22%,var(--card)))}:root[data-theme="dark"] .v3 .tile .tl{color:var(--bd)}
 @keyframes tileIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes bdg{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 .ico.wa svg{width:22px;height:22px}
@@ -451,7 +470,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 .mlbl::before{display:none!important}
 .nolbl .mlbl{display:none!important}
 .navmap{height:calc(100dvh - 230px);min-height:280px;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
-.navtop{display:flex;align-items:center;gap:10px;background:#0f766e;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:8px;font-size:18px;font-weight:800;min-height:56px}
+.navtop{display:flex;align-items:center;gap:10px;background:#6d28d9;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:8px;font-size:18px;font-weight:800;min-height:56px}
 .navtop .ar{font-size:34px;line-height:1}.navtop .d{font-size:14px;font-weight:400;opacity:.95}
 .navbot{display:flex;align-items:center;gap:8px;margin-top:8px}
 .dsec{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
@@ -466,7 +485,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 .pickl input{width:20px;height:20px;flex:none}
 .cmp td.ch{background:var(--owe-soft);font-weight:800}
 .warnbox{background:var(--bad-soft);color:var(--bad);border:1.5px solid var(--bad);border-radius:12px;padding:10px;margin:10px 0;font-weight:700}
-.pb-s{background:linear-gradient(135deg,#065f46,#0d9488)!important;text-align:center;font-size:18px!important}
+.pb-s{background:linear-gradient(135deg,#5b21b6,#7c3aed)!important;text-align:center;font-size:18px!important}
 @media (min-width:700px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .tlist{display:grid;grid-template-columns:1fr 1fr}
@@ -824,7 +843,7 @@ function render(){
   const ob = owedTotal(); const bd=$('#owedBadge'); bd.hidden=!ob; bd.textContent=ob;
   ACC = accMap();
   DUPS = new Set(dupGroups().map(([p])=>p));
-  LV = lastVisits();
+  LV = lastVisits(); HIDX=null; clearTimeout(greenSum.t); greenSum.t=setTimeout(greenSum, 600);
   if(!db.rep || !db.mail || (IDARA_LIST.length && !db.idara)) firstRun();
   const po = db.sales.filter(s=>s.st==='order').length; const sbd=$('#salesBadge'); sbd.hidden=!po; sbd.textContent=po;
   const sm = h.match(/^\/sales(?:\/(\w+))?(?:\/(.+))?$/);
@@ -923,7 +942,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles v2">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs',HICO.chat,'الرسائل','c3',sbBell?`${sbBell} جديد`:'واتساب + المراسلات',sbBell||0)}${ic('#/route',HICO.route,'خط السير','c4',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map',HICO.pin,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles v3">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs',HICO.chat,'الرسائل','c3',sbBell?`${sbBell} جديد`:'واتساب + المراسلات',sbBell||0)}${ic('#/route',HICO.route,'خط السير','c4',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map',HICO.compass,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -936,7 +955,7 @@ function renderHome(){
     </div>${homeProg()}</div>
     <div class="tday"><div class="grow">📅 بعت بـ <b>${fmtM(x.sv)}</b> • حصّلت <b>${fmtM(x.paid)}</b> • مرتجع <b>${x.rN}</b></div>
       <a class="btn ok" href="${esc(waLink(db.reportPhone||'', reportText()))}" target="_blank" rel="noopener">📤 التقرير</a></div>
-    <div class="search"><input id="hq" type="search" placeholder="🔎 دوّر على مدرس: اسم، تليفون، قرية…" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
+    <div class="search"><input id="hq" type="search" placeholder="🔎 دوّر بأي حاجة: اسم، تليفون، قرية، مادة، «ما استلمش»…" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button></div>
     <div class="hres" id="hres"></div>
     ${grid}<div class="sign">${SIGN}</div>`;
@@ -986,7 +1005,7 @@ const subjOf=w=>{ const m=SUBJ_RE.find(([k,re])=>re.test(w)); return m?m[0]:null
 // البحث بأي حاجة: كل الكلمات لازم تتطابق. A/B/C لوحده = التصنيف بس
 function parseQuery(raw){
   const q={owed:false, subjs:[], stages:[], letter:'', rest:[]};
-  for(let w of normText(raw).split(' ').filter(Boolean)){
+  for(let w of stTok(normText(raw).split(' ').filter(Boolean))){
     if(w.length>2 && w[0]==='و' && (subjOf(w.slice(1)) || /^(ال)?(ابتدا|اعدا)/.test(w.slice(1)))) w=w.slice(1);
     if(/^(ال)?مستحق/.test(w)) q.owed=true;
     else if(subjOf(w)) q.subjs.push(subjOf(w));
@@ -998,8 +1017,30 @@ function parseQuery(raw){
   return q;
 }
 const emptyQ = () => ({owed:false, subjs:[], stages:[], letter:'', rest:[]});
-function teacherHay(t){ return normText([t.name, t.phone, t.area, t.school, t.subjectText, t.stageText, STAGE_TXT[t.stage]||'', t.cls, t.spec,
-  ...tSubs(t).map(s=>SUBJ[s]), ...tStages(t).map(s=>STAGES[s].name)].filter(Boolean).join(' ')); }
+/* البحث الشامل (طلب شريف 2026-11-12): أي كلمة بتدوّر في كل بيانات المدرس — كل الخانات + كتبه + حالة الاستلام بالكلام */
+var HIDX=null;   // indexEntries متخزنة لحد الـ render الجاي
+function hIdx(){ return HIDX ||= indexEntries(); }
+var HAY_SKIP=/^(id|thumb|photos|phN|tpin|loc|tLoc|plan|isNew|cls|b|t)$/;
+function hayAll(v, out, d){ if(v==null || d>4) return;
+  if(typeof v==='string'){ if(v && v.length<400 && !/^data:/.test(v) && !/^\d{4}-\d\d-\d\dT/.test(v)) out.push(v); }
+  else if(typeof v==='number') out.push(String(v));
+  else if(Array.isArray(v)) v.forEach(x=>hayAll(x, out, d+1));
+  else if(typeof v==='object') for(const k in v) if(!HAY_SKIP.test(k)) hayAll(v[k], out, d+1); }
+// حالة الاستلام كعلامات خاصة: «استلم» = خلّص كله، «استلم جزء» = خد جزء، «ما استلمش» = لسه
+var ST_TOK={none:'§stnone لسه', part:'§stpart باقيله', done:'§stdone خلص'};
+function stTok(ws){ const o=[];
+  for(let i=0;i<ws.length;i++){ const w=ws[i], nx=ws[i+1]||'';
+    if((w==='ما'||w==='م') && /^(است?لمش|مستلمش)$/.test(nx)){ o.push('§stnone'); i++; }
+    else if(/^(است?لمش|مستلمش|مستلمتش)$/.test(w)) o.push('§stnone');
+    else if(/^است?لم$/.test(w) && /^(جزء|جزؤ|حته|نص|بعض)$/.test(nx)){ o.push('§stpart'); i++; }
+    else if(/^است?لم$/.test(w)) o.push('§stdone');
+    else o.push(w); }
+  return o; }
+function teacherHay(t){ const x=hIdx()[t.id], st=!x?.d?'none':x.o?'part':'done', ex=[];
+  hayAll(t, ex, 0);
+  try{ for(const b of expectedBooks(t)) ex.push(bookLabel(b)); }catch(e){}
+  return normText([t.name, t.phone, t.area, t.school, t.subjectText, t.stageText, STAGE_TXT[t.stage]||'', t.cls, t.spec,
+  ...tSubs(t).map(s=>SUBJ[s]), ...tStages(t).map(s=>STAGES[s].name), ...ex, ST_TOK[st]].filter(Boolean).join(' ')); }
 function matchTeacher(t, Q, owedList){
   if(Q.letter && clsLetter(t)!==Q.letter) return false;
   if(Q.owed){ const l=owedList || autoOwed(t).map(b=>({b, s:'o'})); if(!l.some(e=>owedMatch(e, Q.subjs, Q.stages))) return false; }
@@ -1013,20 +1054,36 @@ function owedLine(ents){
   const by={}; for(const e of [...ents].sort((a,b)=>bookRank[a.b]-bookRank[b.b])){ (by[bookParts(e.b).sb] ||= []).push(e); }
   return Object.entries(by).map(([sb,l])=>`${SUBJ[sb]}: `+l.map(e=>{const p=bookParts(e.b); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`+(e.q>1?` (${e.q})`:'');}).join('، ')).join(' • ');
 }
-// أيقونات الرئيسية (رسم خطوط بيضا)
-var HICO=(()=>{ const s=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`; return {
-  users:s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M16.5 14.2c2.9.2 5 2.3 5 5.3"/>'),
-  bag:s('<path d="M5 8h14l-1.2 12.5H6.2z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/><path d="M10 13.5c0 1.2.9 2 2 2s2-.8 2-2"/>'),
-  chat:s('<path d="M4 5h16v11H10l-5 4v-4H4z"/><circle cx="8.5" cy="10.5" r=".8" fill="currentColor"/><circle cx="12" cy="10.5" r=".8" fill="currentColor"/><circle cx="15.5" cy="10.5" r=".8" fill="currentColor"/>'),
-  route:s('<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8"/>'),
-  pin:s('<path d="M12 21.5s-7-6.3-7-11.5a7 7 0 0 1 14 0c0 5.2-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/>'),
-  car:s('<path d="M3 16.5v-3.2L5 8.5h14l2 4.8v3.2z"/><circle cx="7" cy="16.8" r="1.8"/><circle cx="17" cy="16.8" r="1.8"/><path d="M3.5 12.5h17"/>')
+// أيقونات الرئيسية: صور كرتونية ملونة (طلب شريف 2026-11-12) — كل صورة بتعبّر عن القسم
+var HICO=(()=>{ const K='stroke="#1f2937" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"', s=p=>`<svg viewBox="0 0 64 64" aria-hidden="true">${p}</svg>`; return {
+  // مدرس قدام سبورة
+  users:s(`<rect x="4" y="6" width="40" height="28" rx="4" fill="#16a34a" ${K}/><path d="M10 14h14M10 21h9M27 26l6-8 5 6" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="20" y="34" width="8" height="5" fill="#a16207" ${K}/>
+    <path d="M30 62c0-10 6-16 15-16s15 6 15 16z" fill="#7c3aed" ${K}/><path d="M42 47l3 6 3-6" fill="#fff" ${K}/><circle cx="45" cy="34" r="9" fill="#fcd9b6" ${K}/>
+    <path d="M36 33c0-7 4-10 9-10s9 3 9 9c-3-3-8-4-12-2z" fill="#3f2a1d" ${K}/><circle cx="41.5" cy="35" r="2.6" fill="none" ${K}/><circle cx="48.5" cy="35" r="2.6" fill="none" ${K}/><path d="M44 35h2M42.5 40c1.5 1.2 3.5 1.2 5 0" fill="none" ${K}/>`),
+  // شنطة شراء فيها كتب + تيكت سعر
+  bag:s(`<rect x="16" y="8" width="9" height="20" rx="1.5" fill="#2563eb" ${K} transform="rotate(-12 20 18)"/><rect x="26" y="5" width="9" height="22" rx="1.5" fill="#16a34a" ${K}/><rect x="36" y="8" width="9" height="20" rx="1.5" fill="#dc2626" ${K} transform="rotate(10 40 18)"/>
+    <path d="M9 24h46l-4 34H13z" fill="#ec4899" ${K}/><path d="M23 30v-4M41 30v-4" ${K} fill="none"/><path d="M24 38c2 5 14 5 16 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M44 42l10-2 4 9-9 6z" fill="#fde047" ${K}/><circle cx="50" cy="45" r="1.6" fill="#1f2937"/>`),
+  // فقاعتين كلام
+  chat:s(`<path d="M6 10h34a5 5 0 0 1 5 5v15a5 5 0 0 1-5 5H20l-9 8v-8H6a5 5 0 0 1-5-5V15a5 5 0 0 1 5-5z" fill="#22c55e" ${K}/><circle cx="13" cy="23" r="2.6" fill="#fff"/><circle cx="23" cy="23" r="2.6" fill="#fff"/><circle cx="33" cy="23" r="2.6" fill="#fff"/>
+    <path d="M30 32h25a5 5 0 0 1 5 5v11a5 5 0 0 1-5 5h-3v7l-8-7H30a5 5 0 0 1-5-5V37a5 5 0 0 1 5-5z" fill="#60a5fa" ${K}/><path d="M42.5 47.5l-5-4.6a3 3 0 0 1 5-3.2 3 3 0 0 1 5 3.2z" fill="#f43f5e" stroke="#fff" stroke-width="1.2"/>`),
+  // طريق ملفوف بين البيوت وعلم في الآخر
+  route:s(`<circle cx="52" cy="12" r="6" fill="#fde047" ${K}/><path d="M2 46c10-8 20-8 30-2s20 6 30-2v18H2z" fill="#86efac" ${K}/>
+    <path d="M8 62c4-10 14-12 22-14s16-6 14-14-14-6-12-14" fill="none" stroke="#475569" stroke-width="8" stroke-linecap="round"/><path d="M8 62c4-10 14-12 22-14s16-6 14-14-14-6-12-14" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 4"/>
+    <path d="M32 6v14" ${K}/><path d="M32 6h12l-3 4 3 4H32z" fill="#ef4444" ${K}/><rect x="6" y="22" width="12" height="10" fill="#fca5a5" ${K}/><path d="M4 23l8-7 8 7z" fill="#b91c1c" ${K}/>`),
+  // بوصلة (بدل الخريطة)
+  compass:s(`<circle cx="32" cy="33" r="26" fill="#fbbf24" ${K}/><circle cx="32" cy="33" r="20" fill="#fff" ${K}/><rect x="28" y="2" width="8" height="6" rx="2" fill="#fbbf24" ${K}/>
+    <path d="M32 15v3M32 48v3M14 33h3M47 33h3" ${K}/><path d="M32 33l12-14-5 17z" fill="#ef4444" ${K}/><path d="M32 33l-12 14 5-17z" fill="#3b82f6" ${K}/><circle cx="32" cy="33" r="3" fill="#1f2937"/>`),
+  // عربية كرتون
+  car:s(`<path d="M6 44v-8l7-3 7-11c1-2 3-3 5-3h14c2 0 4 1 5 3l6 11 7 3v8a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="#8b5cf6" ${K}/><path d="M23 23h8v10H17zM35 23h7l6 10H35z" fill="#bae6fd" ${K}/>
+    <circle cx="18" cy="47" r="7" fill="#374151" ${K}/><circle cx="18" cy="47" r="2.6" fill="#e5e7eb"/><circle cx="47" cy="47" r="7" fill="#374151" ${K}/><circle cx="47" cy="47" r="2.6" fill="#e5e7eb"/>
+    <rect x="53" y="36" width="5" height="4" rx="1" fill="#fde047" ${K}/><path d="M2 58h60" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4"/>`)
 }; })();
 function phoneBtns(t){
   // 📨 = رسايل عبر تطبيق سلاح التلميذ (بتظهر بس للي داخل «💬 المراسلات» بالرقم السري على الموبايل ده)
   const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>` : '';
   if(!t.phone) return app;
-  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico wa" data-act="noop" href="https://wa.me/2${esc(t.phone)}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>${app}`;
+  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico wa" data-act="noop" href="https://wa.me/2${esc(normPhone(t.phone))}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>${app}`;
 }
 // لوجو الواتساب الأصلي
 var WA_ICON='<svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true" style="vertical-align:middle"><path fill="#25D366" d="M16 2.5A13.5 13.5 0 0 0 4.4 22.9L2.6 29.5l6.8-1.8A13.5 13.5 0 1 0 16 2.5z"/><path fill="#fff" d="M11.7 9c-.3-.6-.6-.6-.9-.6h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 3.9 1.7 4.2c.2.3 2.9 4.6 7.1 6.3 3.5 1.4 4.2 1.1 5 1 .8-.1 2.5-1 2.8-2 .3-1 .3-1.8.2-2-.1-.2-.4-.3-.8-.5l-2.8-1.4c-.4-.1-.7-.2-.9.2-.3.4-1.1 1.4-1.3 1.6-.2.3-.5.3-.9.1-.4-.2-1.7-.6-3.3-2-1.2-1.1-2-2.4-2.3-2.8-.2-.4 0-.6.2-.8l.6-.7c.2-.2.3-.4.4-.7.1-.3 0-.5 0-.7L11.7 9z"/></svg>';
@@ -1058,11 +1115,22 @@ async function sbMapPull(){
   }catch(e){}
 }
 setTimeout(sbMapPull, 4000); setInterval(sbMapPull, 10*60000);
+/* ملخص كل مدرس لصفحة 💬 المراسلات (admin.html بيقراه عشان كارت المدرس هناك يبقى زي هنا بالظبط):
+   st = none/part/done (الاستلام)، d/o = استلم/باقيله، lv = آخر زيارة، c = التصنيف، w = عليه فلوس */
+function greenSum(){
+  try{ const idx=hIdx(), o={};
+    for(const t of db.teachers){ const x=idx[t.id], v=LV[t.id];
+      o[t.id]={st:!x?.d?'none':x.o?'part':'done', d:x?.d||0, o:x?.o||0, lv:v?`${visitLabel(v)} — ${v.k}`:'', c:clsLetter(t), w:ACC[t.id]?.owe>0?fmtM(ACC[t.id].owe):''}; }
+    const s=JSON.stringify(o); if(s!==greenSum.last){ greenSum.last=s; localStorage.setItem('selah-green-sum', s); }
+  }catch(e){}
+}
+// دايرة صورة المدرس جنب اسمه (من غير صورة = أول حرف)
+function tAv(t){ return t.thumb ? `<img class="tav" src="${t.thumb}" alt="" loading="lazy" decoding="async">` : `<span class="tav">${esc((t.name||'؟').trim().charAt(0)||'؟')}</span>`; }
 function teacherCard(t, x, extra=''){
   const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
   // أبيض = ما استلمش، برتقاني = استلم وباقيله، أخضر = خلّص
   const stc = !x?.d ? '' : x.o ? 'st-part' : 'st-done';
-  return `<div class="titem ${stc}${t.isNew?' is-new':''}" data-act="open-t" data-id="${esc(t.id)}" data-hay="${esc(hayT(t))}">
+  return `<div class="titem ${stc}${t.isNew?' is-new':''}" data-act="open-t" data-id="${esc(t.id)}" data-hay="${esc(hayT(t))}">${tAv(t)}
     <div class="grow"><div class="nm">${esc(t.name)}${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
       <div class="sub">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).join(' • '))}</div>
       ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:''}${extra}</div>
@@ -2612,7 +2680,7 @@ const saleIdx = () => Object.fromEntries(db.sales.map(s=>[s.id,s]));
 function itemsLine(items){
   return [...items].sort(byRank).map(it=>`<span class="bk" style="color:var(--c-${bookParts(it.b).sb})">${esc(bookLabel(it.b))}</span> × ${it.q}`).join('، ');
 }
-const waLink = (phone, text) => `https://wa.me/${phone?'2'+phone:''}?text=${encodeURIComponent(text)}`;
+const waLink = (phone, text) => `https://wa.me/${phone&&normPhone(phone)?'2'+normPhone(phone):''}?text=${encodeURIComponent(text)}`;
 const pickDate = v => (!v || v===dayKey()) ? new Date().toISOString() : new Date(v+'T12:00:00').toISOString();
 
 /* --- بضاعة التجار: أول دخل أول خرج --- */
@@ -3208,7 +3276,7 @@ function showInvoice(tid, fresh){
     <div class="kv"><span>إجمالي اللي خده</span><b>${fmtM(a.bought)}</b></div><div class="kv"><span>المرتجع</span><b style="color:#ea580c">${fmtM(a.ret)}</b></div>
     <div class="kv"><span>المدفوع</span><b style="color:#15803d">${fmtM(a.paid)}</b></div>
     <div class="inv-due"><span>الباقي عليه</span><span>${fmtM(a.owe)}</span></div>
-    ${log.length?`<h3 style="margin:16px 0 6px;font-size:16px;color:#0f766e">📜 سجل المعاملات</h3>${log.map(l=>`<div class="kv"><span>${l.k==='inv'?'🧾':l.k==='ret'?'↩️':'💵'} ${esc(l.t)} بتاريخ ${l.day}</span><b style="color:${l.c}">${fmtM(l.v)}</b></div>`).join('')}`:''}</div></div>
+    ${log.length?`<h3 style="margin:16px 0 6px;font-size:16px;color:#6d28d9">📜 سجل المعاملات</h3>${log.map(l=>`<div class="kv"><span>${l.k==='inv'?'🧾':l.k==='ret'?'↩️':'💵'} ${esc(l.t)} بتاريخ ${l.day}</span><b style="color:${l.c}">${fmtM(l.v)}</b></div>`).join('')}`:''}</div></div>
     <div class="inv-acts"><button class="btn pri" data-inv="img">📷 ابعت صورة</button><button class="btn pri" data-inv="pdf">📄 ابعت PDF</button>
       <a class="btn ok" href="${esc(waLink(t.phone, msg))}" target="_blank" rel="noopener">💬 واتساب (كلام)</a><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
   document.body.appendChild(m);
@@ -3254,14 +3322,14 @@ function invoiceCanvas({t, a, list, day, log=[]}){
   const rr=(px,py,w,h,r,c)=>{ x.fillStyle=c; x.beginPath(); x.moveTo(px+r,py); x.arcTo(px+w,py,px+w,py+h,r); x.arcTo(px+w,py+h,px,py+h,r); x.arcTo(px,py+h,px,py,r); x.arcTo(px,py,px+w,py,r); x.closePath(); x.fill(); };
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
   // الشريط اللي فوق
-  x.fillStyle='#0f766e'; x.fillRect(0,0,W,96);
+  x.fillStyle='#6d28d9'; x.fillRect(0,0,W,96);
   text('سلاح التلميذ', W-P, 40, {sz:30, b:true, c:'#fff'});
   text('البحيرة', W-P, 74, {sz:15, c:'#d1fae5'});
   text('فاتورة بيع', P, 38, {sz:24, b:true, c:'#fff', al:'left'});
   text(day, P, 72, {sz:16, c:'#d1fae5', al:'left'});
   let y=96+16;
   // المندوب والمدرس
-  rr(P,y,W-2*P,56,10,'#e2f2ef');
+  rr(P,y,W-2*P,56,10,'#ede9fe');
   let w=text('المندوب: ', W-P-14, y+28, {sz:16, c:'#555'}); text(db.rep, W-P-14-w, y+28, {sz:17, b:true});
   w=text('المدرس: ', W/2-6, y+28, {sz:16, c:'#555'}); text(t.name, W/2-6-w, y+28, {sz:17, b:true});
   y+=56+16;
@@ -3269,7 +3337,7 @@ function invoiceCanvas({t, a, list, day, log=[]}){
   const cols=[['الكتاب',196],['خد',52],['رجّع',52],['فضل معاه',74],['قبل',84],['بعد',84],['الإجمالي',W-2*P-542]];
   const cx=[]; let cr=W-P; for(const [,cw] of cols){ cx.push([cr, cr-cw]); cr-=cw; }
   const mid=i=>(cx[i][0]+cx[i][1])/2;
-  x.fillStyle='#0f766e'; x.fillRect(P,y,W-2*P,40);
+  x.fillStyle='#6d28d9'; x.fillRect(P,y,W-2*P,40);
   cols.forEach(([h],i)=>text(h, i===0?cx[0][0]-10:mid(i), y+20, {sz:14, b:true, c:'#fff', al:i===0?'right':'center'}));
   y+=40;
   if(!list.length){ text('مفيش بيع.', W/2, y+RH/2, {al:'center', c:'#555'}); y+=RH; }
@@ -3297,7 +3365,7 @@ function invoiceCanvas({t, a, list, day, log=[]}){
   text('الباقي عليه', W-P-16, y+28, {sz:22, b:true, c:'#fff'}); text(fmtM(a.owe), P+16, y+28, {sz:24, b:true, c:'#fff', al:'left'});
   y+=56;
   if(log.length){
-    y+=14; text('📜 سجل المعاملات', W-P-6, y+18, {sz:18, b:true, c:'#0f766e'}); y+=36;
+    y+=14; text('📜 سجل المعاملات', W-P-6, y+18, {sz:18, b:true, c:'#6d28d9'}); y+=36;
     log.forEach((l,i)=>{ x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,LH);
       text(`${l.t} بتاريخ ${l.day}`, W-P-10, y+LH/2, {sz:15, c:'#333'}); text(fmtM(l.v), P+10, y+LH/2, {sz:16, b:true, c:l.c, al:'left'}); y+=LH; });
   }
@@ -3762,7 +3830,7 @@ var PQ={}, NAV=null, MAP=null, mapCat='', mapRouteOnly=false, PIN_OK=false, VOIC
 /* ---------- ١) البحث: كل كارت عليه data-hay = كل بيانات المدرس/التاجر متطبّعة ---------- */
 function hayT(t){ const ms=teacherMerch(t.id).map(([n])=>n).filter(n=>n!==MNONE);
   return teacherHay(t)+' '+normText([...ms, t.active===true?'فعال':t.active===false?'مش فعال':'', t.loc?'ليه موقع':'الموقع ناقص', tCatName(t)].join(' ')); }
-const qWords = raw => normText(raw).split(' ').filter(Boolean);
+const qWords = raw => stTok(normText(raw).split(' ').filter(Boolean));
 function searchBar(id, ph){ return `<div class="search"><input id="${id}" type="search" placeholder="${esc(ph||'🔎 دوّر: اسم، تليفون، قرية، تصنيف، تخصص، مادة، تاجر…')}" value="${esc(PQ[id]||'')}" autocomplete="off" enterkeyhint="search"></div>`; }
 function bindSearch(id, box, empty){
   const inp=document.getElementById(id); if(!inp) return;
@@ -4604,18 +4672,14 @@ function renderMsgs(){
       ${hasSb?`<button class="btn sm" id="msg_link" style="margin-top:6px">🔗 حط [رابط المدرس]</button>
       <div class="hint">[رابط المدرس] بيتبدل لوحده برابط كل مدرس (صفحته في 💬 المراسلات).</div>`:''}</div>
     <div class="card"><h3 class="sec-t">👥 اختار المدرسين</h3>
-      ${areaChips(areas, 'msa')}
-      <div class="chips">${chip('c','','كل التصنيفات')}${['A','B','C'].map(c=>chip('c',c,c)).join('')}</div>
-      <div class="chips">${chip('s','','كل المواد')}${Object.entries(SUBJ).map(([k,n])=>chip('s',k,n)).join('')}</div>
-      <div class="search" style="margin:0 0 8px"><input id="msg_q" type="search" placeholder="🔎 دوّر: اسم، تليفون، قرية…" value="${esc(msgF.q)}" autocomplete="off"></div>
+      <div class="search" style="margin:0 0 8px"><input id="msg_q" type="search" placeholder="🔎 دوّر بأي حاجة: اسم، تليفون، قرية، مادة، «استلم» / «استلم جزء» / «ما استلمش»…" value="${esc(msgF.q)}" autocomplete="off"></div>
+      <button class="btn ok" id="msg_go" style="width:100%;font-size:17px;margin-bottom:8px" data-act="msg-send"></button>
       <div class="row2"><button class="btn sm" data-act="msg-all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-act="msg-none">⬜ شيل كل اللي ظاهرين</button></div>
       <div class="pickl" id="msg_l"></div></div>
-    <button class="btn ok" id="msg_go" style="width:100%;font-size:17px" data-act="msg-send"></button>
     <p class="hint">الواتساب مش بيسمح يبعت لكذا حد مرة واحدة لوحده — البرنامج هيفتحلك المدرسين واحد ورا التاني والرسالة مكتوبة، وإنت تدوس إرسال وترجع تدوس «التالي».</p>`;
   const ta=$('#msg_t'); ta.addEventListener('input', ()=>{ try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} });
   if(hasSb) $('#msg_link').onclick=()=>{ const p=ta.selectionStart??ta.value.length; ta.value=ta.value.slice(0,p)+'[رابط المدرس]'+ta.value.slice(p); try{ localStorage.setItem(KEY+'-msg', ta.value); }catch(e){} ta.focus(); };
-  for(const a of [...msgA]) if(!areas.includes(a)) msgA.delete(a);
-  bindAreaChips(app, 'msa', msgA, msgDraw);
+  msgA.clear(); msgF.c=''; msgF.s='';   // الفلاتر اتشالت — البحث بقى شامل
   $('#msg_q').addEventListener('input', e=>{ msgF.q=e.target.value; msgDraw(); });
   $('#msg_l').addEventListener('change', e=>{ const c=e.target.closest('input[data-id]'); if(!c) return; c.checked?msgSel.add(c.dataset.id):msgSel.delete(c.dataset.id); msgCount(); });
   msgDraw();
@@ -4843,8 +4907,8 @@ function pbShow(n){
 function remPermBar(){   // مش مجبر، بس شريط دايم لحد ما يفعّل الإشعارات
   if(!('Notification' in window) || Notification.permission==='granted' || document.getElementById('remPerm')) return;
   const b=document.createElement('div'); b.id='remPerm';
-  b.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:70;background:#0f766e;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center;font-size:14px';
-  b.innerHTML='<div style="flex:1">🔔 فعّل الإشعارات عشان التذكيرات تيجيك وإنت بره البرنامج</div><button id="remPermBtn" style="background:#fff;color:#0f766e;border:0;border-radius:8px;padding:8px 10px;font-weight:700">فعّل</button>';
+  b.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:70;background:#6d28d9;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center;font-size:14px';
+  b.innerHTML='<div style="flex:1">🔔 فعّل الإشعارات عشان التذكيرات تيجيك وإنت بره البرنامج</div><button id="remPermBtn" style="background:#fff;color:#6d28d9;border:0;border-radius:8px;padding:8px 10px;font-weight:700">فعّل</button>';
   document.body.appendChild(b);
   b.querySelector('#remPermBtn').onclick=async()=>{ try{ const r=await Notification.requestPermission(); if(r==='granted') b.remove(); else b.querySelector('div').textContent='⚠️ الإشعارات مقفولة من إعدادات التليفون/المتصفح — فعّلها يدوي'; }catch(e){} };
 }

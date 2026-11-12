@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#6d28d9">
 <title>المراسلات - سلاح التلميذ</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -14,7 +14,7 @@
 </head>
 <body>
 <header class="top"><div class="in">
-  <button class="hb" id="backBtn" hidden aria-label="رجوع">→</button>
+  <button class="hb backpill" id="backBtn" aria-label="رجوع">→ رجوع</button>
   <h1 id="title">المراسلات</h1>
   <a class="hb" id="bellBtn" href="#/bell" hidden aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></a>
   <button class="hb" id="outBtn" hidden aria-label="خروج">🚪</button>
@@ -31,7 +31,9 @@
 </nav>
 <script>
 "use strict";
+let RECOV = /type=recovery/.test(location.hash + location.search);   // راجع من رابط «نسيت الباسورد»
 const sb = makeClient(true);
+if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'PASSWORD_RECOVERY') { RECOV = true; setTimeout(renderNewPw, 0); } });
 const app = $('#app');
 let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, lastMsg = {}, ordersBy = {}, pollT = null;
 const ui = { q: '', filter: 'all', rep: '', selMode: false, sel: new Set(), shown: 200, bellTab: 'msgs', invQ: '', invSel: new Set() };
@@ -57,7 +59,7 @@ function gApply(localId, fin) {   // الموافقة تتكتب في البرن
   const map = { name: 'name', phone: 'phone', stage: 'stage', spec: 'spec', area: 'area', school: 'school', where: 'where', students: 'students', address: 'tAddress', loc: 'tLoc', days: 'tDays' };
   const lines = [];
   for (const k in fin) {
-    if (k === 'avatar') continue;
+    if (k === 'avatar') { if (typeof fin.avatar === 'string' && fin.avatar.startsWith('data:image/')) { gPhoto(t.id, fin.avatar); lines.push('📷 الصورة الشخصية اتحدّثت'); } continue; }
     if (k === 'subjects') { const keep = (t.subjects || []).includes('kash') ? ['kash'] : []; t.subjects = [...new Set([...fin.subjects, ...keep])]; t.subjectText = ''; }
     else if (k === 'grades') { t.grades = (fin.grades || []).filter(g => g <= 6); t.tGrades = fin.grades; }
     else if (map[k]) t[map[k]] = fin[k];
@@ -65,6 +67,20 @@ function gApply(localId, fin) {   // الموافقة تتكتب في البرن
   }
   (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.id, at: new Date().toISOString(), k: 'تحديث من المدرس (المراسلات)', txt: lines.join(' • ') });
   gsave(db); return true;
+}
+// صورة المدرس اللي اتوافق عليها ← صور البرنامج الأخضر (IndexedDB «selah-photos» store «p» + t.thumb/t.phN) — أول صورة = اللي بتظهر في الدايرة
+function gThumb(src) { return new Promise(res => { const im = new Image(); im.onload = () => { const s = Math.min(1, 72 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.6)); }; im.onerror = () => res(''); im.src = src; }); }
+async function gPhoto(localId, img) {
+  try {
+    if (!window.indexedDB) return;
+    const d = await new Promise((res, rej) => { const r = indexedDB.open('selah-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const io = (mode, fn) => new Promise((res, rej) => { const tx = d.transaction('p', mode), r = fn(tx.objectStore('p')); tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); });
+    const arr = ((await io('readonly', s => s.get(localId))) || []).filter(x => x !== img);
+    arr.unshift(img); if (arr.length > 6) arr.length = 6;
+    await io('readwrite', s => s.put(arr, localId));
+    const th = await gThumb(img), db = gdb(), t = db && (db.teachers || []).find(x => x.id === localId);
+    if (t) { t.thumb = th; t.phN = arr.length; gsave(db); }
+  } catch (e) { console.warn('gPhoto', e); }
 }
 function gOrder(localId, items) {   // طلب كتب اتوافق عليه ← «طلب مستني» في البيع
   const db = gdb(); if (!db || !localId || !(db.teachers || []).some(x => x.id === localId)) return false;
@@ -85,7 +101,8 @@ function ask(title, { ph = '', val = '', multi = true, okTxt = 'تمام' } = {}
   });
 }
 function norm(s) { return String(s || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ْ]/g, ''); }
-function setHeader(t, back) { $('#title').textContent = t; $('#backBtn').hidden = !back; }
+// زرار الرجوع ظاهر في كل صفحة (في قايمة المدرسين بيرجّع للبرنامج)
+function setHeader(t, back) { $('#title').textContent = t; $('#backBtn').hidden = false; }
 function setTab(t) { $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === t)); }
 function repName(id) { const s = staffList.find(x => x.id === id); return s ? s.name : '—'; }
 function inviteLink(t) {
@@ -131,7 +148,8 @@ function ding() { try { navigator.vibrate && navigator.vibrate([300, 120, 300]);
 async function boot() {
   if (!sb) { app.innerHTML = '<div class="alert"><h3>القاعدة لسه مش متظبطة</h3>config.js فاضي.</div>'; return; }
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) return renderLogin();
+  if (!session) return renderLogin(RECOV ? 'الرابط خلص أو اتفتح قبل كده — اطلب رابط جديد من «نسيت الباسورد؟»' : '');
+  if (RECOV) return renderNewPw();
   await loadMe();
 }
 async function loadMe() {
@@ -170,7 +188,8 @@ function renderLogin(msg) {
   <div class="card" id="ladm" hidden><h3>دخول المالك</h3>
     <div class="field"><label>الإيميل</label><input id="em" type="email" autocomplete="username" dir="ltr"></div>
     <div class="field"><label>الباسورد</label><input id="pw" type="password" autocomplete="current-password" dir="ltr"></div>
-    <button class="btn pri" id="goAdm" style="width:100%">دخول</button></div>
+    <button class="btn pri" id="goAdm" style="width:100%">دخول</button>
+    <button class="btn ghost sm" id="forgot" style="width:100%;margin-top:8px">🔑 نسيت الباسورد؟</button></div>
   <a class="btn ghost" href="index.html">→ رجوع للبرنامج</a>`;
   $$('[data-lt]').forEach(b => b.onclick = () => { $$('[data-lt]').forEach(x => x.classList.toggle('on', x === b)); $('#lrep').hidden = b.dataset.lt !== 'rep'; $('#ladm').hidden = b.dataset.lt === 'rep'; });
   $('#goRep').onclick = async () => {
@@ -193,12 +212,41 @@ function renderLogin(msg) {
     if (error) { b.disabled = false; return toast(/Invalid login/i.test(error.message) ? 'الإيميل أو الباسورد غلط' : errMsg(error), 4000); }
     await loadMe();
   };
+  // نسيت الباسورد: بيوصل إيميل فيه رابط ← بيرجع هنا ويكتب باسورد جديد بنفسه
+  $('#forgot').onclick = async () => {
+    const em = $('#em').value.trim() || (await ask('اكتب إيميل المالك', { multi: false, ph: 'name@gmail.com' }) || '').trim();
+    if (!/^\S+@\S+\.\S+$/.test(em)) return toast('اكتب الإيميل صح');
+    const b = $('#forgot'); b.disabled = true;
+    const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.href.split('#')[0].split('?')[0] });
+    b.disabled = false;
+    if (error) return toast(errMsg(error), 5000);
+    modal(`<h3>📧 بعتنالك إيميل</h3><div>افتح إيميلك <b dir="ltr">${esc(em)}</b> ودوس على الرابط اللي فيه (لو مش لاقيه بص في «Spam»).</div>
+      <div class="small muted" style="margin-top:6px">الرابط هيفتحلك الصفحة دي وتكتب باسورد جديد.</div><div class="acts"><button class="btn pri" data-close>تمام</button></div>`);
+  };
+}
+// لما يرجع من رابط «نسيت الباسورد»
+function renderNewPw() {
+  me = null; $('#tabs').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('🔑 باسورد جديد', false);
+  app.innerHTML = `<div class="card"><h3>اكتب الباسورد الجديد</h3>
+    <div class="field"><label>الباسورد الجديد</label><input id="np1" type="password" autocomplete="new-password" dir="ltr"></div>
+    <div class="field"><label>اكتبه تاني</label><input id="np2" type="password" autocomplete="new-password" dir="ltr"></div>
+    <div class="small muted">6 حروف أو أرقام على الأقل.</div>
+    <button class="btn pri" id="npGo" style="width:100%;margin-top:10px">حفظ الباسورد</button></div>`;
+  $('#npGo').onclick = async () => {
+    const a = $('#np1').value, c = $('#np2').value;
+    if (a.length < 6) return toast('الباسورد قصير — 6 على الأقل');
+    if (a !== c) return toast('الباسوردين مش زي بعض');
+    const b = $('#npGo'); b.disabled = true;
+    const { error } = await sb.auth.updateUser({ password: a });
+    if (error) { b.disabled = false; return toast(errMsg(error), 5000); }
+    RECOV = false; history.replaceState(null, '', location.pathname); toast('✅ الباسورد اتغيّر', 3000); await loadMe();
+  };
 }
 $('#outBtn').onclick = async () => {
   if (!confirm(me && me.role === 'rep' ? 'تخرج؟ هتحتاج الرقم السري تاني (على نفس الموبايل).' : 'تسجيل خروج؟')) return;
   await sb.auth.signOut(); me = null; renderLogin();
 };
-$('#backBtn').onclick = () => { if (history.length > 1) history.back(); else location.hash = '#/'; };
+$('#backBtn').onclick = () => { const h = location.hash.slice(1) || '/'; if (!me || h === '/') location.href = 'index.html'; else if (history.length > 1) history.back(); else location.hash = '#/'; };
 
 /* ---------- البيانات ---------- */
 async function counts() {
@@ -265,6 +313,36 @@ async function importGreen() {
   LS.set('selah-trial-isync', sig); return true;
 }
 
+/* ---------- البحث الشامل: أي كلمة في أي بيانات للمدرس (الملف كله + الكتب + الرسائل المحفوظة + آخر رسالة + الاستلام والتحديث) ---------- */
+function hayVals(v, out, d) {
+  if (v == null || d > 4) return;
+  if (typeof v === 'string') { if (v && v.length < 400 && !v.startsWith('data:')) out.push(v); }
+  else if (typeof v === 'number') out.push(String(v));
+  else if (Array.isArray(v)) v.forEach(x => hayVals(x, out, d + 1));
+  else if (typeof v === 'object') for (const k in v) if (!/^(lat|lng|acc|at|b)$/.test(k)) hayVals(v[k], out, d + 1);
+}
+const ST_W = { none: '§stnone لسه ما استلمش', part: '§stpart باقيله', done: '§stdone خلص' };
+// «استلم» = خلّص كله، «استلم جزء» = خد جزء، «ما استلمش» = لسه
+function stWords(ws) {
+  const o = [];
+  for (let i = 0; i < ws.length; i++) {
+    const w = ws[i], nx = ws[i + 1] || '';
+    if ((w === 'ما' || w === 'م') && /^(است?لمش|مستلمش)$/.test(nx)) { o.push('§stnone'); i++; }
+    else if (/^(است?لمش|مستلمش|مستلمتش)$/.test(w)) o.push('§stnone');
+    else if (/^است?لم$/.test(w) && /^(جزء|جزؤ|حته|نص|بعض)$/.test(nx)) { o.push('§stpart'); i++; }
+    else if (/^است?لم$/.test(w)) o.push('§stdone');
+    else o.push(w);
+  }
+  return o;
+}
+function tHay(t) {
+  const pr = t.profile || {}, g = gInfo()[t.local_id], s = g && g.s, out = [t.name, t.phone, valText('subjects', pr.subjects), valText('stage', pr.stage), STG_T[pr.stage] || '', UPD_C[updState(t)][1], repName(t.rep_id), ...(notesBy[t.id] || [])];
+  hayVals(pr, out, 0); (t.books || []).forEach(b => out.push(b.l || bookLabel(b.b)));
+  if (lastMsg[t.id]) out.push(lastMsg[t.id].b);
+  if (s) out.push(ST_W[s.st] || '', s.c || '', s.lv || '', s.w ? 'عليه فلوس' : '');
+  if (!t.last_seen) out.push('لسه ما فتحش');
+  return norm(out.filter(Boolean).join(' '));
+}
 /* ---------- قائمة المدرسين ---------- */
 function filtered() {
   const q = norm(ui.q);
@@ -280,9 +358,7 @@ function filtered() {
     if (ui.filter === 'off' && t.enabled) return false;
     if (UPD_C[ui.filter] && updState(t) !== ui.filter) return false;
     if (!q) return true;
-    const pr = t.profile || {};
-    const hay = norm([t.name, t.phone, pr.area, pr.school, valText('subjects', pr.subjects), pr.address, UPD_C[updState(t)][1], ...(notesBy[t.id] || [])].join(' '));
-    return q.split(/\s+/).every(w => hay.includes(w));
+    return stWords(q.split(/\s+/).filter(Boolean)).every(w => tHay(t).includes(w));
   }).sort((a, b) => rank(b) - rank(a));
 }
 function viewList() {
@@ -290,7 +366,7 @@ function viewList() {
   const list = filtered(), nNotes = T.filter(t => notesBy[t.id]).length, nUn = Object.keys(unreadBy).length;
   const chip = (k, txt) => `<button class="chip ${ui.filter === k ? 'on' : ''}" data-f="${k}">${txt}</button>`;
   app.innerHTML = `${T.length ? '' : '<div class="note"><b>⏳ بننقل مدرسينك من البرنامج…</b><div class="small">بيتنقلوا لوحدهم ببياناتهم وكتبهم. لو مفيش مدرسين في البرنامج على الموبايل ده، ضيفهم هناك الأول.</div></div>'}
-  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بالاسم أو الرقم أو المنطقة أو الرسائل المحفوظة" value="${esc(ui.q)}"></div>
+  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم» / «ما استلمش»…" value="${esc(ui.q)}"></div>
   <div class="chips">${chip('all', `الكل (${T.length})`)}${chip('unread', `💬 رسايل جديدة (${nUn})`)}${chip('notes', `📌 رسائل محفوظة (${nNotes})`)}${chip('pend', `⏳ تعديلات (${pendSet.size})`)}${chip('new', 'لسه ما فتحوش')}${Object.entries(UPD_C).map(([k, [, l]]) => chip(k, `${l} (${T.filter(t => updState(t) === k).length})`)).join('')}
    ${isAdmin() && staffList.length > 1 ? `<select class="chip" id="repF"><option value="">كل المناديب</option>${staffList.map(s => `<option value="${s.id}" ${ui.rep === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}</div>
   <div class="acts" style="margin:0 0 10px"><button class="btn sm ${ui.selMode ? 'pri' : ''}" id="selT">☑️ تحديد</button><button class="btn sm" id="updAll">🔄 اطلب تحديث للظاهرين (${list.length})</button></div>
@@ -313,15 +389,32 @@ function viewList() {
   };
   drawSelbar(); if (ui.q) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
 }
+/* بيانات المدرس من البرنامج الأخضر (بالـ local_id): الصورة الصغيرة + ملخص «selah-green-sum» اللي البرنامج بيكتبه
+   (st = none/part/done الاستلام، d/o = استلم/باقيله، lv = آخر زيارة، c = التصنيف، w = عليه فلوس) */
+let GI = { k: '', m: {} };
+function gInfo() {
+  const raw = localStorage.getItem(GKEY) || '', sraw = localStorage.getItem('selah-green-sum') || '{}', k = raw.length + ':' + sraw.length + ':' + sraw.slice(0, 200);
+  if (k === GI.k) return GI.m;
+  const m = {}; let sum = {};
+  try { sum = JSON.parse(sraw) || {}; } catch (e) { }
+  try { const db = JSON.parse(raw || 'null'); for (const t of (db && db.teachers) || []) if (t && t.id) m[t.id] = { th: t.thumb || '', stage: t.stage || '', s: sum[t.id] || null }; } catch (e) { }
+  GI = { k, m }; return m;
+}
+const STG_T = { p: 'ابتدائي', m: 'إعدادي', pm: 'ابتدائي وإعدادي' };
+// كارت المدرس زي كارت البرنامج الأخضر بالظبط: لون الاستلام في الخلفية + شريط رفيع على الجنب بلون التحديث
 function tItem(t) {
   const pr = t.profile || {}, nn = (notesBy[t.id] || []).length, un = unreadBy[t.id] || 0;
-  const lm = lastMsg[t.id];
+  const lm = lastMsg[t.id], g = gInfo()[t.local_id] || null, s = (g && g.s) || null;
   const uc = UPD_C[updState(t)][0];
-  return `<div class="titem ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:6px solid ${uc};${un ? 'background:color-mix(in srgb,#16a34a 8%,var(--card))' : ''}" title="${UPD_C[updState(t)][1]}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${badgesHtml(un, pendSet.has(t.id) ? 1 : 0, ordersBy[t.id] || 0)}</div>
+  const stc = s ? (s.st === 'part' ? 'st-part' : s.st === 'done' ? 'st-done' : '') : '';
+  const av = g && g.th ? `<img class="av" src="${g.th}" alt="" loading="lazy">` : avHtml(t);
+  const recv = !s ? '' : (s.d ? `<span class="pill ok">✅ استلم ${s.d}</span> ` : '') + (s.o ? `<span class="pill owe">⏳ باقيله ${s.o}</span>` : '') + (!s.d ? '<span class="pill new">لسه</span>' : '');
+  const stg = STG_T[pr.stage || (g && g.stage)] || '';
+  return `<div class="titem ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">${av}<div class="grow"><div class="nm">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div>
     ${lm ? `<div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
-    <div class="sub">${esc([valText('subjects', pr.subjects), pr.area].filter(x => x && x !== '—').join(' · '))}${isAdmin() ? ' · ' + esc(repName(t.rep_id)) : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div></div>
-    ${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}
-    <a class="tic" data-chat href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a></div>`;
+    <div class="sub">${esc([valText('subjects', pr.subjects), stg, pr.area].filter(x => x && x !== '—').join(' • '))}${isAdmin() ? ' • ' + esc(repName(t.rep_id)) : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div>
+    ${t.phone ? `<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>` : ''}${s && s.lv ? `<div class="lastv">🕘 آخر زيارة: ${esc(s.lv)}</div>` : ''}</div>
+    <div class="side">${recv ? `<div>${recv}</div>` : ''}<div class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-chat href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a></div></div></div>`;
 }
 function drawSelbar() {
   const b = $('#selbar'); if (!b) return;
@@ -344,13 +437,13 @@ function drawSelbar() {
 function viewInvite() {
   setHeader('✉️ رسالة الدعوة للمدرسين', false);
   const tpl = LS.get('selah-trial-inv') || INV_DEF;
-  const q = norm(ui.invQ), list = T.filter(t => !q || norm(t.name + ' ' + t.phone + ' ' + ((t.profile || {}).area || '')).includes(q));
+  const q = norm(ui.invQ), list = T.filter(t => !q || stWords(q.split(/\s+/).filter(Boolean)).every(w => tHay(t).includes(w)));
   app.innerHTML = `<div class="card"><h3>1) اكتب الرسالة</h3>
     <textarea id="itpl" style="min-height:120px">${esc(tpl)}</textarea>
     <div class="hint small muted">اكتب <b>[رابط المدرس]</b> في المكان اللي عايز الرابط فيه، وهيتبدل لوحده برابط كل مدرس. و<b>{الاسم}</b> بيتبدل باسمه.</div>
     <div class="acts"><button class="btn sm" id="iadd">➕ حط [رابط المدرس]</button><button class="btn sm ghost" id="ires">رجّع الرسالة الأصلية</button></div></div>
   <div class="card"><h3>2) اختار المدرسين (${ui.invSel.size} متحدد)</h3>
-    <div class="search"><input id="iq" type="search" placeholder="🔍 دوّر" value="${esc(ui.invQ)}"></div>
+    <div class="search"><input id="iq" type="search" placeholder="🔍 دوّر بأي حاجة" value="${esc(ui.invQ)}"></div>
     <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="iall">تحديد الكل (${list.length})</button><button class="btn sm" id="inew">اللي لسه ما فتحوش</button><button class="btn sm ghost" id="inone">شيل التحديد</button></div>
     <div id="il">${list.slice(0, 400).map(t => `<label class="kv" style="justify-content:flex-start;gap:8px;cursor:pointer"><input type="checkbox" value="${t.id}" ${ui.invSel.has(t.id) ? 'checked' : ''}>
       <span style="flex:1">${esc(t.name)} <span class="small muted">${esc(t.phone || 'مفيش رقم')}${t.last_seen ? ' · ✅ فتح' : ''}</span></span></label>`).join('') || '<div class="small muted">مفيش مدرسين — هاتهم من البرنامج الأول (👥 المدرسين).</div>'}</div></div>
