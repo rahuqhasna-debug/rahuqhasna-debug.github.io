@@ -6,6 +6,17 @@
   if (!C.ONESIGNAL_APP_ID) return;
   const CLOUD = C.CLOUD_URL;
   const BASE = location.href.split('#')[0].replace(/[^/]*$/, '');
+  // جوه تطبيق الأندرويد الحقيقي (بند 48): الإشعارات من التطبيق نفسه (OneSignal Android) — مش من المتصفح
+  if (window.SilahApp) {
+    const A = window.SilahApp;
+    const nlink = () => { if (!window.TP) return; try { A.login('t-' + TP.id); const subs = TP.subs || [], tg = { tch: '1', app: '1' }; ['ar', 'math', 'en', 'sci', 'stu'].forEach(s => tg['s_' + s] = subs.indexOf(s) >= 0 ? '1' : '0'); A.tags(JSON.stringify(tg)); } catch (e) { } };
+    const nsend = (to, title, body, url) => CLOUD ? fetch(CLOUD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'push', to, title, body, url, ring: false }) }).catch(() => { }) : Promise.resolve();
+    window.pushInit = async () => { nlink(); try { A.askPush(); } catch (e) { } };
+    window.pushReady = nlink;
+    window.pushNotifyRep = text => window.TP && TP.rep ? nsend(['s-' + TP.rep], 'سلاح التلميذ', text, BASE + 'admin.html#/bell') : Promise.resolve();
+    if (window.TP) nlink();
+    return;
+  }
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   const s = document.createElement('script'); s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js'; s.defer = true; document.head.appendChild(s);
   const scope = new URL(BASE).pathname;   // /books/
