@@ -124,7 +124,8 @@ function auditDetails(d) {
   }
   return p.map(esc).join('<br>');
 }
-function ding() { try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch (e) { } try { new Audio('ring.mp3').play().catch(() => { }); } catch (e) { } }
+// المالك والمناديب: إشعار عادي (اهتزاز بس) — نغمة الجرس للمدرسين بس
+function ding() { try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch (e) { } }
 
 /* ---------- الدخول ---------- */
 async function boot() {

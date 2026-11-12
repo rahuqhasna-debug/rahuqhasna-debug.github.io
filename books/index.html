@@ -4360,7 +4360,7 @@ async function pullSbBell(){
     if(!S){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
     const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:S.h,body:'{}'});
     if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0);
-    if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} try{ new Audio('ring.mp3').play().catch(()=>{}); }catch(e){} }
+    if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} }   // نغمة الجرس للمدرسين بس
     const was=sbBell; sbBell=n; updateBell();
     if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»
     sbCntPull(S);
