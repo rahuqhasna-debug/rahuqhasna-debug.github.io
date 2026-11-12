@@ -73,13 +73,40 @@
 /* متابعة 7: الرئيسية 6 مربعات قد بعض */
 .ttiles.six .tt{grid-column:auto}
 .hm .ttiles.six{grid-template-rows:repeat(3,1fr)}
-.ttiles.six .tti{background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);width:76px;height:76px;padding:6px}
-.hm .ttiles.six .tti{width:62px;height:62px;padding:5px}
+.ttiles.six .tti{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);width:50px;height:50px;padding:10px}
+.hm .ttiles.six .tti{width:46px;height:46px;padding:10px}
 .ttiles.six .tti svg{width:100%;height:100%;display:block}
-.ttiles.six .ttl{font-size:16px}.hm .ttiles.six .ttl{font-size:15px}
+.ttiles.six .ttl{font-size:14px;font-weight:700}.hm .ttiles.six .ttl{font-size:13.5px}
+.hm .ttiles.six{gap:8px}.hm .ttiles.six .tt{border-radius:16px;box-shadow:0 4px 10px -6px rgba(0,0,0,.4)}
 .h-or{background:linear-gradient(140deg,#fb923c,#ea580c)}.h-ms{background:linear-gradient(140deg,#60a5fa,#2563eb)}
 .h-me{background:linear-gradient(140deg,#a78bfa,#6d28d9)}.h-pr{background:linear-gradient(140deg,#fbbf24,#d97706)}
 .h-nw{background:linear-gradient(140deg,#f472b6,#db2777)}.h-rv{background:linear-gradient(140deg,#34d399,#059669)}.h-rv.lock{background:linear-gradient(140deg,#cbd5e1,#64748b)}
+/* متابعة 8: يافطة إعلانية + تصغير وتبسيط */
+.promo{flex:none;position:relative;overflow:hidden;border-radius:18px;padding:12px 14px;margin-bottom:8px;color:#fff;text-align:center;background:linear-gradient(135deg,#4c1d95,#6d28d9 60%,#7c3aed);box-shadow:0 6px 16px -8px rgba(76,29,149,.6)}
+.promo::after{content:'';position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(253,230,138,.12);top:-50px;inset-inline-start:-30px}
+.promo .pr-t{position:relative;font-size:17px;font-weight:800;line-height:1.5}.promo .pr-t b{color:#fde68a}
+.promo .pr-r{position:relative;display:flex;gap:6px;justify-content:center;margin:8px 0 6px;flex-wrap:wrap}
+.promo .pr-r span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:3px 11px;font-size:12.5px;font-weight:700}
+.promo .pr-s{position:relative;font-size:12.5px;opacity:.9;border-top:1px solid rgba(255,255,255,.2);padding-top:6px}
+body{font-size:15px}
+.phead{font-size:17px;padding:10px 12px;border-radius:16px}.phead .small{font-size:12.5px}
+.card{padding:12px}.card h3{font-size:15px}
+.gobtn{font-size:16px;padding:12px}
+.ib{font-size:15px;padding:9px 6px;border-radius:14px}.ib b{font-size:19px}
+/* ملفي أهدى وأصغر */
+.pform .psec{border-radius:16px;padding:10px 12px 2px;margin-bottom:10px;border-top-width:3px;box-shadow:0 3px 10px -6px rgba(15,23,42,.2)}
+.pform .psh{font-size:15px;gap:8px;margin-bottom:8px}
+.pform .pdot{width:30px;height:30px;font-size:16px}
+.pform .field{margin-bottom:9px}.pform .field>label{font-size:13px}
+.pform .field input,.pform .field select,.pform .field textarea{padding:8px 10px;font-size:14.5px}
+.pform .warnbox{font-size:12.5px;padding:7px 9px}
+/* اعرف الجديد أشيك */
+.nhd{background:none!important;color:var(--c,#334155);font-size:15px;text-align:start;padding:0 2px 0 0;margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+.nhd::after{content:'';flex:1;height:2px;border-radius:2px;background:currentColor;opacity:.25}
+.ngrid{grid-template-columns:repeat(3,1fr);gap:8px}.ngrid .nch:first-child{grid-column:auto}
+.nch{background:#fff;border:1px solid #e5e7eb;border-top:3px solid var(--ac);border-radius:14px;padding:10px 4px;gap:5px;box-shadow:0 2px 8px -4px rgba(0,0,0,.2)}
+.nch .nci{width:38px;height:38px}.nch .ncl{font-size:13.5px;font-weight:700;color:#1e293b}
+.nch .nct{font-size:11px;font-weight:600;border-radius:10px;padding:1px 8px}
 /* متابعة 7: شاشة الأذونات — مربعات تحت بعض + تليفون صغير فيه الزراير بتتحرك */
 .pm-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}.pm-top img{width:40px;height:40px;border-radius:12px}
 .pm-top .pm-bar{flex:1;background:#ede9fe;margin:0}.pm-top .pm-bar span{background:#16a34a}.pm-top b{color:#4c1d95}
@@ -255,14 +282,16 @@ function renderHome() {
   const v = vals();
   // متابعة 7: اتشال الشريط الأبيض (اسم المدرس) — الرئيسية 6 مربعات قد بعض بأيقونات كرتونية ملوّنة
   const HI = {
-    or: `<svg viewBox="0 0 64 64"><path d="M14 24h36l-3 32H17z" fill="#fb923c" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><path d="M22 28v-8a10 10 0 0 1 20 0v8" fill="none" stroke="#9a3412" stroke-width="3" stroke-linecap="round"/><rect x="19" y="8" width="9" height="14" rx="1.5" transform="rotate(-12 23 15)" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2"/><rect x="33" y="6" width="9" height="15" rx="1.5" transform="rotate(10 37 13)" fill="#22c55e" stroke="#14532d" stroke-width="2"/><circle cx="26" cy="38" r="2.6" fill="#431407"/><circle cx="38" cy="38" r="2.6" fill="#431407"/><path d="M25 46q7 6 14 0" fill="none" stroke="#431407" stroke-width="3" stroke-linecap="round"/></svg>`,
-    ms: `<svg viewBox="0 0 64 64"><rect x="14" y="10" width="36" height="30" rx="3" fill="#fff" stroke="#1e3a8a" stroke-width="2.5"/><path d="M20 18h24M20 25h24M20 32h14" stroke="#93c5fd" stroke-width="3" stroke-linecap="round"/><path d="M6 26l26 20 26-20v28a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="#60a5fa" stroke="#1e3a8a" stroke-width="3" stroke-linejoin="round"/><path d="M6 26l26 18 26-18" fill="#93c5fd" stroke="#1e3a8a" stroke-width="3" stroke-linejoin="round"/><path d="M32 54s-7-4.5-7-9a4 4 0 0 1 7-2.5A4 4 0 0 1 39 45c0 4.500-7 9-7 9z" fill="#f43f5e" stroke="#9f1239" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
-    me: `<svg viewBox="0 0 64 64"><path d="M10 62c0-14 10-20 22-20s22 6 22 20z" fill="#7c3aed" stroke="#4c1d95" stroke-width="3" stroke-linejoin="round"/><path d="M26 44l6 8 6-8" fill="#fff" stroke="#4c1d95" stroke-width="2.5" stroke-linejoin="round"/><circle cx="32" cy="26" r="15" fill="#fcd9b6" stroke="#92400e" stroke-width="3"/><path d="M17 24c0-12 8-16 15-16s15 4 15 16c-4-6-10-8-15-8s-11 2-15 8z" fill="#3f2a1d" stroke="#1c1008" stroke-width="2.5" stroke-linejoin="round"/><circle cx="26" cy="27" r="4.5" fill="#fff" stroke="#1e293b" stroke-width="2.2"/><circle cx="38" cy="27" r="4.5" fill="#fff" stroke="#1e293b" stroke-width="2.2"/><path d="M30.500 27h3" stroke="#1e293b" stroke-width="2"/><circle cx="26" cy="27" r="1.6" fill="#1e293b"/><circle cx="38" cy="27" r="1.6" fill="#1e293b"/><path d="M26 34q6 5 12 0" fill="none" stroke="#9a3412" stroke-width="2.6" stroke-linecap="round"/></svg>`,
-    pr: `<svg viewBox="0 0 64 64"><rect x="6" y="44" width="40" height="12" rx="2.500" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2.500"/><rect x="10" y="32" width="36" height="12" rx="2.500" fill="#22c55e" stroke="#14532d" stroke-width="2.500"/><rect x="8" y="20" width="38" height="12" rx="2.500" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.500"/><path d="M12 50h20M14 38h18M12 26h20" stroke="#fff" stroke-width="2.500" stroke-linecap="round" opacity=".8"/><circle cx="48" cy="22" r="13" fill="#fde047" stroke="#a16207" stroke-width="3"/><circle cx="48" cy="22" r="8.500" fill="none" stroke="#ca8a04" stroke-width="1.800"/><text x="48" y="28" font-size="15" font-weight="800" fill="#92400e" text-anchor="middle">ج</text></svg>`,
-    nw: `<svg viewBox="0 0 64 64"><path d="M32 4l7.500 17.500L58 24 44 37l4 19-16-9.500L16 56l4-19L6 24l18.500-2.500z" fill="#fde047" stroke="#a16207" stroke-width="3" stroke-linejoin="round"/><circle cx="25" cy="32" r="3" fill="#431407"/><circle cx="39" cy="32" r="3" fill="#431407"/><path d="M26 39q6 6 12 0" fill="none" stroke="#431407" stroke-width="3" stroke-linecap="round"/><circle cx="21" cy="38" r="3" fill="#fb7185" opacity=".7"/><circle cx="43" cy="38" r="3" fill="#fb7185" opacity=".7"/><path d="M54 6v8M50 10h8" stroke="#ec4899" stroke-width="3" stroke-linecap="round"/></svg>`,
-    rv: `<svg viewBox="0 0 64 64"><path d="M6 24l26-14 26 14v28a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="#d97706" stroke="#78350f" stroke-width="3" stroke-linejoin="round"/><path d="M6 24l26 14 26-14" fill="#f59e0b" stroke="#78350f" stroke-width="3" stroke-linejoin="round"/><rect x="26" y="38" width="12" height="18" fill="#fde68a" stroke="#78350f" stroke-width="2.500"/><circle cx="46" cy="14" r="11" fill="#22c55e" stroke="#14532d" stroke-width="3"/><path d="M40 14l4 4.500 8-9" fill="none" stroke="#fff" stroke-width="3.500" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+    or: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8l6 28h28l6-22H18" stroke="#ea580c" stroke-width="4"/><circle cx="26" cy="51" r="4" fill="#ea580c"/><circle cx="46" cy="51" r="4" fill="#ea580c"/></svg>`,
+    ms: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="14" width="48" height="36" rx="7" stroke="#2563eb" stroke-width="4"/><path d="M10 20l22 17 22-17" stroke="#2563eb" stroke-width="4"/></svg>`,
+    me: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="22" r="11" stroke="#6d28d9" stroke-width="4"/><path d="M11 56c0-12 9-18 21-18s21 6 21 18" stroke="#6d28d9" stroke-width="4"/></svg>`,
+    pr: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="23" stroke="#d97706" stroke-width="4"/><text x="32" y="42" font-size="28" font-weight="800" fill="#d97706" text-anchor="middle">ج</text></svg>`,
+    nw: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 8l7 16 17 2-13 12 4 17-15-9-15 9 4-17L8 26l17-2z" stroke="#db2777" stroke-width="4"/></svg>`,
+    rv: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 22l22-12 22 12v26L32 58 10 48z" stroke="#059669" stroke-width="4"/><path d="M10 22l22 12 22-12M32 34v24" stroke="#059669" stroke-width="4"/></svg>`
   };
-  let h = '';
+  let h = `<div class="promo"><div class="pr-t">كتب سلاح التلميذ <b>بسعر مميز</b></div>
+    <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span></div>
+    <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
   h += `<div class="ttiles six"><button class="tt h-or" data-v="order"><span class="tti">${HI.or}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
     <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
     <button class="tt h-me" data-v="me"><span class="tti">${HI.me}</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
@@ -926,12 +955,12 @@ function repOrdersHtml() {
   return ro.map(o => { const sid = sidOf(o), pe = D.orders.find(x => x.kind === 'edit' && x.status === 'pending' && sidOf(x) === sid);
     const its = (o.items || []).map(i => { const n = pe && (pe.items || []).find(x => x.b === i.b); return n ? { ...i, q: n.q, pend: n.q !== i.q } : i; });
     const mine = (o.items || []).some(i => i.by === 't');
-    return `<div class="card rord" data-sid="${esc(sid)}"><div class="rok">✅ تم استلام طلبك وجاري التنفيذ</div>
+    return `<div class="card rord" data-sid="${esc(sid)}"><div class="rok">✅ الأستاذ ${esc(D.rep || 'شريف')} استلم طلبك وبيجهّزه لحضرتك</div>
       <h3>🧾 ${mine ? 'طلبك' : `طلبك اللي سجّله الأستاذ ${esc(D.rep || '')}`}</h3><div class="small muted">${fmtDate(o.at)}</div>
-      <div class="redit">✏️ لو حبيت تعدّل، متاح لك التعديل — غيّر العدد وابعته للأستاذ</div>
+      <div class="redit">تقدر تعدّل في طلبك لحد ما يتجهّز. بعد ما يتم البيع الطلب بيتقفل وتلاقي الفاتورة في «فواتيري»، ولو احتجت حاجة تانية اعمل طلب جديد.</div>
       ${pe ? '<div class="note small" style="padding:8px;margin-top:6px">⏳ تعديلك في انتظار موافقة الأستاذ</div>' : ''}
       <div class="rol">${its.map(i => qtyRow(i.b, i.l || bookLabel(i.b), i.q, i.pend ? '⏳ في انتظار الموافقة' : '')).join('')}</div>
-      <button class="btn owe rsend" style="width:100%;margin-top:10px">✏️ ابعت التعديل للأستاذ</button></div>`; }).join('');
+      <button class="btn owe rsend" style="width:100%;margin-top:10px">✏️ تعديل الطلب</button></div>`; }).join('');
 }
 function bindRepOrders() {
   $$('.rord').forEach(card => {
@@ -1018,11 +1047,11 @@ const NEWS_CHS = {
 const NEWS_CH = NEWS_CHS.prim;   // مفاتيح المواد (للعدّاد)
 // أيقونات كرتونية لكل مادة
 const NI = {
-  ar: `<svg viewBox="0 0 64 64"><path d="M6 14c10-4 20-3 26 3v34c-6-6-16-7-26-3z" fill="#fde68a" stroke="#92400e" stroke-width="2.5" stroke-linejoin="round"/><path d="M58 14c-10-4-20-3-26 3v34c6-6 16-7 26-3z" fill="#fef3c7" stroke="#92400e" stroke-width="2.5" stroke-linejoin="round"/><text x="19" y="40" font-size="20" font-weight="800" fill="#1d4ed8" text-anchor="middle">أ</text><text x="45" y="40" font-size="20" font-weight="800" fill="#dc2626" text-anchor="middle">ب</text></svg>`,
-  math: `<svg viewBox="0 0 64 64"><rect x="8" y="6" width="48" height="52" rx="10" fill="#bbf7d0" stroke="#166534" stroke-width="2.5"/><rect x="14" y="12" width="36" height="12" rx="4" fill="#fff" stroke="#166534" stroke-width="2"/><g font-size="15" font-weight="800" fill="#166534" text-anchor="middle"><text x="22" y="40">+</text><text x="42" y="40">−</text><text x="22" y="54">×</text><text x="42" y="54">÷</text></g></svg>`,
-  en: `<svg viewBox="0 0 64 64"><path d="M8 10h48a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H30L16 56V44H8a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4z" fill="#e9d5ff" stroke="#6b21a8" stroke-width="2.5" stroke-linejoin="round"/><text x="32" y="36" font-size="19" font-weight="800" fill="#7e22ce" text-anchor="middle">ABC</text></svg>`,
-  sci: `<svg viewBox="0 0 64 64"><path d="M24 6h16v16l14 26a6 6 0 0 1-5 9H15a6 6 0 0 1-5-9l14-26z" fill="#fed7aa" stroke="#9a3412" stroke-width="2.5" stroke-linejoin="round"/><path d="M17 40h30l7 13a3 3 0 0 1-3 4H13a3 3 0 0 1-3-4z" fill="#fb923c"/><circle cx="26" cy="46" r="3" fill="#fff"/><circle cx="38" cy="42" r="2.2" fill="#fff"/><circle cx="34" cy="50" r="2" fill="#fff"/><rect x="21" y="4" width="22" height="6" rx="3" fill="#9a3412"/></svg>`,
-  stu: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="25" fill="#7dd3fc" stroke="#075985" stroke-width="2.5"/><path d="M18 20c6-3 10 0 9 6s-8 4-9 10-4 2-6-3c0-6 2-11 6-13zM38 14c6 0 12 4 14 10-6 2-9-2-12-2s-5-4-2-8zM36 36c6-2 12 2 10 8s-8 8-11 4-2-10 1-12z" fill="#4ade80" stroke="#166534" stroke-width="1.8" stroke-linejoin="round"/></svg>`
+  ar: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14c9-3 18-2 24 3v34c-6-5-15-6-24-3zM56 14c-9-3-18-2-24 3v34c6-5 15-6 24-3z" stroke="#b45309" stroke-width="4"/></svg>`,
+  math: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round"><path d="M14 32h36M32 14v36" stroke="#16a34a" stroke-width="6"/></svg>`,
+  en: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h44a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H30l-14 12V44h-6a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z" stroke="#9333ea" stroke-width="4"/><text x="32" y="36" font-size="18" font-weight="800" fill="#9333ea" text-anchor="middle">Aa</text></svg>`,
+  sci: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M24 8h16M27 8v18L12 50a5 5 0 0 0 4 8h32a5 5 0 0 0 4-8L37 26V8" stroke="#ea580c" stroke-width="4"/><path d="M19 42h26" stroke="#ea580c" stroke-width="4"/></svg>`,
+  stu: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="23" stroke="#0284c7" stroke-width="4"/><path d="M9 32h46M32 9c-9 10-9 36 0 46M32 9c9 10 9 36 0 46" stroke="#0284c7" stroke-width="3.5"/></svg>`
 };
 // فتح قناة تليجرام: أندرويد ← يفتح التطبيق على القناة، ولو التطبيق مش متثبّت (الصفحة فضلت قدامه) ← يحوّله على تنزيل تليجرام من جوجل بلاي. غير كده ← رابط t.me (بيفتح التطبيق أو صفحة فيها «نزّل»)
 function openTg(ch) {
@@ -1062,10 +1091,10 @@ function renderNews() {
     // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
     const subs = ['ar', 'math', 'en', 'sci', 'stu'];
     const tile = (st, s) => { const ch = NEWS_CHS[st][s];
-      return `<button class="nch" data-st="${st}" data-s="${s}" style="--bg:linear-gradient(150deg,${NBG[s].split(',')[0]},${NBG[s].split(',')[1]})"><span class="nci">${NI[s]}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">✈️ تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
-    const sec = st => `<div class="nhd" style="background:${NSTAGE[st][1]}">${st === 'prim' ? '🎒' : '📘'} المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci">${NI[s]}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+    const sec = st => `<div class="nhd" style="--c:${NSTAGE[st][1]}">المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
     const hasAll = NEWS.items.some(x => x.s === 'all');
-    app.innerHTML = `<div class="phead">🆕 اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — دوس على المادة</div></div>
+    app.innerHTML = `<div class="phead">اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — اختار المادة</div></div>
       ${sec('prim')}${sec('prep')}
       ${hasAll ? `<button class="tt" data-ns="all" style="width:100%;margin-top:10px;background:linear-gradient(140deg,#94a3b8,#475569)"><span class="tti">📢</span><span class="ttl">عام</span>${newsNew('all') ? `<span class="ttb">${newsNew('all')}</span>` : ''}</button>` : ''}`;
     $$('.nch').forEach(b => b.onclick = () => {
