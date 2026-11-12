@@ -165,6 +165,7 @@ function render() {
   clearInterval(pollT); $('#cbar').innerHTML = '';
   if (!isApp) return renderGate();   // من المتصفح: شاشة التثبيت بس
   if (NATIVE && !permOk()) return renderPerm();   // بند 50: مايدخلش غير لما يخلّص كل الأذونات
+  if (!NATIVE && !webPermOk()) return renderWebPerm();   // نفس الفكرة للبرنامج المتثبّت من المتصفح
   $('#tabs').hidden = false;
   $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
@@ -190,10 +191,6 @@ function renderHome() {
     <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
     <button class="tt t-nw" data-v="news"><span class="tti">🆕</span><span class="ttl">اعرف الجديد</span><span class="tts">فيديوهات وشروحات لمادتك</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt t-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">📦</span><span class="ttl">استلمت مننا إيه الترم ده</span><span class="tts">${!(RV && RV.open) ? '🔒 هتتفتح لما المندوب يسلّمك' : RV.recv ? '✅ اتبعت — تقدر تعدّل' : 'علّم على الكتب اللي استلمتها'}</span></button></div>`;
-  // المدرس اللي على النسخة المتثبّتة من المتصفح (أندرويد): يتنقل للتطبيق الحقيقي عشان الإشعار يرن والموبايل مقفول
-  if (!NATIVE && /Android/i.test(UA)) h += `<div class="icard"><div class="ic-t">📲 نزّل تطبيق «سلاح التلميذ» الجديد</div>
-    <div class="ic-s">عشان رسايل الأستاذ ترن عندك والموبايل مقفول 🔔 (بعد ما تثبّته امسح النسخة دي)</div>
-    <button class="gobtn" id="getApk">⬇️ نزّل التطبيق</button></div><div id="guide"></div>`;
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -315,7 +312,7 @@ function renderGate() {
   // أول ما يدوس: أندرويد ولا آيفون؟
   const ib = $('#inst'); ib && (ib.onclick = () => modal(`<div style="text-align:center"><h3>موبايلك نوعه إيه؟</h3>
       <button class="gobtn" id="pA" style="margin:10px 0">🤖 أندرويد</button><button class="iosbtn" id="pI">🍎 آيفون</button></div>`, (box, close) => {
-    $('#pA', box).onclick = () => { close(); gPlat = 'and'; apkGuide(); };
+    $('#pA', box).onclick = () => { close(); gPlat = 'and'; pwaInstall(); };   // بند 50: التثبيت من المتصفح على طول (من غير ملف)
     $('#pI', box).onclick = () => { close(); gPlat = 'ios'; showGuide(0); };
   }));
   const io = $('#iosb'); io && (io.onclick = () => { gPlat = 'ios'; showGuide(0); });
@@ -441,6 +438,62 @@ function renderPerm() {
   const y = $('#pgYes'); y && (y.onclick = () => { LS.set(RING_OK, 1); LS.set(RING_FAIL, 0); PG_TEST = false; PG_TRIED = {}; toast('🎉 تمام! أهلًا بحضرتك', 2500); render(); });
   // مارنّش ← نرجّعه يراجع الإشعارات والتشغيل التلقائي من الأول
   const no = $('#pgNo'); no && (no.onclick = () => { LS.set(RING_FAIL, 1); LS.set(AUTO_OK, 0); PG_TEST = false; PG_TRIED = {}; render(); scrollTo(0, 0); });
+}
+/* بند 50 (نسخة المتصفح — اختيار شريف النهائي): البرنامج بيتثبّت من المتصفح على طول، ولما يفتحه: «دخول» ← الأذونات الأول.
+   الإشعارات بتتطلب وتتأكد لوحدها. البطارية والتشغيل التلقائي (لـ Chrome، هو اللي بيستقبل الإشعار) = رسمة + «عملتها» لأن المتصفح مايقدرش يفتحهم ولا يعرفهم.
+   الآخر: تجربة الرنة — «مارنّش» بيرجّعه للبطارية والتشغيل التلقائي. */
+const W_BATT = 'selah-wbatt', AND = /Android/i.test(UA);
+let PG_START = false;
+const webNotif = () => 'Notification' in window ? Notification.permission : 'unsupported';
+function webSteps() {
+  const a = [{ k: 'n', ok: webNotif() === 'granted' || webNotif() === 'unsupported' }];
+  if (AND) a.push({ k: 'b', ok: !!LS.get(W_BATT) }, { k: 'a', ok: !!LS.get(AUTO_OK) });
+  if (webNotif() !== 'unsupported') a.push({ k: 't', ok: !!LS.get(RING_OK) });
+  return a;
+}
+function webPermOk() { return webSteps().every(x => x.ok); }
+const W_TIP = {
+  b: 'افتح «الإعدادات» ← «التطبيقات» ← «Chrome» ← «البطارية» ← اختار «بلا قيود» (شاومي) أو «السماح بالنشاط في الخلفية» (أوبو/ريلمي) أو «غير مقيد» (سامسونج).',
+  a: 'شاومي: «الإعدادات» ← «التطبيقات» ← «التشغيل التلقائي» ← شغّل Chrome. أوبو/ريلمي/فيفو: «إدارة التطبيقات» ← Chrome ← «السماح بالتشغيل التلقائي». سامسونج: مش محتاج — دوس «عملتها».'
+};
+function renderWebPerm() {
+  $('#tabs').hidden = true; $('#cbar').innerHTML = '';
+  $('#title').textContent = 'أهلًا ' + tName(D.name);
+  if (!PG_START && !LS.get(RING_FAIL)) {
+    app.innerHTML = `<div class="icard gate"><div class="ic-ico">📚</div><div class="ic-t">أهلًا بحضرتك في «سلاح التلميذ»</div>
+      <div class="ic-s">قبل ما تدخل هنظبط موبايلك عشان رسايل الأستاذ ترن عندك والموبايل مقفول 🔔 (مرة واحدة بس — دقيقة واحدة)</div>
+      <button class="gobtn" id="pgIn" style="background:#16a34a">دخول ←</button></div>`;
+    $('#pgIn').onclick = () => { PG_START = true; render(); };
+    return;
+  }
+  const steps = webSteps(), i = steps.findIndex(x => !x.ok), st = steps[i], n = steps.length;
+  const dots = `<div class="pgdots">${steps.map((x, j) => `<span class="${x.ok ? 'ok' : j === i ? 'on' : ''}"></span>`).join('')}</div>`;
+  const denied = st.k === 'n' && webNotif() === 'denied';
+  const T = {
+    n: denied ? ['🔔 الإشعارات مقفولة — افتحها', 'اقفل البرنامج ← دوس مطوّل على أيقونة «سلاح التلميذ» ← «معلومات التطبيق» ← «الإشعارات» ← شغّلها كلها ← وافتح البرنامج تاني.', '🔁 فتحتها — كمّل']
+      : ['🔔 اسمح بالإشعارات', 'دوس الزرار الأخضر ← هتظهر رسالة صغيرة ← دوس «سماح».', '🔔 اسمح بالإشعارات'],
+    b: ['🔋 البطارية', 'عشان الموبايل مايقفلش الإشعارات وإنت مش فاتح البرنامج. اعمل زي الرسمة ← وارجع هنا دوس «عملتها».', '✅ عملتها'],
+    a: ['🚀 التشغيل التلقائي', 'عشان الإشعار يوصلك حتى لو الموبايل كان مقفول من بدري. اعمل زي الرسمة ← وارجع هنا دوس «عملتها».', '✅ عملتها'],
+    t: ['✅ آخر خطوة: جرّب الرنة', 'دوس الزرار الأخضر ← اقفل الشاشة على طول ← استنى 15 ثانية ← الموبايل لازم يرن 🔔', '🔔 جرّب دلوقتي واقفل الشاشة']
+  }[st.k];
+  const pic = st.k === 'b' ? SWROWS(['السماح في الخلفية', 'بلا قيود'], '🔋 Chrome ← البطارية') : st.k === 'a' ? SWROWS(['Chrome'], '⚙️ التشغيل التلقائي') : PERM_PICS[st.k]();
+  const backMsg = LS.get(RING_FAIL) && (st.k === 'b' || st.k === 'a') ? '<div class="pgback">⚠️ مارنّش؟ ارجع اعمل الخطوة دي زي الرسمة بالظبط 👇</div>' : '';
+  const btns = st.k === 't' && PG_TEST ? `<div class="ic-t" style="margin-top:10px">الموبايل رنّ؟</div>
+    <button class="gobtn" id="pgYes" style="background:#16a34a">✅ أيوه رنّ — ادخل البرنامج</button>
+    <button class="btn owe" id="pgNo" style="width:100%;margin-top:8px">❌ لأ مارنّش</button>
+    <button class="btn ghost sm" id="pgGo" style="width:100%;margin-top:6px">🔁 جرّب تاني</button>`
+    : `<button class="gobtn" id="pgGo" style="background:#16a34a">${T[2]}</button>`;
+  app.innerHTML = `<div class="icard gate step">${dots}<div class="stepn">خطوة ${i + 1} من ${n}</div><div class="ic-t">${T[0]}</div>${backMsg}${pic}
+    <div class="ic-s">${T[1]}</div>${W_TIP[st.k] ? `<div class="pgbrand">📱 ${esc(W_TIP[st.k])}</div>` : ''}${btns}</div>`;
+  $('#pgGo').onclick = async () => {
+    if (st.k === 'n') { if (!denied) { try { await Notification.requestPermission(); } catch (e) { } if (window.pushInit) try { await window.pushInit(); } catch (e) { } } return render(); }
+    if (st.k === 'b') { LS.set(W_BATT, 1); return render(); }
+    if (st.k === 'a') { LS.set(AUTO_OK, 1); return render(); }
+    if (!window.pushSelfTest) return toast('استنى ثانية وجرّب تاني');
+    window.pushSelfTest(); PG_TEST = true; toast('🔒 اقفل الشاشة دلوقتي — هيرن بعد 15 ثانية', 6000); render();
+  };
+  const y = $('#pgYes'); y && (y.onclick = () => { LS.set(RING_OK, 1); LS.set(RING_FAIL, 0); PG_TEST = false; toast('🎉 تمام! أهلًا بحضرتك', 2500); render(); });
+  const no = $('#pgNo'); no && (no.onclick = () => { LS.set(RING_FAIL, 1); LS.set(W_BATT, 0); LS.set(AUTO_OK, 0); PG_TEST = false; render(); scrollTo(0, 0); });
 }
 function showGuide(i) {
   const steps = guideSteps(), s = steps[i], g = $('#guide'); if (!g || !s) return;

@@ -51,6 +51,8 @@
   window.pushInit = async () => { if (window.TP) await link('t-' + TP.id, true); };
   window.pushReady = () => { if (window.TP) link('t-' + TP.id, false); };
   window.pushNotifyRep = text => window.TP && TP.rep ? send(['s-' + TP.rep], 'سلاح التلميذ', text, BASE + 'admin.html#/bell', false) : Promise.resolve();
+  // بند 50: تجربة الرنة من التطبيق المتثبّت من المتصفح (بعد 15 ثانية عشان يقفل الشاشة)
+  window.pushSelfTest = () => { if (!window.TP) return; link('t-' + TP.id, false); setTimeout(() => send(['t-' + TP.id], '🔔 سلاح التلميذ', '✅ تمام! الإشعار بيرن عندك — كده رسايل الأستاذ هتوصلك', BASE + 'teacher.html', true), 15000); };
 
   // المندوب / المالك (admin.html)
   window.pushInitStaff = async me => link('s-' + me.id, true);
