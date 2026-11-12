@@ -1140,6 +1140,25 @@ async function sbCntPull(S){
 /* خريطة: id المدرس في البرنامج ← id بتاعه في المراسلات (عشان أيقونة 📨 تفتح الشات بتاعه على طول) */
 var sbIds = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-ids')||'{}'); }catch(e){ return {}; } })();
 var sbUpd = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-upd')||'{}'); }catch(e){ return {}; } })();
+var sbRecv = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-recv')||'{}'); }catch(e){ return {}; } })(), sbPullAt=0;
+/* بند 45: مقارنة اللي المدرس علّمه في «📦 استلمت إيه» باللي المندوب سجّله: ok أخضر، bad أحمر، none أبيض (لسه ماعلّمش) */
+function recvCmp(t){
+  const r=sbRecv[t.id], mine=new Set(db.entries.filter(e=>e.t===t.id && e.s==='d').map(e=>e.b));
+  if(!r) return {st:'none', mine};
+  const his=new Set(r.b||[]), onlyHis=[...his].filter(b=>!mine.has(b)), onlyMine=[...mine].filter(b=>!his.has(b));
+  return {st:(onlyHis.length||onlyMine.length)?'bad':'ok', onlyHis, onlyMine, at:r.at, mine};
+}
+function recvBox(t){
+  if(!sbHas()) return '';
+  const c=recvCmp(t), L=a=>a.sort((x,y)=>bookRank[x]-bookRank[y]).map(b=>`<b style="color:var(--c-${bookParts(b).sb})">${esc(bookLabel(b))}</b>`).join('، ');
+  const box=(bg,bd,h)=>`<div style="background:${bg};border:2px solid ${bd};border-radius:12px;padding:8px 10px;margin-top:8px;font-size:14px">${h}</div>`;
+  if(c.st==='none') return box('#fff','#cbd5e1','⚪ <b>📦 المدرس لسه ماعلّمش اللي استلمه</b>');
+  const when=c.at?` <span class="small muted">(${fmtDay(dk(c.at))})</span>`:'';
+  if(c.st==='ok') return box('#dcfce7','#16a34a',`✅ <b>📦 المدرس أكّد نفس اللي اتسجل بالظبط</b>${when}`);
+  return box('#fee2e2','#dc2626',`❌ <b>📦 فيه اختلاف بين اللي المدرس علّمه واللي اتسجل</b>${when}`+
+    (c.onlyHis.length?`<div style="margin-top:4px">قال استلم ومش متسجل: ${L(c.onlyHis)}</div>`:'')+
+    (c.onlyMine.length?`<div style="margin-top:4px">متسجل وهو ماعلّمش عليه: ${L(c.onlyMine)}</div>`:''));
+}
 var UPD_COL={full:'#16a34a', part:'#f59e0b', none:'#94a3b8'}, UPD_TXT={full:'🟢 حدّث بياناته كلها', part:'🟠 باقيله جزء في التحديث', none:'⚪ ماحدّثش بياناته'};
 /* شكل المدرس في أي مكان (طلب شريف 2026-11-12): لون الخلفية = الاستلام (أبيض/برتقاني/أخضر)،
    شريط رفيع على الجنب = تحديث البيانات في المراسلات (لو الموبايل داخل المراسلات) */
@@ -1152,14 +1171,23 @@ async function sbMapPull(){
   try{
     if(!sbHas() || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
     const m={}, rows=[];
-    for(let i=0;;i+=1000){ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select=id,local_id,a:profile->address,l:profile->loc,d:profile->days&local_id=not.is.null',{headers:{...S.h, Range:`${i}-${i+999}`}}); if(!r.ok) return; const j=await r.json(); j.forEach(x=>{ m[x.local_id]=x.id; rows.push(x); }); if(j.length<1000) break; }
+    let cols='id,local_id,a:profile->address,l:profile->loc,d:profile->days,ro:recv_open,rv:recv';
+    for(let i=0;;i+=1000){ let r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:`${i}-${i+999}`}});
+      if(!r.ok && i===0 && cols.includes('recv')){ cols=cols.replace(',ro:recv_open,rv:recv',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema4 لسه ماتشغلش
+      if(!r.ok) return; const j=await r.json(); j.forEach(x=>{ m[x.local_id]=x.id; rows.push(x); }); if(j.length<1000) break; }
     sbIds=m; try{ localStorage.setItem('selah-trial-ids', JSON.stringify(m)); }catch(e){}
     // حالة تحديث البيانات (زي المراسلات بالظبط): full = حدّث كله، part = باقيله جزء، none = ماحدّثش
     const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-4999'}}); return r.ok?r.json():[]; };
     const [pe,ap,op]=await Promise.all([q('edit_requests?select=teacher_id&status=eq.pending'), q('edit_requests?select=teacher_id&status=eq.approved'), q('update_requests?select=teacher_id&status=eq.open')]);
     const P=new Set(pe.map(x=>x.teacher_id)), A=new Set(ap.map(x=>x.teacher_id)), O=new Set(op.map(x=>x.teacher_id)), has=v=>v && (typeof v!=='object' || Object.keys(v).length), u={};
     for(const x of rows) u[x.local_id] = (!A.has(x.id) && !P.has(x.id)) ? 'none' : (A.has(x.id) && has(x.a) && has(x.l) && has(x.d) && !O.has(x.id) && !P.has(x.id)) ? 'full' : 'part';
-    const ch=JSON.stringify(u)!==JSON.stringify(sbUpd); sbUpd=u; try{ localStorage.setItem('selah-trial-upd', JSON.stringify(u)); }catch(e){}
+    let ch=JSON.stringify(u)!==JSON.stringify(sbUpd); sbUpd=u; try{ localStorage.setItem('selah-trial-upd', JSON.stringify(u)); }catch(e){}
+    // بند 45: اللي المدرس علّمه في «📦 استلمت إيه» + فتح الأيقونة لوحدها لأي مدرس اتسجله تسليم
+    const rv={}; for(const x of rows) if(x.rv && Array.isArray(x.rv.b)) rv[x.local_id]=x.rv;
+    if(JSON.stringify(rv)!==JSON.stringify(sbRecv)){ ch=true; sbRecv=rv; try{ localStorage.setItem('selah-trial-recv', JSON.stringify(rv)); }catch(e){} }
+    const got=new Set(db.entries.filter(e=>e.s==='d').map(e=>e.t)), opn=rows.filter(x=>!x.ro && got.has(x.local_id)).map(x=>x.id);
+    for(let i=0;i<opn.length;i+=150) await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?id=in.('+opn.slice(i,i+150).join(',')+')',{method:'PATCH',headers:{...S.h, Prefer:'return=minimal'},body:JSON.stringify({recv_open:true})}).catch(()=>{});
+    sbPullAt=Date.now();
     if(ch && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.querySelector('.modal')){ const y=scrollY; render(); scrollTo(0,y); }
   }catch(e){}
 }
@@ -1277,6 +1305,7 @@ function renderTeacher(id){
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}
       <button class="rbtn" data-act="show-cls-change" title="التخصص">🎯</button><button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button></div>
     <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:'<span class="small" style="align-self:center;color:var(--owe);font-weight:700">📍 الموقع ناقص</span>'}</div></div>
+    ${recvBox(t)}
     <div class="bigbuy"><button class="btn gold" data-act="sell-t" data-mode="order">📝 طلب بيع</button><button class="btn owe" data-act="sell-t" data-mode="sell">🛒 بيع دلوقتي</button></div>`;
   if(isDup(t)) html += `<div class="banner">⚠️ الرقم ده متكرر — ممنوع تسليم أو بيع لحد ما تمسح المتكرر. <a href="#" data-act="go-dups">افتح الأرقام المتكررة</a></div>`;
 
@@ -4357,11 +4386,12 @@ function visitRow(v, reg){
   const t=tById(v.t), dates=[...new Set(v.ents.map(e=>dk(db.reg[e.id])).filter(Boolean))].sort();
   return `<div class="vrow ${tStC(t)}" style="${tUpdSt(t)}" data-hay="${esc(teacherHay(t))}"><div class="tc-top" style="gap:8px">${tAv(t)}<div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}
       <div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}${reg?` • زيارة ${dayName(v.day)} ${fmtDay(v.day)}`:''}</div></div><div class="icos">${phoneBtns(t)}</div></div>
-    ${bkChips(reg ? v.ents : v.left)}
+    ${bkChips(reg ? v.ents : v.left)}${recvBox(t)}
     ${reg ? `<div class="regd">✅ تم التسجيل بتاريخ ${dates.map(fmtDay).join(' و ')}</div><div class="row2" style="margin-top:6px"><button class="btn sm ghost" data-act="reg-undo" data-k="${esc(v.k)}">↩️ رجّعها للزيارات</button><button class="btn sm" data-act="vis-edit" data-k="${esc(v.k)}">✏️ تعديل الزيارة</button></div>`
       : `${v.left.length<v.ents.length?'<div class="small muted" style="margin-top:4px">اتسجل منها جزء قبل كده — ده الباقي</div>':''}<div class="row2" style="margin-top:8px"><button class="btn sm ok" data-act="reg-visit" data-k="${esc(v.k)}">✅ تم التسجيل</button><button class="btn sm" data-act="vis-edit" data-k="${esc(v.k)}">✏️ تعديل الزيارة</button></div>`}</div>`;
 }
 function renderVisits(f){
+  if(sbHas() && Date.now()-sbPullAt>90000){ sbPullAt=Date.now(); setTimeout(sbMapPull, 300); }   // هات آخر اللي المدرسين علّموه
   const all=visitGroups(), open=all.filter(v=>v.left.length), done=all.filter(v=>!v.left.length);
   const byDay={}; for(const v of open) (byDay[v.day] ||= []).push(v);
   const days=Object.keys(byDay).sort().reverse();
@@ -4382,6 +4412,9 @@ function renderVisits(f){
     ${days.length ? days.map(d=>`<a class="card vfold" href="#/visits/${d}"><span style="font-size:26px">📁</span><div class="grow"><b>${dayName(d)} ${fmtDay(d)}</b>${d===today?' <span class="pill new">النهارده</span>':''}<div class="small muted">مستني تسجيل</div></div><span class="n">${byDay[d].length}</span></a>`).join('')
       : '<div class="card empty">مفيش زيارات مستنية تسجيل 🎉</div>'}
     ${old?`<button class="btn ghost sm" style="width:100%" data-act="reg-old">✔️ علّم كل الزيارات القديمة (قبل النهارده) إنها اتسجلت — ${old} زيارة</button>`:''}`;
+  // مدرسين علّموا إنهم استلموا ومالهمش أي تسليم متسجل عندك ← أحمر
+  const lone=sbHas() ? Object.keys(sbRecv).map(tById).filter(t=>t && (sbRecv[t.id].b||[]).length && !db.entries.some(e=>e.t===t.id && e.s==='d')) : [];
+  if(lone.length) app.insertAdjacentHTML('beforeend', `<div class="card"><h3 class="sec-t">📦 مدرسين قالوا استلموا ومش متسجلين عندك (${lone.length})</h3>${lone.map(t=>`<div class="vrow" style="${tUpdSt(t)}"><div class="tc-top" style="gap:8px">${tAv(t)}<div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}<div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}</div></div><div class="icos">${phoneBtns(t)}</div></div>${recvBox(t)}</div>`).join('')}</div>`);
 }
 function regVisit(k){
   const v=visitGroups().find(x=>x.k===k); if(!v || !v.left.length) return; const t=tById(v.t);

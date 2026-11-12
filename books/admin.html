@@ -464,7 +464,7 @@ function viewList() {
   <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم» / «ما استلمش»…" value="${esc(ui.q)}"></div>
   <div class="chips">${chip('all', `الكل (${T.length})`)}${chip('unread', `💬 رسايل جديدة (${nUn})`)}${chip('notes', `📌 رسائل محفوظة (${nNotes})`)}${chip('pend', `⏳ تعديلات (${pendSet.size})`)}${chip('new', 'لسه ما فتحوش')}${Object.entries(UPD_C).map(([k, [, l]]) => chip(k, `${l} (${T.filter(t => updState(t) === k).length})`)).join('')}
    ${isAdmin() && staffList.length > 1 ? `<select class="chip" id="repF"><option value="">كل المناديب</option>${staffList.map(s => `<option value="${s.id}" ${ui.rep === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}</div>
-  <div class="acts" style="margin:0 0 10px"><button class="btn sm ${ui.selMode ? 'pri' : ''}" id="selT">☑️ تحديد</button><button class="btn sm" id="updAll">🔄 اطلب تحديث للظاهرين (${list.length})</button></div>
+  <div class="acts" style="margin:0 0 10px"><button class="btn sm ${ui.selMode ? 'pri' : ''}" id="selT">☑️ تحديد</button><button class="btn sm" id="updAll">🔄 اطلب تحديث للظاهرين (${list.length})</button><button class="btn sm" id="rvAll">📦 فعّل «استلمت إيه» للكل</button><button class="btn sm danger" id="delAllM">🗑️ امسح كل الرسائل</button></div>
   <div class="tlist" id="tl">${list.slice(0, ui.shown).map(tItem).join('') || '<div class="empty">مفيش مدرسين هنا</div>'}</div>
   ${list.length > ui.shown ? `<button class="btn ghost" id="more" style="width:100%;margin-top:10px">اعرض أكتر (${list.length - ui.shown})</button>` : ''}
   <div id="selbar"></div>`;
@@ -474,6 +474,15 @@ function viewList() {
   const rf = $('#repF'); rf && (rf.onchange = () => { ui.rep = rf.value; viewList(); });
   $('#selT').onclick = () => { ui.selMode = !ui.selMode; ui.sel.clear(); viewList(); };
   $('#updAll').onclick = () => { const l = filtered(); if (l.length) reqUpdateDlg(l.map(t => t.id)); };
+  $('#rvAll').onclick = () => { if (confirm('تفتح أيقونة «📦 استلمت مننا إيه» لكل مدرسينك؟')) recvOpen(null); };
+  // بند 44: مسح رسايل كل المدرسين لتفضية المساحة (📌 السجل بيفضل)
+  $('#delAllM').onclick = async () => {
+    const w = prompt('هتتمسح كل الرسايل مع كل المدرسين نهائي (من عندك وعندهم)، ومش هترجع.\nاللي محفوظ في 📌 السجل هيفضل.\n\nللتأكيد اكتب كلمة: امسح');
+    if (w == null) return; if (w.trim() !== 'امسح') return toast('ماتمسحش حاجة — الكلمة مش مظبوطة');
+    const { error } = await sb.from('messages').delete().gt('id', 0); if (error) return toast(errMsg(error));
+    for (const k in unreadBy) delete unreadBy[k]; for (const k in lastMsg) delete lastMsg[k];
+    toast('🗑️ اتمسحت كل الرسايل ✅'); counts(); viewList();
+  };
   const mo = $('#more'); mo && (mo.onclick = () => { ui.shown += 300; viewList(); });
   $('#tl').onclick = e => {
     const it = e.target.closest('.titem'); if (!it) return;
@@ -520,12 +529,23 @@ function drawSelbar() {
     <button class="btn sm ok" id="sInv" ${n ? '' : 'disabled'}>✉️ ابعتلهم رسالة الدعوة</button>
     <button class="btn sm owe" id="sUpd" ${n ? '' : 'disabled'}>🔄 اطلب تحديث</button>
     <button class="btn sm danger" id="sRing" ${n ? '' : 'disabled'}>🔔 نبّه المحددين</button>
+    <button class="btn sm" id="sRv" ${n ? '' : 'disabled'}>📦 فعّل «استلمت إيه»</button>
     <button class="btn sm ghost" id="sX">✕</button></div></div>`;
   $('#sAll').onclick = () => { filtered().slice(0, ui.shown).forEach(t => ui.sel.add(t.id)); viewList(); };
   $('#sInv').onclick = () => { ui.invSel = new Set(ui.sel); location.hash = '#/invite'; };
   $('#sUpd').onclick = () => reqUpdateDlg([...ui.sel]);
   $('#sRing').onclick = async () => { if (!confirm(`تنبّه ${ui.sel.size} مدرس؟`)) return; $('#sRing').disabled = true; await ringTeachers([...ui.sel]); $('#sRing').disabled = false; };
+  $('#sRv').onclick = () => recvOpen([...ui.sel]);
   $('#sX').onclick = () => { ui.selMode = false; ui.sel.clear(); viewList(); };
+}
+/* بند 45: فتح أيقونة «📦 استلمت مننا إيه» عند المدرس (ids = null ← لكل المدرسين اللي تشوفهم) */
+async function recvOpen(ids) {
+  let error;
+  if (!ids) ({ error } = await sb.from('teachers').update({ recv_open: true }).eq('recv_open', false));
+  else for (let i = 0; i < ids.length && !error; i += 150) ({ error } = await sb.from('teachers').update({ recv_open: true }).in('id', ids.slice(i, i + 150)));
+  if (error) return toast(errMsg(error));
+  toast(`📦 اتفتحت «استلمت إيه» ${ids ? 'لـ ' + ids.length + ' مدرس' : 'لكل المدرسين'} ✅`);
+  if (window.pushRingTeachers) window.pushRingTeachers(ids || T.map(t => t.id), '📦 علّم على الكتب اللي استلمتها مننا الترم ده', 'teacher.html#v=recv').catch(() => { });
 }
 
 /* ---------- رسالة الدعوة: تكتب الرسالة + [رابط المدرس] وتختار المدرسين ---------- */
@@ -643,7 +663,16 @@ async function viewChat(id) {
     await ringTeachers([t.id]); pull(false);
   };
   const redraw = () => { $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>'; if (chatSel) $('#delgo').textContent = `🗑️ امسح المحدد (${chatSel.size})`; };
-  $('#delm').onclick = () => { chatSel = new Set(); $('#delbar').hidden = false; redraw(); };
+  // 🗑️ (بند 43): يسأل «امسح المحدد» ولا «امسح كل الرسايل مع المدرس ده»
+  $('#delm').onclick = () => modal(`<h3>🗑️ مسح رسايل ${esc(t.name)}</h3><div class="acts" style="flex-direction:column;align-items:stretch">
+      <button class="btn" id="dSel">☑️ امسح رسايل أختارها</button><button class="btn danger" id="dAll">🗑️ امسح كل الرسايل مع المدرس ده</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
+    $('#dSel', box).onclick = () => { close(); chatSel = new Set(); $('#delbar').hidden = false; redraw(); };
+    $('#dAll', box).onclick = async () => {
+      if (!confirm(`هتتمسح كل الرسايل مع ${t.name} من عندك وعنده، ومش هترجع. متأكد؟`)) return;
+      const { error } = await sb.from('messages').delete().eq('teacher_id', t.id); if (error) return toast(errMsg(error));
+      close(); chatMsgs = []; delete unreadBy[t.id]; delete lastMsg[t.id]; redraw(); toast('اتمسحت كل الرسايل ✅');
+    };
+  });
   $('#delx').onclick = () => { chatSel = null; $('#delbar').hidden = true; redraw(); };
   $('#chat').onclick = e => { if (!chatSel) return; const b = e.target.closest('[data-mid]'); if (!b) return; const id = +b.dataset.mid; chatSel.has(id) ? chatSel.delete(id) : chatSel.add(id); redraw(); };
   $('#delgo').onclick = async () => {

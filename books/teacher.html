@@ -12,6 +12,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="common.js"></script>
+<style>
+.t-rv{grid-column:1/-1;background:linear-gradient(140deg,#2dd4bf,#0e7490)}.t-rv.lock{background:linear-gradient(140deg,#cbd5e1,#64748b)}
+.rvl label{display:flex;align-items:center;gap:10px;padding:12px;border:2px solid #e2e8f0;border-radius:14px;margin-bottom:8px;font-weight:700;font-size:17px;cursor:pointer;background:#fff}
+.rvl label.on{border-color:#16a34a;background:#dcfce7}.rvl input{width:24px;height:24px}
+</style>
 </head>
 <body>
 <header class="top"><div class="in"><h1 id="title">سلاح التلميذ</h1><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
@@ -38,6 +43,7 @@ let D = null, view = (new URLSearchParams(location.hash.slice(1)).get('v')) || '
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; if (D) render(); });
 window.addEventListener('appinstalled', () => { instEvt = null; installedNow = true; if (D) render(); });
 let installedNow = false;
+let RV = null;   // 📦 استلمت إيه: {open, recv:{b:[...], at}}
 
 const isApp = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const UA = navigator.userAgent, IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
@@ -66,6 +72,7 @@ function unlockAudio() {
 ['pointerdown', 'touchstart', 'keydown', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
 document.addEventListener('visibilitychange', () => { if (!document.hidden && ACX && ACX.state !== 'running') ACX.resume().catch(() => { }); });
 async function ding() {
+  if (!isApp) return;   // الرنة في التطبيق المتثبّت بس — مش من المتصفح
   try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { }
   if (document.hidden) return;   // في الخلفية: إشعار الموبايل هو اللي بيرن
   const now = Date.now(); if (now - LAST_DING < 1500) return; LAST_DING = now;   // مايتكررش فوق بعضه
@@ -85,10 +92,11 @@ async function load() {
   if (!code && isApp) return renderPasteCode();
   if (!code) { app.innerHTML = '<div class="alert"><h3>افتح الرابط اللي وصلك من المندوب</h3>الرابط ده لازم يكون فيه الكود الخاص بيك.</div>'; return; }
   try {
-    const { data, error } = await sb.rpc('t_get', { p_code: code });
+    const [{ data, error }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]);
     if (error) throw error;
+    if (rv && rv.data) RV = rv.data;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
-    const first = !D; D = normD(data); $('#tabs').hidden = false; render(); setBadge();
+    const first = !D; D = normD(data); SEEN = evSig(D); $('#tabs').hidden = false; render(); setBadge(); startWatch();
     // طلب تحديث جديد من آخر مرة ← صوت
     const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);
     if (ids.some(i => !seen.includes(i))) ding(); LS.set('selah-trial-tupd', ids);
@@ -98,6 +106,39 @@ async function load() {
       if (D.unread && window.pushNotifyRep) window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك');
     }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
+}
+/* متابعة الجديد في كل الصفحات (طلب شريف 2026-11-12): كل 15 ثانية والتطبيق قدام + أول ما يرجع قدام.
+   النغمة بترن مع: رسالة أو تنبيه 🔔 جديد، طلب تحديث، سؤال من المندوب، قرار على تعديل، أي تغيير في الطلبات (استلام/موافقة/رفض/تعديل). */
+let WATCH = null, SEEN = null;
+function evSig(x) {
+  return { u: x.unread || 0, up: (x.updates || []).map(u => u.id).join(','), q: x.pending && x.pending.status === 'question' ? (x.pending.id + ':' + (x.pending.at || '')) : '',
+    d: (x.decisions || []).length, o: (x.orders || []).filter(o => o.status !== 'pending' || isRepOrd(o)).map(o => o.id + ':' + o.status + ':' + (o.items || []).map(i => i.q).join('.')).join('|') };
+}
+function isNewer(a, b) {
+  return (view !== 'msgs' && a.u > b.u) || (!!a.up && a.up.split(',').some(i => !b.up.split(',').includes(i))) || (!!a.q && a.q !== b.q) || a.d > b.d || a.o !== b.o;
+}
+function updCounts() {
+  const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
+  $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n; $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
+}
+async function watchTick() {
+  if (document.hidden || !code || !D || !isApp) return;
+  try {
+    let [{ data }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]); if (!data) return; data = normD(data);
+    if (rv && rv.data && !!rv.data.open !== !!(RV && RV.open)) { RV = rv.data; if (view === 'home') { D = data; render(); } }
+    const a = evSig(data), b = SEEN || evSig(D); SEEN = a;
+    if (isNewer(a, b)) ding();
+    if (JSON.stringify(a) !== JSON.stringify(evSig(D))) {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+      D = data; setBadge();
+      if (view === 'home' || (view === 'books' && !typing)) render(); else updCounts();
+    }
+  } catch (e) { }
+}
+function startWatch() {
+  if (WATCH || !isApp) return;
+  WATCH = setInterval(watchTick, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) watchTick(); });
 }
 // طلبات التحديث اللي المدرس ردّ عليها ماتظهرش تاني
 function normD(d) { const done = LS.get('selah-trial-tupd-done', []); d.updates = (d.updates || []).filter(u => !done.includes(u.id)); return d; }
@@ -115,8 +156,8 @@ function render() {
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
   $('#booksTab').hidden = !((D.books || []).length || D.orders.length || canOrder(D.profile));
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز' }[view] || 'أهلًا ' + tName(D.name);
-  if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه' }[view] || 'أهلًا ' + tName(D.name);
+  if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
 }
 const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
 const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIELD_LABEL[k] || k}</span><span>${fmtVal(k, o[k])}</span></div>`).join('');
@@ -130,7 +171,8 @@ function renderHome() {
     <button class="tt t-msg" data-v="msgs"><span class="tti">💬</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
     <button class="tt t-pr" data-v="prices"><span class="tti">💰</span><span class="ttl">أسعار الكتب</span></button>
     <button class="tt t-bk" data-v="books"><span class="tti">📚</span><span class="ttl">كتبي</span></button>
-    <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button></div>`;
+    <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
+    <button class="tt t-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">📦</span><span class="ttl">استلمت مننا إيه الترم ده</span><span class="tts">${!(RV && RV.open) ? '🔒 هتتفتح لما المندوب يسلّمك' : RV.recv ? '✅ اتبعت — تقدر تعدّل' : 'علّم على الكتب اللي استلمتها'}</span></button></div>`;
   const notif = 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -162,15 +204,9 @@ function renderHome() {
     h += '</div>';
   }
   app.innerHTML = h;
-  $$('.ttiles [data-v]').forEach(b => b.onclick = () => go(b.dataset.v));
+  $$('.ttiles [data-v]').forEach(b => b.onclick = () => (b.dataset.v === 'recv' && !(RV && RV.open)) ? toast('🔒 الصفحة دي هتتفتح لما المندوب يسلّمك الكتب', 3000) : go(b.dataset.v));
   $$('[data-x]').forEach(b => b.onclick = () => { const a = LS.get(DISMISS, []); a.push(b.dataset.x); LS.set(DISMISS, a.slice(-200)); renderHome(); });
-  // متابعة الجديد والصفحة مفتوحة (طلب تحديث / رسالة / قرار) — صوت + تحديث
-  pollT = setInterval(async () => {
-    if (document.hidden) return;
-    let { data } = await sb.rpc('t_get', { p_code: code }); if (!data || view !== 'home') return; data = normD(data);
-    const sig = x => [x.unread, x.updates.length, x.decisions.length, (x.pending || {}).status, x.orders.filter(o => o.status !== 'pending').length].join('|');
-    if (sig(data) !== sig(D)) { const more = data.unread > D.unread || data.updates.length > D.updates.length; D = data; render(); setBadge(); if (more) ding(); }
-  }, 30000);
+  // متابعة الجديد بقت في كل الصفحات (startWatch تحت)
   const su = $('#setup'); su && (su.onclick = setupApp);
   const sr = $('#sendReply');
   sr && (sr.onclick = async () => {
@@ -467,6 +503,43 @@ function renderBooks() {
     const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'edit', p_items: ch, p_note: null });
     if (error) return toast(errMsg(error));
     toast('اتبعت طلب التعديل ✅'); window.pushNotifyRep && window.pushNotifyRep('✏️ ' + D.name + ' عايز يعدّل كمية كتب'); load();
+  };
+}
+
+/* ---------- 📦 استلمت مننا إيه الترم ده (بند 45) ----------
+   المدرس بيشوف كتب مواده وصفوفه من ملفه (مش اللي المندوب سجّله)، ويعلّم بنفسه ويبعت. */
+function recvBooks() {
+  const p = D.profile || {}, subs = (p.subjects || []).filter(s => B_SUBJ[s]), stg = String(p.stage || '');
+  const PS = ['ar', 'math', 'stu', 'en', 'sci'], MS = ['ar', 'math', 'stu'], FROMP = { sci: 4, stu: 4 };
+  let gs = (p.grades || []).map(Number).filter(g => g >= 1 && g <= 9);
+  if (!gs.length) gs = [...(stg.includes('p') ? [1, 2, 3, 4, 5, 6] : []), ...(stg.includes('m') ? [7, 8, 9] : [])];
+  const out = [];
+  for (const s of subs) for (const g of gs) {
+    if (g <= 6) { if (PS.includes(s) && g >= (FROMP[s] || 1)) out.push(`p-${s}-${g}`); }
+    else if (MS.includes(s)) out.push(`m-${s}-${g - 6}`);
+  }
+  return out;
+}
+function renderRecv() {
+  if (!RV || !RV.open) { app.innerHTML = '<div class="card empty">🔒 الصفحة دي هتتفتح لما المندوب يسلّمك الكتب.</div>'; return; }
+  const had = ((RV.recv || {}).b) || [], list = [...new Set([...recvBooks(), ...had])];
+  const ord = k => { const [st, s, g] = k.split('-'); return (st === 'm' ? 100 : 0) + ['ar', 'math', 'en', 'sci', 'stu'].indexOf(s) * 10 + +g; };
+  list.sort((a, b) => ord(a) - ord(b));
+  if (!list.length) { app.innerHTML = `<div class="card empty">علشان تظهرلك الكتب، كمّل في ملفك المادة والصفوف اللي بتدرّسها.<div class="acts" style="justify-content:center"><button class="btn owe" onclick="go('me')">👤 افتح ملفي</button></div></div>`; return; }
+  app.innerHTML = `<div class="phead">📦 استلمت مننا إيه الترم ده؟<div class="small">علّم ✅ على كل كتاب وصلك من سلاح التلميذ، وبعدين دوس «ابعت»</div></div>
+    ${RV.recv && RV.recv.at ? `<div class="good small">✅ بعتّ قبل كده ${fmtDate(RV.recv.at)} — تقدر تعدّل وتبعت تاني</div>` : ''}
+    <div class="rvl" id="rvl">${list.map(k => `<label class="${had.includes(k) ? 'on' : ''}"><input type="checkbox" value="${esc(k)}" ${had.includes(k) ? 'checked' : ''}><span class="bk-dot" style="background:${SUBJ_COL[k.split('-')[1]] || '#6d28d9'}"></span>${esc(bookLabel(k))}</label>`).join('')}</div>
+    <div class="savebar"><button class="gobtn" id="rvs">📤 ابعت للأستاذ</button></div>`;
+  $('#rvl').onchange = e => { const c = e.target; if (c.type === 'checkbox') c.closest('label').classList.toggle('on', c.checked); };
+  $('#rvs').onclick = async () => {
+    const b = $$('#rvl input:checked').map(i => i.value);
+    if (!b.length && !confirm('ماعلّمتش على أي كتاب — يعني ماستلمتش حاجة؟')) return;
+    $('#rvs').disabled = true;
+    const { error } = await sb.rpc('t_recv', { p_code: code, p_books: b });
+    $('#rvs').disabled = false;
+    if (error) return toast(errMsg(error));
+    RV.recv = { b, at: new Date().toISOString() };
+    toast('اتبعت ✅ شكرًا لحضرتك'); window.pushNotifyRep && window.pushNotifyRep('📦 ' + D.name + ' علّم الكتب اللي استلمها'); go('home');
   };
 }
 
