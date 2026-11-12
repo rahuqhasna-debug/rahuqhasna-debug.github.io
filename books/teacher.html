@@ -56,12 +56,27 @@
 .ins-f{list-style:none;padding:0;margin:18px 0 0;text-align:start;font-size:14px;color:#334155;line-height:2}.ins-f li::before{content:'✓';display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#ede9fe;color:#6d28d9;font-weight:800;margin-inline-end:8px;font-size:13px}
 .pgback{background:#fef2f2;border:2px solid #dc2626;border-radius:12px;padding:8px 10px;margin:8px 0;font-weight:700;color:#991b1b}
 .pgbrand{background:#fffbeb;border:1px dashed #f59e0b;border-radius:10px;padding:8px 10px;margin-top:8px;text-align:start;line-height:1.9}
+/* متابعة 7: فواتيري + مرتجعات */
+.invbar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.ib{border:0;border-radius:16px;padding:12px 6px;font:800 17px inherit;font-family:inherit;color:#fff;cursor:pointer;box-shadow:0 5px 12px -6px rgba(0,0,0,.4)}
+.ib b{font-size:22px;display:block;margin-bottom:2px}.ib-i{background:linear-gradient(140deg,#38bdf8,#2563eb)}.ib-r{background:linear-gradient(140deg,#fb923c,#dc2626)}
+.tbw{overflow-x:auto}.tb{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:8px}.tb th,.tb td{padding:6px 4px;text-align:center;border-bottom:1px solid #e5e7eb}.tb td:first-child,.tb th:first-child{text-align:start}
+.lrow{padding:10px 12px;margin-bottom:8px}
+/* متابعة 7: اعرف الجديد — قنوات التليجرام */
+.nhd{color:#fff;font-weight:800;font-size:18px;border-radius:16px;padding:8px 14px;margin:14px 0 10px;text-align:center}
+.ngrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ngrid .nch:first-child{grid-column:1/-1}
+.nch{border:0;border-radius:20px;background:var(--bg);padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;cursor:pointer;box-shadow:0 6px 14px -8px rgba(0,0,0,.4);color:#1e1b4b}
+.nch:active{transform:scale(.97)}
+.nch .nci{width:64px;height:64px;display:block}.nch .nci svg{width:100%;height:100%;display:block}
+.nch .ncl{font-size:17px;font-weight:800}
+.nch .nct{font-size:12.5px;font-weight:700;background:#229ED9;color:#fff;border-radius:12px;padding:2px 10px}.nch .nct.soon{background:#94a3b8}
 /* متابعة 7: الرئيسية 6 مربعات قد بعض */
 .ttiles.six .tt{grid-column:auto}
 .hm .ttiles.six{grid-template-rows:repeat(3,1fr)}
-.ttiles.six .tti svg{width:60%;height:60%}
-.ttiles.six .tti{position:relative}
-.ttiles.six .coin{position:absolute;bottom:-3px;left:-5px;width:20px;height:20px;border-radius:50%;background:#fde047;color:#92400e;font:800 12px/20px inherit;font-family:inherit;font-style:normal;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.ttiles.six .tti{background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);width:76px;height:76px;padding:6px}
+.hm .ttiles.six .tti{width:62px;height:62px;padding:5px}
+.ttiles.six .tti svg{width:100%;height:100%;display:block}
+.ttiles.six .ttl{font-size:16px}.hm .ttiles.six .ttl{font-size:15px}
 .h-or{background:linear-gradient(140deg,#fb923c,#ea580c)}.h-ms{background:linear-gradient(140deg,#60a5fa,#2563eb)}
 .h-me{background:linear-gradient(140deg,#a78bfa,#6d28d9)}.h-pr{background:linear-gradient(140deg,#fbbf24,#d97706)}
 .h-nw{background:linear-gradient(140deg,#f472b6,#db2777)}.h-rv{background:linear-gradient(140deg,#34d399,#059669)}.h-rv.lock{background:linear-gradient(140deg,#cbd5e1,#64748b)}
@@ -229,26 +244,31 @@ function render() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', inv: '🧾 فواتيري', ret: '↩️ مرتجعات', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
   if (view !== 'news') newsSub = null;
-  if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
+  if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else if (view === 'inv') renderInv(); else if (view === 'ret') renderRet(); else renderHome();
 }
 const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
 const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIELD_LABEL[k] || k}</span><span>${fmtVal(k, o[k])}</span></div>`).join('');
 
 function renderHome() {
   const v = vals();
-  let h = `<div class="card" style="display:flex;align-items:center;gap:12px">${v.avatar ? `<img class="av lg" src="${v.avatar}" alt="">` : '<span class="av lg">👤</span>'}
-    <div><b style="font-size:19px">${esc(tName(D.name))}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
-  // أيقونات الرئيسية
-  // متابعة 7: 6 مربعات قد بعض (2×3) بأيقونات مرسومة وألوان مبهجة
-  const I = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-  h += `<div class="ttiles six"><button class="tt h-or" data-v="order"><span class="tti">${I('<path d="M5 7h14l-1.2 13H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/>')}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
-    <button class="tt h-ms" data-v="msgs"><span class="tti">${I('<path d="M3 10l9-6 9 6v10H3z"/><path d="M3 10l9 6 9-6"/>')}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
-    <button class="tt h-me" data-v="me"><span class="tti">${I('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a7 7 0 0 1 11 0"/>')}</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
-    <button class="tt h-pr" data-v="prices"><span class="tti">${I('<rect x="3" y="5" width="5" height="15" rx="1"/><rect x="9" y="5" width="5" height="15" rx="1"/><path d="M15 6.5l3.6-1 3.4 13.5-3.6 1z"/>')}<em class="coin">ج</em></span><span class="ttl">أسعار الكتب</span></button>
-    <button class="tt h-nw" data-v="news"><span class="tti">${I('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>')}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
-    <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${I('<path d="M2 6h12v10H2z"/><path d="M14 9h4l3 4v3h-7"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>')}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
+  // متابعة 7: اتشال الشريط الأبيض (اسم المدرس) — الرئيسية 6 مربعات قد بعض بأيقونات كرتونية ملوّنة
+  const HI = {
+    or: `<svg viewBox="0 0 64 64"><path d="M14 24h36l-3 32H17z" fill="#fb923c" stroke="#9a3412" stroke-width="3" stroke-linejoin="round"/><path d="M22 28v-8a10 10 0 0 1 20 0v8" fill="none" stroke="#9a3412" stroke-width="3" stroke-linecap="round"/><rect x="19" y="8" width="9" height="14" rx="1.5" transform="rotate(-12 23 15)" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2"/><rect x="33" y="6" width="9" height="15" rx="1.5" transform="rotate(10 37 13)" fill="#22c55e" stroke="#14532d" stroke-width="2"/><circle cx="26" cy="38" r="2.6" fill="#431407"/><circle cx="38" cy="38" r="2.6" fill="#431407"/><path d="M25 46q7 6 14 0" fill="none" stroke="#431407" stroke-width="3" stroke-linecap="round"/></svg>`,
+    ms: `<svg viewBox="0 0 64 64"><rect x="14" y="10" width="36" height="30" rx="3" fill="#fff" stroke="#1e3a8a" stroke-width="2.5"/><path d="M20 18h24M20 25h24M20 32h14" stroke="#93c5fd" stroke-width="3" stroke-linecap="round"/><path d="M6 26l26 20 26-20v28a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="#60a5fa" stroke="#1e3a8a" stroke-width="3" stroke-linejoin="round"/><path d="M6 26l26 18 26-18" fill="#93c5fd" stroke="#1e3a8a" stroke-width="3" stroke-linejoin="round"/><path d="M32 54s-7-4.5-7-9a4 4 0 0 1 7-2.5A4 4 0 0 1 39 45c0 4.500-7 9-7 9z" fill="#f43f5e" stroke="#9f1239" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+    me: `<svg viewBox="0 0 64 64"><path d="M10 62c0-14 10-20 22-20s22 6 22 20z" fill="#7c3aed" stroke="#4c1d95" stroke-width="3" stroke-linejoin="round"/><path d="M26 44l6 8 6-8" fill="#fff" stroke="#4c1d95" stroke-width="2.5" stroke-linejoin="round"/><circle cx="32" cy="26" r="15" fill="#fcd9b6" stroke="#92400e" stroke-width="3"/><path d="M17 24c0-12 8-16 15-16s15 4 15 16c-4-6-10-8-15-8s-11 2-15 8z" fill="#3f2a1d" stroke="#1c1008" stroke-width="2.5" stroke-linejoin="round"/><circle cx="26" cy="27" r="4.5" fill="#fff" stroke="#1e293b" stroke-width="2.2"/><circle cx="38" cy="27" r="4.5" fill="#fff" stroke="#1e293b" stroke-width="2.2"/><path d="M30.500 27h3" stroke="#1e293b" stroke-width="2"/><circle cx="26" cy="27" r="1.6" fill="#1e293b"/><circle cx="38" cy="27" r="1.6" fill="#1e293b"/><path d="M26 34q6 5 12 0" fill="none" stroke="#9a3412" stroke-width="2.6" stroke-linecap="round"/></svg>`,
+    pr: `<svg viewBox="0 0 64 64"><rect x="6" y="44" width="40" height="12" rx="2.500" fill="#3b82f6" stroke="#1e3a8a" stroke-width="2.500"/><rect x="10" y="32" width="36" height="12" rx="2.500" fill="#22c55e" stroke="#14532d" stroke-width="2.500"/><rect x="8" y="20" width="38" height="12" rx="2.500" fill="#ef4444" stroke="#7f1d1d" stroke-width="2.500"/><path d="M12 50h20M14 38h18M12 26h20" stroke="#fff" stroke-width="2.500" stroke-linecap="round" opacity=".8"/><circle cx="48" cy="22" r="13" fill="#fde047" stroke="#a16207" stroke-width="3"/><circle cx="48" cy="22" r="8.500" fill="none" stroke="#ca8a04" stroke-width="1.800"/><text x="48" y="28" font-size="15" font-weight="800" fill="#92400e" text-anchor="middle">ج</text></svg>`,
+    nw: `<svg viewBox="0 0 64 64"><path d="M32 4l7.500 17.500L58 24 44 37l4 19-16-9.500L16 56l4-19L6 24l18.500-2.500z" fill="#fde047" stroke="#a16207" stroke-width="3" stroke-linejoin="round"/><circle cx="25" cy="32" r="3" fill="#431407"/><circle cx="39" cy="32" r="3" fill="#431407"/><path d="M26 39q6 6 12 0" fill="none" stroke="#431407" stroke-width="3" stroke-linecap="round"/><circle cx="21" cy="38" r="3" fill="#fb7185" opacity=".7"/><circle cx="43" cy="38" r="3" fill="#fb7185" opacity=".7"/><path d="M54 6v8M50 10h8" stroke="#ec4899" stroke-width="3" stroke-linecap="round"/></svg>`,
+    rv: `<svg viewBox="0 0 64 64"><path d="M6 24l26-14 26 14v28a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="#d97706" stroke="#78350f" stroke-width="3" stroke-linejoin="round"/><path d="M6 24l26 14 26-14" fill="#f59e0b" stroke="#78350f" stroke-width="3" stroke-linejoin="round"/><rect x="26" y="38" width="12" height="18" fill="#fde68a" stroke="#78350f" stroke-width="2.500"/><circle cx="46" cy="14" r="11" fill="#22c55e" stroke="#14532d" stroke-width="3"/><path d="M40 14l4 4.500 8-9" fill="none" stroke="#fff" stroke-width="3.500" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  };
+  let h = '';
+  h += `<div class="ttiles six"><button class="tt h-or" data-v="order"><span class="tti">${HI.or}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
+    <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
+    <button class="tt h-me" data-v="me"><span class="tti">${HI.me}</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
+    <button class="tt h-pr" data-v="prices"><span class="tti">${HI.pr}</span><span class="ttl">أسعار الكتب</span></button>
+    <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
+    <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${HI.rv}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -785,16 +805,77 @@ function renderPrices() {
     <div class="savebar"><button class="gobtn" id="toOrd">🛒 اطلب كتبك بسعر مميز</button></div>`;
   $('#toOrd').onclick = () => go('order');
 }
+/* ---------- متابعة 7: فواتيري + الفاتورة المجمّعة + السجل + المرتجعات ---------- */
+let LED = null;
+async function loadLedger() { try { const { data } = await sb.rpc('t_ledger', { p_code: code }); LED = data || { rows: [], returns: [] }; } catch (e) { LED = LED || { rows: [], returns: [] }; } return LED; }
+function ledSums(rows) {
+  const m = {}; let A = 0, R = 0;
+  for (const r of rows) {
+    if (r.kind === 'sale') { A += +r.total || 0; for (const i of r.items || []) (m[i.b] ||= { l: i.l || bookLabel(i.b), n: 0, r: 0 }).n += +i.q || 0; }
+    else if (r.kind === 'ret') { R += +r.total || 0; for (const i of r.items || []) (m[i.b] ||= { l: i.l || bookLabel(i.b), n: 0, r: 0 }).r += +i.q || 0; }
+  }
+  return { m, A, R };
+}
+const INVBAR = () => `<div class="invbar"><button class="ib ib-i" data-v="inv"><b>🧾</b> فواتيري</button><button class="ib ib-r" data-v="ret"><b>↩️</b> مرتجعات</button></div>`;
+const bindInvBar = () => $$('.ib').forEach(b => b.onclick = () => go(b.dataset.v));
+const itemsTxt = its => (its || []).map(i => `${esc(i.l || bookLabel(i.b))} × ${i.q}`).join('، ');
+async function renderInv() {
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#0ea5e9,#6d28d9)">🧾 فواتيري<div class="small">كل اللي اشتريته ورجّعته وخدته مننا</div></div><div class="loading">جاري التحميل…</div>`;
+  const L = await loadLedger(); if (view !== 'inv') return;
+  const { m, A, R } = ledSums(L.rows), ks = Object.keys(m);
+  const kinds = { sale: ['🧾 فاتورة بيع', '#2563eb'], ret: ['↩️ مرتجع', '#ea580c'], free: ['🎁 تسليم مجاني', '#16a34a'] };
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#0ea5e9,#6d28d9)">🧾 فواتيري</div>
+    <div class="card"><h3 style="margin:0 0 8px">📑 الفاتورة المجمّعة</h3>
+    ${ks.length ? `<div class="tbw"><table class="tb"><thead><tr><th>الكتاب</th><th>اشتريت</th><th>رجّعت</th><th>الصافي</th></tr></thead><tbody>${ks.map(k => `<tr><td>${esc(m[k].l)}</td><td>${m[k].n}</td><td>${m[k].r || ''}</td><td><b>${m[k].n - m[k].r}</b></td></tr>`).join('')}</tbody></table></div>
+      <div class="kv"><span>إجمالي المشتريات</span><b>${money(A)}</b></div><div class="kv"><span>إجمالي المرتجعات</span><b style="color:#ea580c">${money(R)}</b></div>
+      <div class="kv" style="font-size:17px"><span>الصافي</span><b style="color:#16a34a">${money(A - R)}</b></div>` : '<div class="muted">لسه مفيش فواتير بيع عندك.</div>'}</div>
+    <div class="vid-t" style="margin:14px 0 8px">🕘 السجل (${L.rows.length})</div>
+    ${L.rows.map(r => `<div class="card lrow" style="border-inline-start:6px solid ${kinds[r.kind][1]}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${kinds[r.kind][0]}</b><span class="small muted">${fmtDate(r.at)}</span></div>
+      <div class="small" style="margin-top:4px">${itemsTxt(r.items)}</div>${r.total != null && r.kind !== 'free' ? `<div style="margin-top:4px"><b>${r.kind === 'ret' ? '− ' : ''}${money(r.total)}</b></div>` : ''}</div>`).join('') || '<div class="card empty">لسه مفيش حركات.</div>'}
+    <button class="gobtn" id="toRet" style="margin-top:10px">↩️ عايز أرجّع كتب</button>`;
+  $('#toRet').onclick = () => go('ret');
+}
+let retQ = {};
+async function renderRet() {
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#f97316,#dc2626)">↩️ مرتجعات<div class="small">تقدر ترجّع بس اللي اشتريته</div></div><div class="loading">جاري التحميل…</div>`;
+  const L = await loadLedger(); if (view !== 'ret') return;
+  const { m } = ledSums(L.rows), pend = {};
+  (L.returns || []).filter(r => r.status === 'pending').forEach(r => (r.items || []).forEach(i => pend[i.b] = (pend[i.b] || 0) + (+i.q || 0)));
+  const ks = Object.keys(m).map(k => ({ b: k, l: m[k].l, av: m[k].n - m[k].r - (pend[k] || 0) })).filter(x => x.av > 0);
+  const stTxt = { pending: ['⏳ مستني موافقة المندوب', '#d97706'], approved: ['✅ اتوافق عليه', '#16a34a'], rejected: ['❌ اترفض', '#dc2626'] };
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#f97316,#dc2626)">↩️ مرتجعات<div class="small">تقدر ترجّع بس اللي اشتريته</div></div>
+    ${ks.length ? `<div class="bklist" id="rl">${ks.map(x => `<div class="bk" data-b="${esc(x.b)}" data-av="${x.av}" data-l="${esc(x.l)}"><div class="bk-n">${esc(x.l)}</div><div class="small muted">اللي ينفع ترجّعه: ${x.av}</div>
+      <div class="bk-row"><span class="qty"><button type="button" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" max="${x.av}" value="${retQ[x.b] || ''}" placeholder="0"><button type="button" data-d="1">+</button></span></div></div>`).join('')}</div>
+      <div class="totbar"><div id="rtot" class="small">اختار العدد اللي عايز ترجّعه</div><button class="gobtn" id="rs">📤 ابعت طلب المرتجع</button></div>`
+    : '<div class="card empty">مفيش كتب تقدر ترجّعها دلوقتي.</div>'}
+    ${(L.returns || []).length ? `<div class="vid-t" style="margin:14px 0 8px">طلبات المرتجع بتاعتك</div>${L.returns.map(r => `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${stTxt[r.status][1]}">${stTxt[r.status][0]}</b><span class="small muted">${fmtDate(r.at)}</span></div><div class="small">${itemsTxt(r.items)}</div>${r.reason ? `<div class="small">السبب: ${esc(r.reason)}</div>` : ''}</div>`).join('')}` : ''}`;
+  const rl = $('#rl'); if (!rl) return;
+  const calc = () => { let N = 0; $$('.bk', rl).forEach(r => { let q = Math.max(0, parseInt($('input', r).value, 10) || 0); if (q > +r.dataset.av) { q = +r.dataset.av; $('input', r).value = q; } retQ[r.dataset.b] = q; N += q; r.classList.toggle('on', q > 0); }); $('#rtot').textContent = N ? `هترجّع ${N} نسخة` : 'اختار العدد اللي عايز ترجّعه'; };
+  rl.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const i = $('input', b.parentNode); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + +b.dataset.d) || ''; calc(); });
+  rl.addEventListener('input', calc); calc();
+  $('#rs').onclick = async () => {
+    const its = $$('.bk', rl).map(r => ({ b: r.dataset.b, l: r.dataset.l, q: retQ[r.dataset.b] || 0 })).filter(x => x.q > 0);
+    if (!its.length) return toast('اكتب عدد كتاب واحد على الأقل');
+    $('#rs').disabled = true;
+    const { error } = await sb.rpc('t_return', { p_code: code, p_items: its });
+    $('#rs').disabled = false;
+    if (error) return toast(errMsg(error));
+    retQ = {}; toast('اتبعت طلب المرتجع ✅ — هيوصلك رد المندوب', 3500);
+    window.pushNotifyRep && window.pushNotifyRep('↩️ ' + D.name + ' عايز يرجّع كتب');
+    renderRet();
+  };
+}
 let ordQ = {};
 function renderOrder() {
   const ps = myPrices();
-  if (!ps.length) { app.innerHTML = '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; return; }
-  app.innerHTML = `<div class="phead hot">🛒 اطلب كتبك بسعر مميز<div class="small">اكتب الكمية جنب كل كتاب، والحساب بيطلع لوحده</div></div>
+  if (!ps.length) { app.innerHTML = INVBAR() + '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; bindInvBar(); return; }
+  app.innerHTML = INVBAR() + `<div class="phead hot">🛒 اطلب كتبك بسعر مميز<div class="small">اكتب الكمية جنب كل كتاب، والحساب بيطلع لوحده</div></div>
     <div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}">${bookHead(p)}
       <div class="bk-row"><span class="qty"><button type="button" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="1">+</button></span>
       <div class="bk-sum"></div></div></div>`).join('')}</div>
     <div class="field" style="margin-top:8px"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div>
     <div class="totbar"><div id="tot"></div><button class="gobtn" id="os">📤 ابعت الطلب</button></div>`;
+  bindInvBar();
   const ol = $('#ol');
   const calc = () => {
     let A = 0, B = 0, N = 0;
@@ -929,8 +1010,35 @@ function renderRecv() {
 /* ---------- 🆕 اعرف الجديد (بند 46) ----------
    لكل مادة: قناة تليجرام الشركة + الحاجات اللي المالك بيرميها في فولدر المادة على الدرايف (فيديو / PDF) وبتتعرض هنا.
    الرقم الأحمر = الجديد في مواد المدرس (من ملفه) + «عام» بس. */
-// قنوات إعدادي الحقيقية (متابعة 7، من تليجرام شريف). إنجليزي وعلوم إعدادي لسه مالهمش قناة.
-const NEWS_CH = { ar: 'set_arabic_prep', math: 'set_math_prep', stu: 'set_social_prep' };
+// قنوات سلاح التلميذ الحقيقية (متابعة 7، من تليجرام شريف). إنجليزي وعلوم إعدادي لسه مالهمش قناة ← «قريبًا إن شاء الله».
+const NEWS_CHS = {
+  prim: { ar: 'SelahEltelmeezArabic', math: 'SelahEltelmeezMath', en: 'SelahEltelmeezEnglish', sci: 'SelaheltelmeezScience', stu: 'SelaheltelmeezSocial' },
+  prep: { ar: 'set_arabic_prep', math: 'set_math_prep', stu: 'set_social_prep' }
+};
+const NEWS_CH = NEWS_CHS.prim;   // مفاتيح المواد (للعدّاد)
+// أيقونات كرتونية لكل مادة
+const NI = {
+  ar: `<svg viewBox="0 0 64 64"><path d="M6 14c10-4 20-3 26 3v34c-6-6-16-7-26-3z" fill="#fde68a" stroke="#92400e" stroke-width="2.5" stroke-linejoin="round"/><path d="M58 14c-10-4-20-3-26 3v34c6-6 16-7 26-3z" fill="#fef3c7" stroke="#92400e" stroke-width="2.5" stroke-linejoin="round"/><text x="19" y="40" font-size="20" font-weight="800" fill="#1d4ed8" text-anchor="middle">أ</text><text x="45" y="40" font-size="20" font-weight="800" fill="#dc2626" text-anchor="middle">ب</text></svg>`,
+  math: `<svg viewBox="0 0 64 64"><rect x="8" y="6" width="48" height="52" rx="10" fill="#bbf7d0" stroke="#166534" stroke-width="2.5"/><rect x="14" y="12" width="36" height="12" rx="4" fill="#fff" stroke="#166534" stroke-width="2"/><g font-size="15" font-weight="800" fill="#166534" text-anchor="middle"><text x="22" y="40">+</text><text x="42" y="40">−</text><text x="22" y="54">×</text><text x="42" y="54">÷</text></g></svg>`,
+  en: `<svg viewBox="0 0 64 64"><path d="M8 10h48a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H30L16 56V44H8a4 4 0 0 1-4-4V14a4 4 0 0 1 4-4z" fill="#e9d5ff" stroke="#6b21a8" stroke-width="2.5" stroke-linejoin="round"/><text x="32" y="36" font-size="19" font-weight="800" fill="#7e22ce" text-anchor="middle">ABC</text></svg>`,
+  sci: `<svg viewBox="0 0 64 64"><path d="M24 6h16v16l14 26a6 6 0 0 1-5 9H15a6 6 0 0 1-5-9l14-26z" fill="#fed7aa" stroke="#9a3412" stroke-width="2.5" stroke-linejoin="round"/><path d="M17 40h30l7 13a3 3 0 0 1-3 4H13a3 3 0 0 1-3-4z" fill="#fb923c"/><circle cx="26" cy="46" r="3" fill="#fff"/><circle cx="38" cy="42" r="2.2" fill="#fff"/><circle cx="34" cy="50" r="2" fill="#fff"/><rect x="21" y="4" width="22" height="6" rx="3" fill="#9a3412"/></svg>`,
+  stu: `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="25" fill="#7dd3fc" stroke="#075985" stroke-width="2.5"/><path d="M18 20c6-3 10 0 9 6s-8 4-9 10-4 2-6-3c0-6 2-11 6-13zM38 14c6 0 12 4 14 10-6 2-9-2-12-2s-5-4-2-8zM36 36c6-2 12 2 10 8s-8 8-11 4-2-10 1-12z" fill="#4ade80" stroke="#166534" stroke-width="1.8" stroke-linejoin="round"/></svg>`
+};
+// فتح قناة تليجرام: أندرويد ← يفتح التطبيق على القناة، ولو التطبيق مش متثبّت (الصفحة فضلت قدامه) ← يحوّله على تنزيل تليجرام من جوجل بلاي. غير كده ← رابط t.me (بيفتح التطبيق أو صفحة فيها «نزّل»)
+function openTg(ch) {
+  const web = 'https://t.me/' + ch;
+  if (!/Android/i.test(navigator.userAgent)) { if (!window.open(web, '_blank')) location.href = web; return; }
+  let left = false; const mark = () => { left = true; };
+  document.addEventListener('visibilitychange', mark, { once: true }); addEventListener('pagehide', mark, { once: true }); addEventListener('blur', mark, { once: true });
+  location.href = 'tg://resolve?domain=' + ch;
+  setTimeout(() => {
+    if (left || document.hidden) return;
+    toast('تليجرام مش متثبّت — هنوديك تنزّله 📲', 3000);
+    setTimeout(() => { location.href = 'https://play.google.com/store/apps/details?id=org.telegram.messenger'; }, 900);
+  }, 1800);
+}
+const NSTAGE = { prim: ['ابتدائي', '#16a34a'], prep: ['إعدادي', '#2563eb'] };
+const NBG = { ar: '#fef3c7,#fbbf24', math: '#dcfce7,#4ade80', en: '#f3e8ff,#c084fc', sci: '#ffedd5,#fb923c', stu: '#e0f2fe,#38bdf8' };
 const NEWS_L = { ar: 'عربي ودين', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات', all: 'عام' };
 const NEWS_IC = { video: '🎬', pdf: '📄', image: '🖼️', file: '📎' };
 let NEWS = LS.get('selah-news', { items: [], got: 0 }), newsSub = null;
@@ -951,29 +1059,26 @@ function renderNews() {
   loadNews();
   const mine = mySubs();
   if (!newsSub) {
-    const tile = (s, me) => { const n = me ? newsNew(s) : 0, c = NEWS.items.filter(x => x.s === s).length;
-      return `<button class="tt" data-ns="${s}" style="background:${s === 'all' ? 'linear-gradient(140deg,#94a3b8,#475569)' : `linear-gradient(140deg,${SUBJ_COL[s]}cc,${SUBJ_COL[s]})`};${me ? '' : 'opacity:.8'}"><span class="tti">${s === 'all' ? '📢' : '📚'}</span><span class="ttl">${NEWS_L[s]}</span><span class="tts">${me && s !== 'all' ? '⭐ مادتك' : c ? c + ' ملف' : ''}</span>${n ? `<span class="ttb">${n}</span>` : ''}</button>`; };
-    const rest = Object.keys(NEWS_CH).filter(s => !mine.includes(s));
-    app.innerHTML = `<div class="phead">🆕 اعرف الجديد<div class="small">فيديوهات وشروحات وملفات لكل مادة — اختار المادة</div></div>
-      <div class="ttiles">${mine.map(s => tile(s, true)).join('')}${tile('all', true)}</div>
-      ${rest.length ? `<div class="small muted" style="margin:4px 0 8px">باقي المواد:</div><div class="ttiles">${rest.map(s => tile(s, false)).join('')}</div>` : ''}`;
-    // متابعة 7: المادة اللي ليها قناة ← يفتح التليجرام على طول
-    $$('[data-ns]').forEach(b => b.onclick = () => {
-      const s = b.dataset.ns;
-      if (NEWS_CH[s]) {
-        const sa = LS.get('selah-news-seen', {}); sa[s] = new Date().toISOString(); LS.set('selah-news-seen', sa);
-        const u = 'https://t.me/' + NEWS_CH[s];
-        if (NATIVE) location.href = u; else if (!window.open(u, '_blank')) location.href = u;
-        return setTimeout(render, 800);
-      }
-      newsSub = s; render(); scrollTo(0, 0);
+    // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
+    const subs = ['ar', 'math', 'en', 'sci', 'stu'];
+    const tile = (st, s) => { const ch = NEWS_CHS[st][s];
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--bg:linear-gradient(150deg,${NBG[s].split(',')[0]},${NBG[s].split(',')[1]})"><span class="nci">${NI[s]}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">✈️ تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+    const sec = st => `<div class="nhd" style="background:${NSTAGE[st][1]}">${st === 'prim' ? '🎒' : '📘'} المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
+    const hasAll = NEWS.items.some(x => x.s === 'all');
+    app.innerHTML = `<div class="phead">🆕 اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — دوس على المادة</div></div>
+      ${sec('prim')}${sec('prep')}
+      ${hasAll ? `<button class="tt" data-ns="all" style="width:100%;margin-top:10px;background:linear-gradient(140deg,#94a3b8,#475569)"><span class="tti">📢</span><span class="ttl">عام</span>${newsNew('all') ? `<span class="ttb">${newsNew('all')}</span>` : ''}</button>` : ''}`;
+    $$('.nch').forEach(b => b.onclick = () => {
+      const ch = NEWS_CHS[b.dataset.st][b.dataset.s];
+      if (!ch) return toast('قريبًا إن شاء الله 🌟', 2500);
+      openTg(ch);
     });
+    $$('[data-ns]').forEach(b => b.onclick = () => { newsSub = b.dataset.ns; render(); scrollTo(0, 0); });
     return;
   }
   const s = newsSub, seenAll = LS.get('selah-news-seen', {}), seen = seenAll[s] || '', l = NEWS.items.filter(x => x.s === s);
   app.innerHTML = `<button class="btn sm ghost" id="nback" style="margin-bottom:8px">→ كل المواد</button>
     <div class="phead" style="${s !== 'all' ? `background:${SUBJ_COL[s]}` : ''}">${esc(NEWS_L[s])}</div>
-    ${NEWS_CH[s] ? `<a class="gobtn" style="display:block;text-align:center;text-decoration:none;margin-bottom:12px;background:#229ED9" target="_blank" rel="noopener" href="https://t.me/${NEWS_CH[s]}">✈️ افتح قناة ${esc(NEWS_L[s])} على تليجرام</a>` : ''}
     ${l.length ? l.map(x => `<button class="card" data-nf="${esc(x.id)}" style="display:flex;gap:10px;align-items:center;width:100%;text-align:start;font-family:inherit;font-size:16px;cursor:pointer;border:0"><span style="font-size:30px">${NEWS_IC[x.t] || '📎'}</span><span style="flex:1"><b>${esc(x.n)}</b>${x.at > seen ? ' <span class="pill bad">جديد</span>' : ''}<br><span class="small muted">${fmtDate(x.at)}</span></span><span style="font-size:20px">◀</span></button>`).join('')
       : '<div class="card empty">لسه مفيش ملفات هنا — تابعنا، الجديد جاي قريب 🌟</div>'}`;
   seenAll[s] = new Date().toISOString(); LS.set('selah-news-seen', seenAll);
@@ -1040,7 +1145,7 @@ $$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
 $('#reload').onclick = () => load();
 function updBell() { const n = D ? (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); }
 $('#bell').onclick = () => { if (D && D.unread) go('msgs'); else if (D && (D.updates.length || (D.pending && D.pending.status === 'question'))) go('home'); else if (D && newsTotal()) go('news'); else toast('مفيش جديد دلوقتي 👌', 1800); };
-$('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go('home'); };
+$('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go(view === 'inv' || view === 'ret' ? 'order' : 'home'); };
 load();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 </script>
