@@ -82,9 +82,30 @@ async function gPhoto(localId, img) {
     if (t) { t.thumb = th; t.phN = arr.length; delete t.noAv; gsave(db); }
   } catch (e) { console.warn('gPhoto', e); }
 }
-function gOrder(localId, items) {   // طلب كتب اتوافق عليه ← «طلب مستني» في البيع
+// طلب بيع واحد بس لكل مدرس (طلب شريف 2026-11-12): آخر طلب هو اللي يتعتمد ويحل محل اللي قبله
+function gOne(db, localId, its, why) {
+  const olds = (db.sales || []).filter(s => s.t === localId && s.st === 'order').sort((a, b) => (b.d || '').localeCompare(a.d || ''));
+  if (!olds.length) return false;
+  const s = olds[0], was = s.items.map(i => `${bookLabel(i.b)} ${i.q}`).join('، ');
+  s.items = its.map(i => { const o = s.items.find(x => x.b === i.b); return o ? { ...o, q: i.q } : { b: i.b, q: i.q }; });
+  s.oq = Object.fromEntries(its.map(i => [i.b, i.q])); s.d = new Date().toISOString();
+  if (olds.length > 1) db.sales = db.sales.filter(x => !olds.slice(1).includes(x));
+  (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: localId, at: s.d, k: why, txt: `كان: ${was} ← بقى: ${its.map(i => `${bookLabel(i.b)} ${i.q}`).join('، ')}` });
+  return true;
+}
+// تنظيف: المدرس اللي عنده أكتر من طلب مستني في البيع ← يفضل طلب واحد (الأحدث)
+function gMergeAll() {
+  const db = gdb(); if (!db) return 0; let n = 0;
+  const by = {}; for (const s of db.sales || []) if (s.st === 'order' && s.t) (by[s.t] ||= []).push(s);
+  for (const tid in by) if (by[tid].length > 1) { const nw = by[tid].sort((a, b) => (b.d || '').localeCompare(a.d || ''))[0]; if (gOne(db, tid, nw.items.filter(i => i.q > 0).map(i => ({ b: i.b, q: i.q })), 'اتجمعت طلباته في طلب واحد (الأحدث)')) n++; }
+  if (n) gsave(db); return n;
+}
+function gOrder(localId, items, mode = 'replace') {   // طلب كتب اتوافق عليه ← «طلب مستني» في البيع (ولو فيه طلب قبله، بيتعدّل هو)
   const db = gdb(); if (!db || !localId || !(db.teachers || []).some(x => x.id === localId)) return false;
   const its = items.filter(i => i.q > 0).map(i => ({ b: i.b, q: i.q }));
+  if (mode === 'add') { const s = (db.sales || []).filter(x => x.t === localId && x.st === 'order').sort((a, b) => (b.d || '').localeCompare(a.d || ''))[0];
+    if (s) { const all = s.items.map(i => ({ b: i.b, q: i.q })); for (const i of its) { const o = all.find(x => x.b === i.b); if (o) o.q += i.q; else all.push({ ...i }); } its.length = 0; its.push(...all); } }
+  if (gOne(db, localId, its, mode === 'add' ? 'زيادة من المدرس اتضافت على طلبه' : 'آخر طلب من المدرس حل محل اللي قبله')) { gsave(db); return 'merged'; }
   (db.sales ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: localId, st: 'order', d: new Date().toISOString(), items: its, oq: Object.fromEntries(its.map(i => [i.b, i.q])), rep: db.rep, from: 'teacher-app' });
   gsave(db); return true;
 }
@@ -183,6 +204,7 @@ async function loadMe() {
     me = data;
     $('#bellBtn').hidden = false; $('#outBtn').hidden = false; $('#tabs').hidden = false; $('#setTab').hidden = !isAdmin();
     await loadAll(); route();
+    try { const mg = gMergeAll(); if (mg) toast(`🧾 ${mg} مدرس كان عنده أكتر من طلب — بقى طلب واحد (الأحدث)`, 4500); } catch (e) { }
     importGreen().then(ch => { if (ch) refresh(); }).catch(() => { });
     syncPrices().catch(() => { }); loadAvatars().catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
@@ -774,8 +796,10 @@ function bindReviews(root) {
         // طلب جديد ← الكتب كلها. تعديل كمية ← الزيادة بس تبقى طلب مستني، والنقص بتعدّله بإيدك
         const add = o.kind === 'order' ? items : items.map(i => ({ ...i, q: i.q - (i.was || 0) })).filter(i => i.q > 0);
         const less = o.kind === 'edit' ? items.filter(i => i.q < (i.was || 0)) : [];
-        const ok = add.length ? gOrder(t.local_id, add) : true;
-        msg = ok ? `📥 اتنقل «طلب مستني» في البيع${less.length ? ` — وفيه ${less.length} كتاب قلّت كميته: عدّله في البيع بإيدك` : ''}` : '✅ اتوافق — سجّله في البيع بإيدك (المدرس مش في البرنامج على الموبايل ده)';
+        const ok = add.length ? gOrder(t.local_id, add, o.kind === 'order' ? 'replace' : 'add') : true;
+        // الطلبات القديمة المستنية لنفس المدرس تتقفل — آخر طلب هو المعتمد
+        if (o.kind === 'order') await sb.from('orders').update({ status: 'approved', reason: 'اتجمع مع آخر طلب', decided_at: new Date().toISOString() }).eq('teacher_id', o.teacher_id).eq('kind', 'order').eq('status', 'pending').neq('id', o.id);
+        msg = ok ? `${ok === 'merged' ? '📥 طلبه اللي في البيع اتعدّل بآخر طلب (طلب واحد بس)' : '📥 اتنقل «طلب مستني» في البيع'}${less.length ? ` — وفيه ${less.length} كتاب قلّت كميته: عدّله في البيع بإيدك` : ''}` : '✅ اتوافق — سجّله في البيع بإيدك (المدرس مش في البرنامج على الموبايل ده)';
       }
       if (window.pushToTeacher) window.pushToTeacher({ id: o.teacher_id }, a === 'approve' ? '✅ طلب الكتب بتاعك اتوافق عليه' : '❌ طلب الكتب اترفض', false).catch(() => { });
       card.remove(); toast(msg, 4500); counts();
