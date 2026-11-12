@@ -312,7 +312,7 @@ function renderGate() {
   // أول ما يدوس: أندرويد ولا آيفون؟
   const ib = $('#inst'); ib && (ib.onclick = () => modal(`<div style="text-align:center"><h3>موبايلك نوعه إيه؟</h3>
       <button class="gobtn" id="pA" style="margin:10px 0">🤖 أندرويد</button><button class="iosbtn" id="pI">🍎 آيفون</button></div>`, (box, close) => {
-    $('#pA', box).onclick = () => { close(); gPlat = 'and'; pwaInstall(); };   // بند 50: التثبيت من المتصفح على طول (من غير ملف)
+    $('#pA', box).onclick = () => { close(); gPlat = 'and'; apkGuide(); };   // بند 50د: رجعنا لتطبيق الأندرويد (الأذونات جواه إجبارية) بشرح مصوّر
     $('#pI', box).onclick = () => { close(); gPlat = 'ios'; showGuide(0); };
   }));
   const io = $('#iosb'); io && (io.onclick = () => { gPlat = 'ios'; showGuide(0); });
@@ -326,9 +326,18 @@ async function pwaInstall() {
 function apkGuide() {
   // الرابط بيتنسخ عشان التطبيق يدخل لوحده أول ما يتفتح
   if (code) try { navigator.clipboard.writeText(location.href.split('#')[0] + '#c=' + code); } catch (e) { }
-  gPlat = 'apk';
-  if (!$('#guide')) app.insertAdjacentHTML('beforeend', '<div id="guide"></div>');
-  showGuide(0);
+  // بند 50د (طلب شريف): تثبيت التطبيق بأسهل شكل — كارت اطمئنان + فيديو تمثيلي للتثبيت كله + الخطوات مكتوبة
+  const g = $('#guide') || app;
+  const F = [['تنزيل الملف', ['هذا الملف قد يضر جهازك', 'إلغاء', 'تنزيل'], 2], ['الإشعارات', ['⬇️ اكتمل التنزيل', 'silah-teacher.apk'], 1],
+    ['لأمانك', ['الموبايل مش مسموح له يثبت من هنا', 'الإعدادات', 'إلغاء'], 1], ['التثبيت من هذا المصدر', ['السماح من هذا المصدر'], 0, 1],
+    ['سلاح التلميذ', ['هل تريد تثبيت التطبيق؟', 'تثبيت', 'إلغاء'], 1], ['Play Protect', ['تم حظر التطبيق', 'المزيد', 'إلغاء'], 1],
+    ['Play Protect', ['تثبيت على أي حال', 'عدم التثبيت'], 0], ['تم التثبيت', ['✅ تم تثبيت التطبيق', 'فتح', 'تم'], 1]];
+  g.innerHTML = `<div class="icard step"><div style="display:flex;align-items:center;gap:12px;justify-content:center"><img src="icon-192.png" alt="" style="width:64px;height:64px;border-radius:16px"><div style="text-align:start"><div class="ic-t" style="margin:0">سلاح التلميذ</div><div class="small muted">تطبيق رسمي · آمن على موبايلك</div></div></div>
+    <div class="ic-s" style="margin-top:8px">تطبيق «سلاح التلميذ» مخصوص لرسايل الأستاذ ومواعيد الكتب، وبيخلّي الإشعار يرن عندك حتى والشاشة مقفولة 🔔.<br>هتشوف كام رسالة تحذير من أندرويد، <b>دي عادية</b> لأن التطبيق مش من متجر جوجل. اعمل زي الفيديو بالظبط:</div>
+    ${animGuide(F)}
+    <div class="ic-s" style="text-align:start;line-height:2.1">1️⃣ دوس <b>تنزيل</b> لو ظهرت رسالة الملف.<br>2️⃣ افتح الملف من الإشعار (أو من «التنزيلات»).<br>3️⃣ لو قالك «غير مسموح»: دوس <b>الإعدادات</b> ← شغّل <b>السماح من هذا المصدر</b> ← ارجع بالسهم.<br>4️⃣ دوس <b>تثبيت</b>.<br>5️⃣ لو ظهرت «تم حظر التطبيق»: دوس <b>المزيد</b> ← <b>تثبيت على أي حال</b>.<br>6️⃣ دوس <b>فتح</b> ✅</div>
+    <a class="gobtn" style="display:block;text-align:center;text-decoration:none;background:#16a34a" href="${APK_URL}" download>⬇️ نزّل التطبيق</a></div>`;
+  g.scrollIntoView && g.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 /* بند 49: الموبايلات (شاومي، أوبو، ريلمي، فيفو، هواوي…) بتخفي إشعار التطبيقات الجديدة والشاشة مقفولة.
    كارت في الرئيسية بزراير بتفتح صفحات الإعدادات المطلوبة على طول + زرار «جرّب» يبعت تنبيه بعد 15 ثانية. */
