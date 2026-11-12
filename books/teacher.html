@@ -13,6 +13,7 @@
 <script src="config.js"></script>
 <script src="common.js"></script>
 <style>
+.t-nw{grid-column:1/-1;background:linear-gradient(140deg,#f472b6,#be185d)}
 .t-rv{grid-column:1/-1;background:linear-gradient(140deg,#2dd4bf,#0e7490)}.t-rv.lock{background:linear-gradient(140deg,#cbd5e1,#64748b)}
 .rvl label{display:flex;align-items:center;gap:10px;padding:12px;border:2px solid #e2e8f0;border-radius:14px;margin-bottom:8px;font-weight:700;font-size:17px;cursor:pointer;background:#fff}
 .rvl label.on{border-color:#16a34a;background:#dcfce7}.rvl input{width:24px;height:24px}
@@ -96,13 +97,13 @@ async function load() {
     if (error) throw error;
     if (rv && rv.data) RV = rv.data;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
-    const first = !D; D = normD(data); SEEN = evSig(D); $('#tabs').hidden = false; render(); setBadge(); startWatch();
+    const first = !D; D = normD(data); SEEN = evSig(D); loadNews(); $('#tabs').hidden = false; render(); setBadge(); startWatch();
     // طلب تحديث جديد من آخر مرة ← صوت
     const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);
     if (ids.some(i => !seen.includes(i))) ding(); LS.set('selah-trial-tupd', ids);
     if (first) {
       const { data: rep } = await sb.rpc('t_rep', { p_code: code });
-      window.TP = { id: D.id, rep, name: D.name }; window.pushReady && window.pushReady();
+      window.TP = { id: D.id, rep, name: D.name, subs: (D.profile || {}).subjects || [] }; window.pushReady && window.pushReady();
       if (D.unread && window.pushNotifyRep) window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك');
     }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
@@ -156,8 +157,9 @@ function render() {
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
   $('#booksTab').hidden = !((D.books || []).length || D.orders.length || canOrder(D.profile));
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه' }[view] || 'أهلًا ' + tName(D.name);
-  if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
+  if (view !== 'news') newsSub = null;
+  if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
 }
 const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
 const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIELD_LABEL[k] || k}</span><span>${fmtVal(k, o[k])}</span></div>`).join('');
@@ -172,6 +174,7 @@ function renderHome() {
     <button class="tt t-pr" data-v="prices"><span class="tti">💰</span><span class="ttl">أسعار الكتب</span></button>
     <button class="tt t-bk" data-v="books"><span class="tti">📚</span><span class="ttl">كتبي</span></button>
     <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
+    <button class="tt t-nw" data-v="news"><span class="tti">🆕</span><span class="ttl">اعرف الجديد</span><span class="tts">فيديوهات وشروحات لمادتك</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt t-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">📦</span><span class="ttl">استلمت مننا إيه الترم ده</span><span class="tts">${!(RV && RV.open) ? '🔒 هتتفتح لما المندوب يسلّمك' : RV.recv ? '✅ اتبعت — تقدر تعدّل' : 'علّم على الكتب اللي استلمتها'}</span></button></div>`;
   const notif = 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
@@ -318,9 +321,9 @@ function renderPasteCode() {
 // التنبيه = صوت بس. بعد 3 تنبيهات ورا بعض تظهر جملة «الأستاذ … بينبّهك»
 function bubble(m, i, all) {
   if (m.kind === 'ring') {
-    let n = 1; for (let j = i - 1; j >= 0 && all[j].kind === 'ring'; j--) n++;
-    const lastOfStreak = !all[i + 1] || all[i + 1].kind !== 'ring';
-    return n >= 3 && lastOfStreak ? `<div class="bub ring">🔔 الأستاذ ${esc(m.sender || D.rep || '')} بينبّهك<span class="tm">${fmtDate(m.at)}</span></div>` : '';
+    // بند 47: كل تنبيه بيظهر رسالة، وبتختفي بعد نص ساعة (وبتتمسح من القاعدة في t_recv_get)
+    if (Date.now() - new Date(m.at).getTime() > 30 * 60000) return '';
+    return `<div class="bub ring">🔔 الأستاذ ${esc(m.sender || D.rep || '')} بينبّه حضرتك<span class="tm">${fmtDate(m.at)}</span></div>`;
   }
   return `<div class="bub ${m.me ? 'me' : 'them'}">${esc(m.body)}<span class="tm">${fmtDate(m.at)}${m.me ? (m.read ? ' ✓✓' : ' ✓') : ''}</span></div>`;
 }
@@ -541,6 +544,57 @@ function renderRecv() {
     RV.recv = { b, at: new Date().toISOString() };
     toast('اتبعت ✅ شكرًا لحضرتك'); window.pushNotifyRep && window.pushNotifyRep('📦 ' + D.name + ' علّم الكتب اللي استلمها'); go('home');
   };
+}
+
+/* ---------- 🆕 اعرف الجديد (بند 46) ----------
+   لكل مادة: قناة تليجرام الشركة + الحاجات اللي المالك بيرميها في فولدر المادة على الدرايف (فيديو / PDF) وبتتعرض هنا.
+   الرقم الأحمر = الجديد في مواد المدرس (من ملفه) + «عام» بس. */
+const NEWS_CH = { ar: 'SelahEltelmeezArabic', math: 'SelahEltelmeezMath', en: 'SelahEltelmeezEnglish', sci: 'SelahEltelmeezScience', stu: 'SelahEltelmeezSocial' };
+const NEWS_L = { ar: 'عربي ودين', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات', all: 'عام' };
+const NEWS_IC = { video: '🎬', pdf: '📄', image: '🖼️', file: '📎' };
+let NEWS = LS.get('selah-news', { items: [], got: 0 }), newsSub = null;
+async function loadNews(force) {
+  const u = (window.SILAH_CONFIG || {}).CLOUD_URL;
+  if (!u || (!force && Date.now() - (NEWS.got || 0) < 15 * 60000)) return;
+  try {
+    const j = await (await fetch(u + '?k=news')).json(); if (!j || !j.ok) return;
+    const ch = JSON.stringify(j.items) !== JSON.stringify(NEWS.items);
+    NEWS = { items: j.items || [], got: Date.now() }; LS.set('selah-news', NEWS);
+    if (ch && (view === 'home' || view === 'news')) render();
+  } catch (e) { }
+}
+const mySubs = () => ((D.profile || {}).subjects || []).filter(s => NEWS_CH[s]);
+function newsNew(s) { const seen = LS.get('selah-news-seen', {})[s] || ''; return NEWS.items.filter(x => x.s === s && x.at > seen).length; }
+function newsTotal() { return [...mySubs(), 'all'].reduce((n, s) => n + newsNew(s), 0); }
+function renderNews() {
+  loadNews();
+  const mine = mySubs();
+  if (!newsSub) {
+    const tile = (s, me) => { const n = me ? newsNew(s) : 0, c = NEWS.items.filter(x => x.s === s).length;
+      return `<button class="tt" data-ns="${s}" style="background:${s === 'all' ? 'linear-gradient(140deg,#94a3b8,#475569)' : `linear-gradient(140deg,${SUBJ_COL[s]}cc,${SUBJ_COL[s]})`};${me ? '' : 'opacity:.8'}"><span class="tti">${s === 'all' ? '📢' : '📚'}</span><span class="ttl">${NEWS_L[s]}</span><span class="tts">${me && s !== 'all' ? '⭐ مادتك' : c ? c + ' ملف' : ''}</span>${n ? `<span class="ttb">${n}</span>` : ''}</button>`; };
+    const rest = Object.keys(NEWS_CH).filter(s => !mine.includes(s));
+    app.innerHTML = `<div class="phead">🆕 اعرف الجديد<div class="small">فيديوهات وشروحات وملفات لكل مادة — اختار المادة</div></div>
+      <div class="ttiles">${mine.map(s => tile(s, true)).join('')}${tile('all', true)}</div>
+      ${rest.length ? `<div class="small muted" style="margin:4px 0 8px">باقي المواد:</div><div class="ttiles">${rest.map(s => tile(s, false)).join('')}</div>` : ''}`;
+    $$('[data-ns]').forEach(b => b.onclick = () => { newsSub = b.dataset.ns; render(); scrollTo(0, 0); });
+    return;
+  }
+  const s = newsSub, seenAll = LS.get('selah-news-seen', {}), seen = seenAll[s] || '', l = NEWS.items.filter(x => x.s === s);
+  app.innerHTML = `<button class="btn sm ghost" id="nback" style="margin-bottom:8px">→ كل المواد</button>
+    <div class="phead" style="${s !== 'all' ? `background:${SUBJ_COL[s]}` : ''}">${esc(NEWS_L[s])}</div>
+    ${NEWS_CH[s] ? `<a class="gobtn" style="display:block;text-align:center;text-decoration:none;margin-bottom:12px;background:#229ED9" target="_blank" rel="noopener" href="https://t.me/${NEWS_CH[s]}">✈️ افتح قناة ${esc(NEWS_L[s])} على تليجرام</a>` : ''}
+    ${l.length ? l.map(x => `<button class="card" data-nf="${esc(x.id)}" style="display:flex;gap:10px;align-items:center;width:100%;text-align:start;font-family:inherit;font-size:16px;cursor:pointer;border:0"><span style="font-size:30px">${NEWS_IC[x.t] || '📎'}</span><span style="flex:1"><b>${esc(x.n)}</b>${x.at > seen ? ' <span class="pill bad">جديد</span>' : ''}<br><span class="small muted">${fmtDate(x.at)}</span></span><span style="font-size:20px">◀</span></button>`).join('')
+      : '<div class="card empty">لسه مفيش ملفات هنا — تابعنا، الجديد جاي قريب 🌟</div>'}`;
+  seenAll[s] = new Date().toISOString(); LS.set('selah-news-seen', seenAll);
+  $('#nback').onclick = () => { newsSub = null; render(); };
+  $$('[data-nf]').forEach(b => b.onclick = () => {
+    const x = l.find(y => y.id === b.dataset.nf); if (!x) return;
+    const v = document.createElement('div');
+    v.style.cssText = 'position:fixed;inset:0;z-index:999;background:#000;display:flex;flex-direction:column';
+    v.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;color:#fff"><b style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(x.n)}</b><button class="btn sm" id="nvx">✕ قفل</button></div>
+      <iframe src="https://drive.google.com/file/d/${encodeURIComponent(x.id)}/preview" allow="autoplay; fullscreen" allowfullscreen style="flex:1;border:0;width:100%;background:#fff"></iframe>`;
+    document.body.appendChild(v); $('#nvx', v).onclick = () => v.remove();
+  });
 }
 
 /* ---------- ملفي ---------- */

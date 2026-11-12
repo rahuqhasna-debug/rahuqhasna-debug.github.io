@@ -612,7 +612,7 @@ async function ringTeachers(ids) {
   const rc = LS.get('selah-trial-ringc', {}), now = Date.now(), groups = {};
   ids.forEach(id => {
     const c = rc[id] && now - rc[id].at < 2 * 3600e3 ? rc[id].n + 1 : 1; rc[id] = { n: c, at: now };
-    const txt = c >= 3 ? `🔔 الأستاذ ${me.name} بينبّهك` : need[id] ? '📝 حدّث: ' + [...need[id]].map(k => FIELD_LABEL[k] || k).join('، ') : '🔔';
+    const txt = `🔔 الأستاذ ${me.name} بينبّه حضرتك` + (need[id] && c < 3 ? ' — حدّث: ' + [...need[id]].map(k => FIELD_LABEL[k] || k).join('، ') : '');
     (groups[txt] ||= []).push(id);
   });
   LS.set('selah-trial-ringc', rc);

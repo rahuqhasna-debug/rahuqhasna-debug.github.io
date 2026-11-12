@@ -21,6 +21,13 @@
     try { await OS.login(ext); } catch (e) { }
     try { if (ask && !OS.Notifications.permission) await OS.Notifications.requestPermission(); } catch (e) { }
     try { if (OS.Notifications.permission && OS.User && OS.User.PushSubscription && !OS.User.PushSubscription.optedIn) await OS.User.PushSubscription.optIn(); } catch (e) { }
+    // 🆕 اعرف الجديد: علامة لكل مادة بيدرّسها المدرس (s_ar = 1) عشان إشعار الجديد يروح لمدرسين المادة بس
+    try {
+      if (ext.indexOf('t-') === 0 && window.TP) {
+        const subs = TP.subs || [], tg = { tch: '1' }; ['ar', 'math', 'en', 'sci', 'stu'].forEach(s => tg['s_' + s] = subs.indexOf(s) >= 0 ? '1' : '0');
+        const k = JSON.stringify(tg); if (localStorage.getItem('selah-os-tags') !== k) { await OS.User.addTags(tg); localStorage.setItem('selah-os-tags', k); }
+      }
+    } catch (e) { }
   }
   function send(to, title, body, url, ring) {
     if (!CLOUD) return Promise.resolve();

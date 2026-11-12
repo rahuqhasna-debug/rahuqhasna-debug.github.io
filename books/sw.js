@@ -1,7 +1,17 @@
 // سلاح التلميذ البحيرة — يخلّي البرنامج يفتح من غير نت
 // إشعارات الموبايل (OneSignal) — لو النت مش موجود وقت التسطيب ما يوقفش البرنامج
+// كل إشعار = إشعار مستقل بصوت واهتزاز (مايتحطش مكان اللي قبله بصمت) وبيفضل ظاهر لحد ما يتشال — لازم قبل OneSignal
+try {
+  const show0 = ServiceWorkerRegistration.prototype.showNotification;
+  ServiceWorkerRegistration.prototype.showNotification = function (title, o) {
+    o = Object.assign({}, o || {});
+    o.tag = 'n-' + Date.now() + '-' + Math.floor(Math.random() * 1e6); o.renotify = true; o.silent = false;
+    o.vibrate = [400, 150, 400, 150, 600]; o.requireInteraction = true;
+    return show0.call(this, title, o);
+  };
+} catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v24';
+const CACHE = 'books-v25';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
