@@ -26,6 +26,28 @@
 .phsvg .shk{animation:shk 1s infinite;transform-box:fill-box;transform-origin:center top}
 @keyframes shk{0%,100%{transform:rotate(0)}20%{transform:rotate(14deg)}40%{transform:rotate(-14deg)}60%{transform:rotate(8deg)}80%{transform:rotate(-6deg)}}
 .pgdots{display:flex;gap:6px;justify-content:center;margin:8px 0}.pgdots span{flex:1;max-width:60px;height:8px;border-radius:4px;background:#e2e8f0}.pgdots span.ok{background:#16a34a}.pgdots span.on{background:#f59e0b}
+/* بند 51: واجهة الأذونات + صفحة التثبيت (هوية بنفسجي، RTL) */
+.pm-hero{background:linear-gradient(145deg,#7c3aed,#4c1d95);color:#fff;border-radius:22px;padding:20px 16px 16px;text-align:center;box-shadow:0 10px 26px rgba(76,29,149,.3)}
+.pm-hero img{width:60px;height:60px;border-radius:16px;background:#fff;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.pm-hero h2{margin:10px 0 6px;font-size:21px;line-height:1.5}.pm-hero p{margin:0 0 12px;font-size:14px;line-height:1.8;opacity:.95}
+.pm-bar{height:10px;border-radius:6px;background:rgba(255,255,255,.28);overflow:hidden;margin:4px 6px 6px}.pm-bar span{display:block;height:100%;background:#fde68a;border-radius:6px;transition:width .4s}
+.vid-t{font-weight:800;font-size:18px;color:#4c1d95;text-align:center;margin:20px 0 10px}
+.phf{position:relative;width:220px;max-width:64%;margin:0 auto;border:9px solid #111827;border-radius:32px;background:#000;box-shadow:0 14px 32px rgba(17,24,39,.3),0 2px 6px rgba(17,24,39,.2);overflow:hidden}
+.phf video{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:#1e1b4b}
+.phf .pp{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);border:0;border-radius:20px;background:rgba(17,24,39,.78);color:#fff;font:700 14px inherit;font-family:inherit;padding:8px 16px;cursor:pointer;backdrop-filter:blur(4px)}
+.pm-list{margin-top:14px}
+.pcard{display:flex;gap:10px;align-items:flex-start;background:#fff;border:2px solid #ede9fe;border-inline-start:7px solid var(--c);border-radius:18px;padding:14px 12px;margin-top:12px;box-shadow:0 4px 14px rgba(76,29,149,.07)}
+.pcard.ok{background:#f0fdf4;border-color:#bbf7d0;--c:#16a34a}.pcard.lock{opacity:.6}
+.pcard .num{width:32px;height:32px;border-radius:50%;background:var(--c);color:#fff;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;flex:none}
+.pcard .bd{flex:1;min-width:0}.pcard h4{margin:0;font-size:17px;color:#1e1b4b}.pcard p{margin:5px 0 8px;font-size:13.5px;line-height:1.8;color:#475569}
+.pcard .th{width:62px;flex:none}.pcard .th .phsvg{width:62px;max-width:none;margin:0}
+.pbtn{display:block;width:100%;border:0;border-radius:14px;padding:12px 14px;font:800 15px inherit;font-family:inherit;color:#fff;background:linear-gradient(140deg,#8b5cf6,#6d28d9);box-shadow:0 5px 14px rgba(109,40,217,.32);cursor:pointer}
+.pm-note{margin:16px 0 8px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;padding:12px;font-size:13.5px;line-height:1.9;color:#4c1d95}
+.ins-c{background:linear-gradient(160deg,#faf5ff,#fff);border:2px solid #ddd6fe;border-radius:24px;padding:26px 18px;text-align:center;box-shadow:0 12px 30px rgba(76,29,149,.14)}
+.ins-c img{width:84px;height:84px;border-radius:22px;box-shadow:0 8px 20px rgba(76,29,149,.3)}
+.ins-c h2{margin:14px 0 6px;font-size:23px;color:#4c1d95}.ins-c .sub{color:#475569;font-size:15px;line-height:1.8;margin-bottom:16px}
+.ins-b{display:block;width:100%;border:0;border-radius:18px;padding:17px;font:800 19px inherit;font-family:inherit;color:#fff;background:linear-gradient(140deg,#8b5cf6,#5b21b6);box-shadow:0 8px 20px rgba(91,33,182,.4);cursor:pointer}
+.ins-f{list-style:none;padding:0;margin:18px 0 0;text-align:start;font-size:14px;color:#334155;line-height:2}.ins-f li::before{content:'✓';display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#ede9fe;color:#6d28d9;font-weight:800;margin-inline-end:8px;font-size:13px}
 .pgback{background:#fef2f2;border:2px solid #dc2626;border-radius:12px;padding:8px 10px;margin:8px 0;font-weight:700;color:#991b1b}
 .pgbrand{background:#fffbeb;border:1px dashed #f59e0b;border-radius:10px;padding:8px 10px;margin-top:8px;text-align:start;line-height:1.9}
 </style>
@@ -304,10 +326,11 @@ function renderGate() {
   $('#title').textContent = 'أهلًا ' + tName(D.name);
   app.innerHTML = `<div class="icard gate">${installedNow ? `<div class="ic-t">✅ اتثبّت!</div><div class="ic-s">اقفل المتصفح وافتح «سلاح التلميذ» من الشاشة الرئيسية لموبايلك.</div>${PICS.home}
     ${'Notification' in window && Notification.permission !== 'granted' ? '<button class="gobtn" id="gN">🔔 فعّل الإشعارات</button>' : '<div class="ic-s">🔔 الإشعارات متفعّلة ✅</div>'}` : `
-    <div class="ic-ico">📲</div><div class="ic-t">ثبّت البرنامج على موبايلك وفعّل الإشعارات</div>
-    <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
-    <button class="gobtn" id="inst">📲 ثبّت التطبيق دلوقتي</button>
-    ${IOS ? '<button class="iosbtn" id="iosb">🍎 لو معاك آيفون اضغط هنا</button>' : ''}`}</div><div id="guide"></div>`;
+    <div class="ins-c"><img src="icon-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
+      <div class="sub">ثبّته على موبايلك وهتوصلك رسايل الأستاذ فور وصولها.</div>
+      <button class="ins-b" id="inst">📲 ثبّت التطبيق الآن</button>
+      ${IOS ? '<button class="iosbtn" id="iosb" style="margin-top:10px">🍎 لو معاك آيفون اضغط هنا</button>' : ''}
+      <ul class="ins-f"><li>وصول رسائل سلاح التلميذ فورًا</li><li>تنبيهات بمواعيد تسليم النسخ المجانية</li><li>سرعة أكبر من المتصفح</li></ul></div>`}</div><div id="guide"></div>`;
   const gn = $('#gN'); gn && (gn.onclick = async () => { try { await Notification.requestPermission(); } catch (e) { } if (window.pushInit) try { await window.pushInit(); } catch (e) { } renderGate(); });
   // أول ما يدوس: أندرويد ولا آيفون؟
   const ib = $('#inst'); ib && (ib.onclick = () => modal(`<div style="text-align:center"><h3>موبايلك نوعه إيه؟</h3>
@@ -351,8 +374,8 @@ const AUTO_OK = 'selah-auto-ok', RING_FAIL = 'selah-ring-fail';
 let PG_TEST = false, PG_TRIED = {};   // PG_TRIED: الخطوة اتجربت مرة وهو لسه ماعملهاش ← نقوله «ارجع اعمل كذا»
 const toughBrand = s => /xiaomi|redmi|poco|oppo|realme|oneplus|vivo|iqoo|huawei|honor|infinix|tecno|itel|asus|meizu|letv/.test((s && s.brand) || '');
 function permSteps(s) {
-  const fail = !!LS.get(RING_FAIL), notifOk = s.on && s.sound !== false && !(s.imp != null && s.imp >= 0 && s.imp < 4);
-  const a = [{ k: 'n', ok: notifOk && (!fail || !!PG_TRIED.nRev) }, { k: 'b', ok: !!s.batt }];
+  const fail = !!LS.get(RING_FAIL), soundOk = s.sound !== false && !(s.imp != null && s.imp >= 0 && s.imp < 4);
+  const a = [{ k: 'n', ok: !!s.on && (!fail || !!PG_TRIED.nRev) }, { k: 's', ok: !!s.on && soundOk && (!fail || !!PG_TRIED.sRev) }, { k: 'b', ok: !!s.batt }];
   if (toughBrand(s)) a.push({ k: 'a', ok: !!LS.get(AUTO_OK) });
   a.push({ k: 't', ok: !!LS.get(RING_OK) });
   return a;
@@ -401,7 +424,7 @@ const PERM_PICS = {
 };
 function renderPerm() {
   $('#tabs').hidden = true; $('#cbar').innerHTML = '';
-  $('#title').textContent = '🔔 خطوة أخيرة قبل ما تدخل';
+  $('#title').textContent = 'سلاح التلميذ';
   const s = ringState();
   // تطبيق قديم (من غير الجسر الجديد) ← لازم يحدّث الأول
   if (!s) {
@@ -410,42 +433,65 @@ function renderPerm() {
       <a class="gobtn" style="display:block;text-align:center;text-decoration:none;background:#16a34a" href="${APK_URL}" download>⬇️ نزّل التحديث</a></div>`;
     return;
   }
-  const steps = permSteps(s), i = steps.findIndex(x => !x.ok), st = steps[i], n = steps.length;
-  const dots = `<div class="pgdots">${steps.map((x, j) => `<span class="${x.ok ? 'ok' : j === i ? 'on' : ''}"></span>`).join('')}</div>`;
-  const fail = !!LS.get(RING_FAIL);
-  const T = {
-    n: ['🔔 شغّل الإشعارات', 'دوس الزرار الأخضر ← هتفتح صفحة الإشعارات ← شغّل كل المفاتيح زي الرسمة ← وارجع هنا.', '🔔 افتح الإشعارات'],
-    b: ['🔋 اسمح بالبطارية', 'عشان الموبايل مايقفلش البرنامج وإنت مش فاتحه. دوس الزرار الأخضر ← دوس «سماح» ← وارجع هنا.', '🔋 افتح البطارية'],
-    a: ['🚀 شغّل التشغيل التلقائي', 'موبايلك بيقفل التطبيقات الجديدة. دوس الزرار الأخضر ← شغّل المفتاح جنب «سلاح التلميذ» ← وارجع هنا.', '🚀 افتح التشغيل التلقائي'],
-    t: ['✅ آخر خطوة: جرّب الرنة', 'دوس الزرار الأخضر ← اقفل الشاشة على طول ← استنى 15 ثانية ← الموبايل لازم يرن 🔔', '🔔 جرّب دلوقتي واقفل الشاشة']
-  }[st.k];
-  // رجع من الإعدادات والخطوة لسه ناقصة ← «ارجع اعمل كذا»
-  const backMsg = PG_TRIED[st.k] && st.k !== 'a' && st.k !== 't' ? `<div class="pgback">⚠️ لسه ماخلصتش! ارجع ${st.k === 'n' ? 'شغّل مفاتيح الإشعارات كلها' : 'دوس «سماح» في البطارية'} زي الرسمة دي بالظبط 👇</div>`
-    : (fail && st.k === 'n') ? '<div class="pgback">⚠️ مارنّش؟ ارجع اتأكد إن «الصوت» و«شاشة القفل» و«الإشعارات العائمة» شغالين 👇</div>' : '';
-  let btns;
-  if (st.k === 't' && PG_TEST) btns = `<div class="ic-t" style="margin-top:10px">الموبايل رنّ؟</div>
-    <button class="gobtn" id="pgYes" style="background:#16a34a">✅ أيوه رنّ — ادخل البرنامج</button>
-    <button class="btn owe" id="pgNo" style="width:100%;margin-top:8px">❌ لأ مارنّش</button>
-    <button class="btn ghost sm" id="pgGo" style="width:100%;margin-top:6px">🔁 جرّب تاني</button>`;
-  else btns = `<button class="gobtn" id="pgGo" style="background:#16a34a">${T[2]}</button>
-    ${st.k === 'a' && PG_TRIED.a ? '<button class="gobtn" id="pgDone" style="margin-top:8px">✅ شغّلته — اللي بعده</button>' : ''}
-    ${st.k === 'a' ? '<button class="btn ghost sm" id="pgSkip" style="width:100%;margin-top:6px">مش لاقيه في موبايلي</button>' : ''}`;
-  app.innerHTML = `<div class="icard gate step">${dots}<div class="stepn">خطوة ${i + 1} من ${n}</div><div class="ic-t">${T[0]}</div>${backMsg}${PERM_PICS[st.k]()}
-    <div class="ic-s">${T[1]}</div>${brandTip(st.k, s) ? `<div class="pgbrand">📱 ${esc(brandTip(st.k, s))}</div>` : ''}${btns}
-    <div class="small muted" style="margin-top:10px">عشان رسايل الأستاذ ترن عندك والموبايل مقفول — مرة واحدة بس.</div></div>`;
-  const back = () => document.addEventListener('visibilitychange', function f() { if (!document.hidden) { document.removeEventListener('visibilitychange', f); setTimeout(render, 500); } });
-  const go_ = $('#pgGo');
-  go_.onclick = () => {
-    PG_TRIED[st.k] = 1; back();
-    if (st.k === 'n') { if (fail) PG_TRIED.nRev = 1; if (!SilahApp.pushOn()) { SilahApp.askPush(); setTimeout(render, 4000); } else SilahApp.openNotif(); }
-    else if (st.k === 'b') SilahApp.openBattery();
-    else if (st.k === 'a') SilahApp.openAutostart();
-    else { if (!window.pushSelfTest) return toast('استنى ثانية وجرّب تاني'); window.pushSelfTest(); PG_TEST = true; toast('🔒 اقفل الشاشة دلوقتي — هيرن بعد 15 ثانية', 6000); setTimeout(render, 1500); }
+  const steps = permSteps(s), fail = !!LS.get(RING_FAIL), tough = toughBrand(s);
+  const done = steps.filter(x => x.ok).length, allBefore = steps.slice(0, 4).every(x => x.ok);
+  const okOf = k => (steps.find(x => x.k === k) || {}).ok;
+  // بطاقة لكل إذن: رقم + عنوان + هتعمل إيه + صورة صغيرة توضح + زرار بيفتح الإعداد على طول
+  const CARDS = {
+    n: { c: '#7c3aed', ic: '🔔', t: 'تفعيل الإشعارات', d: 'هتفتح صفحة الإشعارات — شغّل مفتاح «السماح بالإشعارات» وارجع.', b: '🔔 افتح الإشعارات', pic: 'n' },
+    s: { c: '#0ea5e9', ic: '🔊', t: 'الصوت وشاشة القفل', d: 'في نفس الصفحة: شغّل «الصوت» و«شاشة القفل» و«الإشعارات العائمة».', b: '🔊 افتح إعدادات الصوت', pic: 'n' },
+    b: { c: '#f59e0b', ic: '🔋', t: 'السماح من البطارية', d: 'هتظهر رسالة صغيرة — دوس «سماح» عشان الموبايل مايقفلش البرنامج.', b: '🔋 افتح البطارية', pic: 'b' },
+    a: { c: '#ec4899', ic: '🚀', t: 'التشغيل التلقائي', d: 'شغّل المفتاح اللي جنب «سلاح التلميذ» في القايمة اللي هتفتح.', b: '🚀 افتح التشغيل التلقائي', pic: 'a' },
+    t: { c: '#16a34a', ic: '✅', t: 'جرّب الرنة', d: 'دوس الزرار ← اقفل الشاشة على طول ← استنى 15 ثانية ← لازم يرن.', b: '🔔 جرّب دلوقتي واقفل الشاشة', pic: 't' }
   };
+  const order = ['n', 's', 'b', 'a', 't'];
+  const stepOf = k => steps.find(x => x.k === k);
+  const card = (k, idx) => {
+    const C = CARDS[k], st = stepOf(k), ok = st ? st.ok : true, na = !st;   // na = مش مطلوب في موبايله (التشغيل التلقائي لغير الشركات الصعبة)
+    const locked = k === 't' && !allBefore && !ok;
+    const tip = !na && (k === 'n' || k === 's' || k === 'b' || k === 'a') && brandTip(k === 's' ? 'n' : k, s) ? `<div class="pgbrand" style="margin:6px 0 8px;font-size:12px">📱 ${esc(brandTip(k === 's' ? 'n' : k, s))}</div>` : '';
+    const warn = !ok && !na && !locked && ((PG_TRIED[k]) && k !== 'a' && k !== 't') ? '<div class="pgback">⚠️ لسه ماخلصتش — ارجع اعمل زي الصورة</div>' : (!ok && fail && (k === 'n' || k === 's' || k === 'a')) ? '<div class="pgback">⚠️ مارنّش؟ راجع الخطوة دي تاني</div>' : '';
+    let act;
+    if (na) act = '<div class="small" style="color:#15803d;font-weight:700">مش مطلوبة في موبايلك ✅</div>';
+    else if (ok) act = '<div class="small" style="color:#15803d;font-weight:800">تمام ✅ اتعملت</div>';
+    else if (locked) act = '<div class="small muted">🔒 بتتفتح بعد ما تخلّص اللي فوق</div>';
+    else if (k === 't' && PG_TEST) act = `<div style="font-weight:800;margin-bottom:6px">الموبايل رنّ؟</div><button class="pbtn" id="pgYes">✅ أيوه رنّ</button><button class="btn owe" id="pgNo" style="width:100%;margin-top:6px">❌ لأ مارنّش</button><button class="btn ghost sm" data-pg="t" style="width:100%;margin-top:6px">🔁 جرّب تاني</button>`;
+    else act = `<button class="pbtn" data-pg="${k}">${C.b}</button>${k === 'a' && PG_TRIED.a ? '<button class="pbtn" id="pgDone" style="margin-top:6px;background:#16a34a">✅ شغّلته</button><button class="btn ghost sm" id="pgSkip" style="width:100%;margin-top:6px">مش لاقيه في موبايلي</button>' : ''}`;
+    return `<div class="pcard ${ok || na ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}"><div class="num">${ok || na ? '✓' : idx}</div>
+      <div class="bd"><h4>${C.ic} ${C.t}</h4><p>${C.d}</p>${tip}${warn}${act}</div>${na ? '' : `<div class="th">${PERM_PICS[C.pic]()}</div>`}</div>`;
+  };
+  const vid = `<div class="vid-t">🎬 شاهد الخطوات بالفيديو</div>
+    <div class="phf" id="phf"><video id="tvid" autoplay muted loop playsinline preload="metadata" poster="silah-tutorial-poster.jpg"><source src="silah-tutorial.mp4" type="video/mp4"></video>
+    <button class="pp" id="tpp" aria-label="إيقاف">⏸ إيقاف</button></div>`;
+  app.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>خلّي رسايل الأستاذ توصلك 🔔</h2>
+      <p>خمس خطوات بسيطة، مرة واحدة بس — وبعدها كل رسايل «سلاح التلميذ» هترن عندك حتى والشاشة مقفولة.</p>
+      <div class="pm-bar"><span style="width:${Math.round(done / steps.length * 100)}%"></span></div><div class="small" style="opacity:.9">${done} من ${steps.length} اتعملوا</div></div>
+    ${vid}
+    <div class="pm-list">${order.map((k, i) => card(k, i + 1)).join('')}</div>
+    <div class="pm-note">🛡️ <b>تحذير أندرويد عادي:</b> ممكن يظهرلك تحذير وإنت بتظبط الإعدادات، لأن «سلاح التلميذ» تطبيق من خارج متجر جوجل بلاي. التطبيق آمن ومخصوص لرسايل الأستاذ بس، وتقدر تكمل بثقة.</div>`;
+  // فيديو الشرح: تشغيل/إيقاف، ولو الملف مش موجود الإطار كله يختفي
+  const tv = $('#tvid'), pp = $('#tpp');
+  if (tv) {
+    tv.addEventListener('error', () => { const f = $('#phf'); f && (f.parentNode.querySelector('.vid-t').hidden = true, f.hidden = true); }, true);
+    pp.onclick = () => { if (tv.paused) { tv.play().catch(() => { }); } else tv.pause(); };
+    tv.onplay = () => { pp.textContent = '⏸ إيقاف'; pp.setAttribute('aria-label', 'إيقاف'); };
+    tv.onpause = () => { pp.textContent = '▶️ تشغيل'; pp.setAttribute('aria-label', 'تشغيل'); };
+    tv.play && tv.play().catch(() => { pp.textContent = '▶️ تشغيل'; });
+  }
+  const back = () => document.addEventListener('visibilitychange', function f() { if (!document.hidden) { document.removeEventListener('visibilitychange', f); setTimeout(render, 500); } });
+  $$('[data-pg]').forEach(b => b.onclick = () => {
+    const k = b.dataset.pg; PG_TRIED[k] = 1;
+    if (k === 't') { if (!window.pushSelfTest) return toast('استنى ثانية وجرّب تاني'); window.pushSelfTest(); PG_TEST = true; toast('🔒 اقفل الشاشة دلوقتي — هيرن بعد 15 ثانية', 6000); return setTimeout(render, 1500); }
+    back();
+    if (k === 'n') { if (fail) PG_TRIED.nRev = 1; if (!SilahApp.pushOn()) { SilahApp.askPush(); setTimeout(render, 4000); } else SilahApp.openNotif(); }
+    else if (k === 's') { if (fail) PG_TRIED.sRev = 1; SilahApp.openNotif(); }
+    else if (k === 'b') SilahApp.openBattery();
+    else if (k === 'a') SilahApp.openAutostart();
+  });
   const dn = $('#pgDone'); dn && (dn.onclick = () => { LS.set(AUTO_OK, 1); render(); });
   const sk = $('#pgSkip'); sk && (sk.onclick = () => { LS.set(AUTO_OK, 1); render(); });
   const y = $('#pgYes'); y && (y.onclick = () => { LS.set(RING_OK, 1); LS.set(RING_FAIL, 0); PG_TEST = false; PG_TRIED = {}; toast('🎉 تمام! أهلًا بحضرتك', 2500); render(); });
-  // مارنّش ← نرجّعه يراجع الإشعارات والتشغيل التلقائي من الأول
+  // مارنّش ← نرجّعه يراجع الإشعارات والتشغيل التلقائي
   const no = $('#pgNo'); no && (no.onclick = () => { LS.set(RING_FAIL, 1); LS.set(AUTO_OK, 0); PG_TEST = false; PG_TRIED = {}; render(); scrollTo(0, 0); });
 }
 /* بند 50 (نسخة المتصفح — اختيار شريف النهائي): البرنامج بيتثبّت من المتصفح على طول، ولما يفتحه: «دخول» ← الأذونات الأول.

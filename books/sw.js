@@ -11,7 +11,7 @@ try {
   };
 } catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v29';
+const CACHE = 'books-v30';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
@@ -37,6 +37,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.origin !== location.origin) return;
+  if (/\.(mp4|webm|apk)$/i.test(url.pathname)) return;   // الفيديو والتطبيق ماينفعش يعدّوا من الـ SW (طلبات Range)
   // النت الأول (علشان التحديثات توصل)، ولو مفيش نت يفتح النسخة المحفوظة
   e.respondWith(
     fetch(e.request.url, {cache: 'no-store'})
