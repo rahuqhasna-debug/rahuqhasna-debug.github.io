@@ -48,9 +48,11 @@ header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;
 .backbtn:active{transform:scale(.98)}
 header.top .back{background:rgba(255,255,255,.22);border:0;color:inherit;font-size:18px;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;flex:none}
 .areabar{position:sticky;top:var(--hh,50px);z-index:12;background:var(--bg);padding:6px 0 4px}
+.stickbar{position:sticky;top:var(--hh,50px);z-index:15;background:var(--bg);padding:6px 4px 2px;margin:0 -4px 6px;box-shadow:0 6px 8px -8px rgba(0,0,0,.25)}
+.stickbar .areabar{position:static;padding-top:0}.stickbar .search{margin-bottom:6px}
 .areabar select{width:100%;font-size:16px;font-weight:700;padding:10px;border-radius:12px}
 .stickytop{position:sticky;top:-16px;z-index:6;background:var(--card);padding-top:8px}
-html,body{max-width:100%;overflow-x:hidden}   /* الصفحة بعرض التليفون، من غير تمرير يمين وشمال — التمرير فوق وتحت بس */
+html,body{max-width:100%;overflow-x:hidden;overflow-x:clip}   /* الصفحة بعرض التليفون، من غير تمرير يمين وشمال — التمرير فوق وتحت بس */
 img,svg,video,canvas{max-width:100%}
 .card,.box,main,#app{max-width:100%;min-width:0;overflow-wrap:anywhere}
 nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
@@ -999,11 +1001,11 @@ function renderTeachers(){
   const owedT=db.teachers.filter(t=>idx[t.id]?.o).length;
   const chip=(k,txt)=>`<button class="chip ${homeFilter===k?'on':''}" data-act="filter" data-k="${k}">${txt}</button>`;
   app.innerHTML = topBanners() + `
-    ${areas.length>1?`<div class="areabar"><select class="area" id="area"><option value="">📍 كل المناطق</option>${areas.map(a=>`<option ${a===homeArea?'selected':''}>${esc(a)}</option>`).join('')}</select></div>`:''}
+    <div class="stickbar">${areas.length>1?`<div class="areabar"><select class="area" id="area"><option value="">📍 كل المناطق</option>${areas.map(a=>`<option ${a===homeArea?'selected':''}>${esc(a)}</option>`).join('')}</select></div>`:''}
     <div class="search">
       <input id="q" type="search" placeholder="🔎 أي حاجة: اسم، تليفون، قرية، «عربي إعدادي A»، «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button>
-    </div>
+    </div></div>
     <div class="chips">
       ${chip('all',`الكل (${db.teachers.length})`)}
       ${planToday?chip('plan',`خط سير النهارده (${planToday})`):''}
@@ -1117,8 +1119,8 @@ async function sbCntPull(S){
   try{
     const rev={}; for(const k in sbIds) rev[sbIds[k]]=k;
     const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-1999'}}); return r.ok?r.json():[]; };
-    const [m,e,o]=await Promise.all([q('messages?select=teacher_id&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id&status=eq.pending'), q('orders?select=teacher_id&status=eq.pending')]);
-    const c={}, add=(l,k)=>l.forEach(x=>{ const id=rev[x.teacher_id]; if(id){ (c[id] ||= {m:0,e:0,o:0})[k]++; } });
+    const [m,e,o]=await Promise.all([q('messages?select=teacher_id,id&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id&status=eq.pending'), q('orders?select=teacher_id&status=eq.pending')]);
+    const c={}, add=(l,k)=>l.forEach(x=>{ const id=rev[x.teacher_id]; if(id){ const z=(c[id] ||= {m:0,e:0,o:0,l:0}); z[k]++; if(x.id>z.l) z.l=x.id; } });
     add(m,'m'); add(e,'e'); add(o,'o');
     const ch=JSON.stringify(c)!==JSON.stringify(sbCnt); sbCnt=c; try{ localStorage.setItem('selah-trial-cnt', JSON.stringify(c)); }catch(er){}
     if(ch && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.querySelector('.modal')){ const y=scrollY; render(); scrollTo(0,y); }
@@ -1198,7 +1200,9 @@ function renderList(){
     return matchTeacher(t, Q, owedBy[t.id]||[]);
   });
   const rk=(homeArea || homeFilter==='plan') ? recvRankFn() : null;   // شغال على قرية/خط سير: اللي استلم ينزل تحت واللي لسه فوق
+  const sbOn=sbHas(), sbR=t=>{ const x=sbOn&&sbCnt[t.id]; return x&&(x.m||x.o) ? 1e12+(x.l||0)+(x.o||0) : 0; };   // اللي بعتوا رسايل أو طلبات في المراسلات فوق (الأحدث الأول)
   list.sort((a,b)=>{
+    { const d=sbR(b)-sbR(a); if(d) return d; }
     if(rk){ const d=rk(a)-rk(b); if(d) return d; }
     const la=idx[a.id]?.last||'', lb=idx[b.id]?.last||'';
     if(homeFilter==='all' && !raw && la!==lb) return lb.localeCompare(la);
@@ -2857,9 +2861,9 @@ function renderSales(sub, focus){
   const tab=(k,txt)=>`<button class="chip ${salesTab===k?'on':''}" data-act="sales-tab" data-k="${k}">${txt}</button>`;
   let html=`<button class="btn pri" data-act="new-sale" style="width:100%;font-size:18px;padding:14px;margin-bottom:8px">➕ بيع / طلب جديد</button>
     <button class="btn ok" data-act="my-stock" style="width:100%;margin-bottom:12px;font-size:17px">📦 الكتب المتاحة معايا — اختار الكتب وشوف الفاضل من كل تاجر</button>
-    <div class="chips">${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('acc','🧾 حسابات المدرسين')}${tab('merch','🏪 التجار')}</div>`;
+    <div class="stickbar"><div class="chips">${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('acc','🧾 حسابات المدرسين')}${tab('merch','🏪 التجار')}</div>`;
   const sid='sq_'+salesTab;
-  html += searchBar(sid, salesTab==='merch'?'🔎 دوّر باسم التاجر (أو اسم مدرس خد من بضاعته)':undefined) + '<div id="slist">' +
+  html += searchBar(sid, salesTab==='merch'?'🔎 دوّر باسم التاجر (أو اسم مدرس خد من بضاعته)':undefined) + '</div><div id="slist">' +
     (salesTab==='orders' ? ordersHtml(orders) : salesTab==='acc' ? accHtml() : merchHtml()) + '</div>';
   app.innerHTML=html;
   bindSearch(sid, '#slist', salesTab==='merch'?'مفيش تاجر بالاسم ده في الصفحة دي':undefined);

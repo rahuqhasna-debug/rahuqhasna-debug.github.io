@@ -23,7 +23,7 @@
 <div id="cbar"></div>
 <nav class="tabs" id="tabs" hidden>
   <a href="index.html"><span class="i">🏠</span>البرنامج</a>
-  <a href="index.html#/msgs"><span class="i" style="display:inline-block;width:22px;height:22px">🟩</span>واتساب</a>
+  <a href="index.html#/msgs" id="waTab"><span class="i wai"></span>واتساب</a>
   <a href="#/" data-tab="list"><span class="i">👥</span>المدرسين</a>
   <a href="#/invite" data-tab="invite"><span class="i">✉️</span>رسالة الدعوة</a>
   <a href="#/bell" data-tab="bell"><span class="i">🔔</span>الإشعارات</a>
@@ -121,7 +121,26 @@ function updState(t) {
 }
 const UPD_C = { full: ['#16a34a', '🟢 حدّث كله'], part: ['#f59e0b', '🟠 باقيله جزء'], none: ['#94a3b8', '⚪ ماحدّثش'] };
 const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy[id] || 0);   // علامات المدرس جنب اسمه في أي مكان
-function avHtml(t, cls = '') { return t.avatar ? `<img class="av ${cls}" src="${t.avatar}" alt="">` : `<span class="av ${cls}">${esc((t.name || '؟').trim()[0] || '👤')}</span>`; }
+// صور المدرسين للدايرة اللي بره: نسخة صغيرة 72px متخزنة على الموبايل، وبتتحدّث لوحدها لما المدرس يغيّر صورته
+let AVC = LS.get('selah-trial-av') || {};
+async function loadAvatars() {
+  const rows = await fetchAll(() => sb.from('teachers').select('id,updated_at').not('avatar', 'is', null));
+  const keep = {}, need = [];
+  for (const r of rows) { const o = AVC[r.id]; if (o && o.k === r.updated_at) keep[r.id] = o; else need.push(r); }
+  for (let i = 0; i < need.length; i += 20) {
+    const part = need.slice(i, i + 20), { data } = await sb.from('teachers').select('id,avatar').in('id', part.map(x => x.id));
+    for (const x of data || []) { const th = x.avatar ? await gThumb(x.avatar) : ''; if (th) keep[x.id] = { k: (part.find(p => p.id === x.id) || {}).updated_at, th }; }
+  }
+  const ch = JSON.stringify(Object.keys(keep).map(k => [k, keep[k].k])) !== JSON.stringify(Object.keys(AVC).map(k => [k, AVC[k].k]));
+  AVC = keep; try { LS.set('selah-trial-av', keep); } catch (e) { }
+  // المدرس اللي ملوش صورة في البرنامج الأخضر ياخد صورته من المراسلات (للدايرة)
+  try { const db = gdb(); let n = 0; if (db) for (const x of T) { const a = keep[x.id], gt = a && x.local_id && (db.teachers || []).find(y => y.id === x.local_id); if (gt && !gt.thumb) { gt.thumb = a.th; n++; } } if (n) gsave(db); } catch (e) { }
+  if (ch && me) route();
+}
+function avHtml(t, cls = '') {
+  const src = t.avatar || (AVC[t.id] && AVC[t.id].th) || (t.id && T.find(x => x.id === t.id) && ((gInfo()[(T.find(x => x.id === t.id) || {}).local_id] || {}).th));
+  return src ? `<img class="av ${cls}" src="${src}" alt="">` : `<span class="av ${cls}">${esc((t.name || '؟').trim()[0] || '👤')}</span>`;
+}
 async function fetchAll(make) {
   let out = [];
   for (let i = 0; ; i += 1000) { const { data, error } = await make().range(i, i + 999); if (error) throw error; out = out.concat(data); if (data.length < 1000) break; }
@@ -165,6 +184,7 @@ async function loadMe() {
     $('#bellBtn').hidden = false; $('#outBtn').hidden = false; $('#tabs').hidden = false; $('#setTab').hidden = !isAdmin();
     await loadAll(); route();
     importGreen().then(ch => { if (ch) refresh(); }).catch(() => { });
+    syncPrices().catch(() => { }); loadAvatars().catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
     setInterval(() => counts().catch(() => { }), 30000);
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="boot()">حاول تاني</button>`; }
@@ -282,6 +302,7 @@ function route() {
   clearInterval(pollT); $('#cbar').innerHTML = '';
   const h = location.hash.slice(1) || '/';
   if (h.startsWith('/t/')) { setTab('list'); return viewTeacher(decodeURIComponent(h.slice(3))); }
+  waTabFor(h.startsWith('/c/') ? decodeURIComponent(h.slice(3)) : '');
   if (h.startsWith('/c/')) { setTab('list'); return viewChat(decodeURIComponent(h.slice(3))); }
   if (h === '/bell') { setTab('bell'); return viewBell(); }
   if (h === '/invite') { setTab('invite'); return viewInvite(); }
@@ -290,6 +311,13 @@ function route() {
 }
 window.addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
 
+// أيقونة الواتساب اللي تحت: جوه شات مدرس بتفتح شات الواتساب معاه على طول، وفي أي مكان تاني صفحة الواتساب في البرنامج
+function waTabFor(tid) {
+  const a = $('#waTab'); if (!a) return; const i = $('.wai', a); if (i && !i.innerHTML) i.innerHTML = WA_ICON;
+  const t = tid && T.find(x => x.id === tid);
+  if (t && t.phone) { a.href = 'https://wa.me/' + waPhone(t.phone); a.target = '_blank'; a.rel = 'noopener'; a.title = 'كمّل مع ' + t.name + ' على الواتساب'; }
+  else { a.href = 'index.html#/msgs'; a.removeAttribute('target'); a.title = 'واتساب'; }
+}
 /* ---------- استيراد من البرنامج الأخضر ---------- */
 // بيحصل لوحده مع كل فتح (لو البرنامج اتغيّر من آخر مرة) — من غير زرار
 async function importGreen() {
@@ -306,10 +334,7 @@ async function importGreen() {
     const { error } = await sb.from('teachers').upsert(rows.slice(i, i + 300), { onConflict: 'rep_id,local_id' });
     if (error) { console.warn(error); return false; }
   }
-  if (isAdmin() && db.prices) {
-    const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? null }));
-    if (items.length) await sb.from('app_settings').upsert({ key: 'prices', value: { items, at: new Date().toISOString() } });
-  }
+  await syncRepOrders(db).catch(e => console.warn('repOrders', e));
   LS.set('selah-trial-isync', sig); return true;
 }
 
@@ -342,6 +367,50 @@ function tHay(t) {
   if (s) out.push(ST_W[s.st] || '', s.c || '', s.lv || '', s.w ? 'عليه فلوس' : '');
   if (!t.last_seen) out.push('لسه ما فتحش');
   return norm(out.filter(Boolean).join(' '));
+}
+// أسعار الكتب ← المدرسين (💰 أسعار الكتب + الطلب). بتترفع مع كل فتح لو الأسعار في البرنامج اتغيّرت (المالك بس)
+async function syncPrices() {
+  const db = gdb(); if (!isAdmin() || !db || !db.prices) return;
+  const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? null }));
+  if (!items.length) return;
+  const sig = JSON.stringify(items.map(i => [i.b, i.pre, i.post]));
+  if (LS.get('selah-trial-psig') === sig) return;
+  const { error } = await sb.from('app_settings').upsert({ key: 'prices', value: { items, at: new Date().toISOString() } });
+  if (error) { console.warn('prices', error); return; }
+  LS.set('selah-trial-psig', sig);
+}
+/* ---------- طلبات البيع اللي المندوب سجّلها في البرنامج ← تظهر عند المدرس ويقدر يعدّلها ----------
+   كل «طلب مستني» (sale st:'order') بيتنسخ في orders (status approved، note 'rep:<sale id>'، وكل كتاب فيه sid).
+   المدرس بيبعت تعديل (kind edit وكل كتاب فيه sid) ← الموافقة بتعدّل نفس الطلب في البيع. */
+async function syncRepOrders(db) {
+  const mineIds = {}; (await fetchAll(() => sb.from('teachers').select('id,local_id').eq('rep_id', me.id))).forEach(x => { if (x.local_id) mineIds[x.local_id] = x.id; });
+  const rows = await fetchAll(() => sb.from('orders').select('id,teacher_id,items,note').like('note', 'rep:%'));
+  const bySid = {}; rows.forEach(r => bySid[r.note.slice(4)] = r);
+  const seen = new Set();
+  for (const s of db.sales || []) {
+    if (s.st !== 'order' || s.from === 'teacher-app' || !mineIds[s.t]) continue;
+    const items = (s.items || []).filter(i => i.q > 0).map(i => ({ b: i.b, l: bookLabel(i.b), q: i.q, sid: s.id }));
+    if (!items.length) continue;
+    seen.add(s.id); const r = bySid[s.id], sig = x => (x || []).map(i => i.b + ':' + i.q).join(',');
+    if (!r) await sb.from('orders').insert({ teacher_id: mineIds[s.t], kind: 'order', status: 'approved', items, note: 'rep:' + s.id, decided_at: s.d || new Date().toISOString() });
+    else if (sig(r.items) !== sig(items)) await sb.from('orders').update({ items }).eq('id', r.id);
+  }
+  // الطلب اتنفذ (بقى بيع) أو اتمسح ← يتشال من عند المدرس
+  const gone = rows.filter(r => !seen.has(r.note.slice(4)) && Object.values(mineIds).includes(r.teacher_id)).map(r => r.id);
+  if (gone.length) await sb.from('orders').delete().in('id', gone);
+}
+// الموافقة على تعديل المدرس لطلب سجّله المندوب: نفس الطلب في البيع بيتعدّل (زيادة ونقص وكتب جديدة)
+function gSaleEdit(sid, items) {
+  const db = gdb(); if (!db) return false;
+  const s = (db.sales || []).find(x => x.id === sid && x.st === 'order'); if (!s) return false;
+  for (const i of items) {
+    const it = s.items.find(x => x.b === i.b);
+    if (it) it.q = i.q; else if (i.q > 0) s.items.push({ b: i.b, q: i.q });
+  }
+  s.items = s.items.filter(x => x.q > 0);
+  if (!s.items.length) db.sales = db.sales.filter(x => x !== s);
+  (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: s.t, at: new Date().toISOString(), k: 'تعديل طلب من المدرس (المراسلات)', txt: items.map(i => `${bookLabel(i.b)}: ${i.was ?? '—'} ← ${i.q}`).join(' • ') });
+  gsave(db); return true;
 }
 /* ---------- قائمة المدرسين ---------- */
 function filtered() {
@@ -407,7 +476,7 @@ function tItem(t) {
   const lm = lastMsg[t.id], g = gInfo()[t.local_id] || null, s = (g && g.s) || null;
   const uc = UPD_C[updState(t)][0];
   const stc = s ? (s.st === 'part' ? 'st-part' : s.st === 'done' ? 'st-done' : '') : '';
-  const av = g && g.th ? `<img class="av" src="${g.th}" alt="" loading="lazy">` : avHtml(t);
+  const avs = (AVC[t.id] && AVC[t.id].th) || (g && g.th), av = avs ? `<img class="av" src="${avs}" alt="" loading="lazy">` : avHtml(t);
   const recv = !s ? '' : (s.d ? `<span class="pill ok">✅ استلم ${s.d}</span> ` : '') + (s.o ? `<span class="pill owe">⏳ باقيله ${s.o}</span>` : '') + (!s.d ? '<span class="pill new">لسه</span>' : '');
   const stg = STG_T[pr.stage || (g && g.stage)] || '';
   return `<div class="titem ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">${av}<div class="grow"><div class="nm">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div>
@@ -444,10 +513,10 @@ function viewInvite() {
     <div class="acts"><button class="btn sm" id="iadd">➕ حط [رابط المدرس]</button><button class="btn sm ghost" id="ires">رجّع الرسالة الأصلية</button></div></div>
   <div class="card"><h3>2) اختار المدرسين (${ui.invSel.size} متحدد)</h3>
     <div class="search"><input id="iq" type="search" placeholder="🔍 دوّر بأي حاجة" value="${esc(ui.invQ)}"></div>
-    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="iall">تحديد الكل (${list.length})</button><button class="btn sm" id="inew">اللي لسه ما فتحوش</button><button class="btn sm ghost" id="inone">شيل التحديد</button></div>
+    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="iall">تحديد الكل (${list.length})</button><button class="btn sm" id="inew">اللي لسه ما فتحوش</button><button class="btn sm ghost" id="inone">شيل التحديد</button><button class="btn sm ok" id="isend" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">🟢 ابعت (${ui.invSel.size})</button></div>
     <div id="il">${list.slice(0, 400).map(t => `<label class="kv" style="justify-content:flex-start;gap:8px;cursor:pointer"><input type="checkbox" value="${t.id}" ${ui.invSel.has(t.id) ? 'checked' : ''}>
       <span style="flex:1">${esc(t.name)} <span class="small muted">${esc(t.phone || 'مفيش رقم')}${t.last_seen ? ' · ✅ فتح' : ''}</span></span></label>`).join('') || '<div class="small muted">مفيش مدرسين — هاتهم من البرنامج الأول (👥 المدرسين).</div>'}</div></div>
-  <button class="btn pri" id="isend" style="width:100%;padding:14px">3) 🟢 ابعت (${ui.invSel.size})</button>`;
+  `;
   const saveTpl = () => LS.set('selah-trial-inv', $('#itpl').value);
   $('#itpl').oninput = saveTpl;
   $('#iadd').onclick = () => { const a = $('#itpl'), p = a.selectionStart ?? a.value.length; a.value = a.value.slice(0, p) + '[رابط المدرس]' + a.value.slice(p); saveTpl(); };
@@ -456,7 +525,7 @@ function viewInvite() {
   $('#iall').onclick = () => { list.forEach(t => ui.invSel.add(t.id)); viewInvite(); };
   $('#inew').onclick = () => { T.filter(t => !t.last_seen).forEach(t => ui.invSel.add(t.id)); viewInvite(); };
   $('#inone').onclick = () => { ui.invSel.clear(); viewInvite(); };
-  $('#il').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? ui.invSel.add(c.value) : ui.invSel.delete(c.value); $('#isend').textContent = `3) 🟢 ابعت (${ui.invSel.size})`; };
+  $('#il').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? ui.invSel.add(c.value) : ui.invSel.delete(c.value); $('#isend').textContent = `🟢 ابعت (${ui.invSel.size})`; };
   $('#isend').onclick = () => { saveTpl(); const l = T.filter(t => ui.invSel.has(t.id)); if (!l.length) return toast('اختار مدرس واحد على الأقل'); waBulk(l, $('#itpl').value); };
 }
 function waBulk(list, tpl) {
@@ -522,7 +591,7 @@ async function viewChat(id) {
     <button class="btn sm ghost" id="keep">📌 احفظ رسالة في سجله</button><button class="btn sm danger" id="delm">🗑️ مسح رسايل</button></div>
     <div id="delbar" hidden class="alert" style="padding:8px"><b>دوس على الرسايل اللي عايز تمسحها</b><div class="acts"><button class="btn sm danger" id="delgo">🗑️ امسح المحدد (0)</button><button class="btn sm ghost" id="delx">إلغاء</button></div></div>
     <div class="small muted" style="text-align:center">${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
-  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`;
+  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
   chatMsgs = []; chatLast = 0;
   const pull = async first => {
     const { data, error } = await sb.from('messages').select('*').eq('teacher_id', t.id).gt('id', first ? 0 : chatLast).order('id').limit(300);
@@ -670,13 +739,13 @@ function orderCard(o, inTeacher) {
   const t = o.teachers || {};
   return `<div class="card" data-ord="${o.id}" style="border-color:#b45309">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="grow">${inTeacher ? '' : `<a href="#/t/${o.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(o.teacher_id)} — `}
-      <b>${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ طلب تعديل كمية'}</b><div class="small muted">${fmtDate(o.created_at)}</div></div></div>
+      <b>${o.kind === 'order' ? '🛒 طلب كتب' : (o.items || []).some(i => i.sid) ? '✏️ عايز يعدّل طلب البيع اللي سجّلته' : '✏️ طلب تعديل كمية'}</b><div class="small muted">${fmtDate(o.created_at)}</div></div></div>
     ${o.kind === 'edit' ? '<div class="small muted" style="margin-bottom:4px">الطلب كله — اللي اتغيّر متعلّم بالبرتقاني:</div>' : ''}
     <div id="oi-${o.id}">${(o.items || []).map(i => { const chg = o.kind === 'edit' && i.was != null && i.was !== i.q;
       return `<div class="kv" data-b="${esc(i.b)}" ${chg ? 'style="background:var(--owe-soft);border-radius:8px;padding:6px"' : ''}><span>${esc(i.l || bookLabel(i.b))}${o.kind === 'edit' && i.was != null ? ` <span class="small ${chg ? '' : 'muted'}">(كان ${i.was}${chg ? ` ← بقى ${i.q}` : ''})</span>` : ''}</span>
       <span class="qty"><button type="button" data-d="-1">−</button><b>${i.q}</b><button type="button" data-d="1">+</button></span></div>`; }).join('')}</div>
     ${o.note ? `<div class="small">ملاحظة: ${esc(o.note)}</div>` : ''}
-    <div class="acts"><button class="btn sm ok" data-oact="approve">📥 انقله للطلبات في البيع</button><button class="btn sm danger" data-oact="reject">❌ رفض</button><button class="btn sm ghost" data-oact="ask">💬 اسأله في الشات</button></div>
+    <div class="acts"><button class="btn sm ok" data-oact="approve">${(o.items || []).some(i => i.sid) ? '✅ وافق وعدّل الطلب في البيع' : '📥 انقله للطلبات في البيع'}</button><button class="btn sm danger" data-oact="reject">❌ رفض</button><button class="btn sm ghost" data-oact="ask">💬 اسأله في الشات</button></div>
     <div class="small muted">تقدر تغيّر الكمية بـ − / + قبل النقل. النقل بيسجله «طلب مستني» في البيع، ومش بيتنفذ غير لما انت تنفذه من هناك.</div></div>`;
 }
 function bindReviews(root) {
@@ -694,7 +763,14 @@ function bindReviews(root) {
       const { error } = await sb.from('orders').update({ status: a === 'approve' ? 'approved' : 'rejected', items, reason, decided_at: new Date().toISOString() }).eq('id', o.id);
       if (error) { $$('button', card).forEach(x => x.disabled = false); return toast(errMsg(error)); }
       let msg = 'تمام ✅';
-      if (a === 'approve') {
+      const sid = o.kind === 'edit' && (o.items || []).map(i => i.sid).find(Boolean);
+      if (a === 'approve' && sid) {
+        // تعديل على طلب أنا اللي سجّلته ← نفس الطلب في البيع يتعدّل، والنسخة اللي عند المدرس تتحدّث
+        const ok = gSaleEdit(sid, items);
+        const mir = await sb.from('orders').select('id').eq('note', 'rep:' + sid).maybeSingle();
+        if (mir.data) await sb.from('orders').update({ items: items.filter(i => i.q > 0).map(i => ({ b: i.b, l: i.l || bookLabel(i.b), q: i.q, sid })) }).eq('id', mir.data.id);
+        msg = ok ? '✅ الطلب اتعدّل في البيع' : '✅ اتوافق — بس الطلب مش لاقيه في البيع على الموبايل ده، عدّله بإيدك';
+      } else if (a === 'approve') {
         // طلب جديد ← الكتب كلها. تعديل كمية ← الزيادة بس تبقى طلب مستني، والنقص بتعدّله بإيدك
         const add = o.kind === 'order' ? items : items.map(i => ({ ...i, q: i.q - (i.was || 0) })).filter(i => i.q > 0);
         const less = o.kind === 'edit' ? items.filter(i => i.q < (i.was || 0)) : [];

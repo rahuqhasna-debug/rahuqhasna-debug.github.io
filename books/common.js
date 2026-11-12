@@ -290,3 +290,17 @@ function bookLabel(k) { const [st, sb, g] = String(k).split('-'); return `${B_SU
 // كل المدرسين يطلبوا ويشوفوا الأسعار — كتب الإنجليزي لمدرس الإنجليزي بس
 function canOrder(p) { return true; }
 function bookAllowed(b, p) { return String(b).split('-')[1] !== 'en' || ((p || {}).subjects || []).includes('en'); }
+
+// زرار الإيموشنات في الشات (أشهر إيموشنات الواتساب) — بيتحط جنب خانة الكتابة
+const EMOJIS = '😀 😂 🤣 😊 😍 🥰 😘 😉 😎 🤗 😅 ☺️ 🙂 🤔 😢 😭 😔 😴 🙏 🤲 👍 👌 👏 🙌 💪 🤝 👋 ✌️ ❤️ 💙 💚 💛 💜 💯 🔥 ✨ 🌹 🌷 💐 🎉 🎁 ⭐ 🌟 ☀️ 🌙 ☕ 📚 📖 ✏️ 📝 ✅ ❌ ⏳ 📞 🚗 🕌'.split(' ');
+function bindEmoji(ta) {
+  if (!ta) return; const bar = ta.closest('.in'); if (!bar) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'emob'; b.textContent = '😊'; b.title = 'إيموشنات';
+  bar.insertBefore(b, ta);
+  const p = document.createElement('div'); p.className = 'emop'; p.hidden = true;
+  p.innerHTML = EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
+  bar.parentNode.insertBefore(p, bar);
+  b.onclick = () => { p.hidden = !p.hidden; };
+  p.onclick = e => { const x = e.target.closest('button'); if (!x) return; const s = ta.selectionStart ?? ta.value.length, en = ta.selectionEnd ?? s;
+    ta.value = ta.value.slice(0, s) + x.textContent + ta.value.slice(en); const n = s + x.textContent.length; ta.focus(); try { ta.setSelectionRange(n, n); } catch (er) { } };
+}

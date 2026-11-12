@@ -113,7 +113,7 @@ function renderHome() {
   // الكروت الخلصانة: عليها ❌ والمدرس يشيلها
   const gone = new Set(LS.get(DISMISS, []));
   const xb = k => `<button class="xbtn" data-x="${esc(k)}" aria-label="شيل">✕</button>`;
-  for (const o of D.orders.filter(o => o.status !== 'pending' && !gone.has('o' + o.id)).slice(0, 3)) h += `<div class="${o.status === 'approved' ? 'good' : 'alert'}">${xb('o' + o.id)}${o.status === 'approved' ? '✅ اتوافق على' : '❌ اترفض'} ${o.kind === 'order' ? 'طلب الكتب' : 'تعديل الكميات'}${o.reason ? ' — ' + esc(o.reason) : ''}<div class="small">${fmtDate(o.at)}</div></div>`;
+  for (const o of D.orders.filter(o => o.status !== 'pending' && !isRepOrd(o) && !gone.has('o' + o.id)).slice(0, 3)) h += `<div class="${o.status === 'approved' ? 'good' : 'alert'}">${xb('o' + o.id)}${o.status === 'approved' ? '✅ اتوافق على' : '❌ اترفض'} ${o.kind === 'order' ? 'طلب الكتب' : 'تعديل الكميات'}${o.reason ? ' — ' + esc(o.reason) : ''}<div class="small">${fmtDate(o.at)}</div></div>`;
   const decs = D.decisions.filter(d => !gone.has('d' + d.at));
   if (decs.length) {
     h += '<div class="card"><h3>آخر القرارات على تعديلاتك</h3>';
@@ -276,7 +276,7 @@ async function pullMsgs(first) {
 function renderMsgs() {
   app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn stick" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
     <div class="small muted" style="text-align:center">الرسائل كتابة بس</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
-  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`;
+  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
   const o = $('#ord'); o && (o.onclick = orderDlg);
   $('#ms').onclick = async () => {
     const t = $('#mt').value.trim(); if (!t) return;
@@ -368,18 +368,44 @@ function orderDlgOld() {
     };
   });
 }
+// طلب بيع سجّله المندوب في البرنامج (كل كتاب فيه sid = رقم الطلب عنده)
+function isRepOrd(o) { return o.kind === 'order' && (o.items || []).some(i => i.sid); }
+function sidOf(o) { return ((o.items || []).find(i => i.sid) || {}).sid; }
+function repOrdersHtml() {
+  const ro = D.orders.filter(isRepOrd);
+  if (!ro.length) return '';
+  return ro.map(o => { const sid = sidOf(o), pe = D.orders.find(x => x.kind === 'edit' && x.status === 'pending' && sidOf(x) === sid);
+    const its = (o.items || []).map(i => { const n = pe && (pe.items || []).find(x => x.b === i.b); return n ? { ...i, q: n.q, pend: n.q !== i.q } : i; });
+    return `<div class="card rord" data-sid="${esc(sid)}"><h3>🧾 طلبك اللي سجّله الأستاذ ${esc(D.rep || '')}</h3><div class="small muted">اتسجل ${fmtDate(o.at)} — لو عايز تغيّر حاجة، عدّل الكمية وابعتها، والأستاذ هيوافق.</div>
+      ${pe ? '<div class="note small" style="padding:8px;margin-top:6px">⏳ تعديلك في انتظار موافقة الأستاذ</div>' : ''}
+      <div class="rol">${its.map(i => qtyRow(i.b, i.l || bookLabel(i.b), i.q, i.pend ? '⏳ في انتظار الموافقة' : '')).join('')}</div>
+      <button class="btn owe rsend" style="width:100%;margin-top:10px">✏️ ابعت التعديل للأستاذ</button></div>`; }).join('');
+}
+function bindRepOrders() {
+  $$('.rord').forEach(card => {
+    const sid = card.dataset.sid, o = D.orders.find(x => isRepOrd(x) && sidOf(x) === sid), box = $('.rol', card); bindQty(box);
+    $('.rsend', card).onclick = async () => {
+      const now = readQty(box), all = now.map(x => ({ ...x, l: bookLabel(x.b), sid, was: ((o.items || []).find(y => y.b === x.b) || {}).q || 0 }));
+      if (!all.some(x => x.q !== x.was)) return toast('مفيش تغيير');
+      const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'edit', p_items: all, p_note: null });
+      if (error) return toast(errMsg(error));
+      toast('اتبعت التعديل للأستاذ ✅'); window.pushNotifyRep && window.pushNotifyRep('✏️ ' + D.name + ' عايز يعدّل طلب البيع'); load();
+    };
+  });
+}
 function renderBooks() {
   // لو فيه طلب تعديل كمية مستني: الكمية الجديدة تبان على طول وجنبها «⏳ في انتظار الموافقة»
-  const pe = D.orders.find(o => o.kind === 'edit' && o.status === 'pending');
+  const pe = D.orders.find(o => o.kind === 'edit' && o.status === 'pending' && !sidOf(o));
   const bk = (D.books || []).map(x => { const n = pe && (pe.items || []).find(i => i.b === x.b); return n ? { ...x, q: n.q, pend: n.q !== x.q } : x; });
   const ost = { pending: '<span class="pill owe">⏳ مستني</span>', approved: '<span class="pill ok">✅ اتوافق</span>', rejected: '<span class="pill bad">❌ اترفض</span>' };
-  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
+  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}${repOrdersHtml()}
     <div class="card"><h3>📚 الكتب اللي حضرتك طلبتها</h3>
     ${bk.length ? `<div class="small muted" style="margin-bottom:6px">لو عايز تغيّر الكمية، عدّلها وابعت طلب تعديل للمندوب.</div>${pe ? '<div class="note small" style="padding:8px">⏳ تعديل الكميات بتاعك في انتظار موافقة المندوب</div>' : ''}<div id="bl">${bk.map(x => qtyRow(x.b, x.l || bookLabel(x.b), x.q, x.pend ? '⏳ في انتظار الموافقة' : '')).join('')}</div>
       <button class="btn owe" id="be" style="width:100%;margin-top:10px">✏️ ابعت طلب تعديل الكمية</button>` : '<div class="small muted">لسه مفيش كتب متسجلة لحضرتك.</div>'}</div>
-    ${D.orders.length ? `<div class="card"><h3>طلباتك</h3>${D.orders.map(o => `<div class="kv" style="display:block">${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ تعديل كمية'} ${ost[o.status] || ''} <span class="small muted">${fmtDate(o.at)}</span>
+    ${D.orders.filter(o => !isRepOrd(o)).length ? `<div class="card"><h3>طلباتك</h3>${D.orders.filter(o => !isRepOrd(o)).map(o => `<div class="kv" style="display:block">${o.kind === 'order' ? '🛒 طلب كتب' : '✏️ تعديل كمية'} ${ost[o.status] || ''} <span class="small muted">${fmtDate(o.at)}</span>
       <div class="small">${esc((o.items || []).map(i => `${i.l || bookLabel(i.b)}: ${i.q}`).join('، '))}</div>${o.reason ? `<div class="small">السبب: ${esc(o.reason)}</div>` : ''}</div>`).join('')}</div>` : ''}`;
   const o = $('#ord'); o && (o.onclick = orderDlg);
+  bindRepOrders();
   const bl = $('#bl'); if (!bl) return; bindQty(bl);
   $('#be').onclick = async () => {
     // بنبعت الطلب كله (كل الكتب بالقديم والجديد) عشان المندوب يشوفه على بعضه

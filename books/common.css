@@ -120,13 +120,13 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 .dayrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0}
 .dayrow .chip{min-width:84px;text-align:center}
 .dtimes input{width:auto;padding:5px 6px;border-radius:8px;border:1.5px solid var(--line);background:var(--card)}
-.chat{display:flex;flex-direction:column;gap:6px;padding:8px 0 70px}
+.chat{display:flex;flex-direction:column;gap:6px;padding:8px 0 80px}
 .bub{max-width:82%;padding:8px 11px;border-radius:14px;white-space:pre-wrap;word-break:break-word;box-shadow:var(--shadow)}
 .bub.me{align-self:flex-start;background:#dcf8c6;color:#111;border-bottom-right-radius:4px}
 .bub.them{align-self:flex-end;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
 .bub.ring{align-self:center;background:var(--owe-soft);color:var(--owe);font-weight:700}
 .bub .tm{display:block;font-size:11px;color:#667;margin-top:3px;text-align:left}
-.chatbar{position:fixed;left:0;right:0;bottom:62px;z-index:26;background:var(--bg);padding:8px 12px;border-top:1px solid var(--line)}
+.chatbar{position:fixed;left:0;right:0;bottom:62px;z-index:26;background:var(--bg);padding:8px 12px 18px;border-top:1px solid var(--line)}
 .chatbar .in{max-width:836px;margin:0 auto;display:flex;gap:6px;align-items:flex-end}
 .chatbar textarea{min-height:44px;max-height:120px;flex:1}
 .ordbtn{display:block;width:100%;background:linear-gradient(135deg,#b45309,#f59e0b);color:#fff;border:0;border-radius:12px;padding:12px;font-weight:800;font-size:16px;cursor:pointer;margin-bottom:10px}
@@ -176,7 +176,7 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 @keyframes ringp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.25)}}
 @keyframes icIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 /* ===== 2026-11-12 (ج): الصفحة على قد الشاشة + ملفي متقسم + الرئيسية + الأسعار والطلب ===== */
-html,body{overflow-x:hidden;max-width:100%}
+html,body{overflow-x:hidden;overflow-x:clip;max-width:100%}
 *,*::before,*::after{box-sizing:border-box}
 input,select,textarea{max-width:100%}
 .chip:has(input:checked),.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
@@ -245,6 +245,7 @@ input,select,textarea{max-width:100%}
 .locbig .lb-s{font-size:15px;font-weight:600;opacity:.95}
 .avbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:0}
 .avbtns .btn{text-align:center;font-size:16px;padding:12px 6px;border-radius:12px}
+nav.tabs .i.wai{display:flex;justify-content:center;height:24px}nav.tabs .i.wai svg{width:24px!important;height:24px!important}
 /* 2026-11-12: طلب التحديث جوه الرسائل عند المدرس — زرار كبير ولونه مختلف */
 .bub.updb{border:2px solid #f59e0b;background:#fffbeb;color:#78350f;max-width:92%}
 .updgo{display:block;width:100%;margin-top:10px;border:0;border-radius:14px;padding:14px 10px;font:inherit;font-size:18px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(135deg,#db2777,#7c3aed);box-shadow:0 6px 14px -4px rgba(124,58,237,.55);animation:updp 1.6s ease-in-out infinite}
@@ -265,3 +266,9 @@ header.top{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);color:
 /* 2026-11-12: زرار الرجوع صغير وبلون بينك */
 header.top .hb.backpill{background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;font-size:17px;font-weight:800;border-radius:22px;padding:6px 16px;white-space:nowrap;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 header.top .hb.backpill[hidden]{display:none}
+
+/* 2026-11-12: الإيموشنات */
+.emob{font-size:26px;background:none;border:0;padding:2px 4px;cursor:pointer;flex:none;align-self:center}
+.emop{display:grid;grid-template-columns:repeat(8,1fr);max-width:836px;margin:0 auto 6px;max-height:190px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px}
+.emop[hidden]{display:none}
+.emop button{font-size:26px;background:none;border:0;padding:4px 0;cursor:pointer;border-radius:8px}.emop button:active{background:var(--brand-soft)}
