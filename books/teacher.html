@@ -291,17 +291,33 @@ function renderMsgs() {
 }
 
 /* ---------- الكتب ---------- */
-function qtyRow(b, l, q, price) {
-  return `<div class="kv" data-b="${esc(b)}"><span>${esc(l)}${price ? `<br><span class="small muted">${esc(price)}</span>` : ''}</span>
-    <span class="qty"><button type="button" data-d="-1">−</button><b>${q}</b><button type="button" data-d="1">+</button></span></div>`;
+// صف كتاب: العدد بيتكتب باليد (أو − / +)، وتحته سعر النسخة قبل/بعد الخصم وإجمالي الصنف — وإجمالي الفاتورة تحت القايمة
+function priceOfB(b) { return prices().find(p => p.b === b) || null; }
+function qtyRow(b, l, q, note) {
+  return `<div class="kv qrow" data-b="${esc(b)}"><span class="grow">${esc(l)}${note ? `<br><span class="small muted">${esc(note)}</span>` : ''}<br><span class="small qline"></span></span>
+    <span class="qty"><button type="button" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" value="${q}"><button type="button" data-d="1">+</button></span></div>`;
+}
+function qtyCalc(box) {
+  let A = 0, B = 0, N = 0;
+  $$('[data-b]', box).forEach(r => {
+    const inp = $('input', r); if (!inp) return;
+    const q = Math.max(0, parseInt(inp.value, 10) || 0), p = priceOfB(r.dataset.b), ln = $('.qline', r); N += q;
+    if (p && ln) { const a = q * (p.pre || p.post), b = q * p.post; A += a; B += b;
+      ln.innerHTML = `سعر النسخة: ${p.pre && p.pre > p.post ? `<s>${money(p.pre)}</s> ` : ''}<b>${money(p.post)}</b>${q ? ` · إجمالي الصنف: ${a > b ? `<s>${money(a)}</s> ` : ''}<b>${money(b)}</b>` : ''}`; }
+  });
+  let t = box.nextElementSibling; if (!t || !t.classList.contains('qtot')) { t = document.createElement('div'); t.className = 'qtot'; box.after(t); }
+  t.innerHTML = N ? `🧾 <b>إجمالي الفاتورة</b>: ${N} نسخة<div>${A > B ? `قبل الخصم <s>${money(A)}</s> ← ` : ''}${B ? `بعد الخصم <b class="big">${money(B)}</b>` : ''}</div>${A > B ? `<div class="save">✅ وفّرت ${money(A - B)}</div>` : ''}` : '';
 }
 // نفس qtyRow بس السطر التاني HTML جاهز (للسعر قبل/بعد الخصم)
 function qtyRowH(b, l, q, priceHtml) {
   return `<div class="kv" data-b="${esc(b)}"><span>${esc(l)}${priceHtml ? `<br><span class="small">${priceHtml}</span>` : ''}</span>
     <span class="qty"><button type="button" data-d="-1">−</button><b>${q}</b><button type="button" data-d="1">+</button></span></div>`;
 }
-function bindQty(box) { box.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const n = $('b', b.parentNode); n.textContent = Math.max(0, +n.textContent + +b.dataset.d); }); }
-const readQty = box => $$('[data-b]', box).map(r => ({ b: r.dataset.b, q: +$('b', r).textContent }));
+function bindQty(box) {
+  box.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const i = $('input', b.parentNode); if (!i) return; i.value = Math.max(0, (parseInt(i.value, 10) || 0) + +b.dataset.d); qtyCalc(box); });
+  box.addEventListener('input', () => qtyCalc(box)); qtyCalc(box);
+}
+const readQty = box => $$('[data-b]', box).map(r => ({ b: r.dataset.b, q: Math.max(0, parseInt(($('input', r) || {}).value, 10) || 0) }));
 /* ---------- 💰 أسعار الكتب + 🛒 اطلب كتبك بسعر مميز (كل الكتب، والإنجليزي لمدرس الإنجليزي بس) ---------- */
 const money = n => (+n || 0).toLocaleString('ar-EG') + ' ج';
 const myPrices = () => prices().filter(p => p.post && bookAllowed(p.b, D.profile));

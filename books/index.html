@@ -3869,6 +3869,9 @@ async function pullPrices(manual){
       if(pre==null && post==null) continue;
       const k=rowBook(row[H.sb], row[H.g], H.st>=0?row[H.st]:''); if(k && isSell(k)) np[k]={pre, post};
     }
+    // لو خانة في شيت الدرايف فاضية (مثلاً «بعد الخصم») ← السعر اللي متسجل في البرنامج مايتمسحش (طلب شريف 2026-11-12)
+    for(const k in np){ const o=db.prices[k]||{}; if(np[k].pre==null && o.pre!=null) np[k].pre=o.pre; if(np[k].post==null && o.post!=null) np[k].post=o.post; }
+    for(const k in db.prices) if(!np[k] && db.prices[k] && (db.prices[k].pre!=null || db.prices[k].post!=null)) np[k]={...db.prices[k]};
     // رقم واتساب التقارير: من صفحة «إعدادات» في شيت الأسعار (شريف بس اللي بيحدده)
     if(j.phone!=null){ const ph=String(j.phone).trim(); if(ph!==(db.reportPhone||'')){ db.reportPhone=ph; save(false); } }
     const changed=JSON.stringify(np)!==JSON.stringify(db.prices);
