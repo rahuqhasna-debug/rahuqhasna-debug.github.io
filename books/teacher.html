@@ -56,6 +56,35 @@
 .ins-f{list-style:none;padding:0;margin:18px 0 0;text-align:start;font-size:14px;color:#334155;line-height:2}.ins-f li::before{content:'✓';display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#ede9fe;color:#6d28d9;font-weight:800;margin-inline-end:8px;font-size:13px}
 .pgback{background:#fef2f2;border:2px solid #dc2626;border-radius:12px;padding:8px 10px;margin:8px 0;font-weight:700;color:#991b1b}
 .pgbrand{background:#fffbeb;border:1px dashed #f59e0b;border-radius:10px;padding:8px 10px;margin-top:8px;text-align:start;line-height:1.9}
+/* متابعة 7: الرئيسية 6 مربعات قد بعض */
+.ttiles.six .tt{grid-column:auto}
+.hm .ttiles.six{grid-template-rows:repeat(3,1fr)}
+.ttiles.six .tti svg{width:60%;height:60%}
+.ttiles.six .tti{position:relative}
+.ttiles.six .coin{position:absolute;bottom:-3px;left:-5px;width:20px;height:20px;border-radius:50%;background:#fde047;color:#92400e;font:800 12px/20px inherit;font-family:inherit;font-style:normal;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.h-or{background:linear-gradient(140deg,#fb923c,#ea580c)}.h-ms{background:linear-gradient(140deg,#60a5fa,#2563eb)}
+.h-me{background:linear-gradient(140deg,#a78bfa,#6d28d9)}.h-pr{background:linear-gradient(140deg,#fbbf24,#d97706)}
+.h-nw{background:linear-gradient(140deg,#f472b6,#db2777)}.h-rv{background:linear-gradient(140deg,#34d399,#059669)}.h-rv.lock{background:linear-gradient(140deg,#cbd5e1,#64748b)}
+/* متابعة 7: شاشة الأذونات — مربعات تحت بعض + تليفون صغير فيه الزراير بتتحرك */
+.pm-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}.pm-top img{width:40px;height:40px;border-radius:12px}
+.pm-top .pm-bar{flex:1;background:#ede9fe;margin:0}.pm-top .pm-bar span{background:#16a34a}.pm-top b{color:#4c1d95}
+.pbx{display:flex;align-items:center;gap:10px;border-radius:18px;padding:12px;margin-bottom:10px;background:color-mix(in srgb,var(--c) 14%,#fff);border:2px solid color-mix(in srgb,var(--c) 45%,#fff);color:color-mix(in srgb,var(--c) 55%,#111);cursor:pointer;font-weight:800;font-size:18px}
+.pbx:active{transform:scale(.98)}.pbx.ok{--c:#16a34a;cursor:default}.pbx.lock{opacity:.5;cursor:default}
+.pbx-t{flex:1;line-height:1.4}.pbx-t small{display:block;font-size:13px;font-weight:600;opacity:.85;margin-top:3px}
+.pmini{width:118px;flex:none;border:3px solid #1f2937;border-radius:14px;background:#fff;padding:7px 6px;display:flex;flex-direction:column;gap:6px;justify-content:center;min-height:60px}
+.psr{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:11px;font-weight:700;color:#111;line-height:1.2}
+.psw{flex:none;width:26px;height:14px;border-radius:7px;background:#cbd5e1;position:relative}
+.psw::after{content:'';position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.psw.on{background:#16a34a}.psw.on::after{right:14px}
+.psw.go{animation:pswb 2.4s var(--d) infinite}.psw.go::after{animation:pswk 2.4s var(--d) infinite}
+@keyframes pswb{0%,35%{background:#cbd5e1}45%,90%{background:#16a34a}100%{background:#cbd5e1}}
+@keyframes pswk{0%,35%{right:2px}45%,90%{right:14px}100%{right:2px}}
+.pring{display:block;text-align:center;font-size:28px}.pring.go{animation:shk 1s infinite;transform-origin:center top}
+.pbx-x{display:flex;gap:8px;margin:-4px 0 12px}.pbx-x>*{flex:1;margin:0}
+/* متابعة 7: سهم «انزل تحت» بعد ما يدوس أندرويد */
+.godown{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;background:#6d28d9;color:#fff;border-radius:24px;padding:8px 18px;font-weight:800;font-size:16px;display:flex;flex-direction:column;align-items:center;box-shadow:0 6px 18px rgba(76,29,149,.45);animation:gdn 1s infinite;pointer-events:none}
+.godown b{font-size:26px;line-height:1}
+@keyframes gdn{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
 </style>
 </head>
 <body>
@@ -64,7 +93,7 @@
 <div id="cbar"></div>
 <nav class="tabs" id="tabs" hidden>
   <a data-v="home"><span class="i">🏠</span>الرئيسية<span class="cnt" id="homeCnt" hidden></span></a>
-  <a data-v="msgs"><span class="i">💬</span>رسائلنا<span class="cnt" id="msgCnt" hidden></span></a>
+  <a data-v="msgs"><span class="i">💬</span>الرسائل<span class="cnt" id="msgCnt" hidden></span></a>
   <a data-v="me"><span class="i">👤</span>ملفي</a>
 </nav>
 <script>
@@ -198,7 +227,7 @@ function render() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 رسائل وتحديثات سلاح التلميذ', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
   if (view !== 'news') newsSub = null;
   if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
 }
@@ -210,12 +239,14 @@ function renderHome() {
   let h = `<div class="card" style="display:flex;align-items:center;gap:12px">${v.avatar ? `<img class="av lg" src="${v.avatar}" alt="">` : '<span class="av lg">👤</span>'}
     <div><b style="font-size:19px">${esc(tName(D.name))}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
   // أيقونات الرئيسية
-  h += `<div class="ttiles"><button class="tt big" data-v="order"><span class="tti">🛒</span><span class="ttl">اطلب كتبك بسعر مميز</span><span class="tts">أسعار خاصة لحضرتك 🔥</span></button>
-    <button class="tt t-msg" data-v="msgs"><span class="tti">💬</span><span class="ttl">رسائل وتحديثات سلاح التلميذ</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
-    <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
-    <button class="tt t-pr" data-v="prices"><span class="tti">💰</span><span class="ttl">أسعار الكتب</span></button>
-    <button class="tt t-nw" data-v="news"><span class="tti">🆕</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
-    <button class="tt t-rv wide ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">📦</span><span class="ttl">استلمت مننا إيه الترم ده</span><span class="tts">${!(RV && RV.open) ? '🔒 هتتفتح لما المندوب يسلّمك' : RV.recv ? '✅ اتبعت — تقدر تعدّل' : 'علّم على الكتب اللي استلمتها'}</span></button></div>`;
+  // متابعة 7: 6 مربعات قد بعض (2×3) بأيقونات مرسومة وألوان مبهجة
+  const I = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  h += `<div class="ttiles six"><button class="tt h-or" data-v="order"><span class="tti">${I('<path d="M5 7h14l-1.2 13H6.2z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/>')}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
+    <button class="tt h-ms" data-v="msgs"><span class="tti">${I('<path d="M3 10l9-6 9 6v10H3z"/><path d="M3 10l9 6 9-6"/>')}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
+    <button class="tt h-me" data-v="me"><span class="tti">${I('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a7 7 0 0 1 11 0"/>')}</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
+    <button class="tt h-pr" data-v="prices"><span class="tti">${I('<rect x="3" y="5" width="5" height="15" rx="1"/><rect x="9" y="5" width="5" height="15" rx="1"/><path d="M15 6.5l3.6-1 3.4 13.5-3.6 1z"/>')}<em class="coin">ج</em></span><span class="ttl">أسعار الكتب</span></button>
+    <button class="tt h-nw" data-v="news"><span class="tti">${I('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>')}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
+    <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${I('<path d="M2 6h12v10H2z"/><path d="M14 9h4l3 4v3h-7"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>')}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -379,6 +410,13 @@ function apkGuide() {
   tv.onplay = () => { pp.textContent = '⏸ إيقاف'; }; tv.onpause = () => { pp.textContent = '▶️ تشغيل'; };
   tv.play && tv.play().catch(() => { pp.textContent = '▶️ تشغيل'; });
   g.scrollIntoView && g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // متابعة 7: سهم بيتحرك «انزل تحت» لحد ما يوصل لزرار التنزيل
+  let gd = $('#godown'); if (!gd) { gd = document.createElement('div'); gd.id = 'godown'; gd.className = 'godown'; gd.innerHTML = 'انزل تحت<b>⬇</b>'; document.body.appendChild(gd); }
+  gd.hidden = false;
+  const dl = g.querySelector('a.ins-b');
+  if (dl && 'IntersectionObserver' in window) { const ob = new IntersectionObserver(es => { if (es[0].isIntersecting) { gd.remove(); ob.disconnect(); } }); setTimeout(() => ob.observe(dl), 900); }
+  else setTimeout(() => gd.remove(), 8000);
+  addEventListener('hashchange', () => gd.remove(), { once: true });
 }
 function apkGuideOld() {
   // الرابط بيتنسخ عشان التطبيق يدخل لوحده أول ما يتفتح
@@ -480,37 +518,30 @@ function renderPerm() {
   };
   const order = ['n', 's', 'b', 'a', 't'];
   const stepOf = k => steps.find(x => x.k === k);
-  const card = (k, idx) => {
-    const C = CARDS[k], st = stepOf(k), ok = st ? st.ok : true, na = !st;   // na = مش مطلوب في موبايله (التشغيل التلقائي لغير الشركات الصعبة)
-    const locked = k === 't' && !allBefore && !ok;
-    const tip = !na && (k === 'n' || k === 's' || k === 'b' || k === 'a') && brandTip(k === 's' ? 'n' : k, s) ? `<div class="pgbrand" style="margin:6px 0 8px;font-size:12px">📱 ${esc(brandTip(k === 's' ? 'n' : k, s))}</div>` : '';
-    const warn = !ok && !na && !locked && ((PG_TRIED[k]) && k !== 'a' && k !== 't') ? '<div class="pgback">⚠️ لسه ماخلصتش — ارجع اعمل زي الصورة</div>' : (!ok && fail && (k === 'n' || k === 's' || k === 'a')) ? '<div class="pgback">⚠️ مارنّش؟ راجع الخطوة دي تاني</div>' : '';
-    let act;
-    if (na) act = '<div class="small" style="color:#15803d;font-weight:700">مش مطلوبة في موبايلك ✅</div>';
-    else if (ok) act = '<div class="small" style="color:#15803d;font-weight:800">تمام ✅ اتعملت</div>';
-    else if (locked) act = '<div class="small muted">🔒 بتتفتح بعد ما تخلّص اللي فوق</div>';
-    else if (k === 't' && PG_TEST) act = `<div style="font-weight:800;margin-bottom:6px">الموبايل رنّ؟</div><button class="pbtn" id="pgYes">✅ أيوه رنّ</button><button class="btn owe" id="pgNo" style="width:100%;margin-top:6px">❌ لأ مارنّش</button><button class="btn ghost sm" data-pg="t" style="width:100%;margin-top:6px">🔁 جرّب تاني</button>`;
-    else act = `<button class="pbtn" data-pg="${k}">${C.b}</button>${k === 'a' && PG_TRIED.a ? '<button class="pbtn" id="pgDone" style="margin-top:6px;background:#16a34a">✅ شغّلته</button><button class="btn ghost sm" id="pgSkip" style="width:100%;margin-top:6px">مش لاقيه في موبايلي</button>' : ''}`;
-    return `<div class="pcard ${ok || na ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}"><div class="num">${ok || na ? '✓' : idx}</div>
-      <div class="bd"><h4>${C.ic} ${C.t}</h4><p>${C.d}</p>${tip}${warn}${act}</div></div>`;
+  // متابعة 7 (طلب شريف): مربعات ملوّنة تحت بعض من غير شرح — جنب كل مربع تليفون صغير فيه نفس الزراير اللي هيشغّلها بتتحرك + اسم كل زرار
+  const br = (s && s.brand) || '', bX = /xiaomi|redmi|poco/.test(br), bO = /oppo|realme|oneplus/.test(br), bH = /huawei|honor/.test(br), bS = /samsung/.test(br);
+  const SW = {
+    n: [bX ? 'إظهار الإشعارات' : 'السماح بالإشعارات'],
+    s: ['الصوت', 'شاشة القفل', bH ? 'لافتات' : bS ? 'النوافذ المنبثقة' : bO ? 'الشعارات العائمة' : 'الإشعارات العائمة'],
+    b: [bX ? 'بلا قيود' : bO ? 'النشاط في الخلفية' : bS ? 'غير مقيد' : 'سماح'],
+    a: bH ? ['تشغيل تلقائي', 'تشغيل ثانوي', 'في الخلفية'] : ['سلاح التلميذ']
   };
-  const vid = `<div class="vid-t">🎬 شاهد الخطوات بالفيديو</div>
-    <div class="phf" id="phf"><video id="tvid" autoplay muted loop playsinline preload="metadata" poster="silah-tutorial-poster.jpg"><source src="silah-tutorial.mp4" type="video/mp4"></video>
-    <button class="pp" id="tpp" aria-label="إيقاف">⏸ إيقاف</button></div>`;
-  app.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>خلّي رسايل وتحديثات سلاح التلميذ توصلك 🔔</h2>
-      <p>دوس على كل زرار تحت وشغّل الإعداد — مرة واحدة بس.</p>
-      <div class="pm-bar"><span style="width:${Math.round(done / steps.length * 100)}%"></span></div><div class="small" style="opacity:.9">${done} من ${steps.length} اتعملوا</div></div>
-    <div class="pm-list">${order.map((k, i) => card(k, i + 1)).join('')}</div>
-    <div class="pm-note">🛡️ <b>تحذير أندرويد عادي:</b> ممكن يظهرلك تحذير وإنت بتظبط الإعدادات، لأن «سلاح التلميذ» تطبيق من خارج متجر جوجل بلاي. التطبيق آمن ومخصوص لرسايل الأستاذ بس، وتقدر تكمل بثقة.</div>`;
-  // فيديو الشرح: تشغيل/إيقاف، ولو الملف مش موجود الإطار كله يختفي
-  const tv = $('#tvid'), pp = $('#tpp');
-  if (tv) {
-    tv.addEventListener('error', () => { const f = $('#phf'); f && (f.parentNode.querySelector('.vid-t').hidden = true, f.hidden = true); }, true);
-    pp.onclick = () => { if (tv.paused) { tv.play().catch(() => { }); } else tv.pause(); };
-    tv.onplay = () => { pp.textContent = '⏸ إيقاف'; pp.setAttribute('aria-label', 'إيقاف'); };
-    tv.onpause = () => { pp.textContent = '▶️ تشغيل'; pp.setAttribute('aria-label', 'تشغيل'); };
-    tv.play && tv.play().catch(() => { pp.textContent = '▶️ تشغيل'; });
-  }
+  const TT = { n: ['تفعيل إشعار الجرس', 'خلي رسائل وتحديثات سلاح التلميذ توصلك'], s: ['الصوت والشاشة'], b: ['السماح بالبطارية'], a: ['التشغيل التلقائي'], t: ['جرّب الرنة'] };
+  const mini = (k, ok) => k === 't' ? `<span class="pmini"><span class="pring ${ok ? '' : 'go'}">🔔</span></span>`
+    : `<span class="pmini">${SW[k].map((l, i) => `<span class="psr"><span>${l}</span><i class="psw ${ok ? 'on' : 'go'}" style="--d:${(i * 0.6).toFixed(1)}s"></i></span>`).join('')}</span>`;
+  const card = k => {
+    const C = CARDS[k], st = stepOf(k), ok = st ? st.ok : true;
+    if (!st) return '';   // مش مطلوب في موبايله (التشغيل التلقائي لغير الشركات الصعبة)
+    const locked = k === 't' && !allBefore && !ok;
+    const T = TT[k];
+    let box = `<div class="pbx ${ok ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}" ${ok || locked ? '' : `data-pg="${k}" role="button"`}>
+      <span class="pbx-t">${T[0]}${T[1] ? `<small>${T[1]}</small>` : ''}</span>${mini(k, ok)}</div>`;
+    if (!ok && k === 'a' && PG_TRIED.a) box += '<div class="pbx-x"><button class="pbtn" id="pgDone" style="background:#16a34a">✅ شغّلته</button><button class="btn ghost sm" id="pgSkip">مش لاقيه</button></div>';
+    if (!ok && k === 't' && PG_TEST) box += '<div class="pbx-x"><button class="pbtn" id="pgYes" style="background:#16a34a">✅ رنّ</button><button class="btn owe" id="pgNo">❌ مارنّش</button></div>';
+    return box;
+  };
+  app.innerHTML = `<div class="pm-top"><img src="icon-192.png" alt=""><div class="pm-bar"><span style="width:${Math.round(done / steps.length * 100)}%"></span></div><b>${done}/${steps.length}</b></div>
+    <div class="pbx-list">${order.map(k => card(k)).join('')}</div>`;
   const back = () => document.addEventListener('visibilitychange', function f() { if (!document.hidden) { document.removeEventListener('visibilitychange', f); setTimeout(render, 500); } });
   $$('[data-pg]').forEach(b => b.onclick = () => {
     const k = b.dataset.pg; PG_TRIED[k] = 1;
