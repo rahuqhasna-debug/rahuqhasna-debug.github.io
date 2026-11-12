@@ -245,6 +245,14 @@ input,select,textarea{max-width:100%}
 .locbig .lb-s{font-size:15px;font-weight:600;opacity:.95}
 .avbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:0}
 .avbtns .btn{text-align:center;font-size:16px;padding:12px 6px;border-radius:12px}
+/* 2026-11-12: طلب التحديث جوه الرسائل عند المدرس — زرار كبير ولونه مختلف */
+.bub.updb{border:2px solid #f59e0b;background:#fffbeb;color:#78350f;max-width:92%}
+.updgo{display:block;width:100%;margin-top:10px;border:0;border-radius:14px;padding:14px 10px;font:inherit;font-size:18px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(135deg,#db2777,#7c3aed);box-shadow:0 6px 14px -4px rgba(124,58,237,.55);animation:updp 1.6s ease-in-out infinite}
+@keyframes updp{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+/* 2026-11-12: الخانة المطلوبة ليها خلفية مميزة كمان (غير الشريط الأصفر اللي فوق) */
+.field.req{background:linear-gradient(135deg,#fef3c7,#fde68a)!important;border:2px dashed #f59e0b}
+.field.req>label{color:#92400e;font-weight:800}
+.field.req input,.field.req select,.field.req textarea{background:#fffbeb}
 /* 2026-11-12: كارت المدرس زي البرنامج الأخضر (لون الاستلام في الخلفية) */
 .titem.st-part{background:var(--owe-soft);border-color:color-mix(in srgb,var(--owe) 35%,transparent)}
 .titem.st-done{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
@@ -255,5 +263,5 @@ input,select,textarea{max-width:100%}
 .pill.abc{background:var(--sel,#dbeafe);color:var(--sel-ink,#1d4ed8)}
 header.top{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);color:#fff}
 /* 2026-11-12: زرار الرجوع صغير وبلون بينك */
-header.top .hb.backpill{background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;font-size:14px;font-weight:800;border-radius:20px;padding:4px 12px;white-space:nowrap;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+header.top .hb.backpill{background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;font-size:17px;font-weight:800;border-radius:22px;padding:6px 16px;white-space:nowrap;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 header.top .hb.backpill[hidden]{display:none}

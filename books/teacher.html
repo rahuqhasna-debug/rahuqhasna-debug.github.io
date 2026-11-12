@@ -255,13 +255,21 @@ function bubble(m, i, all) {
   }
   return `<div class="bub ${m.me ? 'me' : 'them'}">${esc(m.body)}<span class="tm">${fmtDate(m.at)}${m.me ? (m.read ? ' ✓✓' : ' ✓') : ''}</span></div>`;
 }
+function updBubble(u) {
+  return `<div class="bub them updb"><b>📝 الأستاذ ${esc(D.rep || '')} محتاج تحدّث بياناتك</b><div class="small" style="margin-top:4px">${esc(fieldsTxt(u.fields || []))}</div>${u.note ? `<div style="margin-top:4px">«${esc(u.note)}»</div>` : ''}
+    <button class="updgo" onclick="go('me')">✏️ ادخل حدّث بياناتك دلوقتي ←</button>${u.created_at || u.at ? `<span class="tm">${fmtDate(u.created_at || u.at)}</span>` : ''}</div>`;
+}
 async function pullMsgs(first) {
   const { data, error } = await sb.rpc('t_msgs', { p_code: code, p_after: first ? 0 : lastId });
   if (error) return;
   if (first) msgs = data; else if (data.length) { msgs = msgs.concat(data); if (data.some(m => !m.me)) ding(); }
   if (msgs.length) lastId = msgs[msgs.length - 1].id;
   const box = $('#chat'); if (!box) return;
-  box.innerHTML = msgs.map(bubble).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
+  // طلبات التحديث بتظهر في الرسائل كمان (بمكانها حسب الوقت) بزرار كبير يفتح «ملفي»
+  const ups = (D.updates || []).map(u => ({ u, at: u.created_at || u.at || '' }));
+  const parts = msgs.map((m, i, all) => ({ at: m.at || '', h: bubble(m, i, all) }));
+  for (const x of ups) { const k = x.at ? parts.findIndex(p => p.at && p.at > x.at) : -1; const h = updBubble(x.u); if (k < 0) parts.push({ at: x.at, h }); else parts.splice(k, 0, { at: x.at, h }); }
+  box.innerHTML = parts.map(p => p.h).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
   if (first || data.length) scrollTo(0, document.body.scrollHeight);
   D.unread = 0; $('#msgCnt').hidden = true; setBadge();
 }
