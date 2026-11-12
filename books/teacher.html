@@ -35,14 +35,21 @@ const code = LS.get(TCODE);
 const sb = makeClient(false, TCFG);
 const app = $('#app');
 let D = null, view = (new URLSearchParams(location.hash.slice(1)).get('v')) || 'home', newPhotos = [], st = {}, msgs = [], lastId = 0, pollT = null, instEvt = null;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; if (view === 'home' && D) renderHome(); });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; if (D) render(); });
+window.addEventListener('appinstalled', () => { instEvt = null; installedNow = true; if (D) render(); });
+let installedNow = false;
 
+const isApp = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const UA = navigator.userAgent, IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+const INAPP = /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(UA), SAMSUNG = /SamsungBrowser/i.test(UA), IOS_SAFARI = IOS && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(UA) && !INAPP;
+const tName = n => 'أ/ ' + String(n || '').trim();
 const vals = () => ({ ...(D.profile || {}), avatar: D.avatar || '' });
 const prices = () => (D.prices && D.prices.items) || [];
 function ding() { try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { } try { const a = new Audio('ring.mp3'); a.play().catch(() => { }); } catch (e) { } }
 
 async function load() {
   if (!sb) { app.innerHTML = '<div class="alert">البرنامج لسه مش متظبط. كلّم المندوب.</div>'; return; }
+  if (!code && isApp) return renderPasteCode();
   if (!code) { app.innerHTML = '<div class="alert"><h3>افتح الرابط اللي وصلك من المندوب</h3>الرابط ده لازم يكون فيه الكود الخاص بيك.</div>'; return; }
   try {
     const { data, error } = await sb.rpc('t_get', { p_code: code });
@@ -59,7 +66,7 @@ async function load() {
     }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
 }
-function go(v) { view = v; render(); scrollTo(0, 0); }
+function go(v) { view = v; if (!isApp) toast('📲 ثبّت التطبيق الأول', 2500); render(); scrollTo(0, 0); }
 // عدد الجديد على أيقونة البرنامج (في الموبايلات اللي بتسمح)
 function setBadge() {
   const n = (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
@@ -67,12 +74,13 @@ function setBadge() {
 }
 function render() {
   clearInterval(pollT); $('#cbar').innerHTML = '';
+  if (!isApp) return renderGate();   // من المتصفح: شاشة التثبيت بس
   $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
   $('#booksTab').hidden = !((D.books || []).length || D.orders.length || canOrder(D.profile));
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي' }[view] || 'أهلًا ' + (D.name || '');
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي' }[view] || 'أهلًا ' + tName(D.name);
   if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else renderHome();
 }
 const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
@@ -81,13 +89,11 @@ const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIE
 function renderHome() {
   const v = vals();
   let h = `<div class="card" style="display:flex;align-items:center;gap:12px">${v.avatar ? `<img class="av lg" src="${v.avatar}" alt="">` : '<span class="av lg">👤</span>'}
-    <div><b style="font-size:19px">${esc(D.name)}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
-  const standalone = matchMedia('(display-mode: standalone)').matches;
+    <div><b style="font-size:19px">${esc(tName(D.name))}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
   const notif = 'Notification' in window ? Notification.permission : 'unsupported';
-  if (!standalone || notif !== 'granted') h += `<div class="card" style="background:linear-gradient(135deg,#c2410c,#ea580c);color:#fff;border:0"><b style="font-size:17px">🌟 ثبّت البرنامج على موبايلك وفعّل الإشعارات</b>
-    <div style="margin:6px 0 4px">عشان توصلك رسايل الأستاذ ${esc(D.rep || '')} ومواعيد استلام النسخ المجانية أول بأول، وتحدّث بياناتك وتتابع كل جديد من سلاح التلميذ.</div>
-    <div style="margin-bottom:10px">خليك دايمًا على تواصل معانا ❤️</div>
-    <button class="btn" id="setup" style="background:#fff;color:#c2410c;width:100%;font-size:16px">✅ ثبّت وفعّل الإشعارات</button>${/iphone|ipad/i.test(navigator.userAgent) ? '<div class="small" style="margin-top:6px">على الآيفون: زرار المشاركة ⬆️ ← «إضافة إلى الشاشة الرئيسية».</div>' : ''}</div>`;
+  if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
+    <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
+    <button class="gobtn" id="setup">🔔 فعّل الإشعارات</button></div>`;
   if (D.unread) h += `<div class="alert"><h3>💬 عندك ${D.unread} رسالة جديدة</h3><button class="btn danger" onclick="go('msgs')">افتح الرسائل ←</button></div>`;
   for (const u of D.updates) h += `<div class="alert"><h3>📝 مطلوب تحديث بياناتك</h3>${esc(fieldsTxt(u.fields || []))}${u.note ? `<div style="margin-top:6px">«${esc(u.note)}»</div>` : ''}
     <div class="acts"><button class="btn danger" onclick="go('me')">حدّث دلوقتي ←</button></div></div>`;
@@ -147,9 +153,93 @@ async function setupApp() {
   renderHome();
 }
 
+/* ---------- شاشة التثبيت (من المتصفح) + دليل خطوة بخطوة بالصور ---------- */
+// رسمة موبايل فيها الحتة المهمة متعلّمة بدايرة حمرا وسهم
+function phone(inner) {
+  return `<svg viewBox="0 0 180 320" class="phsvg" aria-hidden="true"><rect x="6" y="4" width="168" height="312" rx="22" fill="#111827"/><rect x="14" y="16" width="152" height="288" rx="14" fill="#f8fafc"/>${inner}</svg>`;
+}
+const RING = (x, y, r = 16) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#ef4444" stroke-width="4" class="pulse"/>`;
+const ARROW = (x, y) => `<path d="M${x - 34} ${y + 40} L${x - 8} ${y + 10}" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/><path d="M${x - 8} ${y + 10} l-3 14 M${x - 8} ${y + 10} l-14 2" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>`;
+const BAR = '<rect x="14" y="16" width="152" height="30" rx="6" fill="#e2e8f0"/><rect x="40" y="24" width="96" height="14" rx="7" fill="#fff"/>';
+const ROWS = (hi, label) => [0, 1, 2, 3, 4].map(i => i === hi ? `<rect x="22" y="${86 + i * 30}" width="136" height="24" rx="6" fill="#fde68a"/><text x="150" y="${103 + i * 30}" font-size="11" text-anchor="end" fill="#111" font-weight="700">${label}</text>` : `<rect x="30" y="${92 + i * 30}" width="${70 + (i * 13) % 50}" height="10" rx="5" fill="#cbd5e1"/>`).join('');
+const PICS = {
+  a1: phone(BAR + '<circle cx="152" cy="31" r="2.4" fill="#111"/><circle cx="152" cy="24" r="2.4" fill="#111"/><circle cx="152" cy="38" r="2.4" fill="#111"/>' + RING(152, 31) + ARROW(152, 31)),
+  a2: phone(BAR + '<rect x="18" y="48" width="144" height="190" rx="8" fill="#fff" stroke="#cbd5e1"/>' + ROWS(3, 'إضافة إلى الشاشة الرئيسية') + RING(140, 185, 20)),
+  a3: phone('<rect x="14" y="16" width="152" height="288" rx="14" fill="#94a3b8"/><rect x="26" y="110" width="128" height="100" rx="12" fill="#fff"/><text x="90" y="140" font-size="12" text-anchor="middle" font-weight="700" fill="#111">تثبيت التطبيق؟</text><rect x="34" y="176" width="50" height="22" rx="11" fill="#0f766e"/><text x="59" y="191" font-size="11" text-anchor="middle" fill="#fff" font-weight="700">تثبيت</text>' + RING(59, 187, 22)),
+  home: phone('<rect x="14" y="16" width="152" height="288" rx="14" fill="#1e3a8a"/>' + [0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => (r === 1 && c === 1) ? '' : `<rect x="${28 + c * 34}" y="${50 + r * 50}" width="24" height="24" rx="6" fill="#93c5fd"/>`).join('')).join('') + '<rect x="62" y="100" width="24" height="24" rx="6" fill="#0f766e"/><text x="74" y="117" font-size="13" text-anchor="middle">📚</text>' + RING(74, 112, 22)),
+  s1: phone(BAR + '<rect x="14" y="276" width="152" height="28" rx="0" fill="#e2e8f0"/><rect x="140" y="282" width="16" height="2.5" fill="#111"/><rect x="140" y="288" width="16" height="2.5" fill="#111"/><rect x="140" y="294" width="16" height="2.5" fill="#111"/>' + RING(148, 289) + '<path d="M118 240 L140 276" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>'),
+  s2: phone(BAR + '<rect x="18" y="120" width="144" height="150" rx="8" fill="#fff" stroke="#cbd5e1"/>' + ROWS(4, 'إضافة الصفحة إلى ← الشاشة الرئيسية').replace(/y="(\d+)"/g, (m, v) => `y="${+v + 30}"`) + RING(140, 241, 20)),
+  i1: phone(BAR + '<rect x="14" y="270" width="152" height="34" fill="#e2e8f0"/><path d="M90 278 v14 M84 284 l6-6 6 6" stroke="#2563eb" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="82" y="286" width="16" height="12" rx="2" fill="none" stroke="#2563eb" stroke-width="2.5"/>' + RING(90, 288, 17) + '<path d="M60 232 L82 270" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>'),
+  i2: phone('<rect x="14" y="120" width="152" height="184" rx="12" fill="#fff"/>' + ROWS(3, 'إضافة إلى الشاشة الرئيسية ➕').replace(/y="(\d+)"/g, (m, v) => `y="${+v + 50}"`) + RING(140, 235, 20)),
+  i3: phone('<rect x="14" y="16" width="152" height="40" fill="#e2e8f0"/><text x="30" y="41" font-size="12" fill="#2563eb" font-weight="700">إضافة</text><text x="150" y="41" font-size="11" text-anchor="end" fill="#64748b">إلغاء</text>' + RING(46, 37, 22) + '<rect x="40" y="80" width="40" height="40" rx="9" fill="#0f766e"/><text x="60" y="106" font-size="18" text-anchor="middle">📚</text>'),
+  web: phone(BAR + '<circle cx="152" cy="31" r="2.4" fill="#111"/><circle cx="152" cy="24" r="2.4" fill="#111"/><circle cx="152" cy="38" r="2.4" fill="#111"/><rect x="40" y="48" width="122" height="60" rx="8" fill="#fff" stroke="#cbd5e1"/><rect x="46" y="56" width="110" height="20" rx="5" fill="#fde68a"/><text x="150" y="70" font-size="10" text-anchor="end" font-weight="700" fill="#111">فتح في المتصفح</text>' + RING(100, 66, 22))
+};
+function guideSteps() {
+  const link = location.href.split('#')[0] + '#c=' + code;
+  if (INAPP) return [{ pic: 'web', t: 'افتح الرابط في المتصفح', d: 'إنت فاتح من جوه الواتساب/الفيسبوك، ومنه مينفعش التثبيت. دوس ⋮ فوق واختار «فتح في المتصفح» (أو «فتح في Chrome»' + (IOS ? '/«Safari»' : '') + '). أو انسخ الرابط والصقه في المتصفح.', copy: link }];
+  if (IOS && !IOS_SAFARI) return [{ pic: 'web', t: 'افتح الرابط من Safari', d: 'على الآيفون التثبيت بيتعمل من Safari بس (البوصلة الزرقا 🧭). انسخ الرابط وافتح Safari والصقه فوق.', copy: link }];
+  if (IOS) return [
+    { pic: 'i1', t: 'دوس زرار المشاركة', d: 'الزرار اللي شكله مربع وطالع منه سهم لفوق ⬆️ — تحت في نص الشاشة.' },
+    { pic: 'i2', t: 'اختار «إضافة إلى الشاشة الرئيسية»', d: 'انزل في القايمة لتحت شوية لحد ما تلاقيها ➕.' },
+    { pic: 'i3', t: 'دوس «إضافة» فوق', d: 'في الركن اللي فوق.' },
+    { pic: 'home', t: 'افتح «سلاح التلميذ» من الشاشة الرئيسية', d: 'هتلاقي أيقونته جنب تطبيقاتك. افتحه منها ✅', last: true }];
+  if (SAMSUNG) return [
+    { pic: 's1', t: 'دوس القايمة ☰ تحت', d: 'الزرار اللي فيه 3 خطوط تحت على الجنب.' },
+    { pic: 's2', t: 'اختار «إضافة الصفحة إلى» ← «الشاشة الرئيسية»', d: 'وبعدها دوس «إضافة».' },
+    { pic: 'home', t: 'افتح «سلاح التلميذ» من الشاشة الرئيسية', d: 'هتلاقي أيقونته جنب تطبيقاتك. افتحه منها ✅', last: true }];
+  return [
+    { pic: 'a1', t: 'دوس على النقط التلاتة ⋮ فوق', d: 'في الركن اللي فوق في المتصفح (Chrome).' },
+    { pic: 'a2', t: 'اختار «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»', d: 'هتلاقيها في القايمة اللي فتحت.' },
+    { pic: 'a3', t: 'دوس «تثبيت»', d: 'أو «إضافة» — حسب موبايلك.' },
+    { pic: 'home', t: 'افتح «سلاح التلميذ» من الشاشة الرئيسية', d: 'هتلاقي أيقونته جنب تطبيقاتك. افتحه منها ✅', last: true }];
+}
+function renderGate() {
+  $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
+  $('#title').textContent = 'أهلًا ' + tName(D.name);
+  app.innerHTML = `<div class="icard gate">${installedNow ? `<div class="ic-t">✅ اتثبّت!</div><div class="ic-s">اقفل المتصفح وافتح «سلاح التلميذ» من الشاشة الرئيسية لموبايلك.</div>${PICS.home}` : `
+    <div class="ic-ico">📲</div><div class="ic-t">ثبّت البرنامج على موبايلك وفعّل الإشعارات</div>
+    <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
+    <button class="gobtn" id="inst">📲 ثبّت التطبيق دلوقتي</button>
+    ${IOS ? '<button class="iosbtn" id="iosb">🍎 لو معاك آيفون اضغط هنا</button>' : ''}`}</div><div id="guide"></div>`;
+  const ib = $('#inst'); ib && (ib.onclick = async () => {
+    if (instEvt) { instEvt.prompt(); let ok = false; try { ok = (await instEvt.userChoice).outcome === 'accepted'; } catch (e) { } instEvt = null; if (ok) { installedNow = true; return renderGate(); } }
+    showGuide(0);
+  });
+  const io = $('#iosb'); io && (io.onclick = () => showGuide(0));
+}
+function showGuide(i) {
+  const steps = guideSteps(), s = steps[i], g = $('#guide'); if (!g || !s) return;
+  // الآيفون: ننسخ الرابط من دلوقتي عشان التطبيق المتثبّت يطلبه مرة واحدة
+  if (IOS && i === 0) try { navigator.clipboard.writeText(location.href.split('#')[0] + '#c=' + code); } catch (e) { }
+  g.innerHTML = `<div class="icard step"><div class="stepn">خطوة ${i + 1} من ${steps.length}</div><div class="ic-t">${esc(s.t)}</div>${PICS[s.pic]}<div class="ic-s">${esc(s.d)}</div>
+    ${s.copy ? `<button class="gobtn" id="gcp">📋 انسخ الرابط</button>` : ''}
+    <div class="row2" style="margin-top:10px">${s.last || s.copy ? '' : `<button class="gobtn sm" id="gnx">✅ عملتها ← اللي بعدها</button>`}<button class="btn ghost" id="gag">🔁 مش لاقيه؟ وريني تاني</button></div>
+    ${i ? '<button class="btn ghost sm" id="gbk" style="width:100%;margin-top:6px">→ الخطوة اللي قبلها</button>' : ''}</div>`;
+  g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const nx = $('#gnx'); nx && (nx.onclick = () => showGuide(i + 1));
+  const bk = $('#gbk'); bk && (bk.onclick = () => showGuide(i - 1));
+  $('#gag').onclick = () => { const sv = $('.phsvg', g); sv && sv.classList.add('big'); sv && sv.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  const cp = $('#gcp'); cp && (cp.onclick = () => copyText(s.copy));
+}
+// الآيفون: التطبيق المتثبّت مش بيشوف بيانات Safari ← المدرس يلزق الكود مرة واحدة
+function renderPasteCode() {
+  $('#tabs').hidden = true;
+  app.innerHTML = `<div class="icard"><div class="ic-ico">🔑</div><div class="ic-t">آخر خطوة!</div><div class="ic-s">دوس «📋 الصق» (الرابط بتاعك اتنسخ لوحده وانت بتثبّت). لو مانفعش: افتح الرابط اللي وصلك من الأستاذ وانسخه والصقه هنا.</div>
+    <input class="inp" id="pc" dir="ltr" placeholder="الرابط أو الكود" style="margin:10px 0">
+    <button class="gobtn" id="pcp">📋 الصق</button><button class="btn pri" id="pok" style="width:100%;margin-top:8px">دخول</button></div>`;
+  const use = v => { const m = /c=([^&\s]+)/.exec(v) || [null, v.trim()]; if (!m[1]) return toast('الصق الرابط الأول'); LS.set(TCODE, decodeURIComponent(m[1])); location.reload(); };
+  $('#pcp').onclick = async () => { try { $('#pc').value = await navigator.clipboard.readText(); } catch (e) { toast('اضغط مطوّل في الخانة واختار لصق'); } };
+  $('#pok').onclick = () => use($('#pc').value);
+}
+
 /* ---------- الرسائل ---------- */
-function bubble(m) {
-  if (m.kind === 'ring') return `<div class="bub ring">🔔 الأستاذ ${esc(m.sender || D.rep || '')} بينبّهك<span class="tm">${fmtDate(m.at)}</span></div>`;
+// التنبيه = صوت بس. بعد 3 تنبيهات ورا بعض تظهر جملة «الأستاذ … بينبّهك»
+function bubble(m, i, all) {
+  if (m.kind === 'ring') {
+    let n = 1; for (let j = i - 1; j >= 0 && all[j].kind === 'ring'; j--) n++;
+    const lastOfStreak = !all[i + 1] || all[i + 1].kind !== 'ring';
+    return n >= 3 && lastOfStreak ? `<div class="bub ring">🔔 الأستاذ ${esc(m.sender || D.rep || '')} بينبّهك<span class="tm">${fmtDate(m.at)}</span></div>` : '';
+  }
   return `<div class="bub ${m.me ? 'me' : 'them'}">${esc(m.body)}<span class="tm">${fmtDate(m.at)}${m.me ? (m.read ? ' ✓✓' : ' ✓') : ''}</span></div>`;
 }
 async function pullMsgs(first) {

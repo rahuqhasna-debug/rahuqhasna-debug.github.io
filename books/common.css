@@ -158,3 +158,20 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 .promo .pr{display:flex;justify-content:space-between;background:rgba(255,255,255,.15);border-radius:8px;padding:4px 8px;margin-top:5px;font-size:14px}
 .promo s{opacity:.75}
 .promo .go{display:block;text-align:center;background:#fff;color:#b91c1c;border-radius:10px;padding:10px;margin-top:10px;font-weight:800;font-size:16px}
+/* ===== 2026-11-12: كارت التثبيت (أبيض) + الدليل بالصور ===== */
+.icard{background:#fff;color:#0f172a;border-radius:18px;padding:18px 16px;margin-bottom:14px;text-align:center;box-shadow:0 8px 28px rgba(15,23,42,.12);border:1px solid #e2e8f0;animation:icIn .5s ease both}
+.icard .ic-ico{font-size:52px;line-height:1;animation:bob 2s ease-in-out infinite}
+.icard .ic-t{font-size:19px;font-weight:800;margin:8px 0 4px;color:#0f172a}
+.icard .ic-s{font-size:15px;color:#334155;margin-bottom:12px}
+.icard .stepn{display:inline-block;background:#0f766e;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:700}
+.gobtn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font-size:18px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(90deg,#ff2d55,#ff6b00,#ff2d55);background-size:200% 100%;animation:shine 2.5s linear infinite,pulseb 1.6s ease-in-out infinite;box-shadow:0 6px 18px rgba(255,45,85,.45)}
+.gobtn.sm{font-size:15px;padding:12px}
+.iosbtn{display:block;width:100%;margin-top:10px;border:2px solid #0f172a;background:#fff;color:#0f172a;border-radius:14px;padding:12px;font-size:16px;font-weight:800;cursor:pointer}
+.phsvg{display:block;width:170px;max-width:60%;margin:10px auto;transition:width .3s}
+.phsvg.big{width:300px;max-width:95%}
+.phsvg .pulse{animation:ringp 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes shine{to{background-position:-200% 0}}
+@keyframes pulseb{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ringp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.25)}}
+@keyframes icIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}

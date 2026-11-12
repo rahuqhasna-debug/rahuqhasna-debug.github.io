@@ -412,6 +412,26 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 .tile .ts{font-size:12px;color:var(--muted);line-height:1.3}
 .tile .badge{position:absolute;top:8px;left:8px;background:#dc2626;color:#fff;border-radius:12px;padding:0 8px;font-size:13px;font-weight:800}
 .wrap.home .tile{min-height:0}
+/* 2026-11-12: الواجهة الجديدة — كروت ملونة متدرجة + أيقونات مرسومة */
+.igrid.tiles.v2{gap:12px}
+.v2 .tile{border:0;color:#fff;border-radius:24px;overflow:hidden;isolation:isolate;animation:tileIn .45s cubic-bezier(.2,.8,.2,1) both;box-shadow:0 10px 22px -10px var(--sh,rgba(0,0,0,.4))}
+.v2 .tile::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 85% 0%,rgba(255,255,255,.35),transparent 55%);z-index:-1}
+.v2 .tile::after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.10);left:-34px;bottom:-44px;z-index:-1}
+.v2 .tile .ti{background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45);backdrop-filter:blur(2px)}
+.v2 .tile .ti svg{width:58%;height:58%}
+.v2 .tile .tl{font-size:17px;text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.v2 .tile .ts{color:rgba(255,255,255,.88);font-weight:600}
+.v2 .tile .badge{background:#fff;color:#dc2626;box-shadow:0 2px 6px rgba(0,0,0,.2);animation:bdg 1.6s ease-in-out infinite}
+.v2 .tile:nth-child(1){background:linear-gradient(140deg,#38bdf8,#2563eb);--sh:#2563eb}
+.v2 .tile:nth-child(2){background:linear-gradient(140deg,#fbbf24,#ea580c);--sh:#ea580c}
+.v2 .tile:nth-child(3){background:linear-gradient(140deg,#4ade80,#059669);--sh:#059669}
+.v2 .tile:nth-child(4){background:linear-gradient(140deg,#a78bfa,#6d28d9);--sh:#6d28d9}
+.v2 .tile:nth-child(5){background:linear-gradient(140deg,#fb7185,#db2777);--sh:#db2777}
+.v2 .tile:nth-child(6){background:linear-gradient(140deg,#2dd4bf,#0f766e);--sh:#0f766e}
+.v2 .tile:nth-child(2){animation-delay:.05s}.v2 .tile:nth-child(3){animation-delay:.1s}.v2 .tile:nth-child(4){animation-delay:.15s}.v2 .tile:nth-child(5){animation-delay:.2s}.v2 .tile:nth-child(6){animation-delay:.25s}
+@keyframes tileIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes bdg{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.ico.wa svg{width:22px;height:22px}
 .achips{display:flex;flex-wrap:wrap;gap:6px;max-height:132px;overflow-y:auto;margin:0 0 8px;padding:2px}
 .lastv{font-size:12px;color:var(--brand);font-weight:700;margin-top:2px}
 .lastv.muted{color:var(--muted);font-weight:400}
@@ -903,7 +923,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles i8">${ic('#/teachers','👨‍🏫','المدرسين','g1',`${db.teachers.length} مدرس`)}${ic('#/sales','💰','البيع','g3',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs','📬','الرسائل','g5',sbBell?`${sbBell} جديد في المراسلات`:'واتساب + المراسلات',sbBell||0)}${ic('#/route','🧭','خط السير','g8',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map','📍','الخريطة','g7',`${locN} ليهم موقع`)}${ic('#/visits','🚗','الزيارات','g4',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles v2">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}${ic('#/msgs',HICO.chat,'الرسائل','c3',sbBell?`${sbBell} جديد`:'واتساب + المراسلات',sbBell||0)}${ic('#/route',HICO.route,'خط السير','c4',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map',HICO.pin,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -993,6 +1013,15 @@ function owedLine(ents){
   const by={}; for(const e of [...ents].sort((a,b)=>bookRank[a.b]-bookRank[b.b])){ (by[bookParts(e.b).sb] ||= []).push(e); }
   return Object.entries(by).map(([sb,l])=>`${SUBJ[sb]}: `+l.map(e=>{const p=bookParts(e.b); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`+(e.q>1?` (${e.q})`:'');}).join('، ')).join(' • ');
 }
+// أيقونات الرئيسية (رسم خطوط بيضا)
+var HICO=(()=>{ const s=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`; return {
+  users:s('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M16.5 14.2c2.9.2 5 2.3 5 5.3"/>'),
+  bag:s('<path d="M5 8h14l-1.2 12.5H6.2z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/><path d="M10 13.5c0 1.2.9 2 2 2s2-.8 2-2"/>'),
+  chat:s('<path d="M4 5h16v11H10l-5 4v-4H4z"/><circle cx="8.5" cy="10.5" r=".8" fill="currentColor"/><circle cx="12" cy="10.5" r=".8" fill="currentColor"/><circle cx="15.5" cy="10.5" r=".8" fill="currentColor"/>'),
+  route:s('<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8"/>'),
+  pin:s('<path d="M12 21.5s-7-6.3-7-11.5a7 7 0 0 1 14 0c0 5.2-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/>'),
+  car:s('<path d="M3 16.5v-3.2L5 8.5h14l2 4.8v3.2z"/><circle cx="7" cy="16.8" r="1.8"/><circle cx="17" cy="16.8" r="1.8"/><path d="M3.5 12.5h17"/>')
+}; })();
 function phoneBtns(t){
   // 📨 = رسايل عبر تطبيق سلاح التلميذ (بتظهر بس للي داخل «💬 المراسلات» بالرقم السري على الموبايل ده)
   const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>` : '';
@@ -1551,9 +1580,12 @@ function stockCard(){
     ${hist.length?`<details class="stk"><summary>🕘 سجل الاستلام (${hist.length})</summary>${hist.map(s=>`<div class="hrow"><div class="grow"><b style="color:var(--c-${bookParts(s.b).sb})">${esc(bookLabel(s.b))}</b> × ${s.q}<div class="small muted">${fmtDT(s.d)}</div></div><button class="btn sm danger" data-act="del-stock" data-id="${s.id}" title="امسح">🗑️</button></div>`).join('')}</details>`:''}
   </div>`;
 }
+// زرار «👑 لوحة المالك» بيظهر بس في البرنامج اللي على حساب المالك (بنقارن hash مش الإيميل نفسه)
+function isOwnerApp(){ const h=s=>{let x=5381;for(const c of String(s||'').trim().toLowerCase())x=((x*33)^c.charCodeAt(0))>>>0;return x.toString(36)}; return [db.mail, db.driveMail].some(m=>m && h(m)==='vjbary'); }
 function renderSettings(){
   setHeader('⚙️ الإعدادات', false);
-  app.innerHTML=`<div class="card"><h3 class="sec-t">👤 المندوب</h3>
+  app.innerHTML=`${isOwnerApp()?`<a class="card" href="admin.html#/settings" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;border:2px solid #f59e0b;background:linear-gradient(135deg,#fffbeb,#fef3c7)"><span style="font-size:34px">👑</span><span class="grow"><b style="font-size:18px;color:#92400e">لوحة المالك</b><br><span class="small" style="color:#78350f">أرقام المناديب السرية والموافقة عليهم وقفلهم</span></span><span style="font-size:22px;color:#92400e">←</span></a>`:''}
+    <div class="card"><h3 class="sec-t">👤 المندوب</h3>
       <div class="field"><label>اسم المندوب</label><input id="rep" value="${esc(db.rep)}"></div>
       <div class="field"><label>الجيميل (حساب جوجل اللي النسخ بتترفع على الدرايف بتاعه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
       ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية${db.idara?` (${villages().length} قرية وبندر)`:''}</label>${idaraSelect('idara', db.idara)}</div>`:''}
@@ -4327,7 +4359,7 @@ async function pullSbBell(){
     const S=await sbSession();
     if(!S){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
     const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:S.h,body:'{}'});
-    if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0);
+    if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0);
     if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} try{ new Audio('ring.mp3').play().catch(()=>{}); }catch(e){} }
     const was=sbBell; sbBell=n; updateBell();
     if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»
@@ -4638,7 +4670,7 @@ async function msgSend(){
   }
   let i=0, sent=0; const m=document.createElement('div'); m.className='modal';
   const close=()=>{ m.remove(); toast(`📤 اتبعت لـ ${sent} من ${list.length} مدرس`); };
-  const draw=()=>{ if(i>=list.length){ close(); return; } const t=list[i], body=txt.replace(/\{الاسم\}/g, t.name).replace(/\[رابط المدرس\]/g, links[t.id]||'');
+  const draw=()=>{ if(i>=list.length){ close(); return; } const t=list[i], body=txt.replace(/(أ\/\s*)?\{الاسم\}/g, 'أ/ '+t.name).replace(/\[رابط المدرس\]/g, links[t.id]||'');
     m.innerHTML=`<div class="box msgq"><h3>📤 إرسال الرسالة</h3><div class="small muted">مدرس ${i+1} من ${list.length} • اتبعت ${sent}</div>
       <div class="big">${esc(t.name)}</div><div class="small muted" dir="ltr">${esc(t.phone)}</div><div class="small muted">${esc(t.area||'')}</div>
       <a class="btn ok" id="mq_wa" style="display:block;text-decoration:none;margin-top:12px;font-size:17px" href="${esc(waLink(t.phone, body))}" target="_blank" rel="noopener">💬 افتح الواتساب وابعت</a>

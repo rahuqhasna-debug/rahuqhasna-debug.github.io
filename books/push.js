@@ -35,6 +35,8 @@
   // المندوب / المالك (admin.html)
   window.pushInitStaff = async me => link('s-' + me.id, true);
   window.pushToTeacher = (t, text, ring) => send(['t-' + t.id], ring ? '🔔 سلاح التلميذ' : 'سلاح التلميذ', text, BASE + 'teacher.html#v=msgs', ring);
+  window.pushToStaff = (ids, text, path) => send(ids.map(id => 's-' + id), 'سلاح التلميذ', text, BASE + (path || 'admin.html#/bell'), false);
+  window.pushRingTeachers = async (ids, text) => { for (let i = 0; i < ids.length; i += 50) await send(ids.slice(i, i + 50).map(id => 't-' + id), '🔔', text, BASE + 'teacher.html', true); };
   window.pushToTeachers = async (ids, text) => { for (let i = 0; i < ids.length; i += 50) await send(ids.slice(i, i + 50).map(id => 't-' + id), 'سلاح التلميذ', text, BASE + 'teacher.html#v=me', false); };
   if (window.TP) window.pushReady();
 })();
