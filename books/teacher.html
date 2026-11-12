@@ -163,7 +163,9 @@ main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;fle
 .ordv #tot{flex:1;font-size:12.5px;line-height:1.4}.ordv .totbar b{font-size:14.5px}
 .ordv .totbar .gobtn{width:auto;flex:none;font-size:14.5px;padding:9px 16px;border-radius:12px}
 /* متابعة 8 (3): مساحة بيضاء أكبر في الرئيسية + سطر تحت «اطلب كتبك» + رجوع تحت على الشمال + أسعار مضغوطة + أغلفة */
-.hm .ttiles.five{flex:0 0 auto;grid-template-rows:76px 104px 104px;gap:14px;margin:10px 6px 18px}
+.hm .ttiles.five{flex:0 0 auto;grid-template-rows:96px 100px 100px;gap:18px 20px;margin:12px 8px 18px}
+.ttiles.five .tt.h-or{background:linear-gradient(135deg,#14b8a6,#0f766e);box-shadow:0 8px 18px -8px rgba(15,118,110,.7)}
+.ttiles.five .tt.wd .tti{width:56px;height:56px;font-size:38px}.ttiles.five .tt.wd .ttl{font-size:17px;font-weight:800}.ttiles.five .tt.wd .tsub{font-size:12.5px}
 .hm .ttiles.five .tt{padding:8px}
 .ttiles.five .tt.wd .tlx{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start}
 .tsub{font-family:'Reem Kufi',inherit;font-size:12px;font-weight:500;color:#fef3c7;line-height:1.4}
@@ -178,10 +180,13 @@ body:has(.ordv) .back2{bottom:calc(122px + env(safe-area-inset-bottom))}
 .prv .savebar .gobtn{font-size:15px;padding:10px}
 [data-grades] .chip{position:relative;justify-content:center;text-align:center;padding:8px 2px;font-size:13px;white-space:nowrap}
 [data-grades] .chip input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
-.cov{position:relative;width:38px;height:50px;border-radius:3px 6px 6px 3px;background:linear-gradient(160deg,var(--c1),var(--c2));box-shadow:inset 4px 0 0 rgba(0,0,0,.18),0 3px 6px -2px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:4px;color:#fff;overflow:hidden}
-.cov img{width:16px;height:16px;border-radius:4px;background:#fff}
-.cov b{font-size:8.5px;font-weight:800;line-height:1.2;margin-top:3px;text-align:center}
-.cov i{font-style:normal;font-size:7px;opacity:.9;position:absolute;bottom:3px}
+/* غلاف شبه كتب سلاح التلميذ الحقيقية: شريط أزرق فوق فيه الاسم، صورة في النص، شريط أحمر غامق تحت فيه المادة، ودايرة المرحلة */
+.cov{position:relative;width:48px;height:64px;border-radius:2px 5px 5px 2px;background:#fff;box-shadow:inset 3px 0 0 rgba(0,0,0,.15),0 4px 8px -3px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;color:#fff}
+.cov .ct{flex:none;height:17px;background:linear-gradient(180deg,#38a9f5,#1683d8);display:flex;align-items:center;justify-content:center;gap:2px;font-size:6.5px;font-weight:800;line-height:1}
+.cov .ct img{width:8px;height:8px;border-radius:2px;background:#fff}
+.cov .cm{flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;background:radial-gradient(circle at 50% 40%,var(--c1),var(--c2))}
+.cov .cb{flex:none;height:15px;background:linear-gradient(180deg,#9b2c2c,#7f1d1d);display:flex;align-items:center;justify-content:center;font-size:6.5px;font-weight:800;padding:0 2px;white-space:nowrap}
+.cov .cg{position:absolute;top:12px;left:3px;width:13px;height:13px;border-radius:50%;background:#7f1d1d;border:1.5px solid #fff;font-size:6px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .nch .nci{width:auto;height:auto}
 </style>
 </head>
@@ -1115,7 +1120,7 @@ function openTg(ch) {
     setTimeout(() => { location.href = 'https://play.google.com/store/apps/details?id=org.telegram.messenger'; }, 900);
   }, 1800);
 }
-const NCOV = { ar: ['#3b82f6', '#1d4ed8'], math: ['#22c55e', '#15803d'], en: ['#a855f7', '#7e22ce'], sci: ['#fb923c', '#ea580c'], stu: ['#d97706', '#92400e'] };   // ألوان أغلفة الكتب (ألوان المواد)
+const NCOV = { ar: ['#fde68a', '#b45309', '📖'], math: ['#bbf7d0', '#15803d', '🧮'], en: ['#e9d5ff', '#7e22ce', '🔤'], sci: ['#fed7aa', '#c2410c', '🔬'], stu: ['#fcd34d', '#78350f', '🏛️'] };   // غلاف كل مادة: لونين للصورة اللي في النص + رسمة
 const NSTAGE = { prim: ['ابتدائي', '#16a34a'], prep: ['إعدادي', '#2563eb'] };
 const NBG = { ar: '#fef3c7,#fbbf24', math: '#dcfce7,#4ade80', en: '#f3e8ff,#c084fc', sci: '#ffedd5,#fb923c', stu: '#e0f2fe,#38bdf8' };
 const NEWS_L = { ar: 'عربي ودين', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات', all: 'عام' };
@@ -1141,7 +1146,7 @@ function renderNews() {
     // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
     const subs = ['ar', 'math', 'en', 'sci', 'stu'];
     const tile = (st, s) => { const ch = NEWS_CHS[st][s];
-      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci"><span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><img src="icon-192.png" alt=""><b>${NEWS_L[s]}</b><i>${NSTAGE[st][0]}</i></span></span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci"><span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="icon-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span></span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
     const sec = st => `<div class="nhd" style="--c:${NSTAGE[st][1]}">المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
     const hasAll = NEWS.items.some(x => x.s === 'all');
     app.innerHTML = `<div class="phead">اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — اختار المادة</div></div>
