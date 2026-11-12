@@ -47,17 +47,37 @@ const vals = () => ({ ...(D.profile || {}), avatar: D.avatar || '' });
 // لو الكتاب ليه سعر قبل الخصم بس، بيظهر بيه (من غير ما يختفي)
 const prices = () => ((D.prices && D.prices.items) || []).map(p => p.post == null && p.pre != null ? { ...p, post: p.pre, pre: null } : p);
 // النغمة: الموبايل بيمنع الصوت لحد ما المدرس يلمس الشاشة مرة — فأول لمسة «بتفتح» الصوت (بصمت)، وبعدها النغمة بتشتغل مع أي رسالة أو تنبيه
-const RING_SND = (() => { try { const a = new Audio('ring.mp3'); a.preload = 'auto'; return a; } catch (e) { return null; } })();
-let audioOk = false;
+// (2026-11-12 تاني) النغمة كانت بتشتغل ساعات وساعات لأ: الموبايل بيوقّف الصوت لما الصفحة تروح الخلفية.
+// الحل: Web Audio — النغمة بتتحمّل مرة واحدة في الذاكرة، والصوت بيتفتح مع أول لمسة، وبيرجع يتفتح لوحده كل ما الصفحة ترجع قدام أو المدرس يلمس الشاشة.
+let ACX = null, RBUF = null, RLOAD = null, LAST_DING = 0;
+const RING_SND = (() => { try { const a = new Audio('ring.mp3'); a.preload = 'auto'; return a; } catch (e) { return null; } })();   // احتياطي لو Web Audio مش موجود
+function acx() { if (!ACX) { const C = window.AudioContext || window.webkitAudioContext; if (C) ACX = new C(); } return ACX; }
+function loadRing() {
+  const c = acx(); if (!c || RBUF || RLOAD) return RLOAD;
+  RLOAD = fetch('ring.mp3').then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(buf => { RBUF = buf; }).catch(() => { RLOAD = null; });
+  return RLOAD;
+}
 function unlockAudio() {
-  if (audioOk || !RING_SND) return;
-  RING_SND.muted = true;
-  RING_SND.play().then(() => { RING_SND.pause(); RING_SND.currentTime = 0; RING_SND.muted = false; audioOk = true; }).catch(() => { RING_SND.muted = false; });
+  const c = acx(); if (!c) return;
+  if (c.state !== 'running') c.resume().catch(() => { });
+  loadRing();
+  try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch (e) { }   // صوت فاضي عشان يفتح الصوت
 }
 ['pointerdown', 'touchstart', 'keydown', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
-function ding() {
+document.addEventListener('visibilitychange', () => { if (!document.hidden && ACX && ACX.state !== 'running') ACX.resume().catch(() => { }); });
+async function ding() {
   try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { }
-  try { if (!RING_SND) return; RING_SND.muted = false; RING_SND.currentTime = 0; RING_SND.play().catch(() => { }); } catch (e) { }
+  if (document.hidden) return;   // في الخلفية: إشعار الموبايل هو اللي بيرن
+  const now = Date.now(); if (now - LAST_DING < 1500) return; LAST_DING = now;   // مايتكررش فوق بعضه
+  try {
+    const c = acx();
+    if (c) {
+      if (c.state !== 'running') await c.resume().catch(() => { });
+      if (!RBUF) await loadRing();
+      if (RBUF && c.state === 'running') { const s = c.createBufferSource(); s.buffer = RBUF; s.connect(c.destination); s.start(0); return; }
+    }
+    if (RING_SND) { RING_SND.currentTime = 0; RING_SND.play().catch(() => { }); }
+  } catch (e) { }
 }
 
 async function load() {
