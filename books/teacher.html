@@ -452,6 +452,48 @@ function webSteps() {
   return a;
 }
 function webPermOk() { return webSteps().every(x => x.ok); }
+/* فيديو تمثيلي (رسمة متحركة بتمشي شاشة ورا شاشة) لكل نوع موبايل. الإطار = [عنوان الشاشة، [الصفوف]، رقم الصف اللي بيدوس عليه، اختياري 1 = المفتاح بيتشغّل]
+   (شكل الإعدادات تقريبي — الأسماء ممكن تختلف سنة عن سنة) */
+const BRAND = 'selah-brand';
+const BR = {
+  xiaomi: { n: 'شاومي / ريدمي / بوكو', b: [['الإعدادات', ['الشبكة', 'التطبيقات', 'البطارية'], 1], ['التطبيقات', ['إدارة التطبيقات', 'التشغيل التلقائي', 'الأذونات'], 0], ['إدارة التطبيقات', ['Chrome', 'واتساب', 'الكاميرا'], 0], ['Chrome', ['الإشعارات', 'توفير البطارية', 'التخزين'], 1], ['توفير البطارية', ['بلا قيود', 'توفير ذكي', 'تقييد'], 0, 1]],
+    a: [['الإعدادات', ['الشبكة', 'التطبيقات', 'البطارية'], 1], ['التطبيقات', ['إدارة التطبيقات', 'التشغيل التلقائي', 'الأذونات'], 1], ['التشغيل التلقائي', ['Chrome', 'واتساب', 'الكاميرا'], 0, 1]] },
+  samsung: { n: 'سامسونج', b: [['الإعدادات', ['الاتصالات', 'التطبيقات', 'البطارية'], 1], ['التطبيقات', ['Chrome', 'واتساب', 'الكاميرا'], 0], ['Chrome', ['الإشعارات', 'البطارية', 'التخزين'], 1], ['البطارية', ['غير مقيد', 'محسّن', 'مقيّد'], 0, 1]],
+    a: [['الإعدادات', ['الاتصالات', 'التطبيقات', 'البطارية'], 2], ['البطارية', ['وضع توفير الطاقة', 'حدود الاستخدام في الخلفية', 'الإعدادات'], 1], ['حدود الخلفية', ['التطبيقات النائمة', 'التطبيقات العميقة', 'التطبيقات التي لا تنام'], 2, 1]] },
+  oppo: { n: 'أوبو / ريلمي / ون بلس', b: [['الإعدادات', ['الشبكة', 'البطارية', 'التطبيقات'], 1], ['البطارية', ['توفير الطاقة', 'Chrome', 'واتساب'], 1], ['Chrome', ['السماح بالنشاط في الخلفية', 'السماح بالتشغيل التلقائي', 'تحسين'], 0, 1]],
+    a: [['الإعدادات', ['الشبكة', 'البطارية', 'التطبيقات'], 2], ['إدارة التطبيقات', ['Chrome', 'واتساب', 'الكاميرا'], 0], ['Chrome', ['الإشعارات', 'استخدام البيانات', 'السماح بالتشغيل التلقائي'], 2, 1]] },
+  vivo: { n: 'فيفو / آي كيو', b: [['الإعدادات', ['الشبكة', 'البطارية', 'التطبيقات'], 1], ['البطارية', ['وضع التوفير', 'استهلاك الخلفية', 'الاستخدام'], 1], ['استهلاك الخلفية', ['Chrome', 'واتساب', 'الكاميرا'], 0, 1]],
+    a: [['الإعدادات', ['الشبكة', 'البطارية', 'التطبيقات'], 2], ['التطبيقات', ['التشغيل التلقائي', 'أذونات', 'المزيد'], 0], ['التشغيل التلقائي', ['Chrome', 'واتساب', 'الكاميرا'], 0, 1]] },
+  huawei: { n: 'هواوي / أونر', b: [['الإعدادات', ['الشبكة', 'البطارية', 'التطبيقات'], 1], ['البطارية', ['وضع التوفير', 'تشغيل التطبيقات', 'المزيد'], 1], ['تشغيل التطبيقات', ['Chrome', 'واتساب', 'الكاميرا'], 0, 1]],
+    a: [['الإعدادات', ['الشبكة', 'البطارية', 'التطبيقات'], 1], ['البطارية', ['وضع التوفير', 'تشغيل التطبيقات', 'المزيد'], 1], ['تشغيل التطبيقات', ['Chrome', 'واتساب', 'الكاميرا'], 0, 1]] },
+  other: { n: 'نوع تاني', b: [['الإعدادات', ['الشبكة', 'التطبيقات', 'البطارية'], 1], ['التطبيقات', ['Chrome', 'واتساب', 'الكاميرا'], 0], ['Chrome', ['الإشعارات', 'البطارية', 'التخزين'], 1], ['البطارية', ['غير مقيد', 'محسّن', 'مقيّد'], 0, 1]],
+    a: [['الإعدادات', ['الشبكة', 'التطبيقات', 'البطارية'], 1], ['التطبيقات', ['التشغيل التلقائي', 'Chrome', 'الأذونات'], 0], ['التشغيل التلقائي', ['Chrome', 'واتساب', 'الكاميرا'], 0, 1]] }
+};
+let ANI = 0;
+function animGuide(frames) {
+  const id = ++ANI, N = frames.length, T = N * 2.4, p = 100 / N;
+  let css = '', g = '';
+  frames.forEach((f, i) => {
+    const a = (i * p).toFixed(2), b = ((i + 1) * p - 1).toFixed(2), b2 = ((i + 1) * p - 0.99).toFixed(2);
+    css += `@keyframes an${id}_${i}{0%,${i ? (+a - 0.01).toFixed(2) : 0}%{opacity:${i ? 0 : 1}}${a}%,${b}%{opacity:1}${b2}%,100%{opacity:0}}`;
+    const [title, rows, hi, on] = f;
+    let s = `<rect x="14" y="16" width="152" height="34" fill="#e2e8f0"/><text x="152" y="38" font-size="12" text-anchor="end" font-weight="700" fill="#111">${esc(title)}</text>`;
+    rows.forEach((r, j) => {
+      const y = 62 + j * 44, h = j === hi;
+      s += `<rect x="20" y="${y}" width="140" height="36" rx="8" fill="${h ? '#fde68a' : '#fff'}" stroke="${h ? '#f59e0b' : '#e2e8f0'}" stroke-width="${h ? 2.5 : 1}"${h ? ' class="pulse"' : ''}/><text x="152" y="${y + 23}" font-size="11" text-anchor="end" font-weight="700" fill="#111">${esc(r)}</text>`;
+      if (h && on) s += `<rect x="28" y="${y + 10}" width="34" height="16" rx="8" fill="#16a34a"/><circle cx="53" cy="${y + 18}" r="6.5" fill="#fff"/><text x="76" y="${y + 24}" font-size="14">✅</text>`;
+    });
+    s += `<text x="62" y="${62 + hi * 44 + 58}" font-size="30">👆</text><text x="90" y="296" font-size="9" text-anchor="middle" fill="#64748b">${i + 1} / ${N}</text>`;
+    g += `<g style="animation:an${id}_${i} ${T}s infinite;opacity:${i ? 0 : 1}">${s}</g>`;
+  });
+  return `<style>${css}</style>` + phone(g);
+}
+const brandPath = fr => fr.map(f => f[1][f[2]]).join(' ← ');
+function brandPick() {
+  app.innerHTML = `<div class="icard gate"><div class="ic-t">📱 موبايلك نوعه إيه؟</div><div class="ic-s">عشان نوريك الخطوات بالظبط زي موبايلك.</div>
+    ${Object.keys(BR).map(k => `<button class="gobtn" data-br="${k}" style="margin-top:8px">${BR[k].n}</button>`).join('')}</div>`;
+  $$('[data-br]').forEach(b => b.onclick = () => { LS.set(BRAND, b.dataset.br); render(); });
+}
 const W_TIP = {
   b: 'افتح «الإعدادات» ← «التطبيقات» ← «Chrome» ← «البطارية» ← اختار «بلا قيود» (شاومي) أو «السماح بالنشاط في الخلفية» (أوبو/ريلمي) أو «غير مقيد» (سامسونج).',
   a: 'شاومي: «الإعدادات» ← «التطبيقات» ← «التشغيل التلقائي» ← شغّل Chrome. أوبو/ريلمي/فيفو: «إدارة التطبيقات» ← Chrome ← «السماح بالتشغيل التلقائي». سامسونج: مش محتاج — دوس «عملتها».'
@@ -467,6 +509,7 @@ function renderWebPerm() {
     return;
   }
   const steps = webSteps(), i = steps.findIndex(x => !x.ok), st = steps[i], n = steps.length;
+  if (AND && (st.k === 'b' || st.k === 'a') && !BR[LS.get(BRAND)]) return brandPick();
   const dots = `<div class="pgdots">${steps.map((x, j) => `<span class="${x.ok ? 'ok' : j === i ? 'on' : ''}"></span>`).join('')}</div>`;
   const denied = st.k === 'n' && webNotif() === 'denied';
   const T = {
@@ -476,7 +519,8 @@ function renderWebPerm() {
     a: ['🚀 التشغيل التلقائي', 'عشان الإشعار يوصلك حتى لو الموبايل كان مقفول من بدري. اعمل زي الرسمة ← وارجع هنا دوس «عملتها».', '✅ عملتها'],
     t: ['✅ آخر خطوة: جرّب الرنة', 'دوس الزرار الأخضر ← اقفل الشاشة على طول ← استنى 15 ثانية ← الموبايل لازم يرن 🔔', '🔔 جرّب دلوقتي واقفل الشاشة']
   }[st.k];
-  const pic = st.k === 'b' ? SWROWS(['السماح في الخلفية', 'بلا قيود'], '🔋 Chrome ← البطارية') : st.k === 'a' ? SWROWS(['Chrome'], '⚙️ التشغيل التلقائي') : PERM_PICS[st.k]();
+  const fr = (st.k === 'b' || st.k === 'a') && BR[LS.get(BRAND)] ? BR[LS.get(BRAND)][st.k] : null;
+  const pic = fr ? animGuide(fr) : PERM_PICS[st.k]();
   const backMsg = LS.get(RING_FAIL) && (st.k === 'b' || st.k === 'a') ? '<div class="pgback">⚠️ مارنّش؟ ارجع اعمل الخطوة دي زي الرسمة بالظبط 👇</div>' : '';
   const btns = st.k === 't' && PG_TEST ? `<div class="ic-t" style="margin-top:10px">الموبايل رنّ؟</div>
     <button class="gobtn" id="pgYes" style="background:#16a34a">✅ أيوه رنّ — ادخل البرنامج</button>
@@ -484,7 +528,8 @@ function renderWebPerm() {
     <button class="btn ghost sm" id="pgGo" style="width:100%;margin-top:6px">🔁 جرّب تاني</button>`
     : `<button class="gobtn" id="pgGo" style="background:#16a34a">${T[2]}</button>`;
   app.innerHTML = `<div class="icard gate step">${dots}<div class="stepn">خطوة ${i + 1} من ${n}</div><div class="ic-t">${T[0]}</div>${backMsg}${pic}
-    <div class="ic-s">${T[1]}</div>${W_TIP[st.k] ? `<div class="pgbrand">📱 ${esc(W_TIP[st.k])}</div>` : ''}${btns}</div>`;
+    <div class="ic-s">${T[1]}</div>${fr ? `<div class="pgbrand">📱 ${esc(BR[LS.get(BRAND)].n)}:<br><b>${esc(brandPath(fr))}</b><br><span class="small">الرسمة بتتكرر لوحدها — اتفرّج عليها وبعدين اعملها بإيدك.</span></div><button class="btn ghost sm" id="pgBr" style="width:100%;margin-top:6px">📱 غيّر نوع الموبايل</button>` : W_TIP[st.k] ? `<div class="pgbrand">📱 ${esc(W_TIP[st.k])}</div>` : ''}${btns}</div>`;
+  const pb = $('#pgBr'); pb && (pb.onclick = () => { LS.set(BRAND, ''); render(); });
   $('#pgGo').onclick = async () => {
     if (st.k === 'n') { if (!denied) { try { await Notification.requestPermission(); } catch (e) { } if (window.pushInit) try { await window.pushInit(); } catch (e) { } } return render(); }
     if (st.k === 'b') { LS.set(W_BATT, 1); return render(); }
