@@ -403,16 +403,16 @@ function renderMe() {
     <div class="field${req.has('photos') ? ' req' : ''}" data-f="photos"><label>📷 صور إضافية${req.has('photos') ? ' <span class="pill bad">مطلوب تحديثه</span>' : ''}</label>
       <div class="avnote">📷 صورة سيلفي ليك مع طلبتك وهم ماسكين كتبنا 📚 — لازم حضرتك تكون في الصورة</div>
       <div class="photos" id="phs"></div>
-      <label class="btn sm" style="margin-top:8px">➕ زوّد صور<input type="file" accept="image/*" multiple id="phIn" hidden></label>
+      <div class="avbtns" style="margin-top:8px"><label class="btn pri">📷 كاميرا<input type="file" accept="image/*" capture="environment" class="phIn" hidden></label><label class="btn">🖼️ المعرض<input type="file" accept="image/*" multiple class="phIn" hidden></label></div>
       ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div></section>
     <div class="savebar"><button class="gobtn" id="save">✅ تم — ابعت للمراجعة</button></div></form>`;
   const f = $('#pf'); bindProfileForm(f, st, { remind: true }); drawPhotos();
   $$('.pgrid input:checked', f).forEach(i => i.parentNode.classList.add('on'));
   $$('[data-go]', f).forEach(b => b.onclick = () => { const x = $(`.field[data-f="${b.dataset.go}"]`, f); x && x.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-  $('#phIn').onchange = async e => {
+  $$('.phIn').forEach(inp => inp.onchange = async e => {
     const files = [...e.target.files]; e.target.value = '';
     for (const fl of files) { try { newPhotos.push(await compressImage(fl, 1280, 60000)); drawPhotos(); } catch (er) { toast(errMsg(er)); } }
-  };
+  });
   $('#save').onclick = async () => {
     const nv = readProfileForm(f, st), ch = changedOnly(vals(), nv);
     if (!Object.keys(ch).length && !newPhotos.length) return toast('مفيش تغيير');

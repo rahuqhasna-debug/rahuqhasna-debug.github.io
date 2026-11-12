@@ -162,7 +162,7 @@ function fieldInput(f, v, stage, opts = {}) {
   switch (f.t) {
     case 'avatar':
       return `<div style="display:flex;align-items:center;gap:10px"><span data-avprev>${v ? `<img class="av lg" src="${v}" alt="">` : '<span class="av lg">👤</span>'}</span>
-        <label class="btn sm">📷 اختار صورة<input type="file" accept="image/*" data-av hidden></label></div>
+        <div class="avbtns"><label class="btn pri">📷 كاميرا<input type="file" accept="image/*" capture="user" data-av hidden></label><label class="btn">🖼️ المعرض<input type="file" accept="image/*" data-av hidden></label></div></div>
         ${opts.remind ? '<div class="avnote">📸 محتاجين صورتك الشخصية إنت، مش أي صورة تانية — عشان نتعرف على حضرتك. بعد إذنك ده ضروري 🙏</div>' : ''}`;
     case 'stage':
       return opts.remind ? `<div class="pgrid rad">${Object.entries(STAGE_L).map(([k, l]) => `<label class="chip"><input type="radio" name="stage" value="${k}" ${v === k ? 'checked' : ''}>${l}</label>`).join('')}</div>`
@@ -181,7 +181,7 @@ function fieldInput(f, v, stage, opts = {}) {
         <div class="hint small muted">اكتب العنوان بالتفصيل واذكر علامة مميزة جنبه (مسجد، صيدلية، مدرسة…)</div>`;
     case 'loc':
       return `<div class="warnbox">⚠️ دوس الزرار ده وإنت واقف في مكان الدرس نفسه — مش من البيت ولا من الشارع</div>
-        <button type="button" class="btn pri" data-locbtn>📍 اضغط هنا لما تكون في مكان الدرس عشان نعرف مكانه على الخريطة</button>
+        <button type="button" class="btn pri locbig" data-locbtn><span class="lb-i">📍</span>اضغط هنا لما تكون في مكان الدرس<br><span class="lb-s">عشان نعرف مكانه على الخريطة</span></button>
         <div class="small" data-locv style="margin-top:6px">${v && v.lat ? '✅ تم تحديد الموقع — ' + fmtVal('loc', v) : '<span class="muted">لسه ما اتحددش</span>'}</div>
         <div data-locmap>${locMap(v)}</div>`;
     case 'days': {
@@ -238,25 +238,24 @@ function bindProfileForm(root, state, opts = {}) {
       if (gr) { const cur = $$('input:checked', gr).map(i => +i.value); gr.innerHTML = gradesBoxes(st, cur); }
     }
   });
-  const av = $('[data-av]', root);
-  av && av.addEventListener('change', async () => {
-    const f = av.files[0]; if (!f) return;
+  $$('[data-av]', root).forEach(av => av.addEventListener('change', async () => {
+    const f = av.files[0]; av.value = ''; if (!f) return;
     try { state.avatar = await compressImage(f, 200, 25000); $('[data-avprev]', root).innerHTML = `<img class="av lg" src="${state.avatar}" alt="">`; }
     catch (e) { toast(errMsg(e)); }
-  });
+  }));
   const lb = $('[data-locbtn]', root);
-  const LB0 = lb ? lb.textContent : '';
+  const LB0 = lb ? lb.innerHTML : '';
   const locate = () => {
     lb.disabled = true; lb.textContent = '⏳ بنحدد الموقع…';
     navigator.geolocation.getCurrentPosition(p => {
       lb.disabled = false;
       const acc = Math.round(p.coords.accuracy || 0);
-      if (acc > 200) { lb.textContent = LB0; return toast(`الموقع مش دقيق (±${acc} متر) — افتح الـ GPS واطلع جنب شباك أو برّه المبنى وجرّب تاني`, 6000); }
+      if (acc > 200) { lb.innerHTML = LB0; return toast(`الموقع مش دقيق (±${acc} متر) — افتح الـ GPS واطلع جنب شباك أو برّه المبنى وجرّب تاني`, 6000); }
       state.loc = { lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc, at: new Date().toISOString() };
       $('[data-locv]', root).innerHTML = '✅ تم تحديد الموقع — ' + fmtVal('loc', state.loc) + '<div class="small">بص على الخريطة: ده مكان الدرس؟ لو لأ دوس «حدّد تاني» وانت هناك.</div>';
       const mp = $('[data-locmap]', root); mp && (mp.innerHTML = locMap(state.loc));
-      lb.textContent = '📍 حدّد تاني'; remind(lb.closest('.field'));
-    }, () => { lb.disabled = false; lb.textContent = LB0; toast('ماقدرناش نحدد الموقع — اسمح للبرنامج بالموقع وشغّل الـ GPS وجرّب تاني', 5000); },
+      lb.innerHTML = '<span class="lb-i">📍</span>حدّد تاني<br><span class="lb-s">لو الخريطة مش على مكان الدرس</span>'; remind(lb.closest('.field'));
+    }, () => { lb.disabled = false; lb.innerHTML = LB0; toast('ماقدرناش نحدد الموقع — اسمح للبرنامج بالموقع وشغّل الـ GPS وجرّب تاني', 5000); },
       { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
   };
   lb && (lb.onclick = () => {

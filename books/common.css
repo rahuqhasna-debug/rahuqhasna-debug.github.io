@@ -239,3 +239,9 @@ input,select,textarea{max-width:100%}
 .bk-row .qty button{width:40px;height:40px;border:0;background:var(--brand-soft,#e2f2ef);font-size:20px;font-weight:800;cursor:pointer;color:var(--ink)}
 .bk-row .qty input{width:64px;height:40px;border:0;text-align:center;font-size:18px;font-weight:800;background:var(--card);color:var(--ink)}
 .bk-sum{font-size:13.5px;line-height:1.5;flex:1;min-width:130px}.bk-sum s{opacity:.6}.bk-sum b{color:#dc2626}
+/* زرار الموقع كبير والكلام تحت بعضه + كاميرا/معرض */
+.locsec .locbig,.psec .locbig{display:block;width:100%;white-space:normal;font-size:19px;font-weight:800;line-height:1.5;padding:18px 12px;border-radius:16px;text-align:center;box-shadow:0 8px 18px -8px rgba(15,118,110,.6)}
+.locbig .lb-i{display:block;font-size:34px;line-height:1.1;margin-bottom:4px}
+.locbig .lb-s{font-size:15px;font-weight:600;opacity:.95}
+.avbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1;min-width:0}
+.avbtns .btn{text-align:center;font-size:16px;padding:12px 6px;border-radius:12px}
