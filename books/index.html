@@ -408,6 +408,8 @@ mark.hl{background:#fde047;color:#000;border-radius:3px;padding:0 1px}
 nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 .dayc{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
 .dayc>span{font-size:20px;color:var(--brand)}
+.dpick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.dpick .btn{padding:10px 4px;white-space:normal}
+.dayonly{display:flex;gap:8px;align-items:center;margin-top:8px;background:var(--brand-soft);border-radius:10px;padding:8px;font-weight:700}
 .vfold{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
 .vfold .n{background:var(--owe);color:#fff;border-radius:12px;padding:0 10px;font-weight:800}
 .vfold .n.ok{background:var(--ok)}
@@ -4255,9 +4257,9 @@ function renderRoute(){
   app.innerHTML=`<div class="card"><div class="kv"><span>الأيام</span><b style="font-size:20px">${db.days.length}</b></div><div class="kv"><span>المدرسين في كل الأيام</span><b>${all.length}</b></div><div class="kv"><span>🚗 الكتب لكل الأيام</span><b>${takeSum(allTake)}</b></div>
     <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="day-add">➕ يوم جديد</button><button class="btn" data-act="route-map" ${all.some(id=>tById(id)?.loc)?'':'disabled'}>📍 الكل على الخريطة</button></div>
     <p class="hint">ضيف الأيام اللي جاية، وفي كل يوم المدرسين اللي ناوي تزورهم (بالقرية أو بالاسم). مش لازم تلتزم بيه — ده ترتيب ليك بس.</p></div>
-    ${db.days.length ? db.days.map(d=>{ const tk=takeSum(dayTake(d.t)); return `<a class="card dayc" href="#/route/${encodeURIComponent(d.id)}"><div class="grow"><b style="font-size:17px">📅 ${esc(d.n)}</b><div class="small muted">👥 ${d.t.length} مدرس • 🚗 ${tk} كتاب${dayAreas(d.t)}</div></div><span>←</span></a>`; }).join('')
+    ${db.days.length ? db.days.map(d=>{ const tk=takeSum(dayTake(d.t)); return `<div class="card dayc"><a class="grow" href="#/route/${encodeURIComponent(d.id)}" style="text-decoration:none;color:inherit"><b style="font-size:17px">📅 ${esc(d.n)}</b><div class="small muted">👥 ${d.t.length} مدرس • 🚗 ${tk} كتاب${dayAreas(d.t)}</div></a><button class="btn sm danger" data-act="day-del" data-id="${esc(d.id)}" title="امسح اليوم">🗑️</button></div>`; }).join('')
       : '<div class="card empty">لسه مفيش أيام.<br>دوس «➕ يوم جديد» وضيف فيه المدرسين اللي هتزورهم.</div>'}
-    ${db.days.length?'<button class="btn ghost sm" data-act="route-clear" style="width:100%">🧹 امسح خط السير كله</button>':''}`;
+    ${db.days.length?'<button class="btn danger" data-act="route-clear" style="width:100%">🗑️ امسح كل الأيام</button>':''}`;
 }
 function renderDay(id){
   const d=dayById(id); if(!d){ location.hash='#/route'; return; }
@@ -4277,18 +4279,37 @@ function renderDay(id){
       : '<div class="card empty">لسه ما اخترتش مدرسين لليوم ده.<br>دوس «➕ ضيف / شيل مدرسين»: اختار قرية ومنها المدرسين اللي عايزهم، أو دوّر على أي مدرس بالاسم.</div>'}`;
   bindSearch('rq', '#rlist');
 }
+// يوم جديد بالتاريخ (طلب شريف 2026-11-12): النهارده / بكرة / بعد بكرة / تاريخ تاني ← بعدها يرشّح المدرسين اللي عندهم سنتر في اليوم ده
+var WK=['sun','mon','tue','wed','thu','fri','sat'];
 function dayAdd(){
-  const n=db.days.length, id=uid(), nm=`اليوم ${DAY_ORD[n]||n+1}`;
-  db.days.push({id, n:nm, t:[]}); save(); location.hash='#/route/'+encodeURIComponent(id); toast(`📅 ${nm} اتضاف`);
+  const k=n=>dayKey(new Date(Date.now()+n*864e5));
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>📅 يوم جديد — إمتى؟</h3>
+    <div class="dpick">${['النهارده','بكرة','بعد بكرة'].map((l,n)=>`<button class="btn ${n?'':'pri'}" data-dn="${k(n)}"><b>${l}</b><div class="small">${dayName(k(n))} ${fmtDay(k(n))}</div></button>`).join('')}</div>
+    <div class="field" style="margin-top:10px"><label>أو اختار تاريخ تاني</label><input type="date" id="dn_d" value="${k(3)}"></div>
+    <div class="row2"><button class="btn ok" id="dn_ok">✅ اعمل اليوم ده</button><button class="btn ghost" id="dn_x">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const make=dk2=>{ if(!/^\d{4}-\d\d-\d\d$/.test(dk2||'')) return alert('اختار التاريخ');
+    const id=uid(), wk=WK[new Date(dk2+'T12:00:00').getDay()], nm=`${dayName(dk2)} ${fmtDay(dk2)}`;
+    m.remove(); db.days.push({id, n:nm, t:[], date:dk2, wk}); save(); location.hash='#/route/'+encodeURIComponent(id); toast(`📅 ${nm} اتضاف`);
+    setTimeout(()=>routePick(id), 250); };
+  m.addEventListener('click', e=>{ if(e.target===m){ m.remove(); return; } const b=e.target.closest('[data-dn]'); if(b) make(b.dataset.dn); });
+  m.querySelector('#dn_ok').onclick=()=>make(m.querySelector('#dn_d').value); m.querySelector('#dn_x').onclick=()=>m.remove();
 }
+// المدرس عنده سنتر في يوم الأسبوع ده؟ (من «أيام وساعات السنتر» اللي كتبها في المراسلات)
+function tDay(t, wk){ const d=t.tDays && wk && t.tDays[wk]; return d ? (d.f||d.t ? `🕒 ${d.f||'؟'}–${d.t||'؟'}` : '🕒 موجود') : ''; }
 function routePick(dayId){
   const day=dayById(dayId); if(!day) return;
-  const chosen=new Set(day.t), AS=new Set(); let q='', needOnly=false;   // AS = القرى المختارة (أكتر من قرية)
+  const chosen=new Set(day.t), AS=new Set(), CS=new Set(); let q='', needOnly=false, onlyDay=!!day.wk;   // AS = القرى المختارة (أكتر من قرية)، CS = التصنيف، onlyDay = اللي عندهم سنتر اليوم ده
+  const WN={sat:'السبت',sun:'الأحد',mon:'الاتنين',tue:'التلات',wed:'الأربع',thu:'الخميس',fri:'الجمعة'}[day.wk]||'';
+  const nDay=day.wk?db.teachers.filter(t=>tDay(t, day.wk)).length:0, nNo=db.teachers.filter(t=>!t.tDays || !Object.keys(t.tDays).length).length;
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const m=document.createElement('div'); m.className='modal';
   m.innerHTML=`<div class="box"><h3>🧭 مدرسين ${esc(day.n)}</h3>
     <div class="stickytop"><div class="search" style="margin:0 0 8px"><input id="rp_q" type="search" placeholder="🔎 دوّر على أي مدرس: اسم، تليفون، قرية، تصنيف…" autocomplete="off"></div>
     ${areaChips(areas, 'rpa')}</div>
+    ${day.wk?`<label class="dayonly"><input type="checkbox" id="rp_d" checked> 📅 اللي عندهم سنتر يوم ${WN} بس (${nDay} مدرس)</label><div class="small muted">${nNo} مدرس لسه ماكتبوش أيام السنتر — شيل العلامة عشان تشوفهم وتضيفهم بإيدك</div>`:''}
+    <div class="chips" style="margin-top:6px">${['A','B','C'].map(c=>`<button type="button" class="chip" data-rc="${c}">تصنيف ${c}</button>`).join('')}</div>
     <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="rp_n"> ⏳ اللي محتاجين زيارة بس (باقيلهم كتب أو فلوس أو طلب)</label>
     <div class="row2" style="margin-top:8px"><button class="btn sm" data-rp="all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-rp="none">⬜ شيل كل اللي ظاهرين</button></div>
     <div class="pickl" id="rp_l"></div>
@@ -4297,16 +4318,18 @@ function routePick(dayId){
   const okBtn=()=>{ m.querySelector('[data-rp="ok"]').textContent=`✅ تمام (${chosen.size} مدرس)`; };
   const inDays=id=>db.days.filter(x=>x.id!==day.id && x.t.includes(id)).map(x=>x.n);
   const shown=()=>{ const ws=qWords(q);
-    if(!AS.size && !ws.length && !needOnly) return day.t.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !day.t.includes(t.id)));
+    if(!AS.size && !ws.length && !needOnly && !onlyDay && !CS.size) return day.t.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !day.t.includes(t.id)));
     const rk=recvRankFn();
-    return db.teachers.filter(t=>(!AS.size || AS.has(t.area)) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>rk(a)-rk(b) || a.name.localeCompare(b.name,'ar')); };
+    return db.teachers.filter(t=>(!onlyDay || tDay(t, day.wk)) && (!CS.size || CS.has(clsLetter(t))) && (!AS.size || AS.has(t.area)) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>rk(a)-rk(b) || a.name.localeCompare(b.name,'ar')); };
   const draw=()=>{ const l=shown(), box=m.querySelector('#rp_l');
-    box.innerHTML = l.length ? l.slice(0,300).map(t=>{ const o=inDays(t.id); return `<label class="trow ${tStC(t)}" style="${tUpdSt(t)}"><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}>${tAv(t)}<div class="grow"><b>${esc(t.name)}</b>${nameTags(t)} ${tRecv(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div>${o.length?`<div class="small" style="color:var(--owe)">📅 موجود في: ${esc(o.join('، '))}</div>`:''}</div></label>`; }).join('')
-      : `<div class="empty small">${AS.size||q.trim()?'مفيش مدرس بالاختيار ده':'اختار قرية أو أكتر، أو دوّر على مدرس — والمختارين بيظهروا هنا'}</div>`;
+    box.innerHTML = l.length ? l.slice(0,300).map(t=>{ const o=inDays(t.id); return `<label class="trow ${tStC(t)}" style="${tUpdSt(t)}"><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}>${tAv(t)}<div class="grow"><b>${esc(t.name)}</b>${nameTags(t)} ${tRecv(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div>${day.wk&&tDay(t, day.wk)?`<div class="small" style="color:var(--brand);font-weight:700">${WN} ${tDay(t, day.wk)}</div>`:''}${o.length?`<div class="small" style="color:var(--owe)">📅 موجود في: ${esc(o.join('، '))}</div>`:''}</div></label>`; }).join('')
+      : `<div class="empty small">${onlyDay?`مفيش مدرسين عندهم سنتر يوم ${WN} بالاختيار ده — شيل علامة «📅 اللي عندهم سنتر» عشان تشوف الكل`:AS.size||q.trim()?'مفيش مدرس بالاختيار ده':'اختار قرية أو أكتر، أو دوّر على مدرس — والمختارين بيظهروا هنا'}</div>`;
     markWords(box, qWords(q)); okBtn(); };
   m.querySelector('#rp_q').addEventListener('input', e=>{ q=e.target.value; draw(); });
   bindAreaChips(m, 'rpa', AS, draw);
   m.querySelector('#rp_n').addEventListener('change', e=>{ needOnly=e.target.checked; draw(); });
+  const rd=m.querySelector('#rp_d'); if(rd) rd.addEventListener('change', e=>{ onlyDay=e.target.checked; draw(); });
+  m.querySelectorAll('[data-rc]').forEach(b=>b.addEventListener('click', e=>{ e.preventDefault(); const c=b.dataset.rc; CS.has(c)?CS.delete(c):CS.add(c); b.classList.toggle('on', CS.has(c)); draw(); }));
   m.addEventListener('change', e=>{ const c=e.target.closest('input[type=checkbox][data-id]'); if(!c) return; c.checked ? chosen.add(c.dataset.id) : chosen.delete(c.dataset.id); okBtn(); });
   m.addEventListener('click', e=>{
     if(e.target===m){ m.remove(); return; }
@@ -5009,7 +5032,7 @@ document.addEventListener('click', e=>{
     case 'loc-template': locTemplate(); break;
     case 'route-pick': routePick(id); break;
     case 'route-rm': { const t=tById(id), dd=el.dataset.d; withUndo(`✕ اتشال ${t?t.name:''} من اليوم`, ()=>{ const d=dayById(dd); if(d) d.t=d.t.filter(x=>x!==id); }); break; }
-    case 'route-clear': if(confirm('تمسح خط السير كله (كل الأيام)؟')) withUndo('🧹 خط السير اتمسح', ()=>{ db.days=[]; }); break;
+    case 'route-clear': typeConfirm('🗑️ امسح كل أيام خط السير', `هتمسح ${db.days.length} يوم. لو غلطت تقدر ترجّعها من زرار «رجوع» اللي هيظهر تحت.`, 'امسح', ()=>withUndo('🗑️ كل الأيام اتمسحت', ()=>{ db.days=[]; })); break;
     case 'route-map': mapDay=id||''; mapRouteOnly=true; mapCat=''; location.hash='#/map'; break;
     case 'day-add': dayAdd(); break;
     case 'day-copy': { const d=dayById(id); if(d) copyText(dayText(d)); break; }

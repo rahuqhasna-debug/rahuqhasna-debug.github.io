@@ -276,6 +276,11 @@ header.top .hb.backpill[hidden]{display:none}
 .qtot:empty{display:none}
 .qtot .big{font-size:20px;color:#6d28d9}
 .qtot .save{color:#15803d;font-weight:800;margin-top:2px}
+/* 2026-11-12: طلب المدرس بعد الاستلام */
+.rord .rok{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-weight:800;font-size:17px;text-align:center;border-radius:12px;padding:10px;margin-bottom:8px}
+.rord .redit{background:#fef3c7;color:#92400e;border-radius:10px;padding:6px 10px;margin:8px 0;font-weight:700;font-size:14px}
+/* 2026-11-12: علامة «مطلوب تحديثه» أكبر وأوضح */
+.field.req .pill.bad{font-size:15px;background:#dc2626;color:#fff;padding:3px 10px;border-radius:12px;box-shadow:0 2px 6px rgba(220,38,38,.35)}
 /* 2026-11-12: الإيموشنات */
 .emob{font-size:26px;background:none;border:0;padding:2px 4px;cursor:pointer;flex:none;align-self:center}
 .emop{display:grid;grid-template-columns:repeat(8,1fr);max-width:836px;margin:0 auto 6px;max-height:190px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px}

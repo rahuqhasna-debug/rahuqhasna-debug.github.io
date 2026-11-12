@@ -413,10 +413,11 @@ async function syncRepOrders(db) {
   const bySid = {}; rows.forEach(r => bySid[r.note.slice(4)] = r);
   const seen = new Set();
   for (const s of db.sales || []) {
-    if (s.st !== 'order' || s.from === 'teacher-app' || !mineIds[s.t]) continue;
-    const items = (s.items || []).filter(i => i.q > 0).map(i => ({ b: i.b, l: bookLabel(i.b), q: i.q, sid: s.id }));
+    if (s.st !== 'order' || !mineIds[s.t]) continue;   // كل طلب مستني (اللي سجّلته أو اللي المدرس بعته واستلمته) بيظهر عند المدرس ومفتوح للتعديل
+    const by = s.from === 'teacher-app' ? 't' : 'r';
+    const items = (s.items || []).filter(i => i.q > 0).map(i => ({ b: i.b, l: bookLabel(i.b), q: i.q, sid: s.id, by }));
     if (!items.length) continue;
-    seen.add(s.id); const r = bySid[s.id], sig = x => (x || []).map(i => i.b + ':' + i.q).join(',');
+    seen.add(s.id); const r = bySid[s.id], sig = x => (x || []).map(i => i.b + ':' + i.q + ':' + (i.by || '')).join(',');
     if (!r) await sb.from('orders').insert({ teacher_id: mineIds[s.t], kind: 'order', status: 'approved', items, note: 'rep:' + s.id, decided_at: s.d || new Date().toISOString() });
     else if (sig(r.items) !== sig(items)) await sb.from('orders').update({ items }).eq('id', r.id);
   }
@@ -801,6 +802,7 @@ function bindReviews(root) {
         const less = o.kind === 'edit' ? items.filter(i => i.q < (i.was || 0)) : [];
         const ok = add.length ? gOrder(t.local_id, add, o.kind === 'order' ? 'replace' : 'add') : true;
         // الطلبات القديمة المستنية لنفس المدرس تتقفل — آخر طلب هو المعتمد
+        try { await syncRepOrders(gdb()); } catch (e) { }   // الطلب يظهر عند المدرس على طول «✅ تم استلام طلبك»
         if (o.kind === 'order') await sb.from('orders').update({ status: 'approved', reason: 'اتجمع مع آخر طلب', decided_at: new Date().toISOString() }).eq('teacher_id', o.teacher_id).eq('kind', 'order').eq('status', 'pending').neq('id', o.id);
         msg = ok ? `${ok === 'merged' ? '📥 طلبه اللي في البيع اتعدّل بآخر طلب (طلب واحد بس)' : '📥 اتنقل «طلب مستني» في البيع'}${less.length ? ` — وفيه ${less.length} كتاب قلّت كميته: عدّله في البيع بإيدك` : ''}` : '✅ اتوافق — سجّله في البيع بإيدك (المدرس مش في البرنامج على الموبايل ده)';
       }
