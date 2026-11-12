@@ -129,6 +129,38 @@ body{font-size:15px}
 .godown{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;background:#6d28d9;color:#fff;border-radius:24px;padding:8px 18px;font-weight:800;font-size:16px;display:flex;flex-direction:column;align-items:center;box-shadow:0 6px 18px rgba(76,29,149,.45);animation:gdn 1s infinite;pointer-events:none}
 .godown b{font-size:26px;line-height:1}
 @keyframes gdn{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
+/* متابعة 8 (2): شريط فوق وتحت موف أصغر + رئيسية 5 مربعات بأيقونات ملوّنة + صفحة الطلب مضغوطة */
+header.top{background:linear-gradient(135deg,#5b21b6,#7c3aed)}
+header.top .in{padding:6px 12px;gap:6px}header.top h1{font-size:15.5px}
+header.top .hb{font-size:17px;padding:2px 4px}
+header.top .hb.backpill{font-size:13.5px;padding:4px 12px}
+nav.tabs{background:linear-gradient(135deg,#5b21b6,#7c3aed);border-top:0;border-radius:18px 18px 0 0;box-shadow:0 -4px 14px rgba(76,29,149,.25)}
+nav.tabs a{color:rgba(255,255,255,.78);font-size:12px;padding:6px 4px 7px}nav.tabs a .i{font-size:18px}
+nav.tabs a.on{color:#fff;font-weight:800}nav.tabs a.on .i{background:rgba(255,255,255,.2);border-radius:12px;margin:0 auto;width:44px}
+main.wrap.hm{height:calc(100dvh - 128px);padding-top:10px}
+.hm .ttiles.five{margin-bottom:18px;grid-template-rows:repeat(3,1fr)}
+.ttiles.five .tt{grid-column:auto}.ttiles.five .tt.wd{grid-column:1/-1;flex-direction:row;gap:12px}
+.ttiles.five .tti,.hm .ttiles.five .tti{width:46px;height:46px;font-size:33px;line-height:1;background:rgba(255,255,255,.22);box-shadow:none}
+.ttiles.five .ttl,.hm .ttiles.five .ttl{font-size:14px;font-weight:700}
+.hm .ttiles.five .tt{border-radius:16px;box-shadow:0 4px 10px -6px rgba(0,0,0,.4)}
+.invbar{gap:8px;margin-bottom:6px}.ib{font-size:13.5px;padding:7px 6px;border-radius:12px}.ib b{display:inline;font-size:15px;margin:0 0 0 4px}
+main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;flex-direction:column;overflow:hidden}
+.ordv .phead{flex:none;font-size:14.5px;padding:6px 10px;margin-bottom:6px;border-radius:12px}.ordv .phead .small{font-size:11.5px}
+.ordv .invbar{flex:none}
+.oscr{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 1px 6px}
+.ordv .bklist{gap:6px;padding-bottom:4px}
+.ordv .bk{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;padding:7px 10px;border-radius:12px;box-shadow:0 2px 6px -4px rgba(0,0,0,.25)}
+.ordv .bk-n{font-size:13.5px;font-weight:700;gap:6px}.ordv .bk-dot{width:9px;height:9px}
+.ordv .bk-p{margin-top:1px;font-size:12.5px}.ordv .bk-p b{font-size:13.5px}
+.ordv .qty{display:inline-flex;align-items:center;border:1.5px solid var(--line,#d1d5db);border-radius:10px;overflow:hidden;gap:0}
+.ordv .qty button{width:30px;height:30px;border:0;border-radius:0;background:var(--brand-soft,#ede9fe);font-size:17px;font-weight:800;cursor:pointer;color:var(--ink)}
+.ordv .qty input{width:38px;height:30px;border:0;text-align:center;font-size:15px;font-weight:800;background:var(--card);color:var(--ink);padding:0;-moz-appearance:textfield}
+.ordv .qty input::-webkit-outer-spin-button,.ordv .qty input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ordv .bk-sum{grid-column:1/-1;font-size:12px;min-width:0}.ordv .bk-sum:empty{display:none}
+.ordv .field{margin:8px 0 0}.ordv .field textarea{min-height:44px}
+.ordv .totbar{position:static;flex:none;margin-top:6px;padding:6px 10px;border-radius:14px;display:flex;align-items:center;gap:8px;text-align:start;box-shadow:0 -2px 10px rgba(0,0,0,.1)}
+.ordv #tot{flex:1;font-size:12.5px;line-height:1.4}.ordv .totbar b{font-size:14.5px}
+.ordv .totbar .gobtn{width:auto;flex:none;font-size:14.5px;padding:9px 16px;border-radius:12px}
 </style>
 </head>
 <body>
@@ -138,7 +170,7 @@ body{font-size:15px}
 <nav class="tabs" id="tabs" hidden>
   <a data-v="home"><span class="i">🏠</span>الرئيسية<span class="cnt" id="homeCnt" hidden></span></a>
   <a data-v="msgs"><span class="i">💬</span>الرسائل<span class="cnt" id="msgCnt" hidden></span></a>
-  <a data-v="me"><span class="i">👤</span>ملفي</a>
+  <a data-v="me"><span class="i">👤</span>بياناتي</a>
 </nav>
 <script>
 "use strict";
@@ -271,7 +303,7 @@ function render() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', inv: '🧾 فواتيري', ret: '↩️ مرتجعات', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
+  $('#title').textContent = { me: '👤 بياناتي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', inv: '🧾 فواتيري', ret: '↩️ مرتجعات', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
   if (view !== 'news') newsSub = null;
   if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else if (view === 'inv') renderInv(); else if (view === 'ret') renderRet(); else renderHome();
 }
@@ -281,20 +313,12 @@ const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIE
 function renderHome() {
   const v = vals();
   // متابعة 7: اتشال الشريط الأبيض (اسم المدرس) — الرئيسية 6 مربعات قد بعض بأيقونات كرتونية ملوّنة
-  const HI = {
-    or: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8l6 28h28l6-22H18" stroke="#ea580c" stroke-width="4"/><circle cx="26" cy="51" r="4" fill="#ea580c"/><circle cx="46" cy="51" r="4" fill="#ea580c"/></svg>`,
-    ms: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="14" width="48" height="36" rx="7" stroke="#2563eb" stroke-width="4"/><path d="M10 20l22 17 22-17" stroke="#2563eb" stroke-width="4"/></svg>`,
-    me: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="22" r="11" stroke="#6d28d9" stroke-width="4"/><path d="M11 56c0-12 9-18 21-18s21 6 21 18" stroke="#6d28d9" stroke-width="4"/></svg>`,
-    pr: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="23" stroke="#d97706" stroke-width="4"/><text x="32" y="42" font-size="28" font-weight="800" fill="#d97706" text-anchor="middle">ج</text></svg>`,
-    nw: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M32 8l7 16 17 2-13 12 4 17-15-9-15 9 4-17L8 26l17-2z" stroke="#db2777" stroke-width="4"/></svg>`,
-    rv: `<svg viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 22l22-12 22 12v26L32 58 10 48z" stroke="#059669" stroke-width="4"/><path d="M10 22l22 12 22-12M32 34v24" stroke="#059669" stroke-width="4"/></svg>`
-  };
+  const HI = { or: '🛒', ms: '💬', pr: '📚', nw: '📢', rv: '📦' };   // متابعة 8: أيقونات ملوّنة زي أيقونات الشريط اللي تحت
   let h = `<div class="promo"><div class="pr-t">كتب سلاح التلميذ <b>بسعر مميز</b></div>
     <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span></div>
     <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
-  h += `<div class="ttiles six"><button class="tt h-or" data-v="order"><span class="tti">${HI.or}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
+  h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
     <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
-    <button class="tt h-me" data-v="me"><span class="tti">${HI.me}</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
     <button class="tt h-pr" data-v="prices"><span class="tti">${HI.pr}</span><span class="ttl">أسعار الكتب</span></button>
     <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${HI.rv}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
@@ -308,7 +332,7 @@ function renderHome() {
   const p = D.pending;
   if (p && p.status === 'question') h += `<div class="note"><h3 style="margin:0 0 6px">❓ سؤال من المندوب على تعديلك</h3>«${esc(p.reason || '')}»
     <textarea id="reply" placeholder="اكتب ردك هنا…" style="margin-top:8px"></textarea>
-    <div class="acts"><button class="btn owe" id="sendReply">ابعت الرد</button><button class="btn ghost" onclick="go('me')">عدّل ملفي</button></div></div>`;
+    <div class="acts"><button class="btn owe" id="sendReply">ابعت الرد</button><button class="btn ghost" onclick="go('me')">عدّل بياناتي</button></div></div>`;
   else if (p) h += `<div class="note"><b>⏳ تعديلك في انتظار المراجعة</b><div class="small" style="margin-top:4px">${esc(fieldsTxt(Object.keys(p.new_values || {})))}${p.photos ? ` + ${p.photos} صورة` : ''}</div></div>`;
   // الكروت الخلصانة: عليها ❌ والمدرس يشيلها
   const gone = new Set(LS.get(DISMISS, []));
@@ -898,11 +922,12 @@ let ordQ = {};
 function renderOrder() {
   const ps = myPrices();
   if (!ps.length) { app.innerHTML = INVBAR() + '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; bindInvBar(); return; }
-  app.innerHTML = INVBAR() + `<div class="phead hot">🛒 اطلب كتبك بسعر مميز<div class="small">اكتب الكمية جنب كل كتاب، والحساب بيطلع لوحده</div></div>
-    <div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}">${bookHead(p)}
-      <div class="bk-row"><span class="qty"><button type="button" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="1">+</button></span>
-      <div class="bk-sum"></div></div></div>`).join('')}</div>
-    <div class="field" style="margin-top:8px"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div>
+  app.className = 'wrap ordv';
+  app.innerHTML = INVBAR() + `<div class="phead hot">اطلب كتبك بسعر مميز<div class="small">اكتب العدد جنب كل كتاب، والحساب بيطلع لوحده</div></div>
+    <div class="oscr"><div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}"><div>${bookHead(p)}</div>
+      <span class="qty"><button type="button" data-d="1">+</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="-1">−</button></span>
+      <div class="bk-sum"></div></div>`).join('')}</div>
+    <div class="field"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div></div>
     <div class="totbar"><div id="tot"></div><button class="gobtn" id="os">📤 ابعت الطلب</button></div>`;
   bindInvBar();
   const ol = $('#ol');
@@ -911,10 +936,10 @@ function renderOrder() {
     $$('.bk', ol).forEach(r => {
       const p = ps.find(x => x.b === r.dataset.b), q = Math.max(0, parseInt($('input', r).value, 10) || 0); ordQ[p.b] = q;
       const a = q * (p.pre || p.post), b = q * p.post; A += a; B += b; N += q;
-      $('.bk-sum', r).innerHTML = q ? `${p.pre ? `<div>قبل الخصم: <s>${money(a)}</s></div>` : ''}<div>بعد الخصم: <b>${money(b)}</b></div>${a > b ? `<div class="save">✅ وفّرت ${money(a - b)}</div>` : ''}` : '';
+      $('.bk-sum', r).innerHTML = q ? `${q} نسخة = ${a > b ? `<s>${money(a)}</s> ` : ''}<b>${money(b)}</b>${a > b ? ` · <span class="save">وفّرت ${money(a - b)}</span>` : ''}` : '';
       r.classList.toggle('on', q > 0);
     });
-    $('#tot').innerHTML = N ? `<div>${N} نسخة · ${A > B ? `<s>${money(A)}</s> ← ` : ''}<b>${money(B)}</b></div>${A > B ? `<div class="save">✅ إجمالي التوفير ${money(A - B)}</div>` : ''}` : '<div class="small">لسه ما اخترتش كتب</div>';
+    $('#tot').innerHTML = N ? `<div>${N} نسخة · ${A > B ? `<s>${money(A)}</s> ← ` : ''}<b>${money(B)}</b></div>${A > B ? `<div class="save">وفّرت ${money(A - B)}</div>` : ''}` : '<div class="small">لسه ما اخترتش كتب</div>';
   };
   ol.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const i = $('input', b.parentNode); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + +b.dataset.d) || ''; calc(); });
   ol.addEventListener('input', calc); calc();
@@ -1018,7 +1043,7 @@ function renderRecv() {
   const had = ((RV.recv || {}).b) || [], list = [...new Set([...recvBooks(), ...had])];
   const ord = k => { const [st, s, g] = k.split('-'); return (st === 'm' ? 100 : 0) + ['ar', 'math', 'en', 'sci', 'stu'].indexOf(s) * 10 + +g; };
   list.sort((a, b) => ord(a) - ord(b));
-  if (!list.length) { app.innerHTML = `<div class="card empty">علشان تظهرلك الكتب، كمّل في ملفك المادة والصفوف اللي بتدرّسها.<div class="acts" style="justify-content:center"><button class="btn owe" onclick="go('me')">👤 افتح ملفي</button></div></div>`; return; }
+  if (!list.length) { app.innerHTML = `<div class="card empty">علشان تظهرلك الكتب، كمّل في «بياناتي» المادة والصفوف اللي بتدرّسها.<div class="acts" style="justify-content:center"><button class="btn owe" onclick="go('me')">👤 افتح بياناتي</button></div></div>`; return; }
   app.innerHTML = `<div class="phead">📦 استلمت مننا إيه الترم ده؟<div class="small">علّم ✅ على كل كتاب وصلك من سلاح التلميذ، وبعدين دوس «ابعت»</div></div>
     ${RV.recv && RV.recv.at ? `<div class="good small">✅ بعتّ قبل كده ${fmtDate(RV.recv.at)} — تقدر تعدّل وتبعت تاني</div>` : ''}
     <div class="rvl" id="rvl">${list.map(k => `<label class="${had.includes(k) ? 'on' : ''}"><input type="checkbox" value="${esc(k)}" ${had.includes(k) ? 'checked' : ''}><span class="bk-dot" style="background:${SUBJ_COL[k.split('-')[1]] || '#6d28d9'}"></span>${esc(bookLabel(k))}</label>`).join('')}</div>
