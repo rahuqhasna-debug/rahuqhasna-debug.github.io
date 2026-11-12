@@ -59,13 +59,12 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="in"><h1 id="title">سلاح التلميذ</h1><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
+<header class="top"><div class="in"><button class="hb backpill" id="back" hidden aria-label="رجوع">رجوع ➜</button><h1 id="title">سلاح التلميذ</h1><button class="hb" id="bell" aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></button><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
 <main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
 <div id="cbar"></div>
 <nav class="tabs" id="tabs" hidden>
   <a data-v="home"><span class="i">🏠</span>الرئيسية<span class="cnt" id="homeCnt" hidden></span></a>
-  <a data-v="msgs"><span class="i">💬</span>الرسائل<span class="cnt" id="msgCnt" hidden></span></a>
-  <a data-v="books" id="booksTab" hidden><span class="i">📚</span>كتبي</a>
+  <a data-v="msgs"><span class="i">💬</span>رسائلنا<span class="cnt" id="msgCnt" hidden></span></a>
   <a data-v="me"><span class="i">👤</span>ملفي</a>
 </nav>
 <script>
@@ -160,7 +159,7 @@ function isNewer(a, b) {
 }
 function updCounts() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
-  $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n; $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
+  $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n; $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread; updBell();
 }
 async function watchTick() {
   if (document.hidden || !code || !D || !isApp) return;
@@ -190,7 +189,7 @@ function setBadge() {
   try { if (navigator.setAppBadge) n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } catch (e) { }
 }
 function render() {
-  clearInterval(pollT); $('#cbar').innerHTML = '';
+  clearInterval(pollT); $('#cbar').innerHTML = ''; app.className = 'wrap'; updBell();
   if (!isApp) return renderGate();   // من المتصفح: شاشة التثبيت بس
   if (NATIVE && !permOk()) return renderPerm();   // بند 50: مايدخلش غير لما يخلّص كل الأذونات
   if (!NATIVE && !webPermOk()) return renderWebPerm();   // نفس الفكرة للبرنامج المتثبّت من المتصفح
@@ -199,8 +198,7 @@ function render() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
-  $('#booksTab').hidden = !((D.books || []).length || D.orders.length || canOrder(D.profile));
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 رسائل وتحديثات سلاح التلميذ', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
   if (view !== 'news') newsSub = null;
   if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
 }
@@ -212,13 +210,12 @@ function renderHome() {
   let h = `<div class="card" style="display:flex;align-items:center;gap:12px">${v.avatar ? `<img class="av lg" src="${v.avatar}" alt="">` : '<span class="av lg">👤</span>'}
     <div><b style="font-size:19px">${esc(tName(D.name))}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
   // أيقونات الرئيسية
-  h += `<div class="ttiles"><button class="tt big" data-v="order"><span class="tti">🛒</span><span class="ttl">اطلب كتبك بسعر مميز</span><span class="tts">أسعار خاصة لحضرتك — اطلب دلوقتي 🔥</span></button>
-    <button class="tt t-msg" data-v="msgs"><span class="tti">💬</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
-    <button class="tt t-pr" data-v="prices"><span class="tti">💰</span><span class="ttl">أسعار الكتب</span></button>
-    <button class="tt t-bk" data-v="books"><span class="tti">📚</span><span class="ttl">كتبي</span></button>
+  h += `<div class="ttiles"><button class="tt big" data-v="order"><span class="tti">🛒</span><span class="ttl">اطلب كتبك بسعر مميز</span><span class="tts">أسعار خاصة لحضرتك 🔥</span></button>
+    <button class="tt t-msg" data-v="msgs"><span class="tti">💬</span><span class="ttl">رسائل وتحديثات سلاح التلميذ</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
     <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button>
-    <button class="tt t-nw" data-v="news"><span class="tti">🆕</span><span class="ttl">اعرف الجديد</span><span class="tts">فيديوهات وشروحات لمادتك</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
-    <button class="tt t-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">📦</span><span class="ttl">استلمت مننا إيه الترم ده</span><span class="tts">${!(RV && RV.open) ? '🔒 هتتفتح لما المندوب يسلّمك' : RV.recv ? '✅ اتبعت — تقدر تعدّل' : 'علّم على الكتب اللي استلمتها'}</span></button></div>`;
+    <button class="tt t-pr" data-v="prices"><span class="tti">💰</span><span class="ttl">أسعار الكتب</span></button>
+    <button class="tt t-nw" data-v="news"><span class="tti">🆕</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
+    <button class="tt t-rv wide ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">📦</span><span class="ttl">استلمت مننا إيه الترم ده</span><span class="tts">${!(RV && RV.open) ? '🔒 هتتفتح لما المندوب يسلّمك' : RV.recv ? '✅ اتبعت — تقدر تعدّل' : 'علّم على الكتب اللي استلمتها'}</span></button></div>`;
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -249,7 +246,7 @@ function renderHome() {
     }
     h += '</div>';
   }
-  app.innerHTML = h;
+  app.innerHTML = h; app.className = 'wrap hm';
   $$('.ttiles [data-v]').forEach(b => b.onclick = () => (b.dataset.v === 'recv' && !(RV && RV.open)) ? toast('🔒 الصفحة دي هتتفتح لما المندوب يسلّمك الكتب', 3000) : go(b.dataset.v));
   $$('[data-x]').forEach(b => b.onclick = () => { const a = LS.get(DISMISS, []); a.push(b.dataset.x); LS.set(DISMISS, a.slice(-200)); renderHome(); });
   // متابعة الجديد بقت في كل الصفحات (startWatch تحت)
@@ -333,7 +330,7 @@ function renderGate() {
   app.innerHTML = `<div class="icard gate">${installedNow ? `<div class="ic-t">✅ اتثبّت!</div><div class="ic-s">اقفل المتصفح وافتح «سلاح التلميذ» من الشاشة الرئيسية لموبايلك.</div>${PICS.home}
     ${'Notification' in window && Notification.permission !== 'granted' ? '<button class="gobtn" id="gN">🔔 فعّل الإشعارات</button>' : '<div class="ic-s">🔔 الإشعارات متفعّلة ✅</div>'}` : `
     <div class="ins-c"><img src="icon-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
-      <div class="sub">ثبّته على موبايلك وهتوصلك رسايل الأستاذ فور وصولها.</div>
+      <div class="sub">ثبّته على موبايلك وهتوصلك رسايل وتحديثات سلاح التلميذ فور وصولها.</div>
       <button class="ins-b" id="inst">📲 ثبّت التطبيق الآن</button>
       ${IOS ? '<button class="iosbtn" id="iosb" style="margin-top:10px">🍎 لو معاك آيفون اضغط هنا</button>' : ''}
       <ul class="ins-f"><li>وصول رسائل سلاح التلميذ فورًا</li><li>تنبيهات بمواعيد تسليم النسخ المجانية</li><li>سرعة أكبر من المتصفح</li></ul></div>`}</div><div id="guide"></div>`;
@@ -367,14 +364,14 @@ function apkGuide() {
     ['#ef4444', '🛡️', 'لو ظهرت «تم حظر التطبيق»', 'دوس <b>المزيد</b> ← بعدين <b>تثبيت على أي حال</b>. ده عادي لأن التطبيق من خارج متجر جوجل.', 1],
     ['#6d28d9', '✅', 'دوس «فتح»', 'وبعدها هنظبط معاك الإشعارات في دقيقة.']];
   g.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
-      <p>ثبّته على موبايلك وهتوصلك رسايل الأستاذ فور وصولها 🔔</p>
-      <div class="chips"><span>✔ تطبيق رسمي</span><span>✔ مخصوص لرسايل الأستاذ</span><span>✔ تحذيرات أندرويد عادية</span></div></div>
+      <p>ثبّته على موبايلك وهتوصلك رسايل وتحديثات سلاح التلميذ فور وصولها 🔔</p>
+      <div class="chips"><span>✔ تطبيق رسمي</span><span>✔ مخصوص لرسايل سلاح التلميذ</span><span>✔ تحذيرات أندرويد عادية</span></div></div>
     <div class="vid-t">🎬 شاهد التثبيت بالفيديو</div>
     <div class="phf" id="phf2"><video id="tvid2" autoplay muted loop playsinline preload="metadata" poster="silah-tutorial-poster.jpg"><source src="silah-tutorial.mp4" type="video/mp4"></video><button class="pp" id="tpp2">⏸ إيقاف</button></div>
     <div id="animFb" hidden>${animGuide(F)}</div>
     <div class="vid-t" style="margin-top:22px">🗺️ خطوات التثبيت</div>
     <div class="tl">${S.map((x, i) => `<div class="tl-i"><div class="tl-n" style="--c:${x[0]}">${x[1]}</div><div class="tl-b ${x[4] ? 'hot' : ''}"><b>${i + 1}) ${x[2]}</b><span>${x[3]}</span></div></div>`).join('')}</div>
-    <div class="pm-note">🛡️ <b>اطمّن:</b> رسايل التحذير اللي هتظهر من أندرويد طبيعية جدًا لأي تطبيق مش من متجر جوجل بلاي. «سلاح التلميذ» مخصوص لرسايل الأستاذ ومواعيد الكتب، وتقدر تكمل بثقة.</div>
+    <div class="pm-note">🛡️ <b>اطمّن:</b> رسايل التحذير اللي هتظهر من أندرويد طبيعية جدًا لأي تطبيق مش من متجر جوجل بلاي. «سلاح التلميذ» مخصوص لرسايل وتحديثات سلاح التلميذ ومواعيد الكتب، وتقدر تكمل بثقة.</div>
     <a class="ins-b" style="text-align:center;text-decoration:none" href="${APK_URL}" download>⬇️ نزّل التطبيق الآن</a>`;
   const tv = $('#tvid2'), pp = $('#tpp2');
   tv.addEventListener('error', () => { $('#phf2').hidden = true; $('#phf2').previousElementSibling.hidden = true; $('#animFb').hidden = false; }, true);
@@ -393,7 +390,7 @@ function apkGuideOld() {
     ['سلاح التلميذ', ['هل تريد تثبيت التطبيق؟', 'تثبيت', 'إلغاء'], 1], ['Play Protect', ['تم حظر التطبيق', 'المزيد', 'إلغاء'], 1],
     ['Play Protect', ['تثبيت على أي حال', 'عدم التثبيت'], 0], ['تم التثبيت', ['✅ تم تثبيت التطبيق', 'فتح', 'تم'], 1]];
   g.innerHTML = `<div class="icard step"><div style="display:flex;align-items:center;gap:12px;justify-content:center"><img src="icon-192.png" alt="" style="width:64px;height:64px;border-radius:16px"><div style="text-align:start"><div class="ic-t" style="margin:0">سلاح التلميذ</div><div class="small muted">تطبيق رسمي · آمن على موبايلك</div></div></div>
-    <div class="ic-s" style="margin-top:8px">تطبيق «سلاح التلميذ» مخصوص لرسايل الأستاذ ومواعيد الكتب، وبيخلّي الإشعار يرن عندك حتى والشاشة مقفولة 🔔.<br>هتشوف كام رسالة تحذير من أندرويد، <b>دي عادية</b> لأن التطبيق مش من متجر جوجل. اعمل زي الفيديو بالظبط:</div>
+    <div class="ic-s" style="margin-top:8px">تطبيق «سلاح التلميذ» مخصوص لرسايل وتحديثات سلاح التلميذ ومواعيد الكتب، وبيخلّي الإشعار يرن عندك حتى والشاشة مقفولة 🔔.<br>هتشوف كام رسالة تحذير من أندرويد، <b>دي عادية</b> لأن التطبيق مش من متجر جوجل. اعمل زي الفيديو بالظبط:</div>
     ${animGuide(F)}
     <div class="ic-s" style="text-align:start;line-height:2.1">1️⃣ دوس <b>تنزيل</b> لو ظهرت رسالة الملف.<br>2️⃣ افتح الملف من الإشعار (أو من «التنزيلات»).<br>3️⃣ لو قالك «غير مسموح»: دوس <b>الإعدادات</b> ← شغّل <b>السماح من هذا المصدر</b> ← ارجع بالسهم.<br>4️⃣ دوس <b>تثبيت</b>.<br>5️⃣ لو ظهرت «تم حظر التطبيق»: دوس <b>المزيد</b> ← <b>تثبيت على أي حال</b>.<br>6️⃣ دوس <b>فتح</b> ✅</div>
     <a class="gobtn" style="display:block;text-align:center;text-decoration:none;background:#16a34a" href="${APK_URL}" download>⬇️ نزّل التطبيق</a></div>`;
@@ -495,15 +492,14 @@ function renderPerm() {
     else if (k === 't' && PG_TEST) act = `<div style="font-weight:800;margin-bottom:6px">الموبايل رنّ؟</div><button class="pbtn" id="pgYes">✅ أيوه رنّ</button><button class="btn owe" id="pgNo" style="width:100%;margin-top:6px">❌ لأ مارنّش</button><button class="btn ghost sm" data-pg="t" style="width:100%;margin-top:6px">🔁 جرّب تاني</button>`;
     else act = `<button class="pbtn" data-pg="${k}">${C.b}</button>${k === 'a' && PG_TRIED.a ? '<button class="pbtn" id="pgDone" style="margin-top:6px;background:#16a34a">✅ شغّلته</button><button class="btn ghost sm" id="pgSkip" style="width:100%;margin-top:6px">مش لاقيه في موبايلي</button>' : ''}`;
     return `<div class="pcard ${ok || na ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}"><div class="num">${ok || na ? '✓' : idx}</div>
-      <div class="bd"><h4>${C.ic} ${C.t}</h4><p>${C.d}</p>${tip}${warn}${act}</div>${na ? '' : `<div class="th">${PERM_PICS[C.pic]()}</div>`}</div>`;
+      <div class="bd"><h4>${C.ic} ${C.t}</h4><p>${C.d}</p>${tip}${warn}${act}</div></div>`;
   };
   const vid = `<div class="vid-t">🎬 شاهد الخطوات بالفيديو</div>
     <div class="phf" id="phf"><video id="tvid" autoplay muted loop playsinline preload="metadata" poster="silah-tutorial-poster.jpg"><source src="silah-tutorial.mp4" type="video/mp4"></video>
     <button class="pp" id="tpp" aria-label="إيقاف">⏸ إيقاف</button></div>`;
-  app.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>خلّي رسايل الأستاذ توصلك 🔔</h2>
-      <p>خمس خطوات بسيطة، مرة واحدة بس — وبعدها كل رسايل «سلاح التلميذ» هترن عندك حتى والشاشة مقفولة.</p>
+  app.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>خلّي رسايل وتحديثات سلاح التلميذ توصلك 🔔</h2>
+      <p>دوس على كل زرار تحت وشغّل الإعداد — مرة واحدة بس.</p>
       <div class="pm-bar"><span style="width:${Math.round(done / steps.length * 100)}%"></span></div><div class="small" style="opacity:.9">${done} من ${steps.length} اتعملوا</div></div>
-    ${vid}
     <div class="pm-list">${order.map((k, i) => card(k, i + 1)).join('')}</div>
     <div class="pm-note">🛡️ <b>تحذير أندرويد عادي:</b> ممكن يظهرلك تحذير وإنت بتظبط الإعدادات، لأن «سلاح التلميذ» تطبيق من خارج متجر جوجل بلاي. التطبيق آمن ومخصوص لرسايل الأستاذ بس، وتقدر تكمل بثقة.</div>`;
   // فيديو الشرح: تشغيل/إيقاف، ولو الملف مش موجود الإطار كله يختفي
@@ -595,7 +591,7 @@ function renderWebPerm() {
   $('#title').textContent = 'أهلًا ' + tName(D.name);
   if (!PG_START && !LS.get(RING_FAIL)) {
     app.innerHTML = `<div class="icard gate"><div class="ic-ico">📚</div><div class="ic-t">أهلًا بحضرتك في «سلاح التلميذ»</div>
-      <div class="ic-s">قبل ما تدخل هنظبط موبايلك عشان رسايل الأستاذ ترن عندك والموبايل مقفول 🔔 (مرة واحدة بس — دقيقة واحدة)</div>
+      <div class="ic-s">قبل ما تدخل هنظبط موبايلك عشان رسايل سلاح التلميذ ترن عندك والموبايل مقفول 🔔 (مرة واحدة بس — دقيقة واحدة)</div>
       <button class="gobtn" id="pgIn" style="background:#16a34a">دخول ←</button></div>`;
     $('#pgIn').onclick = () => { PG_START = true; render(); };
     return;
@@ -781,7 +777,7 @@ function renderOrder() {
     const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'order', p_items: its, p_note: $('#on').value });
     $('#os').disabled = false;
     if (error) return toast(errMsg(error));
-    ordQ = {}; toast('اتبعت الطلب ✅'); window.pushNotifyRep && window.pushNotifyRep('🛒 ' + D.name + ' طلب كتب'); view = 'books'; load();
+    ordQ = {}; toast('اتبعت الطلب ✅'); window.pushNotifyRep && window.pushNotifyRep('🛒 ' + D.name + ' طلب كتب'); view = 'home'; load();
   };
 }
 function orderDlg() { go('order'); }
@@ -993,6 +989,9 @@ function drawPhotos() {
 
 $$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
 $('#reload').onclick = () => load();
+function updBell() { const n = D ? (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); }
+$('#bell').onclick = () => { if (D && D.unread) go('msgs'); else if (D && (D.updates.length || (D.pending && D.pending.status === 'question'))) go('home'); else if (D && newsTotal()) go('news'); else toast('مفيش جديد دلوقتي 👌', 1800); };
+$('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go('home'); };
 load();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 </script>

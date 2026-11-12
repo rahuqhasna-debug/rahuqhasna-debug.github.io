@@ -286,3 +286,19 @@ header.top .hb.backpill[hidden]{display:none}
 .emop{display:grid;grid-template-columns:repeat(8,1fr);max-width:836px;margin:0 auto 6px;max-height:190px;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px}
 .emop[hidden]{display:none}
 .emop button{font-size:26px;background:none;border:0;padding:4px 0;cursor:pointer;border-radius:8px}.emop button:active{background:var(--brand-soft)}
+
+/* رئيسية المدرس بدون تمرير + جرس */
+main.wrap.hm{height:calc(100dvh - 124px);min-height:430px;padding-bottom:0;display:flex;flex-direction:column;overflow-y:auto}
+main.hm>.card{padding:8px 12px;margin-bottom:8px;flex:none}
+main.hm .av.lg{width:44px;height:44px;font-size:22px}
+.hm .ttiles{flex:1 1 auto;gap:9px;margin-bottom:8px;grid-template-rows:1.25fr repeat(2,1fr) .8fr}
+.hm .tt{padding:6px 8px;gap:3px;justify-content:center;border-radius:18px;min-height:0}
+.hm .tt .tti{width:40px;height:40px;font-size:22px}
+.hm .tt .ttl{font-size:14px;line-height:1.3;text-align:center}
+.hm .tt .tts{font-size:11.5px}
+.hm .tt.big .tti{width:48px;height:48px;font-size:27px}
+.hm .tt.big .ttl{font-size:18px}
+.hm .tt.big{padding:8px}
+.tt.wide{grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;flex-wrap:wrap}
+.t-rv{background:linear-gradient(140deg,#fb7185,#e11d48)}.t-nw{background:linear-gradient(140deg,#22d3ee,#0891b2)}
+header.top .hb .cnt{position:absolute;top:-4px;left:-2px;background:#ef4444;color:#fff;border-radius:10px;min-width:17px;padding:0 4px;font-size:11px;font-weight:800;line-height:17px;text-align:center}
