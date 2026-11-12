@@ -44,6 +44,14 @@ header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;
 .bk-btn.due{background:var(--owe);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
 .backrow{max-width:860px;margin:0 auto;padding:0 16px 8px}
 .backrow[hidden]{display:none}
+/* 2026-11-12: شاشة تعديل المدرس كروت ملونة زي «ملفي» عند المدرس */
+.ebox{background:var(--bg)}
+.ehead{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);color:#fff;border-radius:18px;padding:12px;text-align:center;font-weight:800;font-size:19px;margin-bottom:12px;box-shadow:0 6px 16px -8px rgba(109,40,217,.6)}
+.esec{background:var(--card);border-radius:18px;padding:12px 12px 4px;margin-bottom:12px;box-shadow:0 6px 16px -8px rgba(15,23,42,.22);border-top:5px solid var(--sc);animation:tileIn .35s ease both}
+.esec h4{margin:0 0 8px;color:var(--sc);font-size:16px}
+.esec .field label{font-weight:700}
+.esec .pgrid label:has(input:checked){background:color-mix(in srgb,var(--sc) 14%,var(--card));border-color:var(--sc)}
+.esave{position:sticky;bottom:-16px;background:var(--bg);padding:10px 0;z-index:2}
 .backbtn{display:inline-flex;align-items:center;gap:4px;width:auto;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:22px;padding:7px 20px;font:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(219,39,119,.3)}
 .backbtn:active{transform:scale(.98)}
 header.top .back{background:rgba(255,255,255,.22);border:0;color:inherit;font-size:18px;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;flex:none}
@@ -1734,9 +1742,11 @@ function dupsCard(){
 function teacherForm(t, preset={}){
   const isNew=!t; t = t || {name:preset.name||'', phone:preset.phone||'', stage:'', subjectText:'', area:'', school:'', cls:'', students:''};
   const m=document.createElement('div'); m.className='modal';
-  m.innerHTML=`<div class="box"><h3>${isNew?'➕ مدرس جديد':'✏️ تعديل بيانات المدرس'}</h3>
+  m.innerHTML=`<div class="box ebox"><div class="ehead">${isNew?'➕ مدرس جديد':'✏️ تعديل بيانات المدرس'}${isNew?'':`<div class="small" style="font-weight:600;opacity:.95">${esc(t.name)}</div>`}</div>
+    <div class="esec" style="--sc:#2563eb"><h4>👤 بياناته</h4>
     <div class="field"><label>الاسم *</label><input id="f_name" value="${esc(t.name)}"></div>
-    <div class="field"><label>رقم التليفون</label><input id="f_phone" inputmode="tel" dir="ltr" value="${esc(t.phone)}"></div>
+    <div class="field"><label>رقم التليفون</label><input id="f_phone" inputmode="tel" dir="ltr" value="${esc(t.phone)}"></div></div>
+    <div class="esec" style="--sc:#7c3aed"><h4>📚 شغله</h4>
     <div class="row2"><div class="field"><label>المرحلة</label><select id="f_stage">
       ${[['','—'],['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي']].map(([v,l])=>`<option value="${v}" ${t.stage===v?'selected':''}>${l}</option>`).join('')}</select></div>
       <div class="field"><label>التصنيف</label><select id="f_cls">
@@ -1747,15 +1757,17 @@ function teacherForm(t, preset={}){
     <div class="field"><label>المادة (ممكن تختار أكتر من مادة)</label><div class="pgrid" id="f_subjs">
       ${SUBJ_PICK.map(([k,l])=>`<label class="chip"${SUBJ[k]?` style="color:var(--c-${k})"`:''}><input type="checkbox" value="${k}" ${(t.subjects||[]).includes(k)?'checked':''}>${l}</label>`).join('')}</div>
       ${t.subjectText && !(t.subjects||[]).length ? `<div class="small muted">المكتوب قبل كده: ${esc(t.subjectText)}</div>` : ''}</div>
-    <div class="field"><label>التخصص (حسب المرحلة)</label><select id="f_spec">${specSelOpts(t.stage||'', t.spec||'')}</select></div>
+    <div class="field"><label>التخصص (حسب المرحلة)</label><select id="f_spec">${specSelOpts(t.stage||'', t.spec||'')}</select></div></div>
+    <div class="esec" style="--sc:#16a34a"><h4>📍 مكانه</h4>
     <div class="row2"><div class="field"><label>المنطقة / القرية</label><input id="f_area" list="vl_f" autocomplete="off" placeholder="${villages().length?'اختار أو اكتب':''}" value="${esc(t.area)}">${vlist('vl_f')}</div>
-      <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div>
+      <div class="field"><label>المدرسة</label><input id="f_school" value="${esc(t.school)}"></div></div></div>
+    <div class="esec" style="--sc:#db2777"><h4>🎓 الصفوف والطلاب</h4>
     <div class="field"><label>الصفوف اللي بيدرّسها</label><div class="pgrid" id="f_grades">
       ${[1,2,3,4,5,6].map(g=>`<label class="chip"><input type="checkbox" value="${g}" ${(t.grades||[]).includes(g)?'checked':''}>${GRADE[g-1]}</label>`).join('')}</div></div>
     <div class="row2"><div class="field"><label>دروس / مدارس</label><select id="f_where">
       ${['','دروس','مدارس','دروس ومدارس'].map(v=>`<option value="${v}" ${(t.where||'')===v?'selected':''}>${v||'—'}</option>`).join('')}</select></div>
-      <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div></div>
-    <div class="row2" style="margin-top:6px"><button class="btn pri" id="f_save">حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
+      <div class="field"><label>عدد الطلاب</label><input id="f_students" inputmode="numeric" value="${esc(t.students)}"></div></div></div>
+    <div class="row2 esave"><button class="btn pri" id="f_save">💾 حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
     ${isNew?'':'<button class="btn danger" id="f_del" style="width:100%;margin-top:10px">🗑️ امسح المدرس ده وكل تعاملاته</button>'}</div>`;
   document.body.appendChild(m);
   const close=()=>m.remove();
