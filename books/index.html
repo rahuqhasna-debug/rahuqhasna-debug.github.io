@@ -583,7 +583,7 @@ function specSelOpts(stage, cur){ const o=specOpts(stage); if(!o.length) return 
 const KEY = 'selah-books-v1';
 let db, storageOk = true;
 const APP_NAME='سلاح التلميذ البحيرة', SIGN='تصميم وتنفيذ: شريف حشيش';
-function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], tlog:[], pinH:'', lastBackup:'', repKey:''}}
+function blank(){return {v:1, rep:'', mail:'', idara:'', teachers:[], entries:[], stock:[], sales:[], payments:[], prices:{}, merchants:[], merchPays:[], merchRets:[], route:[], days:[], reg:{}, editLog:[], reqs:[], tlog:[], tret:[], pinH:'', lastBackup:'', repKey:''}}
 /* ================= الإدارات التعليمية والقرى (البحيرة) =================
    كل إدارة: [قرى وبنادر]. القايمة دي اتراجعت مع شريف قبل ما تتحط. */
 const IDARAT = {
@@ -619,6 +619,7 @@ function load(){
   // repKey = مفتاح المندوب على السيرفر: حسابات المدرسين والتحديثات بتتربط بيه (مش بالإيميل)
   db.repKey ||= Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
   db.tlog ||= [];   // سجل المدرس: تعديل البيانات (القديم ← الجديد) والصور
+  db.tret ||= [];   // مرتجعات المدرسين اللي اتوافق عليها من المراسلات (admin.html) وبتتنفّذ هنا أول ما البرنامج يفتح
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
   db.route ||= []; db.editLog ||= []; db.pinH ||= '';   // route = خط السير (أكواد المدرسين)، editLog = سجل تعديل فواتير التجار، pinH = الرقم السري (متشفّر)
   // days = أيام خط السير [{id, n:الاسم, t:[أكواد المدرسين]}]، reg = التسجيل على برنامج الشركة {كود التسليم: تاريخ التسجيل}
@@ -2036,7 +2037,7 @@ $('#fileJson').addEventListener('change', async e=>{
     db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
-      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), pinH:d.pinH||db.pinH||'', repKey:d.repKey||db.repKey||'',
+      route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), tret:arr(d.tret), pinH:d.pinH||db.pinH||'', repKey:d.repKey||db.repKey||'',
       driveKey:db.driveKey||'', driveMail:db.driveMail||'', lastDriveBk:'', driveCount:db.driveCount||0}; fixDays(); try{ await migratePhotos(); }catch(e){} save(); location.hash='#/'; render(); toast('✅ النسخة رجعت');
   }catch(err){ alert('الملف ده مش نسخة احتياطية من البرنامج.'); }
 });
@@ -4553,8 +4554,8 @@ async function pullSbBell(){
     const S=await sbSession();
     if(!S){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
     const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:S.h,body:'{}'});
-    if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0);
-    if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} }   // نغمة الجرس للمدرسين بس
+    if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0)+(+j.rets||0);
+    if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} msgPop(); }   // نغمة الجرس للمدرسين بس
     const was=sbBell; sbBell=n; updateBell();
     if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»
     sbCntPull(S);
@@ -5002,6 +5003,14 @@ const REM_CATS=[
   {k:'hadith', items:h=>[['📜 «إنما الأعمال بالنيات» — متفق عليه','إنما الأعمال بالنيات'],['📜 «المسلم من سلم المسلمون من لسانه ويده» — متفق عليه','المسلم من سلم المسلمون من لسانه ويده'],['📜 «الكلمة الطيبة صدقة» — متفق عليه','الكلمة الطيبة صدقة'],['📜 «إن الله رفيق يحب الرفق في الأمر كله» — متفق عليه','إن الله رفيق يحب الرفق في الأمر كله'],['📜 «تبسّمك في وجه أخيك صدقة» — رواه الترمذي','تبسمك في وجه أخيك صدقة']]},
   {k:'hikma',  items:h=>[['💡 الصبر مفتاح الفرج','الصبر مفتاح الفرج'],['💡 القناعة كنز لا يفنى','القناعة كنز لا يفنى'],['💡 اللي بيزرع الخير بيحصد الخير','اللي بيزرع الخير بيحصد الخير']]}
 ];
+// نغمة «رسالة جديدة» قصيرة قريبة من نغمة الواتساب (نغمتين سريعتين، بتتولّد بالكود)
+function msgPop(){
+  try{ const C=new (window.AudioContext||window.webkitAudioContext)();
+    [[880,0,.11],[1175,0.13,.2]].forEach(([f,t0,d])=>{ const o=C.createOscillator(), g=C.createGain(); o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(C.destination);
+      g.gain.setValueAtTime(0.0001,C.currentTime+t0); g.gain.exponentialRampToValueAtTime(0.35,C.currentTime+t0+0.015); g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+t0+d);
+      o.start(C.currentTime+t0); o.stop(C.currentTime+t0+d+0.02); });
+    setTimeout(()=>C.close(),1000); }catch(e){}
+}
 function remChime(){   // صوت متوسط (مش عالي)
   try{ const C=new (window.AudioContext||window.webkitAudioContext)();
     [[523,0],[659,0.5]].forEach(([f,t0])=>{ const o=C.createOscillator(), g=C.createGain(); o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(C.destination);
@@ -5033,7 +5042,8 @@ function pbShow(n){
   remChime();
   if(cat.k==='sal' && sp && !(NAV && !NAV.done)) speakRem(sp);
 }
-function remPermBar(){   // مش مجبر، بس شريط دايم لحد ما يفعّل الإشعارات
+function remPermBar(){   // متابعة 7 (طلب شريف): الشريط ده اتشال — الإشعارات بتتفعّل من إعدادات التليفون ومش لازم يفضل ظاهر
+  return;
   if(!('Notification' in window) || Notification.permission==='granted' || document.getElementById('remPerm')) return;
   const b=document.createElement('div'); b.id='remPerm';
   b.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:70;background:#6d28d9;color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:8px;align-items:center;font-size:14px';
@@ -5080,10 +5090,30 @@ document.addEventListener('click', e=>{
   }
 });
 
+/* مرتجعات المدرسين اللي اتوافق عليها من المراسلات: بتتسجّل هنا بنفس طريقة المرتجع العادي (من أحدث بيع، وكل جزء لتاجره). payment.rid = رقم الطلب (عشان مايتكررش عند المدرس) */
+function applyTRet(fromStore){
+  try{
+    if(fromStore){ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(!s || !(s.tret||[]).some(x=>!x.done) || (db.tret||[]).some(x=>!x.done)) return; load(); }
+    const q=(db.tret||[]).filter(x=>!x.done); if(!q.length) return;
+    let n=0;
+    for(const r of q){
+      r.done=1; if(!db.teachers.some(t=>t.id===r.t)) continue;
+      const g=uid(), d=r.at||new Date().toISOString(), txt=[];
+      for(const it of r.items||[]){
+        const avail=retLines(r.t).filter(l=>l.it.b===it.b).reduce((s,l)=>s+l.left,0), qq=Math.min(+it.q||0, avail); if(qq<=0) continue;
+        db.payments.push({id:uid(), k:'ret', t:r.t, b:it.b, q:qq, d, g, rid:r.id, parts:retPlan(r.t, it.b, qq)}); txt.push(`${bookLabel(it.b)} ${qq}`);
+      }
+      if(txt.length) n++;
+    }
+    db.tret=db.tret.filter(x=>!x.done); save();
+    if(n){ toast(`↩️ اتسجّل ${n} مرتجع من المدرسين اللي وافقت عليهم`, 4000); if(fromStore) render(); }
+  }catch(e){ console.warn('tret', e); }
+}
+applyTRet(false);
 render();
 // تنبيه الـ A: بعد 6 بالليل لما يفتح البرنامج، ومتابعة المكان لو اشتغل في قرية ليها مكان متسجّل
 setTimeout(()=>{ eveningCheck(); if(workedAreasToday().some(a=>db.vloc?.[a])) startWatch(); remPermBar(); }, 2500);
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) eveningCheck(); });
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ eveningCheck(); applyTRet(true); } });
 // شاشة الفتح: ثانية واحدة (اللوجو والتوقيع)
 setTimeout(()=>{ const s=$('#splash'); if(s){ s.classList.add('out'); setTimeout(()=>s.remove(), 400); } }, 1000);
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});

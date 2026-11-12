@@ -182,7 +182,17 @@ function auditDetails(d) {
   return p.map(esc).join('<br>');
 }
 // المالك والمناديب: إشعار عادي (اهتزاز بس) — نغمة الجرس للمدرسين بس
-function ding() { try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch (e) { } }
+function ding() {
+  try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch (e) { }
+  // نغمة «رسالة جديدة» قريبة من الواتساب (نغمتين سريعتين)
+  try {
+    const C = new (window.AudioContext || window.webkitAudioContext)();
+    [[880, 0, .11], [1175, .13, .2]].forEach(([f, t0, d]) => { const o = C.createOscillator(), g = C.createGain(); o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(C.destination);
+      g.gain.setValueAtTime(.0001, C.currentTime + t0); g.gain.exponentialRampToValueAtTime(.35, C.currentTime + t0 + .015); g.gain.exponentialRampToValueAtTime(.0001, C.currentTime + t0 + d);
+      o.start(C.currentTime + t0); o.stop(C.currentTime + t0 + d + .02); });
+    setTimeout(() => C.close(), 1000);
+  } catch (e) { }
+}
 
 /* ---------- الدخول ---------- */
 async function boot() {
@@ -293,8 +303,8 @@ $('#backBtn').onclick = () => { const h = location.hash.slice(1) || '/'; if (!me
 /* ---------- البيانات ---------- */
 async function counts() {
   const { data } = await sb.rpc('bell_counts'); if (!data) return;
-  const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0); BC = data;
-  const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
+  const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0); BC = data;
+  const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
   const stt = $('#setTab'); if (stt) stt.innerHTML = `<span class="i">⚙️</span>الإعدادات${BC.reps ? `<span class="cnt">${BC.reps}</span>` : ''}`;
   if (n > was) ding();
   LS.set('selah-trial-bell', { n, at: Date.now() });   // البرنامج الأخضر بيقراه للجرس
@@ -357,7 +367,91 @@ async function importGreen() {
     if (error) { console.warn(error); return false; }
   }
   await syncRepOrders(db).catch(e => console.warn('repOrders', e));
+  await syncLedger(db).catch(e => console.warn('ledger', e));
   LS.set('selah-trial-isync', sig); return true;
+}
+/* ---------- متابعة 7: فواتير المدرس + المرتجعات + التسليم المجاني ← نسخة عند المدرس (جدول ledger) ----------
+   فاتورة بيع (sale) = كل بيع st:'sold' · مرتجع (ret) = payments k:'ret' متجمّعة بـ g · تسليم مجاني (free) = entries s:'d' متجمّعة بالتاريخ.
+   مرتجع المدرس اللي اتوافق عليه ليه صف 'rq:<id>' (بيتكتب وقت الموافقة) والمرتجع اللي في البرنامج بعد تنفيذه (فيه rid) بيتخطّى عشان مايتكررش. */
+async function syncLedger(db) {
+  const mine = {}; (await fetchAll(() => sb.from('teachers').select('id,local_id').eq('rep_id', me.id))).forEach(x => { if (x.local_id) mine[x.local_id] = x.id; });
+  const S = Object.fromEntries((db.sales || []).map(s => [s.id, s])), rows = [];
+  for (const s of db.sales || []) {
+    if (s.st !== 'sold' || !mine[s.t]) continue;
+    const its = (s.items || []).filter(i => i.q > 0).map(i => ({ b: i.b, l: bookLabel(i.b), q: +i.q, pre: i.pre ?? null, post: i.post ?? null }));
+    if (its.length) rows.push({ teacher_id: mine[s.t], ref: 's:' + s.id, kind: 'sale', at: s.sd || s.d || new Date().toISOString(), items: its, total: its.reduce((a, i) => a + (i.post != null ? i.q * i.post : 0), 0) });
+  }
+  const rg = {};
+  for (const p of db.payments || []) {
+    if (p.k !== 'ret' || !mine[p.t] || p.rid) continue;
+    let v = 0; for (const pt of p.parts || []) { const it = S[pt.sale] && S[pt.sale].items[pt.i]; if (it && it.post != null) v += pt.q * it.post; }
+    const g = rg[p.g || p.id] ||= { t: p.t, at: p.d, items: [], total: 0 };
+    g.items.push({ b: p.b, l: bookLabel(p.b), q: +p.q, post: p.q ? v / p.q : null }); g.total += v;
+  }
+  for (const k in rg) rows.push({ teacher_id: mine[rg[k].t], ref: 'r:' + k, kind: 'ret', at: rg[k].at || new Date().toISOString(), items: rg[k].items, total: rg[k].total });
+  const fg = {};
+  for (const e of db.entries || []) {
+    if (e.s !== 'd' || !mine[e.t] || !e.dd) continue;
+    const g = fg[e.t + ':' + e.dd] ||= { t: e.t, at: e.dd, m: {} }; g.m[e.b] = (g.m[e.b] || 0) + (+e.q || 0);
+  }
+  for (const k in fg) { const g = fg[k]; rows.push({ teacher_id: mine[g.t], ref: 'f:' + k, kind: 'free', at: g.at.length <= 10 ? g.at + 'T12:00:00Z' : g.at, items: Object.entries(g.m).filter(([, q]) => q > 0).map(([b, q]) => ({ b, l: bookLabel(b), q })), total: null }); }
+  const keep = new Set(rows.map(r => r.teacher_id + '|' + r.ref));
+  for (let i = 0; i < rows.length; i += 200) { const { error } = await sb.from('ledger').upsert(rows.slice(i, i + 200), { onConflict: 'teacher_id,ref' }); if (error) throw error; }
+  const old = await fetchAll(() => sb.from('ledger').select('id,teacher_id,ref').in('teacher_id', Object.values(mine)));
+  const gone = old.filter(r => !r.ref.startsWith('rq:') && !keep.has(r.teacher_id + '|' + r.ref)).map(r => r.id);
+  for (let i = 0; i < gone.length; i += 100) await sb.from('ledger').delete().in('id', gone.slice(i, i + 100));
+}
+// حساب المرتجع بنفس طريقة البرنامج الأخضر: من أحدث بيع الأول، وبسعر البيع نفسه
+function gRetCalc(db, localId, items) {
+  const done = {};
+  for (const p of db.payments || []) if (p.k === 'ret' && p.t === localId) for (const pt of p.parts || []) done[pt.sale + ':' + pt.i] = (done[pt.sale + ':' + pt.i] || 0) + pt.q;
+  const lines = [];
+  for (const s of db.sales || []) if (s.st === 'sold' && s.t === localId) (s.items || []).forEach((it, i) => { const left = it.q - (done[s.id + ':' + i] || 0); if (left > 0) lines.push({ it, left, sd: s.sd || '' }); });
+  lines.sort((x, y) => y.sd.localeCompare(x.sd));
+  const resv = {}; for (const r of db.tret || []) if (!r.done && r.t === localId) for (const i of r.items || []) resv[i.b] = (resv[i.b] || 0) + i.q;
+  let value = 0, ok = true; const out = [];
+  for (const i of items) {
+    let skip = resv[i.b] || 0, need = i.q, v = 0;
+    for (const l of lines.filter(x => x.it.b === i.b)) { if (!need) break; let left = l.left; const sk = Math.min(skip, left); skip -= sk; left -= sk; const n = Math.min(need, left); if (n > 0) { v += n * (l.it.post || 0); need -= n; } }
+    if (need) ok = false; value += v; out.push({ b: i.b, l: i.l || bookLabel(i.b), q: i.q, post: i.q ? v / i.q : null });
+  }
+  return { ok, value, items: out };
+}
+async function retCard(r) {
+  const t = r.teachers || {}, db = gdb(), c = db && t.local_id ? gRetCalc(db, t.local_id, r.items || []) : null;
+  return `<div class="card" data-ret="${esc(r.id)}"><div class="nm"><b>${esc(t.name || '—')}</b> <span class="small muted">${fmtDate(r.created_at)}</span></div>
+    <div style="margin:6px 0">${(r.items || []).map(i => `<div class="kv"><span>${esc(i.l || bookLabel(i.b))}</span><b>${i.q}</b></div>`).join('')}</div>
+    ${c ? `<div class="small">${c.ok ? `قيمة المرتجع: <b>${c.value.toLocaleString('ar-EG')} ج</b>` : '<span style="color:#dc2626">⚠️ الكمية دي أكتر من اللي مسجّل في البيع عندك</span>'}</div>` : '<div class="small" style="color:#dc2626">⚠️ المدرس مش في برنامجك على الموبايل ده — سجّل المرتجع بإيدك</div>'}
+    <div class="acts"><button class="btn sm ok" data-ract="ok">✅ موافق</button><button class="btn sm danger" data-ract="no">❌ رفض</button></div>
+    <div class="small muted">لما توافق هتكتب كلمة «موافق» بإيدك، لأنك لازم تكون استلمت الكتب من المدرس.</div></div>`;
+}
+async function bindRets(root, list) {
+  root.addEventListener('click', async e => {
+    const b = e.target.closest('[data-ract]'); if (!b) return;
+    const card = b.closest('[data-ret]'), r = list.find(x => x.id === card.dataset.ret), t = r.teachers || {};
+    const act = b.dataset.ract;
+    if (act === 'no') {
+      const reason = await ask('❌ سبب رفض المرتجع (المدرس هيشوفه)'); if (reason === null) return;
+      const { error } = await sb.from('returns').update({ status: 'rejected', reason, decided_at: new Date().toISOString() }).eq('id', r.id);
+      if (error) return toast(errMsg(error));
+      if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '❌ طلب المرتجع اترفض', false).catch(() => { });
+      card.remove(); counts(); return toast('اترفض');
+    }
+    const db = gdb(); if (!db || !t.local_id) return toast('المدرس مش في برنامجك على الموبايل ده');
+    const c = gRetCalc(db, t.local_id, r.items || []); if (!c.ok) return toast('الكمية أكتر من اللي مسجّل في البيع عندك');
+    const w = await ask('اكتب كلمة «موافق» بإيدك عشان تأكد إنك استلمت الكتب من المدرس', { multi: false, ph: 'موافق', okTxt: 'تأكيد' }); if (w === null) return;
+    if (w.trim() !== 'موافق') return toast('لازم تكتب كلمة موافق بالظبط');
+    $$('button', card).forEach(x => x.disabled = true);
+    const now = new Date().toISOString();
+    (db.tret ||= []).push({ id: r.id, t: t.local_id, items: (r.items || []).map(i => ({ b: i.b, q: i.q })), at: now });
+    (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.local_id, at: now, k: 'مرتجع', txt: 'مرتجع من المدرس (بموافقتك): ' + (r.items || []).map(i => `${bookLabel(i.b)} ${i.q}`).join('، ') });
+    gsave(db);
+    const q1 = await sb.from('returns').update({ status: 'approved', value: c.value, decided_at: now }).eq('id', r.id);
+    const q2 = await sb.from('ledger').upsert({ teacher_id: r.teacher_id, ref: 'rq:' + r.id, kind: 'ret', at: now, items: c.items, total: c.value }, { onConflict: 'teacher_id,ref' });
+    if (q1.error || q2.error) { $$('button', card).forEach(x => x.disabled = false); return toast(errMsg(q1.error || q2.error)); }
+    if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '✅ طلب المرتجع اتوافق عليه', false).catch(() => { });
+    card.remove(); counts(); toast('✅ اتسجّل المرتجع — هيتكتب في برنامجك الأخضر أول ما تفتحه', 4500);
+  });
 }
 
 /* ---------- البحث الشامل: أي كلمة في أي بيانات للمدرس (الملف كله + الكتب + الرسائل المحفوظة + آخر رسالة + الاستلام والتحديث) ---------- */
@@ -888,11 +982,11 @@ function bindReviews(root) {
 }
 
 /* ---------- الجرس ---------- */
-const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['mine', '🧾 طلباتي'], ['edits', '📝 تعديل الملفات'], ['notes', '📋 الملاحظات'], ['del', '🗑️ مسح الرسايل']];
+const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['mine', '🧾 طلباتي'], ['edits', '📝 تعديل الملفات'], ['notes', '📋 الملاحظات'], ['del', '🗑️ مسح الرسايل']];
 async function viewBell() {
   setHeader('🔔 الإشعارات', false);
-  const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs };
-  const live = ['orders', 'edits', 'msgs'];
+  const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets };
+  const live = ['orders', 'edits', 'msgs', 'rets'];
   app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div class="chips">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''} ${live.includes(k) ? '' : 'soon'}" data-b="${k}">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : ''}</button>`).join('')}</div><div id="bb"></div>`;
   $$('[data-b]').forEach(b => b.onclick = () => { ui.bellTab = b.dataset.b; viewBell(); });
   const bb = $('#bb');
@@ -904,6 +998,12 @@ async function viewBell() {
     bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<a class="titem" href="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
       <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div></div></a>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
     return;
+  }
+  if (ui.bellTab === 'rets') {
+    const { data, error } = await sb.from('returns').select('*, teachers(name,local_id)').eq('status', 'pending').order('created_at').limit(50);
+    if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
+    bb.innerHTML = (await Promise.all(data.map(retCard))).join('') || '<div class="card empty">مفيش مرتجعات مستنية ✅</div>';
+    bindRets(bb, data); return;
   }
   if (ui.bellTab === 'orders') {
     const { data, error } = await sb.from('orders').select('*, teachers(name,local_id)').eq('status', 'pending').order('created_at').limit(50);
