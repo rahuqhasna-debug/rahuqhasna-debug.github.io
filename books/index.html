@@ -287,6 +287,7 @@ header.top .logo{width:30px;height:30px;border-radius:7px;background:#fff;object
 .pgrid input{margin:0;width:17px;height:17px;flex:none}
 /* صورة المدرس جنب اسمه: بتفتح الكاميرا/المعرض */
 .avatar-btn{position:relative;border:0;padding:0;cursor:pointer;overflow:visible;font-family:inherit}
+.avdel{display:block;margin:6px auto 0;border:0;border-radius:12px;background:var(--bad-soft);color:var(--bad);font:inherit;font-size:12px;font-weight:700;padding:3px 8px;cursor:pointer;white-space:nowrap}
 .avatar-btn img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
 .avatar-btn .ph-badge{position:absolute;bottom:-3px;left:-3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:12px;display:flex;align-items:center;justify-content:center}
 .phgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}
@@ -1254,7 +1255,7 @@ function renderTeacher(id){
     t.spec&&`🎯 ${esc(t.spec)}`, t.area&&`📍 ${esc(t.area)}`, t.school&&`🏢 ${esc(t.school)}`, t.cls&&!clsLetter(t)&&`🏷️ ${esc(t.cls)}`,
     t.students&&`👨‍🎓 ${esc(t.students)} طالب`, t.plan&&`🗓️ خط السير ${fmtDay(t.plan)}`,
     t.active===true&&'✅ فعّال', t.active===false&&'⛔ مش فعّال'].filter(Boolean);
-  let html = `<div class="card tcard ${stc}"><div class="tc-top"><button class="avatar avatar-btn" data-act="photos" data-id="${esc(t.id)}" title="صور المدرس">${t.thumb?`<img src="${t.thumb}" alt="" loading="lazy" decoding="async">`:esc((t.name||'؟').trim().charAt(0)||'؟')}<span class="ph-badge">📷${(t.phN||0)>1?t.phN:''}</span></button>
+  let html = `<div class="card tcard ${stc}"><div class="tc-top"><button class="avatar avatar-btn" data-act="photos" data-id="${esc(t.id)}" title="صور المدرس">${t.thumb?`<img src="${t.thumb}" alt="" loading="lazy" decoding="async">`:esc((t.name||'؟').trim().charAt(0)||'؟')}<span class="ph-badge">📷${(t.phN||0)>1?t.phN:''}</span></button>${t.thumb?`<button class="avdel" data-act="ph-del-main" data-id="${esc(t.id)}" title="امسح الصورة">🗑️ امسح الصورة</button>`:''}
       <div class="grow"><h2>${esc(t.name)}${nameTags(t)}</h2>${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:'<div class="lastv muted">لسه ما اتزارش</div>'}</div></div>
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}
@@ -4830,6 +4831,9 @@ document.addEventListener('click', e=>{
     case 'msg-all': for(const t of msgShown()) if(t.phone) msgSel.add(t.id); msgDraw(); break;
     case 'msg-none': for(const t of msgShown()) msgSel.delete(t.id); msgDraw(); break;
     case 'msg-send': msgSend(); break;
+    case 'ph-del-main': { const t=tById(el.dataset.id); if(!t || !confirm(`تمسح صورة «${t.name}»؟`)) break;
+      (async()=>{ const ph=await phGet(t.id); ph.shift(); try{ await phSync(t, ph); }catch(er){ t.thumb=''; t.phN=0; }
+        t.noAv=true; logT(t.id, 'اتمسحت الصورة الشخصية', 'صور'); save(); render(); toast('🗑️ الصورة اتمسحت'); })(); break; }
     case 'my-stock': stockModal(); break;
   }
 });

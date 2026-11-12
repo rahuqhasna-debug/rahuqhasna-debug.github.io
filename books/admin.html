@@ -79,7 +79,7 @@ async function gPhoto(localId, img) {
     arr.unshift(img); if (arr.length > 6) arr.length = 6;
     await io('readwrite', s => s.put(arr, localId));
     const th = await gThumb(img), db = gdb(), t = db && (db.teachers || []).find(x => x.id === localId);
-    if (t) { t.thumb = th; t.phN = arr.length; gsave(db); }
+    if (t) { t.thumb = th; t.phN = arr.length; delete t.noAv; gsave(db); }
   } catch (e) { console.warn('gPhoto', e); }
 }
 function gOrder(localId, items) {   // طلب كتب اتوافق عليه ← «طلب مستني» في البيع
@@ -134,7 +134,7 @@ async function loadAvatars() {
   const ch = JSON.stringify(Object.keys(keep).map(k => [k, keep[k].k])) !== JSON.stringify(Object.keys(AVC).map(k => [k, AVC[k].k]));
   AVC = keep; try { LS.set('selah-trial-av', keep); } catch (e) { }
   // المدرس اللي ملوش صورة في البرنامج الأخضر ياخد صورته من المراسلات (للدايرة)
-  try { const db = gdb(); let n = 0; if (db) for (const x of T) { const a = keep[x.id], gt = a && x.local_id && (db.teachers || []).find(y => y.id === x.local_id); if (gt && !gt.thumb) { gt.thumb = a.th; n++; } } if (n) gsave(db); } catch (e) { }
+  try { const db = gdb(); let n = 0; if (db) for (const x of T) { const a = keep[x.id], gt = a && x.local_id && (db.teachers || []).find(y => y.id === x.local_id); if (gt && !gt.thumb && !gt.noAv) { gt.thumb = a.th; n++; } } if (n) gsave(db); } catch (e) { }
   if (ch && me) route();
 }
 function avHtml(t, cls = '') {
