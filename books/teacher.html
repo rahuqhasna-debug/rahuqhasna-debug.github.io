@@ -69,7 +69,9 @@
 .pm-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}.pm-top img{width:40px;height:40px;border-radius:12px}
 .pm-top .pm-bar{flex:1;background:#ede9fe;margin:0}.pm-top .pm-bar span{background:#16a34a}.pm-top b{color:#4c1d95}
 .pbx{display:flex;align-items:center;gap:10px;border-radius:18px;padding:12px;margin-bottom:10px;background:color-mix(in srgb,var(--c) 14%,#fff);border:2px solid color-mix(in srgb,var(--c) 45%,#fff);color:color-mix(in srgb,var(--c) 55%,#111);cursor:pointer;font-weight:800;font-size:18px}
-.pbx:active{transform:scale(.98)}.pbx.ok{--c:#16a34a;cursor:default}.pbx.lock{opacity:.5;cursor:default}
+.pbx:active{transform:scale(.98)}.pbx.ok{--c:#16a34a;background:linear-gradient(140deg,#22c55e,#15803d);border-color:#15803d;color:#fff}
+.pbx.ok .pbx-go{background:#fff;color:#15803d}
+.pbx-go{display:inline-block;margin-top:8px;background:var(--c);color:#fff;border-radius:14px;padding:6px 16px;font-size:15px;font-weight:800;box-shadow:0 3px 8px color-mix(in srgb,var(--c) 45%,transparent);animation:bdg 1.6s infinite}.pbx.lock{opacity:.5;cursor:default}
 .pbx-t{flex:1;line-height:1.4}.pbx-t small{display:block;font-size:13px;font-weight:600;opacity:.85;margin-top:3px}
 .pmini{width:118px;flex:none;border:3px solid #1f2937;border-radius:14px;background:#fff;padding:7px 6px;display:flex;flex-direction:column;gap:6px;justify-content:center;min-height:60px}
 .psr{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:11px;font-weight:700;color:#111;line-height:1.2}
@@ -534,8 +536,10 @@ function renderPerm() {
     if (!st) return '';   // مش مطلوب في موبايله (التشغيل التلقائي لغير الشركات الصعبة)
     const locked = k === 't' && !allBefore && !ok;
     const T = TT[k];
-    let box = `<div class="pbx ${ok ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}" ${ok || locked ? '' : `data-pg="${k}" role="button"`}>
-      <span class="pbx-t">${T[0]}${T[1] ? `<small>${T[1]}</small>` : ''}</span>${mini(k, ok)}</div>`;
+    // متابعة 7: كل مربع بيفتح الإعداد حتى لو اتعمل (عشان يراجعه) + زرار «اضغط هنا»
+    const tap = !locked && !(k === 't' && ok);
+    let box = `<div class="pbx ${ok ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}" ${tap ? `data-pg="${k}" role="button"` : ''}>
+      <span class="pbx-t">${T[0]}${T[1] ? `<small>${T[1]}</small>` : ''}${tap ? '<span class="pbx-go">اضغط هنا 👆</span>' : ''}</span>${mini(k, ok)}</div>`;
     if (!ok && k === 'a' && PG_TRIED.a) box += '<div class="pbx-x"><button class="pbtn" id="pgDone" style="background:#16a34a">✅ شغّلته</button><button class="btn ghost sm" id="pgSkip">مش لاقيه</button></div>';
     if (!ok && k === 't' && PG_TEST) box += '<div class="pbx-x"><button class="pbtn" id="pgYes" style="background:#16a34a">✅ رنّ</button><button class="btn owe" id="pgNo">❌ مارنّش</button></div>';
     return box;
@@ -546,6 +550,10 @@ function renderPerm() {
   $$('[data-pg]').forEach(b => b.onclick = () => {
     const k = b.dataset.pg; PG_TRIED[k] = 1;
     if (k === 't') { if (!window.pushSelfTest) return toast('استنى ثانية وجرّب تاني'); window.pushSelfTest(); PG_TEST = true; toast('🔒 اقفل الشاشة دلوقتي — هيرن بعد 15 ثانية', 6000); return setTimeout(render, 1500); }
+    // متابعة 7: لو الإعداد اتعمل قبل كده، أو الإعدادات مافتحتش خلال ثانية ونص ← «إنت مفعّل ده بالفعل»
+    const DONE_MSG = { n: '✅ إنت مفعّل الإشعارات بالفعل', s: '✅ إنت مفعّل الصوت والشاشة بالفعل', b: '✅ إنت مفعّل البطارية بالفعل', a: '✅ إنت مفعّل التشغيل التلقائي بالفعل' };
+    if (b.classList.contains('ok')) toast(DONE_MSG[k], 3500);
+    else if (!(k === 'n' && !SilahApp.pushOn())) setTimeout(() => { if (!document.hidden) toast(DONE_MSG[k], 3500); }, 1500);
     back();
     if (k === 'n') { if (fail) PG_TRIED.nRev = 1; if (!SilahApp.pushOn()) { SilahApp.askPush(); setTimeout(render, 4000); } else SilahApp.openNotif(); }
     else if (k === 's') { if (fail) PG_TRIED.sRev = 1; SilahApp.openNotif(); }
@@ -922,7 +930,8 @@ function renderRecv() {
 /* ---------- 🆕 اعرف الجديد (بند 46) ----------
    لكل مادة: قناة تليجرام الشركة + الحاجات اللي المالك بيرميها في فولدر المادة على الدرايف (فيديو / PDF) وبتتعرض هنا.
    الرقم الأحمر = الجديد في مواد المدرس (من ملفه) + «عام» بس. */
-const NEWS_CH = { ar: 'SelahEltelmeezArabic', math: 'SelahEltelmeezMath', en: 'SelahEltelmeezEnglish', sci: 'SelahEltelmeezScience', stu: 'SelahEltelmeezSocial' };
+// قنوات إعدادي الحقيقية (متابعة 7، من تليجرام شريف). إنجليزي وعلوم إعدادي لسه مالهمش قناة.
+const NEWS_CH = { ar: 'set_arabic_prep', math: 'set_math_prep', stu: 'set_social_prep' };
 const NEWS_L = { ar: 'عربي ودين', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات', all: 'عام' };
 const NEWS_IC = { video: '🎬', pdf: '📄', image: '🖼️', file: '📎' };
 let NEWS = LS.get('selah-news', { items: [], got: 0 }), newsSub = null;
@@ -949,7 +958,17 @@ function renderNews() {
     app.innerHTML = `<div class="phead">🆕 اعرف الجديد<div class="small">فيديوهات وشروحات وملفات لكل مادة — اختار المادة</div></div>
       <div class="ttiles">${mine.map(s => tile(s, true)).join('')}${tile('all', true)}</div>
       ${rest.length ? `<div class="small muted" style="margin:4px 0 8px">باقي المواد:</div><div class="ttiles">${rest.map(s => tile(s, false)).join('')}</div>` : ''}`;
-    $$('[data-ns]').forEach(b => b.onclick = () => { newsSub = b.dataset.ns; render(); scrollTo(0, 0); });
+    // متابعة 7: المادة اللي ليها قناة ← يفتح التليجرام على طول
+    $$('[data-ns]').forEach(b => b.onclick = () => {
+      const s = b.dataset.ns;
+      if (NEWS_CH[s]) {
+        const sa = LS.get('selah-news-seen', {}); sa[s] = new Date().toISOString(); LS.set('selah-news-seen', sa);
+        const u = 'https://t.me/' + NEWS_CH[s];
+        if (NATIVE) location.href = u; else if (!window.open(u, '_blank')) location.href = u;
+        return setTimeout(render, 800);
+      }
+      newsSub = s; render(); scrollTo(0, 0);
+    });
     return;
   }
   const s = newsSub, seenAll = LS.get('selah-news-seen', {}), seen = seenAll[s] || '', l = NEWS.items.filter(x => x.s === s);
