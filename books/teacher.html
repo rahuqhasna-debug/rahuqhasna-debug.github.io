@@ -181,6 +181,7 @@ function renderHome() {
   if (!NATIVE && /Android/i.test(UA)) h += `<div class="icard"><div class="ic-t">📲 نزّل تطبيق «سلاح التلميذ» الجديد</div>
     <div class="ic-s">عشان رسايل الأستاذ ترن عندك والموبايل مقفول 🔔 (بعد ما تثبّته امسح النسخة دي)</div>
     <button class="gobtn" id="getApk">⬇️ نزّل التطبيق</button></div><div id="guide"></div>`;
+  h += ringCard();
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -217,6 +218,7 @@ function renderHome() {
   // متابعة الجديد بقت في كل الصفحات (startWatch تحت)
   const su = $('#setup'); su && (su.onclick = setupApp);
   const ga = $('#getApk'); ga && (ga.onclick = apkGuide);
+  bindRingCard();
   const sr = $('#sendReply');
   sr && (sr.onclick = async () => {
     const r = $('#reply').value.trim(); if (!r) return toast('اكتب الرد الأول');
@@ -311,6 +313,35 @@ function apkGuide() {
     <button class="btn ghost sm" id="pwaI" style="width:100%;margin-top:8px">مش عارف تنزّله؟ ثبّته من المتصفح بدل كده</button></div>`;
   g.scrollIntoView && g.scrollIntoView({ behavior: 'smooth', block: 'start' });
   $('#pwaI').onclick = () => pwaInstall();
+}
+/* بند 49: الموبايلات (شاومي، أوبو، ريلمي، فيفو، هواوي…) بتخفي إشعار التطبيقات الجديدة والشاشة مقفولة.
+   كارت في الرئيسية بزراير بتفتح صفحات الإعدادات المطلوبة على طول + زرار «جرّب» يبعت تنبيه بعد 15 ثانية. */
+const RING_OK = 'selah-ring-ok';
+function ringState() { try { return window.SilahApp && SilahApp.notifState ? JSON.parse(SilahApp.notifState()) : null; } catch (e) { return null; } }
+function ringCard() {
+  if (!NATIVE) return '';
+  const s = ringState();
+  if (!s) return `<div class="icard"><div class="ic-t">⬇️ نزّل النسخة الجديدة من التطبيق</div><div class="ic-s">عشان رسايل الأستاذ ترن عندك والموبايل مقفول 🔔</div><a class="gobtn" style="display:block;text-align:center;text-decoration:none;background:#16a34a" href="${APK_URL}" download>⬇️ نزّل التحديث</a></div>`;
+  const tough = /xiaomi|redmi|poco|oppo|realme|oneplus|vivo|iqoo|huawei|honor|infinix|tecno|itel|asus|meizu|letv/.test(s.brand || '');
+  const bad = !s.on || (s.imp != null && s.imp >= 0 && s.imp < 4) || s.sound === false || !s.batt;
+  if (!bad && (!tough || LS.get(RING_OK))) return '';
+  const row = (id, ok, t, d) => `<button class="btn ${ok ? 'ok' : 'owe'}" id="${id}" style="width:100%;margin-top:8px;text-align:start;white-space:normal;line-height:1.6">${ok ? '✅' : '👉'} <b>${t}</b><br><span class="small">${d}</span></button>`;
+  return `<div class="icard" id="ringC" style="border:3px solid #dc2626"><div class="ic-t">🔔 خلّي رسايل الأستاذ ترن عندك والموبايل مقفول</div>
+    <div class="ic-s">موبايلك بيكتم إشعارات التطبيقات الجديدة. دوس على كل زرار تحت وظبّط اللي هيفتح (مرة واحدة بس):</div>
+    ${row('rgN', s.on && s.sound !== false && !(s.imp >= 0 && s.imp < 4), '1) الإشعارات', 'شغّل كل حاجة: الإشعارات + الصوت + شاشة القفل + الإشعارات العائمة')}
+    ${row('rgB', s.batt, '2) البطارية', 'دوس «سماح» — أو اختار «بلا قيود»')}
+    ${tough ? row('rgA', false, '3) التشغيل التلقائي', 'شغّل «سلاح التلميذ» في القايمة اللي هتفتح') : ''}
+    <button class="gobtn" id="rgT" style="margin-top:10px">🔔 جرّب دلوقتي: دوس واقفل الشاشة</button>
+    <button class="btn ghost sm" id="rgOk" style="width:100%;margin-top:6px">✅ رن عندي — خلاص</button></div>`;
+}
+function bindRingCard() {
+  if (!$('#ringC')) return;
+  const back = () => document.addEventListener('visibilitychange', function f() { if (!document.hidden) { document.removeEventListener('visibilitychange', f); setTimeout(renderHome, 400); } });
+  $('#rgN').onclick = () => { back(); SilahApp.openNotif(); };
+  $('#rgB').onclick = () => { back(); SilahApp.openBattery(); };
+  const a = $('#rgA'); a && (a.onclick = () => { back(); SilahApp.openAutostart(); });
+  $('#rgOk').onclick = () => { LS.set(RING_OK, 1); renderHome(); };
+  $('#rgT').onclick = () => { if (!window.pushSelfTest) return toast('حدّث الصفحة وجرّب تاني'); window.pushSelfTest(); toast('🔒 اقفل الشاشة دلوقتي — التنبيه هيوصل بعد 15 ثانية', 6000); };
 }
 function showGuide(i) {
   const steps = guideSteps(), s = steps[i], g = $('#guide'); if (!g || !s) return;

@@ -14,6 +14,8 @@
     window.pushInit = async () => { nlink(); try { A.askPush(); } catch (e) { } };
     window.pushReady = nlink;
     window.pushNotifyRep = text => window.TP && TP.rep ? nsend(['s-' + TP.rep], 'سلاح التلميذ', text, BASE + 'admin.html#/bell') : Promise.resolve();
+    // تجربة: تنبيه لنفس المدرس بعد 15 ثانية (عشان يقفل الشاشة ويسمع)
+    window.pushSelfTest = () => { if (!window.TP || !CLOUD) return; setTimeout(() => fetch(CLOUD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'push', to: ['t-' + TP.id], title: '🔔 سلاح التلميذ', body: '✅ تمام! الإشعار بيرن عندك — كده رسايل الأستاذ هتوصلك', url: BASE + 'teacher.html', ring: true }) }).catch(() => { }), 15000); };
     if (window.TP) nlink();
     return;
   }
