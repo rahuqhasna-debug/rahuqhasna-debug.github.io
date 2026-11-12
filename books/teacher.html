@@ -46,7 +46,19 @@ const tName = n => 'أ/ ' + String(n || '').trim();
 const vals = () => ({ ...(D.profile || {}), avatar: D.avatar || '' });
 // لو الكتاب ليه سعر قبل الخصم بس، بيظهر بيه (من غير ما يختفي)
 const prices = () => ((D.prices && D.prices.items) || []).map(p => p.post == null && p.pre != null ? { ...p, post: p.pre, pre: null } : p);
-function ding() { try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { } try { const a = new Audio('ring.mp3'); a.play().catch(() => { }); } catch (e) { } }
+// النغمة: الموبايل بيمنع الصوت لحد ما المدرس يلمس الشاشة مرة — فأول لمسة «بتفتح» الصوت (بصمت)، وبعدها النغمة بتشتغل مع أي رسالة أو تنبيه
+const RING_SND = (() => { try { const a = new Audio('ring.mp3'); a.preload = 'auto'; return a; } catch (e) { return null; } })();
+let audioOk = false;
+function unlockAudio() {
+  if (audioOk || !RING_SND) return;
+  RING_SND.muted = true;
+  RING_SND.play().then(() => { RING_SND.pause(); RING_SND.currentTime = 0; RING_SND.muted = false; audioOk = true; }).catch(() => { RING_SND.muted = false; });
+}
+['pointerdown', 'touchstart', 'keydown', 'click'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+function ding() {
+  try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { }
+  try { if (!RING_SND) return; RING_SND.muted = false; RING_SND.currentTime = 0; RING_SND.play().catch(() => { }); } catch (e) { }
+}
 
 async function load() {
   if (!sb) { app.innerHTML = '<div class="alert">البرنامج لسه مش متظبط. كلّم المندوب.</div>'; return; }
