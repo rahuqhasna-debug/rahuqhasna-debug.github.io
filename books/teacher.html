@@ -7,6 +7,7 @@
 <title>سلاح التلميذ - المدرس</title>
 <link rel="manifest" href="teacher.webmanifest">
 <link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500&display=swap">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="common.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -161,12 +162,34 @@ main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;fle
 .ordv .totbar{position:static;flex:none;margin-top:6px;padding:6px 10px;border-radius:14px;display:flex;align-items:center;gap:8px;text-align:start;box-shadow:0 -2px 10px rgba(0,0,0,.1)}
 .ordv #tot{flex:1;font-size:12.5px;line-height:1.4}.ordv .totbar b{font-size:14.5px}
 .ordv .totbar .gobtn{width:auto;flex:none;font-size:14.5px;padding:9px 16px;border-radius:12px}
+/* متابعة 8 (3): مساحة بيضاء أكبر في الرئيسية + سطر تحت «اطلب كتبك» + رجوع تحت على الشمال + أسعار مضغوطة + أغلفة */
+.hm .ttiles.five{flex:0 0 auto;grid-template-rows:76px 104px 104px;gap:14px;margin:10px 6px 18px}
+.hm .ttiles.five .tt{padding:8px}
+.ttiles.five .tt.wd .tlx{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start}
+.tsub{font-family:'Reem Kufi',inherit;font-size:12px;font-weight:500;color:#fef3c7;line-height:1.4}
+.back2{position:fixed;left:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:31;border:0;border-radius:20px;padding:6px 14px;font:800 13.5px inherit;font-family:inherit;color:#fff;background:linear-gradient(135deg,#ec4899,#db2777);box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer}
+.back2[hidden]{display:none}
+body:has(.savebar) .back2,body:has(main:not(.ordv) .totbar) .back2{bottom:calc(140px + env(safe-area-inset-bottom))}
+body:has(.ordv) .back2{bottom:calc(122px + env(safe-area-inset-bottom))}
+.prv .bklist{gap:5px;padding-bottom:90px}
+.prv .bk{padding:7px 10px;border-radius:12px;box-shadow:0 2px 6px -4px rgba(0,0,0,.25)}
+.prv .bk-n{font-size:13.5px;font-weight:700;gap:6px}.prv .bk-dot{width:9px;height:9px}
+.prv .bk-p{margin-top:1px;font-size:12.5px}.prv .bk-p b{font-size:13.5px}
+.prv .savebar .gobtn{font-size:15px;padding:10px}
+[data-grades] .chip{position:relative;justify-content:center;text-align:center;padding:8px 2px;font-size:13px;white-space:nowrap}
+[data-grades] .chip input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.cov{position:relative;width:38px;height:50px;border-radius:3px 6px 6px 3px;background:linear-gradient(160deg,var(--c1),var(--c2));box-shadow:inset 4px 0 0 rgba(0,0,0,.18),0 3px 6px -2px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:4px;color:#fff;overflow:hidden}
+.cov img{width:16px;height:16px;border-radius:4px;background:#fff}
+.cov b{font-size:8.5px;font-weight:800;line-height:1.2;margin-top:3px;text-align:center}
+.cov i{font-style:normal;font-size:7px;opacity:.9;position:absolute;bottom:3px}
+.nch .nci{width:auto;height:auto}
 </style>
 </head>
 <body>
 <header class="top"><div class="in"><button class="hb backpill" id="back" hidden aria-label="رجوع">رجوع ➜</button><h1 id="title">سلاح التلميذ</h1><button class="hb" id="bell" aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></button><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
 <main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
 <div id="cbar"></div>
+<button class="back2" id="back2" hidden aria-label="رجوع">➜ رجوع</button>
 <nav class="tabs" id="tabs" hidden>
   <a data-v="home"><span class="i">🏠</span>الرئيسية<span class="cnt" id="homeCnt" hidden></span></a>
   <a data-v="msgs"><span class="i">💬</span>الرسائل<span class="cnt" id="msgCnt" hidden></span></a>
@@ -315,9 +338,9 @@ function renderHome() {
   // متابعة 7: اتشال الشريط الأبيض (اسم المدرس) — الرئيسية 6 مربعات قد بعض بأيقونات كرتونية ملوّنة
   const HI = { or: '🛒', ms: '💬', pr: '📚', nw: '📢', rv: '📦' };   // متابعة 8: أيقونات ملوّنة زي أيقونات الشريط اللي تحت
   let h = `<div class="promo"><div class="pr-t">كتب سلاح التلميذ <b>بسعر مميز</b></div>
-    <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span></div>
+    <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span><span>💳 الدفع بعدين</span></div>
     <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
-  h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="ttl">اطلب كتبك بسعر مميز</span></button>
+  h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="tlx"><span class="ttl">اطلب كتبك بسعر مميز</span><span class="tsub">اطلب دلوقتي بأقل سعر وأسرع توصيل.. والحساب بعدين</span></span></button>
     <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
     <button class="tt h-pr" data-v="prices"><span class="tti">${HI.pr}</span><span class="ttl">أسعار الكتب</span></button>
     <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
@@ -853,6 +876,7 @@ function bookHead(p) {
 }
 function renderPrices() {
   const ps = myPrices();
+  app.className = 'wrap prv';
   app.innerHTML = `<div class="phead">💰 أسعار الكتب<div class="small">سعر النسخة قبل الخصم وبعده</div></div>
     ${ps.length ? `<div class="bklist">${ps.map(p => `<div class="bk">${bookHead(p)}</div>`).join('')}</div>` : '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'}
     <div class="savebar"><button class="gobtn" id="toOrd">🛒 اطلب كتبك بسعر مميز</button></div>`;
@@ -1091,6 +1115,7 @@ function openTg(ch) {
     setTimeout(() => { location.href = 'https://play.google.com/store/apps/details?id=org.telegram.messenger'; }, 900);
   }, 1800);
 }
+const NCOV = { ar: ['#3b82f6', '#1d4ed8'], math: ['#22c55e', '#15803d'], en: ['#a855f7', '#7e22ce'], sci: ['#fb923c', '#ea580c'], stu: ['#d97706', '#92400e'] };   // ألوان أغلفة الكتب (ألوان المواد)
 const NSTAGE = { prim: ['ابتدائي', '#16a34a'], prep: ['إعدادي', '#2563eb'] };
 const NBG = { ar: '#fef3c7,#fbbf24', math: '#dcfce7,#4ade80', en: '#f3e8ff,#c084fc', sci: '#ffedd5,#fb923c', stu: '#e0f2fe,#38bdf8' };
 const NEWS_L = { ar: 'عربي ودين', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات', all: 'عام' };
@@ -1116,7 +1141,7 @@ function renderNews() {
     // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
     const subs = ['ar', 'math', 'en', 'sci', 'stu'];
     const tile = (st, s) => { const ch = NEWS_CHS[st][s];
-      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci">${NI[s]}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci"><span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><img src="icon-192.png" alt=""><b>${NEWS_L[s]}</b><i>${NSTAGE[st][0]}</i></span></span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
     const sec = st => `<div class="nhd" style="--c:${NSTAGE[st][1]}">المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
     const hasAll = NEWS.items.some(x => x.s === 'all');
     app.innerHTML = `<div class="phead">اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — اختار المادة</div></div>
@@ -1197,9 +1222,10 @@ function drawPhotos() {
 
 $$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
 $('#reload').onclick = () => load();
-function updBell() { const n = D ? (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); }
+function updBell() { const n = D ? (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && !$('#tabs').hidden); }
 $('#bell').onclick = () => { if (D && D.unread) go('msgs'); else if (D && (D.updates.length || (D.pending && D.pending.status === 'question'))) go('home'); else if (D && newsTotal()) go('news'); else toast('مفيش جديد دلوقتي 👌', 1800); };
 $('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go(view === 'inv' || view === 'ret' ? 'order' : 'home'); };
+$('#back2').onclick = () => $('#back').onclick();
 load();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 </script>
