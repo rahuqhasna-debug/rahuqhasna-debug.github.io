@@ -43,6 +43,12 @@
 .pcard .th{width:62px;flex:none}.pcard .th .phsvg{width:62px;max-width:none;margin:0}
 .pbtn{display:block;width:100%;border:0;border-radius:14px;padding:12px 14px;font:800 15px inherit;font-family:inherit;color:#fff;background:linear-gradient(140deg,#8b5cf6,#6d28d9);box-shadow:0 5px 14px rgba(109,40,217,.32);cursor:pointer}
 .pm-note{margin:16px 0 8px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;padding:12px;font-size:13.5px;line-height:1.9;color:#4c1d95}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.chips span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:4px 11px;font-size:12.5px;font-weight:700}
+.tl{position:relative;margin:14px 0 4px}.tl::before{content:'';position:absolute;inset-inline-start:21px;top:22px;bottom:22px;width:4px;background:linear-gradient(#c4b5fd,#7c3aed);border-radius:2px}
+.tl-i{position:relative;display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.tl-n{width:46px;height:46px;flex:none;border-radius:50%;background:var(--c);font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px #fff,0 4px 12px rgba(0,0,0,.2);z-index:1}
+.tl-b{flex:1;background:#fff;border:2px solid #ede9fe;border-radius:16px;padding:10px 12px;box-shadow:0 4px 12px rgba(76,29,149,.07)}
+.tl-b b{display:block;font-size:16px;color:#1e1b4b;margin-bottom:2px}.tl-b span{font-size:13.5px;color:#475569;line-height:1.8}.tl-b.hot{background:#fffbeb;border-color:#fcd34d}
 .ins-c{background:linear-gradient(160deg,#faf5ff,#fff);border:2px solid #ddd6fe;border-radius:24px;padding:26px 18px;text-align:center;box-shadow:0 12px 30px rgba(76,29,149,.14)}
 .ins-c img{width:84px;height:84px;border-radius:22px;box-shadow:0 8px 20px rgba(76,29,149,.3)}
 .ins-c h2{margin:14px 0 6px;font-size:23px;color:#4c1d95}.ins-c .sub{color:#475569;font-size:15px;line-height:1.8;margin-bottom:16px}
@@ -346,7 +352,38 @@ async function pwaInstall() {
   if (instEvt) { instEvt.prompt(); let ok = false; try { ok = (await instEvt.userChoice).outcome === 'accepted'; } catch (e) { } instEvt = null; if (ok) { installedNow = true; return renderGate(); } }
   showGuide(0);
 }
+/* بند 52: صفحة تنزيل وتثبيت التطبيق — تصميم جديد: كارت اطمئنان + فيديو + خريطة خطوات (دوائر متوصلة ومربعات ملونة) + زرار التنزيل */
 function apkGuide() {
+  if (code) try { navigator.clipboard.writeText(location.href.split('#')[0] + '#c=' + code); } catch (e) { }
+  const g = $('#guide') || app;
+  const F = [['تنزيل الملف', ['هذا الملف قد يضر جهازك', 'إلغاء', 'تنزيل'], 2], ['الإشعارات', ['⬇️ اكتمل التنزيل', 'silah-teacher.apk'], 1],
+    ['لأمانك', ['الموبايل مش مسموح له يثبت من هنا', 'الإعدادات', 'إلغاء'], 1], ['التثبيت من هذا المصدر', ['السماح من هذا المصدر'], 0, 1],
+    ['سلاح التلميذ', ['هل تريد تثبيت التطبيق؟', 'تثبيت', 'إلغاء'], 1], ['Play Protect', ['تم حظر التطبيق', 'المزيد', 'إلغاء'], 1],
+    ['Play Protect', ['تثبيت على أي حال', 'عدم التثبيت'], 0], ['تم التثبيت', ['✅ تم تثبيت التطبيق', 'فتح', 'تم'], 1]];
+  const S = [['#7c3aed', '⬇️', 'دوس «تنزيل»', 'لو ظهرت رسالة عن الملف، دوس «تنزيل» أو «موافق».'],
+    ['#0ea5e9', '📂', 'افتح الملف', 'من الإشعار اللي فوق، أو من «التنزيلات».'],
+    ['#f59e0b', '⚙️', 'لو قالك «غير مسموح»', 'دوس «الإعدادات» ← شغّل «السماح من هذا المصدر» ← ارجع بالسهم ←'],
+    ['#16a34a', '📲', 'دوس «تثبيت»', 'استنى ثواني لحد ما يخلص.'],
+    ['#ef4444', '🛡️', 'لو ظهرت «تم حظر التطبيق»', 'دوس <b>المزيد</b> ← بعدين <b>تثبيت على أي حال</b>. ده عادي لأن التطبيق من خارج متجر جوجل.', 1],
+    ['#6d28d9', '✅', 'دوس «فتح»', 'وبعدها هنظبط معاك الإشعارات في دقيقة.']];
+  g.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
+      <p>ثبّته على موبايلك وهتوصلك رسايل الأستاذ فور وصولها 🔔</p>
+      <div class="chips"><span>✔ تطبيق رسمي</span><span>✔ مخصوص لرسايل الأستاذ</span><span>✔ تحذيرات أندرويد عادية</span></div></div>
+    <div class="vid-t">🎬 شاهد التثبيت بالفيديو</div>
+    <div class="phf" id="phf2"><video id="tvid2" autoplay muted loop playsinline preload="metadata" poster="silah-tutorial-poster.jpg"><source src="silah-tutorial.mp4" type="video/mp4"></video><button class="pp" id="tpp2">⏸ إيقاف</button></div>
+    <div id="animFb" hidden>${animGuide(F)}</div>
+    <div class="vid-t" style="margin-top:22px">🗺️ خطوات التثبيت</div>
+    <div class="tl">${S.map((x, i) => `<div class="tl-i"><div class="tl-n" style="--c:${x[0]}">${x[1]}</div><div class="tl-b ${x[4] ? 'hot' : ''}"><b>${i + 1}) ${x[2]}</b><span>${x[3]}</span></div></div>`).join('')}</div>
+    <div class="pm-note">🛡️ <b>اطمّن:</b> رسايل التحذير اللي هتظهر من أندرويد طبيعية جدًا لأي تطبيق مش من متجر جوجل بلاي. «سلاح التلميذ» مخصوص لرسايل الأستاذ ومواعيد الكتب، وتقدر تكمل بثقة.</div>
+    <a class="ins-b" style="text-align:center;text-decoration:none" href="${APK_URL}" download>⬇️ نزّل التطبيق الآن</a>`;
+  const tv = $('#tvid2'), pp = $('#tpp2');
+  tv.addEventListener('error', () => { $('#phf2').hidden = true; $('#phf2').previousElementSibling.hidden = true; $('#animFb').hidden = false; }, true);
+  pp.onclick = () => tv.paused ? tv.play().catch(() => { }) : tv.pause();
+  tv.onplay = () => { pp.textContent = '⏸ إيقاف'; }; tv.onpause = () => { pp.textContent = '▶️ تشغيل'; };
+  tv.play && tv.play().catch(() => { pp.textContent = '▶️ تشغيل'; });
+  g.scrollIntoView && g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function apkGuideOld() {
   // الرابط بيتنسخ عشان التطبيق يدخل لوحده أول ما يتفتح
   if (code) try { navigator.clipboard.writeText(location.href.split('#')[0] + '#c=' + code); } catch (e) { }
   // بند 50د (طلب شريف): تثبيت التطبيق بأسهل شكل — كارت اطمئنان + فيديو تمثيلي للتثبيت كله + الخطوات مكتوبة
