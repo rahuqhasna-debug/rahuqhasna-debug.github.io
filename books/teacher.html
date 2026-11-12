@@ -450,7 +450,8 @@ const toughBrand = s => /xiaomi|redmi|poco|oppo|realme|oneplus|vivo|iqoo|huawei|
 function permSteps(s) {
   const fail = !!LS.get(RING_FAIL), soundOk = s.sound !== false && !(s.imp != null && s.imp >= 0 && s.imp < 4);
   const a = [{ k: 'n', ok: !!s.on && (!fail || !!PG_TRIED.nRev) }, { k: 's', ok: !!s.on && soundOk && (!fail || !!PG_TRIED.sRev) }, { k: 'b', ok: !!s.batt }];
-  if (toughBrand(s)) a.push({ k: 'a', ok: !!LS.get(AUTO_OK) });
+  // متابعة 7: التشغيل التلقائي مابقاش خطوة إجبارية (البرنامج مايقدرش يتأكد منه وكان بيوقّف المدرس). بيظهر بس لو «جرّب الرنة» فشلت، وضغطة عليه = اتعمل
+  if (toughBrand(s) && fail) a.push({ k: 'a', ok: !!LS.get(AUTO_OK) });
   a.push({ k: 't', ok: !!LS.get(RING_OK) });
   return a;
 }
@@ -508,7 +509,7 @@ function renderPerm() {
     return;
   }
   const steps = permSteps(s), fail = !!LS.get(RING_FAIL), tough = toughBrand(s);
-  const done = steps.filter(x => x.ok).length, allBefore = steps.slice(0, 4).every(x => x.ok);
+  const done = steps.filter(x => x.ok).length, allBefore = steps.filter(x => x.k !== 't').every(x => x.ok);
   const okOf = k => (steps.find(x => x.k === k) || {}).ok;
   // بطاقة لكل إذن: رقم + عنوان + هتعمل إيه + صورة صغيرة توضح + زرار بيفتح الإعداد على طول
   const CARDS = {
@@ -536,11 +537,10 @@ function renderPerm() {
     if (!st) return '';   // مش مطلوب في موبايله (التشغيل التلقائي لغير الشركات الصعبة)
     const locked = k === 't' && !allBefore && !ok;
     const T = TT[k];
-    // متابعة 7: كل مربع بيفتح الإعداد حتى لو اتعمل (عشان يراجعه) + زرار «اضغط هنا»
+    // متابعة 7: المربع الأخضر لما يتداس يقول «تم التفعيل» ومايفتحش حاجة. غير الأخضر ← «اضغط هنا» بيفتح الإعداد
     const tap = !locked && !(k === 't' && ok);
     let box = `<div class="pbx ${ok ? 'ok' : ''} ${locked ? 'lock' : ''}" style="--c:${C.c}" ${tap ? `data-pg="${k}" role="button"` : ''}>
-      <span class="pbx-t">${T[0]}${T[1] ? `<small>${T[1]}</small>` : ''}${tap ? '<span class="pbx-go">اضغط هنا 👆</span>' : ''}</span>${mini(k, ok)}</div>`;
-    if (!ok && k === 'a' && PG_TRIED.a) box += '<div class="pbx-x"><button class="pbtn" id="pgDone" style="background:#16a34a">✅ شغّلته</button><button class="btn ghost sm" id="pgSkip">مش لاقيه</button></div>';
+      <span class="pbx-t">${T[0]}${T[1] ? `<small>${T[1]}</small>` : ''}${tap ? `<span class="pbx-go">${ok ? 'تم التفعيل ✅' : 'اضغط هنا 👆'}</span>` : ''}</span>${mini(k, ok)}</div>`;
     if (!ok && k === 't' && PG_TEST) box += '<div class="pbx-x"><button class="pbtn" id="pgYes" style="background:#16a34a">✅ رنّ</button><button class="btn owe" id="pgNo">❌ مارنّش</button></div>';
     return box;
   };
@@ -550,18 +550,17 @@ function renderPerm() {
   $$('[data-pg]').forEach(b => b.onclick = () => {
     const k = b.dataset.pg; PG_TRIED[k] = 1;
     if (k === 't') { if (!window.pushSelfTest) return toast('استنى ثانية وجرّب تاني'); window.pushSelfTest(); PG_TEST = true; toast('🔒 اقفل الشاشة دلوقتي — هيرن بعد 15 ثانية', 6000); return setTimeout(render, 1500); }
-    // متابعة 7: لو الإعداد اتعمل قبل كده، أو الإعدادات مافتحتش خلال ثانية ونص ← «إنت مفعّل ده بالفعل»
-    const DONE_MSG = { n: '✅ إنت مفعّل الإشعارات بالفعل', s: '✅ إنت مفعّل الصوت والشاشة بالفعل', b: '✅ إنت مفعّل البطارية بالفعل', a: '✅ إنت مفعّل التشغيل التلقائي بالفعل' };
-    if (b.classList.contains('ok')) toast(DONE_MSG[k], 3500);
-    else if (!(k === 'n' && !SilahApp.pushOn())) setTimeout(() => { if (!document.hidden) toast(DONE_MSG[k], 3500); }, 1500);
+    // متابعة 7: الأخضر ← «تم التفعيل» وبس (مايدخلش الإعدادات). غير كده لو الإعدادات مافتحتش خلال ثانية ونص ← نفس الجملة
+    const DONE_MSG = { n: '✅ تم تفعيل الإشعارات', s: '✅ تم تفعيل الصوت والشاشة', b: '✅ تم السماح بالبطارية', a: '✅ تم التشغيل التلقائي' };
+    if (b.classList.contains('ok')) return toast(DONE_MSG[k], 3000);
+    if (!(k === 'n' && !SilahApp.pushOn())) setTimeout(() => { if (!document.hidden) toast(DONE_MSG[k], 3000); }, 1500);
+    if (k === 'a') { LS.set(AUTO_OK, 1); setTimeout(render, 1500); }   // مايتأكدش منه ← الضغطة = اتعمل
     back();
     if (k === 'n') { if (fail) PG_TRIED.nRev = 1; if (!SilahApp.pushOn()) { SilahApp.askPush(); setTimeout(render, 4000); } else SilahApp.openNotif(); }
     else if (k === 's') { if (fail) PG_TRIED.sRev = 1; SilahApp.openNotif(); }
     else if (k === 'b') SilahApp.openBattery();
     else if (k === 'a') SilahApp.openAutostart();
   });
-  const dn = $('#pgDone'); dn && (dn.onclick = () => { LS.set(AUTO_OK, 1); render(); });
-  const sk = $('#pgSkip'); sk && (sk.onclick = () => { LS.set(AUTO_OK, 1); render(); });
   const y = $('#pgYes'); y && (y.onclick = () => { LS.set(RING_OK, 1); LS.set(RING_FAIL, 0); PG_TEST = false; PG_TRIED = {}; toast('🎉 تمام! أهلًا بحضرتك', 2500); render(); });
   // مارنّش ← نرجّعه يراجع الإشعارات والتشغيل التلقائي
   const no = $('#pgNo'); no && (no.onclick = () => { LS.set(RING_FAIL, 1); LS.set(AUTO_OK, 0); PG_TEST = false; PG_TRIED = {}; render(); scrollTo(0, 0); });
