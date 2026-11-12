@@ -44,7 +44,8 @@ const UA = navigator.userAgent, IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintos
 const INAPP = /FBAN|FBAV|Instagram|WhatsApp|Line\/|; wv\)/i.test(UA), SAMSUNG = /SamsungBrowser/i.test(UA), IOS_SAFARI = IOS && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(UA) && !INAPP;
 const tName = n => 'أ/ ' + String(n || '').trim();
 const vals = () => ({ ...(D.profile || {}), avatar: D.avatar || '' });
-const prices = () => (D.prices && D.prices.items) || [];
+// لو الكتاب ليه سعر قبل الخصم بس، بيظهر بيه (من غير ما يختفي)
+const prices = () => ((D.prices && D.prices.items) || []).map(p => p.post == null && p.pre != null ? { ...p, post: p.pre, pre: null } : p);
 function ding() { try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 600]); } catch (e) { } try { const a = new Audio('ring.mp3'); a.play().catch(() => { }); } catch (e) { } }
 
 async function load() {

@@ -393,7 +393,10 @@ function tHay(t) {
 // أسعار الكتب ← المدرسين (💰 أسعار الكتب + الطلب). بتترفع مع كل فتح لو الأسعار في البرنامج اتغيّرت (المالك بس)
 async function syncPrices() {
   const db = gdb(); if (!isAdmin() || !db || !db.prices) return;
-  const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? null }));
+  // الأفضل: الأسعار اللي البرنامج حسبها (فيها بعد الخصم بنسبة الخصم) — وإلا الأسعار الخام
+  let gp = null; try { gp = JSON.parse(localStorage.getItem('selah-green-prices') || 'null'); } catch (e) { }
+  const items = (Array.isArray(gp) && gp.length ? gp.map(p => ({ b: p.b, l: bookLabel(p.b), pre: p.pre ?? null, post: p.post ?? null }))
+    : Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? p.pre ?? null }))).filter(i => i.post || i.pre);
   if (!items.length) return;
   const sig = JSON.stringify(items.map(i => [i.b, i.pre, i.post]));
   if (LS.get('selah-trial-psig') === sig) return;

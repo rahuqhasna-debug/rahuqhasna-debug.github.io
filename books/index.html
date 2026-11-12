@@ -1161,7 +1161,7 @@ async function sbMapPull(){
     if(ch && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.querySelector('.modal')){ const y=scrollY; render(); scrollTo(0,y); }
   }catch(e){}
 }
-setTimeout(sbMapPull, 4000); setInterval(sbMapPull, 10*60000);
+setTimeout(sbMapPull, 4000); setInterval(sbMapPull, 10*60000); setTimeout(()=>pushPrices(), 8000); window.addEventListener('online', ()=>pushPrices());
 /* ملخص كل مدرس لصفحة 💬 المراسلات (admin.html بيقراه عشان كارت المدرس هناك يبقى زي هنا بالظبط):
    st = none/part/done (الاستلام)، d/o = استلم/باقيله، lv = آخر زيارة، c = التصنيف، w = عليه فلوس */
 function greenSum(){
@@ -1169,6 +1169,20 @@ function greenSum(){
     for(const t of db.teachers){ const x=idx[t.id], v=LV[t.id];
       o[t.id]={st:!x?.d?'none':x.o?'part':'done', d:x?.d||0, o:x?.o||0, lv:v?`${visitLabel(v)} — ${v.k}`:'', c:clsLetter(t), w:ACC[t.id]?.owe>0?fmtM(ACC[t.id].owe):''}; }
     const s=JSON.stringify(o); if(s!==greenSum.last){ greenSum.last=s; localStorage.setItem('selah-green-sum', s); }
+    // أسعار الكتب زي ما هي في البرنامج (قبل الخصم + بعد الخصم محسوب بنسبة الخصم) ← المراسلات بترفعها للمدرسين
+    const pr=JSON.stringify(Object.keys(db.prices||{}).map(k=>{ const p=priceOf(k); return p?{b:k, pre:p.pre, post:p.post}:null; }).filter(Boolean));
+    if(pr!==greenSum.lastP){ greenSum.lastP=pr; localStorage.setItem('selah-green-prices', pr); pushPrices(); }
+  }catch(e){}
+}
+// أي سعر يتحدّث في البرنامج ← يترفع للمدرسين على طول (💰 أسعار الكتب عندهم). بيشتغل بحساب المالك بس (المراسلات بتمنع غيره)
+async function pushPrices(){
+  try{
+    const items=JSON.parse(localStorage.getItem('selah-green-prices')||'[]').filter(p=>p.post||p.pre).map(p=>({b:p.b, l:bookLabel(p.b), pre:p.pre??null, post:p.post??null}));
+    if(!items.length || !sbHas() || !navigator.onLine) return;
+    const sig=JSON.stringify(items.map(i=>[i.b,i.pre,i.post])); if(localStorage.getItem('selah-trial-psig')===JSON.stringify(sig)) return;
+    const S=await sbSession(); if(!S) return;
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/app_settings?on_conflict=key',{method:'POST',headers:{...S.h, Prefer:'resolution=merge-duplicates'},body:JSON.stringify({key:'prices', value:{items, at:new Date().toISOString()}})});
+    if(r.ok) localStorage.setItem('selah-trial-psig', JSON.stringify(sig));
   }catch(e){}
 }
 // دايرة صورة المدرس جنب اسمه (من غير صورة = أول حرف)
