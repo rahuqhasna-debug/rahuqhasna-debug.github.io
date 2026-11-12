@@ -55,7 +55,7 @@ async function load() {
     const { data, error } = await sb.rpc('t_get', { p_code: code });
     if (error) throw error;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
-    const first = !D; D = data; $('#tabs').hidden = false; render(); setBadge();
+    const first = !D; D = normD(data); $('#tabs').hidden = false; render(); setBadge();
     // طلب تحديث جديد من آخر مرة ← صوت
     const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);
     if (ids.some(i => !seen.includes(i))) ding(); LS.set('selah-trial-tupd', ids);
@@ -66,6 +66,8 @@ async function load() {
     }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
 }
+// طلبات التحديث اللي المدرس ردّ عليها ماتظهرش تاني
+function normD(d) { const done = LS.get('selah-trial-tupd-done', []); d.updates = (d.updates || []).filter(u => !done.includes(u.id)); return d; }
 function go(v) { view = v; if (!isApp) toast('📲 ثبّت التطبيق الأول', 2500); render(); scrollTo(0, 0); }
 // عدد الجديد على أيقونة البرنامج (في الموبايلات اللي بتسمح)
 function setBadge() {
@@ -80,8 +82,8 @@ function render() {
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
   $('#booksTab').hidden = !((D.books || []).length || D.orders.length || canOrder(D.profile));
-  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي' }[view] || 'أهلًا ' + tName(D.name);
-  if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else renderHome();
+  $('#title').textContent = { me: 'ملفي', msgs: '💬 ' + (D.rep ? 'الأستاذ ' + D.rep : 'الرسائل'), books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز' }[view] || 'أهلًا ' + tName(D.name);
+  if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else renderHome();
 }
 const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
 const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIELD_LABEL[k] || k}</span><span>${fmtVal(k, o[k])}</span></div>`).join('');
@@ -90,6 +92,12 @@ function renderHome() {
   const v = vals();
   let h = `<div class="card" style="display:flex;align-items:center;gap:12px">${v.avatar ? `<img class="av lg" src="${v.avatar}" alt="">` : '<span class="av lg">👤</span>'}
     <div><b style="font-size:19px">${esc(tName(D.name))}</b><div class="muted small">${esc([valText('subjects', v.subjects), v.area].filter(x => x && x !== '—').join(' · '))}</div></div></div>`;
+  // أيقونات الرئيسية
+  h += `<div class="ttiles"><button class="tt big" data-v="order"><span class="tti">🛒</span><span class="ttl">اطلب كتبك بسعر مميز</span><span class="tts">أسعار خاصة لحضرتك — اطلب دلوقتي 🔥</span></button>
+    <button class="tt t-msg" data-v="msgs"><span class="tti">💬</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
+    <button class="tt t-pr" data-v="prices"><span class="tti">💰</span><span class="ttl">أسعار الكتب</span></button>
+    <button class="tt t-bk" data-v="books"><span class="tti">📚</span><span class="ttl">كتبي</span></button>
+    <button class="tt t-me" data-v="me"><span class="tti">👤</span><span class="ttl">ملفي</span>${D.updates.length ? '<span class="ttb">!</span>' : ''}</button></div>`;
   const notif = 'Notification' in window ? Notification.permission : 'unsupported';
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
@@ -102,11 +110,6 @@ function renderHome() {
     <textarea id="reply" placeholder="اكتب ردك هنا…" style="margin-top:8px"></textarea>
     <div class="acts"><button class="btn owe" id="sendReply">ابعت الرد</button><button class="btn ghost" onclick="go('me')">عدّل ملفي</button></div></div>`;
   else if (p) h += `<div class="note"><b>⏳ تعديلك في انتظار المراجعة</b><div class="small" style="margin-top:4px">${esc(fieldsTxt(Object.keys(p.new_values || {})))}${p.photos ? ` + ${p.photos} صورة` : ''}</div></div>`;
-  // كارت الأسعار المميزة (لافت للنظر)
-  const ps = prices().filter(x => x.post);
-  if (canOrder(D.profile) && ps.length) h += `<div class="promo" id="promo"><b>🔥 أسعار مميزة لحضرتك!</b><div class="small">شوف السعر قبل وبعد الخصم واطلب كتبك دلوقتي</div>
-    ${ps.slice(0, 3).map(x => `<div class="pr"><span>${esc(x.l || bookLabel(x.b))}</span><span>${x.pre ? `<s>${x.pre} ج</s> ← ` : ''}<b>${x.post} ج</b></span></div>`).join('')}
-    <span class="go">🛒 اطلب منا الكتب بأسعار مميزة ←</span></div>`;
   // الكروت الخلصانة: عليها ❌ والمدرس يشيلها
   const gone = new Set(LS.get(DISMISS, []));
   const xb = k => `<button class="xbtn" data-x="${esc(k)}" aria-label="شيل">✕</button>`;
@@ -126,12 +129,12 @@ function renderHome() {
     h += '</div>';
   }
   app.innerHTML = h;
-  const pm = $('#promo'); pm && (pm.onclick = orderDlg);
+  $$('.ttiles [data-v]').forEach(b => b.onclick = () => go(b.dataset.v));
   $$('[data-x]').forEach(b => b.onclick = () => { const a = LS.get(DISMISS, []); a.push(b.dataset.x); LS.set(DISMISS, a.slice(-200)); renderHome(); });
   // متابعة الجديد والصفحة مفتوحة (طلب تحديث / رسالة / قرار) — صوت + تحديث
   pollT = setInterval(async () => {
     if (document.hidden) return;
-    const { data } = await sb.rpc('t_get', { p_code: code }); if (!data || view !== 'home') return;
+    let { data } = await sb.rpc('t_get', { p_code: code }); if (!data || view !== 'home') return; data = normD(data);
     const sig = x => [x.unread, x.updates.length, x.decisions.length, (x.pending || {}).status, x.orders.filter(o => o.status !== 'pending').length].join('|');
     if (sig(data) !== sig(D)) { const more = data.unread > D.unread || data.updates.length > D.updates.length; D = data; render(); setBadge(); if (more) ding(); }
   }, 30000);
@@ -174,16 +177,18 @@ const PICS = {
   i3: phone('<rect x="14" y="16" width="152" height="40" fill="#e2e8f0"/><text x="30" y="41" font-size="12" fill="#2563eb" font-weight="700">إضافة</text><text x="150" y="41" font-size="11" text-anchor="end" fill="#64748b">إلغاء</text>' + RING(46, 37, 22) + '<rect x="40" y="80" width="40" height="40" rx="9" fill="#0f766e"/><text x="60" y="106" font-size="18" text-anchor="middle">📚</text>'),
   web: phone(BAR + '<circle cx="152" cy="31" r="2.4" fill="#111"/><circle cx="152" cy="24" r="2.4" fill="#111"/><circle cx="152" cy="38" r="2.4" fill="#111"/><rect x="40" y="48" width="122" height="60" rx="8" fill="#fff" stroke="#cbd5e1"/><rect x="46" y="56" width="110" height="20" rx="5" fill="#fde68a"/><text x="150" y="70" font-size="10" text-anchor="end" font-weight="700" fill="#111">فتح في المتصفح</text>' + RING(100, 66, 22))
 };
+let gPlat = null;   // 'and' | 'ios' — المدرس بيختار
 function guideSteps() {
+  const ios = gPlat ? gPlat === 'ios' : IOS, iosSafari = ios && (IOS ? IOS_SAFARI : true);
   const link = location.href.split('#')[0] + '#c=' + code;
-  if (INAPP) return [{ pic: 'web', t: 'افتح الرابط في المتصفح', d: 'إنت فاتح من جوه الواتساب/الفيسبوك، ومنه مينفعش التثبيت. دوس ⋮ فوق واختار «فتح في المتصفح» (أو «فتح في Chrome»' + (IOS ? '/«Safari»' : '') + '). أو انسخ الرابط والصقه في المتصفح.', copy: link }];
-  if (IOS && !IOS_SAFARI) return [{ pic: 'web', t: 'افتح الرابط من Safari', d: 'على الآيفون التثبيت بيتعمل من Safari بس (البوصلة الزرقا 🧭). انسخ الرابط وافتح Safari والصقه فوق.', copy: link }];
-  if (IOS) return [
+  if (INAPP) return [{ pic: 'web', t: 'افتح الرابط في المتصفح', d: 'إنت فاتح من جوه الواتساب/الفيسبوك، ومنه مينفعش التثبيت. دوس ⋮ فوق واختار «فتح في المتصفح» (أو «فتح في Chrome»' + (ios ? '/«Safari»' : '') + '). أو انسخ الرابط والصقه في المتصفح.', copy: link }];
+  if (ios && !iosSafari) return [{ pic: 'web', t: 'افتح الرابط من Safari', d: 'على الآيفون التثبيت بيتعمل من Safari بس (البوصلة الزرقا 🧭). انسخ الرابط وافتح Safari والصقه فوق.', copy: link }];
+  if (ios) return [
     { pic: 'i1', t: 'دوس زرار المشاركة', d: 'الزرار اللي شكله مربع وطالع منه سهم لفوق ⬆️ — تحت في نص الشاشة.' },
     { pic: 'i2', t: 'اختار «إضافة إلى الشاشة الرئيسية»', d: 'انزل في القايمة لتحت شوية لحد ما تلاقيها ➕.' },
     { pic: 'i3', t: 'دوس «إضافة» فوق', d: 'في الركن اللي فوق.' },
     { pic: 'home', t: 'افتح «سلاح التلميذ» من الشاشة الرئيسية', d: 'هتلاقي أيقونته جنب تطبيقاتك. افتحه منها ✅', last: true }];
-  if (SAMSUNG) return [
+  if (SAMSUNG && !ios) return [
     { pic: 's1', t: 'دوس القايمة ☰ تحت', d: 'الزرار اللي فيه 3 خطوط تحت على الجنب.' },
     { pic: 's2', t: 'اختار «إضافة الصفحة إلى» ← «الشاشة الرئيسية»', d: 'وبعدها دوس «إضافة».' },
     { pic: 'home', t: 'افتح «سلاح التلميذ» من الشاشة الرئيسية', d: 'هتلاقي أيقونته جنب تطبيقاتك. افتحه منها ✅', last: true }];
@@ -196,21 +201,29 @@ function guideSteps() {
 function renderGate() {
   $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
   $('#title').textContent = 'أهلًا ' + tName(D.name);
-  app.innerHTML = `<div class="icard gate">${installedNow ? `<div class="ic-t">✅ اتثبّت!</div><div class="ic-s">اقفل المتصفح وافتح «سلاح التلميذ» من الشاشة الرئيسية لموبايلك.</div>${PICS.home}` : `
+  app.innerHTML = `<div class="icard gate">${installedNow ? `<div class="ic-t">✅ اتثبّت!</div><div class="ic-s">اقفل المتصفح وافتح «سلاح التلميذ» من الشاشة الرئيسية لموبايلك.</div>${PICS.home}
+    ${'Notification' in window && Notification.permission !== 'granted' ? '<button class="gobtn" id="gN">🔔 فعّل الإشعارات</button>' : '<div class="ic-s">🔔 الإشعارات متفعّلة ✅</div>'}` : `
     <div class="ic-ico">📲</div><div class="ic-t">ثبّت البرنامج على موبايلك وفعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
     <button class="gobtn" id="inst">📲 ثبّت التطبيق دلوقتي</button>
     ${IOS ? '<button class="iosbtn" id="iosb">🍎 لو معاك آيفون اضغط هنا</button>' : ''}`}</div><div id="guide"></div>`;
-  const ib = $('#inst'); ib && (ib.onclick = async () => {
-    if (instEvt) { instEvt.prompt(); let ok = false; try { ok = (await instEvt.userChoice).outcome === 'accepted'; } catch (e) { } instEvt = null; if (ok) { installedNow = true; return renderGate(); } }
-    showGuide(0);
-  });
-  const io = $('#iosb'); io && (io.onclick = () => showGuide(0));
+  const gn = $('#gN'); gn && (gn.onclick = async () => { try { await Notification.requestPermission(); } catch (e) { } if (window.pushInit) try { await window.pushInit(); } catch (e) { } renderGate(); });
+  // أول ما يدوس: أندرويد ولا آيفون؟
+  const ib = $('#inst'); ib && (ib.onclick = () => modal(`<div style="text-align:center"><h3>موبايلك نوعه إيه؟</h3>
+      <button class="gobtn" id="pA" style="margin:10px 0">🤖 أندرويد</button><button class="iosbtn" id="pI">🍎 آيفون</button></div>`, (box, close) => {
+    $('#pA', box).onclick = async () => {
+      close(); gPlat = 'and';
+      if (instEvt) { instEvt.prompt(); let ok = false; try { ok = (await instEvt.userChoice).outcome === 'accepted'; } catch (e) { } instEvt = null; if (ok) { installedNow = true; return renderGate(); } }
+      showGuide(0);
+    };
+    $('#pI', box).onclick = () => { close(); gPlat = 'ios'; showGuide(0); };
+  }));
+  const io = $('#iosb'); io && (io.onclick = () => { gPlat = 'ios'; showGuide(0); });
 }
 function showGuide(i) {
   const steps = guideSteps(), s = steps[i], g = $('#guide'); if (!g || !s) return;
   // الآيفون: ننسخ الرابط من دلوقتي عشان التطبيق المتثبّت يطلبه مرة واحدة
-  if (IOS && i === 0) try { navigator.clipboard.writeText(location.href.split('#')[0] + '#c=' + code); } catch (e) { }
+  if ((gPlat === 'ios' || IOS) && i === 0) try { navigator.clipboard.writeText(location.href.split('#')[0] + '#c=' + code); } catch (e) { }
   g.innerHTML = `<div class="icard step"><div class="stepn">خطوة ${i + 1} من ${steps.length}</div><div class="ic-t">${esc(s.t)}</div>${PICS[s.pic]}<div class="ic-s">${esc(s.d)}</div>
     ${s.copy ? `<button class="gobtn" id="gcp">📋 انسخ الرابط</button>` : ''}
     <div class="row2" style="margin-top:10px">${s.last || s.copy ? '' : `<button class="gobtn sm" id="gnx">✅ عملتها ← اللي بعدها</button>`}<button class="btn ghost" id="gag">🔁 مش لاقيه؟ وريني تاني</button></div>
@@ -280,7 +293,57 @@ function qtyRowH(b, l, q, priceHtml) {
 }
 function bindQty(box) { box.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const n = $('b', b.parentNode); n.textContent = Math.max(0, +n.textContent + +b.dataset.d); }); }
 const readQty = box => $$('[data-b]', box).map(r => ({ b: r.dataset.b, q: +$('b', r).textContent }));
-function orderDlg() {
+/* ---------- 💰 أسعار الكتب + 🛒 اطلب كتبك بسعر مميز (كل الكتب، والإنجليزي لمدرس الإنجليزي بس) ---------- */
+const money = n => (+n || 0).toLocaleString('ar-EG') + ' ج';
+const myPrices = () => prices().filter(p => p.post && bookAllowed(p.b, D.profile));
+const SUBJ_COL = { ar: '#2563eb', math: '#16a34a', stu: '#b45309', en: '#7c3aed', sci: '#ea580c' };
+function bookHead(p) {
+  const sb = String(p.b).split('-')[1];
+  return `<div class="bk-n"><span class="bk-dot" style="background:${SUBJ_COL[sb] || '#0f766e'}"></span>${esc(p.l || bookLabel(p.b))}</div>
+    <div class="bk-p">${p.pre ? `<s>${money(p.pre)}</s> ` : ''}<b>${money(p.post)}</b>${p.pre && p.pre > p.post ? ` <span class="off">خصم ${Math.round((1 - p.post / p.pre) * 100)}%</span>` : ''}</div>`;
+}
+function renderPrices() {
+  const ps = myPrices();
+  app.innerHTML = `<div class="phead">💰 أسعار الكتب<div class="small">سعر النسخة قبل الخصم وبعده</div></div>
+    ${ps.length ? `<div class="bklist">${ps.map(p => `<div class="bk">${bookHead(p)}</div>`).join('')}</div>` : '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'}
+    <div class="savebar"><button class="gobtn" id="toOrd">🛒 اطلب كتبك بسعر مميز</button></div>`;
+  $('#toOrd').onclick = () => go('order');
+}
+let ordQ = {};
+function renderOrder() {
+  const ps = myPrices();
+  if (!ps.length) { app.innerHTML = '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; return; }
+  app.innerHTML = `<div class="phead hot">🛒 اطلب كتبك بسعر مميز<div class="small">اكتب الكمية جنب كل كتاب، والحساب بيطلع لوحده</div></div>
+    <div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}">${bookHead(p)}
+      <div class="bk-row"><span class="qty"><button type="button" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="1">+</button></span>
+      <div class="bk-sum"></div></div></div>`).join('')}</div>
+    <div class="field" style="margin-top:8px"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div>
+    <div class="totbar"><div id="tot"></div><button class="gobtn" id="os">📤 ابعت الطلب</button></div>`;
+  const ol = $('#ol');
+  const calc = () => {
+    let A = 0, B = 0, N = 0;
+    $$('.bk', ol).forEach(r => {
+      const p = ps.find(x => x.b === r.dataset.b), q = Math.max(0, parseInt($('input', r).value, 10) || 0); ordQ[p.b] = q;
+      const a = q * (p.pre || p.post), b = q * p.post; A += a; B += b; N += q;
+      $('.bk-sum', r).innerHTML = q ? `${p.pre ? `<div>قبل الخصم: <s>${money(a)}</s></div>` : ''}<div>بعد الخصم: <b>${money(b)}</b></div>${a > b ? `<div class="save">✅ وفّرت ${money(a - b)}</div>` : ''}` : '';
+      r.classList.toggle('on', q > 0);
+    });
+    $('#tot').innerHTML = N ? `<div>${N} نسخة · ${A > B ? `<s>${money(A)}</s> ← ` : ''}<b>${money(B)}</b></div>${A > B ? `<div class="save">✅ إجمالي التوفير ${money(A - B)}</div>` : ''}` : '<div class="small">لسه ما اخترتش كتب</div>';
+  };
+  ol.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const i = $('input', b.parentNode); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + +b.dataset.d) || ''; calc(); });
+  ol.addEventListener('input', calc); calc();
+  $('#os').onclick = async () => {
+    const its = ps.filter(p => ordQ[p.b] > 0).map(p => ({ b: p.b, q: ordQ[p.b], l: bookLabel(p.b) }));
+    if (!its.length) return toast('اكتب كمية كتاب واحد على الأقل');
+    $('#os').disabled = true;
+    const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'order', p_items: its, p_note: $('#on').value });
+    $('#os').disabled = false;
+    if (error) return toast(errMsg(error));
+    ordQ = {}; toast('اتبعت الطلب ✅'); window.pushNotifyRep && window.pushNotifyRep('🛒 ' + D.name + ' طلب كتب'); view = 'books'; load();
+  };
+}
+function orderDlg() { go('order'); }
+function orderDlgOld() {
   const ps = prices();
   if (!ps.length) return toast('قايمة الأسعار لسه مش متاحة — اسأل المندوب');
   modal(`<h3>🛒 اطلب كتب بأسعار مميزة</h3><div class="small muted" style="margin-bottom:6px">اختار الكتب والعدد، والمندوب هيأكد معاك.</div>
@@ -326,15 +389,26 @@ function renderMe() {
   const req = new Set(D.updates.flatMap(u => u.fields || []));
   const pend = D.pending ? D.pending.new_values : null;
   st = {};
-  app.innerHTML = `<div class="card"><div class="muted small" style="margin-bottom:10px">أي تعديل بيروح للمندوب يراجعه الأول، وبعد الموافقة يتعتمد.</div>
-    <form id="pf" onsubmit="return false">${profileForm(vals(), { req, pend, remind: true })}
-    <div class="field${req.has('photos') ? ' req' : ''}"><label>📷 صور إضافية${req.has('photos') ? ' <span class="pill bad">مطلوب</span>' : ''}</label>
+  // الملف متقسم كروت ملونة. كل كارت ليه أيقونة في دايرة
+  const V = vals(), o = { req, pend, remind: true, noWarn: true };
+  const SEC = [['me', '👤', 'بياناتي', ['name', 'avatar', 'phone']], ['work', '📚', 'شغلي', ['stage', 'subjects', 'spec', 'grades', 'where', 'students', 'area', 'school']],
+    ['place', '🚚', 'مكان الدرس', ['address', 'loc']], ['days', '🕒', 'أيام السنتر', ['days']]];
+  const reqList = [...req].filter(k => FIELD_LABEL[k]);
+  app.innerHTML = `<form id="pf" class="pform" onsubmit="return false">
+    ${reqList.length ? `<div class="reqbar"><b>📝 مطلوب منك تحدّث:</b><div class="pgrid">${reqList.map(k => `<button type="button" class="chip" data-go="${k}">${FIELD_LABEL[k]}</button>`).join('')}</div></div>` : ''}
+    <div class="warnbox">${WARN_TXT}</div>
+    <div class="small muted" style="text-align:center;margin-bottom:8px">أي تعديل بيروح للمندوب يراجعه الأول، وبعد الموافقة يتعتمد.</div>
+    ${SEC.map(([k, ic, t, keys]) => `<section class="psec s-${k}"><div class="psh"><span class="pdot">${ic}</span>${t}</div>${profileForm(V, { ...o, only: keys })}</section>`).join('')}
+    <section class="psec s-ph"><div class="psh"><span class="pdot">📷</span>صور مع طلبتك</div>
+    <div class="field${req.has('photos') ? ' req' : ''}" data-f="photos"><label>📷 صور إضافية${req.has('photos') ? ' <span class="pill bad">مطلوب تحديثه</span>' : ''}</label>
       <div class="avnote">📷 صورة سيلفي ليك مع طلبتك وهم ماسكين كتبنا 📚 — لازم حضرتك تكون في الصورة</div>
       <div class="photos" id="phs"></div>
       <label class="btn sm" style="margin-top:8px">➕ زوّد صور<input type="file" accept="image/*" multiple id="phIn" hidden></label>
-      ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div>
-    <button class="btn pri" id="save" style="width:100%;padding:14px">✅ تم — ابعت للمراجعة</button></form></div>`;
+      ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div></section>
+    <div class="savebar"><button class="gobtn" id="save">✅ تم — ابعت للمراجعة</button></div></form>`;
   const f = $('#pf'); bindProfileForm(f, st, { remind: true }); drawPhotos();
+  $$('.pgrid input:checked', f).forEach(i => i.parentNode.classList.add('on'));
+  $$('[data-go]', f).forEach(b => b.onclick = () => { const x = $(`.field[data-f="${b.dataset.go}"]`, f); x && x.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $('#phIn').onchange = async e => {
     const files = [...e.target.files]; e.target.value = '';
     for (const fl of files) { try { newPhotos.push(await compressImage(fl, 1280, 60000)); drawPhotos(); } catch (er) { toast(errMsg(er)); } }
@@ -346,6 +420,8 @@ function renderMe() {
     const b = $('#save'); b.disabled = true; b.textContent = 'جاري الإرسال…';
     const { error } = await sb.rpc('t_submit', { p_code: code, p_values: ch, p_photos: newPhotos, p_reply: null });
     if (error) { b.disabled = false; b.textContent = '✅ تم — ابعت للمراجعة'; return toast(errMsg(error)); }
+    // طلبات التحديث اللي اتردّ عليها تتشال من عنده
+    const ids = (D.updates || []).map(u => u.id), done = LS.get('selah-trial-tupd-done', []); LS.set('selah-trial-tupd-done', [...new Set([...done, ...ids])].slice(-100));
     newPhotos = []; toast('اتبعت للمراجعة ✅ — جزاك الله خيرًا'); window.pushNotifyRep && window.pushNotifyRep('📝 ' + D.name + ' عدّل ملفه'); view = 'home'; load();
   };
   const first = $('.field.req'); first && first.scrollIntoView({ block: 'center' });

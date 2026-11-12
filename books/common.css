@@ -175,3 +175,67 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes ringp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.25)}}
 @keyframes icIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* ===== 2026-11-12 (ج): الصفحة على قد الشاشة + ملفي متقسم + الرئيسية + الأسعار والطلب ===== */
+html,body{overflow-x:hidden;max-width:100%}
+*,*::before,*::after{box-sizing:border-box}
+input,select,textarea{max-width:100%}
+.chip:has(input:checked),.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.pgrid.rad input,.pgrid input[type=radio]{display:none}
+/* ملفي */
+.pform{padding-bottom:90px}
+.psec{background:var(--card);border-radius:20px;padding:14px 14px 6px;margin-bottom:14px;box-shadow:0 6px 18px -8px rgba(15,23,42,.18);border-top:5px solid var(--sc,#0f766e);animation:icIn .4s ease both}
+.psh{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;margin-bottom:10px;color:var(--sc)}
+.pdot{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:21px;background:color-mix(in srgb,var(--sc) 16%,#fff);flex:none}
+.s-me{--sc:#6366f1}.s-work{--sc:#0ea5e9}.s-place{--sc:#f97316}.s-days{--sc:#16a34a}.s-ph{--sc:#ec4899}
+.psec .field{margin-bottom:12px}
+.psec .locsec{border:0;padding:0;margin:0;background:none}
+.psec .locsec .lsh{font-size:15px;color:#c2410c;background:#fff7ed;border-radius:10px;padding:6px 10px}
+/* الأيام: كل يوم كارت، الساعتين تحت بعض بالعرض */
+.days{display:flex;flex-direction:column;gap:8px}
+.dayrow{display:block;border:1.5px solid var(--line,#e5e7eb);border-radius:14px;padding:8px;background:var(--card)}
+.dayrow.on{border-color:#16a34a;background:color-mix(in srgb,#16a34a 7%,var(--card))}
+.dayrow .dchip{display:flex;justify-content:center;width:100%;min-width:0;border-radius:12px;font-size:16px;font-weight:800;padding:8px}
+.dayrow .dchip input{display:none}
+.dtimes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.dtimes[hidden]{display:none}
+.tcell{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted);font-weight:700;min-width:0}
+.tcell input[type=time]{width:100%;min-width:0;font-size:17px;padding:8px 6px;border-radius:10px;border:1.5px solid var(--line,#d1d5db);background:var(--card);color:var(--ink)}
+/* الحاجات المطلوبة منوّرة */
+.field.req{border-radius:14px;padding:8px;box-shadow:0 0 0 3px #f59e0b;animation:reqg 1.4s ease-in-out infinite}
+@keyframes reqg{50%{box-shadow:0 0 0 5px rgba(245,158,11,.45)}}
+.reqbar{position:sticky;top:52px;z-index:12;background:#fffbeb;color:#92400e;border:2px solid #f59e0b;border-radius:16px;padding:10px;margin-bottom:12px}
+.reqbar .chip{background:#fff;color:#92400e;border-color:#f59e0b;font-weight:700}
+.savebar,.totbar{position:fixed;left:0;right:0;bottom:62px;z-index:16;padding:10px 14px;background:linear-gradient(transparent,var(--bg) 35%)}
+.totbar{background:var(--card);box-shadow:0 -6px 18px rgba(0,0,0,.12);border-radius:18px 18px 0 0;display:grid;gap:8px;text-align:center}
+.totbar s{opacity:.6}.totbar b{font-size:19px;color:#dc2626}
+.save{color:#16a34a;font-weight:800}
+/* الرئيسية عند المدرس */
+.ttiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.tt{position:relative;border:0;border-radius:22px;padding:16px 10px;color:#fff;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 10px 22px -10px rgba(0,0,0,.45);animation:icIn .45s ease both;overflow:hidden}
+.tt:active{transform:scale(.97)}
+.tt .tti{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;background:rgba(255,255,255,.25);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+.tt .ttl{font-size:17px;font-weight:800}
+.tt .tts{font-size:13px;opacity:.95}
+.tt .ttb{position:absolute;top:10px;left:10px;background:#fff;color:#dc2626;border-radius:12px;padding:0 8px;font-weight:800;animation:bdg 1.6s infinite}
+.tt.big{grid-column:1/-1;background:linear-gradient(120deg,#ff2d55,#ff6b00,#ffb800,#ff2d55);background-size:300% 100%;animation:shine 4s linear infinite;padding:20px 12px}
+.tt.big .tti{width:70px;height:70px;font-size:38px}
+.tt.big .ttl{font-size:22px}
+.t-msg{background:linear-gradient(140deg,#4ade80,#059669)}.t-pr{background:linear-gradient(140deg,#fbbf24,#d97706)}
+.t-bk{background:linear-gradient(140deg,#38bdf8,#2563eb)}.t-me{background:linear-gradient(140deg,#a78bfa,#6d28d9)}
+@keyframes bdg{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+/* الأسعار والطلب */
+.phead{background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border-radius:20px;padding:14px;margin-bottom:12px;font-size:20px;font-weight:800;text-align:center}
+.phead.hot{background:linear-gradient(120deg,#ff2d55,#ff6b00)}
+.phead .small{font-size:13px;font-weight:600;opacity:.95}
+.bklist{display:grid;gap:10px;padding-bottom:120px}
+.bk{background:var(--card);border-radius:16px;padding:12px;box-shadow:0 4px 14px -8px rgba(0,0,0,.25);border:1.5px solid var(--line,#e5e7eb)}
+.bk.on{border-color:#16a34a;background:color-mix(in srgb,#16a34a 6%,var(--card))}
+.bk-n{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+.bk-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.bk-p{margin-top:4px;font-size:15px}.bk-p s{opacity:.55}.bk-p b{color:#dc2626;font-size:17px}
+.off{background:#dcfce7;color:#15803d;border-radius:8px;padding:0 6px;font-size:12px;font-weight:800}
+.bk-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.bk-row .qty{display:inline-flex;align-items:center;border:1.5px solid var(--line,#d1d5db);border-radius:12px;overflow:hidden}
+.bk-row .qty button{width:40px;height:40px;border:0;background:var(--brand-soft,#e2f2ef);font-size:20px;font-weight:800;cursor:pointer;color:var(--ink)}
+.bk-row .qty input{width:64px;height:40px;border:0;text-align:center;font-size:18px;font-weight:800;background:var(--card);color:var(--ink)}
+.bk-sum{font-size:13.5px;line-height:1.5;flex:1;min-width:130px}.bk-sum s{opacity:.6}.bk-sum b{color:#dc2626}

@@ -165,7 +165,8 @@ function fieldInput(f, v, stage, opts = {}) {
         <label class="btn sm">📷 اختار صورة<input type="file" accept="image/*" data-av hidden></label></div>
         ${opts.remind ? '<div class="avnote">📸 محتاجين صورتك الشخصية إنت، مش أي صورة تانية — عشان نتعرف على حضرتك. بعد إذنك ده ضروري 🙏</div>' : ''}`;
     case 'stage':
-      return `<select name="stage"><option value="">—</option>${Object.entries(STAGE_L).map(([k, l]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+      return opts.remind ? `<div class="pgrid rad">${Object.entries(STAGE_L).map(([k, l]) => `<label class="chip"><input type="radio" name="stage" value="${k}" ${v === k ? 'checked' : ''}>${l}</label>`).join('')}</div>`
+        : `<select name="stage"><option value="">—</option>${Object.entries(STAGE_L).map(([k, l]) => `<option value="${k}" ${v === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     case 'subjects':
       return `<div class="pgrid" data-subjs>${SUBJ_PICK.map(([k, l]) => `<label class="chip"><input type="checkbox" value="${k}" ${(v || []).includes(k) ? 'checked' : ''}>${l}</label>`).join('')}</div>`;
     case 'spec':
@@ -173,6 +174,7 @@ function fieldInput(f, v, stage, opts = {}) {
     case 'grades':
       return `<div class="pgrid" data-grades>${gradesBoxes(stage, v)}</div>`;
     case 'where':
+      if (opts.remind) return `<div class="pgrid rad">${WHERE_OPTS.map(o => `<label class="chip"><input type="radio" name="where" value="${o}" ${v === o ? 'checked' : ''}>${o}</label>`).join('')}</div>`;
       return `<select name="where"><option value="">—</option>${WHERE_OPTS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
     case 'address':
       return `<textarea name="address" placeholder="مثال: شارع المدرسة، فوق صيدلية النور، جنب مسجد الرحمة">${esc(v || '')}</textarea>
@@ -184,8 +186,8 @@ function fieldInput(f, v, stage, opts = {}) {
         <div data-locmap>${locMap(v)}</div>`;
     case 'days': {
       const d = v || {};
-      return `<div class="hint small muted" style="margin-bottom:6px">علّم اليوم واكتب من الساعة كام لكام</div><div class="days" data-days>${DAYS.map(([k, l]) => `<div class="dayrow"><label class="chip ${d[k] ? 'on' : ''}"><input type="checkbox" value="${k}" ${d[k] ? 'checked' : ''}>${l}</label>
-        <span class="dtimes" ${d[k] ? '' : 'hidden'}>من <input type="time" data-f="${k}" value="${esc(d[k]?.f || '')}"> لـ <input type="time" data-t="${k}" value="${esc(d[k]?.t || '')}"></span></div>`).join('')}</div>`;
+      return `<div class="hint small muted" style="margin-bottom:6px">علّم اليوم واكتب من الساعة كام لكام</div><div class="days" data-days>${DAYS.map(([k, l]) => `<div class="dayrow ${d[k] ? 'on' : ''}"><label class="chip dchip ${d[k] ? 'on' : ''}"><input type="checkbox" value="${k}" ${d[k] ? 'checked' : ''}>${l}</label>
+        <div class="dtimes" ${d[k] ? '' : 'hidden'}><label class="tcell"><span>من الساعة</span><input type="time" data-f="${k}" value="${esc(d[k]?.f || '')}"></label><label class="tcell"><span>لحد الساعة</span><input type="time" data-t="${k}" value="${esc(d[k]?.t || '')}"></label></div></div>`).join('')}</div>`;
     }
     default:
       return `<input name="${f.k}" type="${f.t === 'number' ? 'number' : f.t === 'tel' ? 'tel' : 'text'}" ${f.t === 'number' ? 'inputmode="numeric" min="0"' : ''} ${f.t === 'tel' ? 'dir="ltr"' : ''} value="${esc(v ?? '')}">`;
@@ -206,7 +208,7 @@ function profileForm(vals, opts = {}) {
   const fl = FIELDS.filter(f => keys.includes(f.k));
   // العنوان والموقع في قسم لوحده بشكل مميز
   const secKeys = fl.filter(f => f.k === 'address' || f.k === 'loc').map(f => f.k);
-  return (opts.remind ? `<div class="warnbox">${WARN_TXT}</div>` : '') + fl.map(f => {
+  return (opts.remind && !opts.noWarn ? `<div class="warnbox">${WARN_TXT}</div>` : '') + fl.map(f => {
     const v = vals[f.k], req = opts.req && opts.req.has(f.k) ? ' req' : '';
     const pend = opts.pend && f.k in opts.pend ? `<div class="pend">⏳ تعديلك في انتظار المراجعة: ${esc(valText(f.k, opts.pend[f.k]))}</div>` : '';
     const reqTxt = req ? ' <span class="pill bad">مطلوب تحديثه</span>' : '';
@@ -228,7 +230,8 @@ function bindProfileForm(root, state, opts = {}) {
     const sub = e.target.closest('[data-subjs]');
     if (sub && $$('input:checked', sub).length > 2) { e.target.checked = false; toast('مادتين بالكتير'); }
     const day = e.target.closest('.dayrow');
-    if (day && e.target.type === 'checkbox') { $('.dtimes', day).hidden = !e.target.checked; e.target.parentNode.classList.toggle('on', e.target.checked); }
+    if (day && e.target.type === 'checkbox') { $('.dtimes', day).hidden = !e.target.checked; e.target.parentNode.classList.toggle('on', e.target.checked); day.classList.toggle('on', e.target.checked); }
+    if (e.target.type === 'radio') $$(`input[name="${e.target.name}"]`, root).forEach(r => r.parentNode.classList.toggle('on', r.checked));
     if (e.target.name === 'stage') {
       const st = e.target.value, sp = $('[data-spec]', root), gr = $('[data-grades]', root);
       if (sp) { const cur = sp.value; sp.innerHTML = specSel(st, cur); if (specOpts(st).length === 1) sp.value = specOpts(st)[0]; }
@@ -268,7 +271,7 @@ function bindProfileForm(root, state, opts = {}) {
 }
 function readProfileForm(root, state) {
   const out = {};
-  $$('input[name],select[name],textarea[name]', root).forEach(i => { const v = i.value.trim(); out[i.name] = i.type === 'number' ? (v === '' ? '' : +v) : v; });
+  $$('input[name],select[name],textarea[name]', root).forEach(i => { if (i.type === 'radio') { if (i.checked) out[i.name] = i.value; else if (!(i.name in out)) out[i.name] = ''; return; } const v = i.value.trim(); out[i.name] = i.type === 'number' ? (v === '' ? '' : +v) : v; });
   const s = $('[data-subjs]', root); if (s) out.subjects = $$('input:checked', s).map(i => i.value);
   const g = $('[data-grades]', root); if (g) out.grades = $$('input:checked', g).map(i => +i.value).sort((a, b) => a - b);
   const d = $('[data-days]', root);
@@ -285,4 +288,6 @@ function changedOnly(base, vals) { const o = {}; for (const k in vals) if (!same
 const B_SUBJ = { ar: 'عربي', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات' };
 const B_GRADE = ['أولى', 'تانية', 'تالتة', 'رابعة', 'خامسة', 'سادسة'];
 function bookLabel(k) { const [st, sb, g] = String(k).split('-'); return `${B_SUBJ[sb] || sb} ${B_GRADE[g - 1] || g} ${st === 'm' ? 'إعدادي' : 'ابتدائي'}`; }
-function canOrder(p) { p = p || {}; return /m/.test(p.stage || '') || (p.subjects || []).includes('en'); }
+// كل المدرسين يطلبوا ويشوفوا الأسعار — كتب الإنجليزي لمدرس الإنجليزي بس
+function canOrder(p) { return true; }
+function bookAllowed(b, p) { return String(b).split('-')[1] !== 'en' || ((p || {}).subjects || []).includes('en'); }
