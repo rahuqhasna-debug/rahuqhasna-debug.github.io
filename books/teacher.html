@@ -163,9 +163,10 @@ main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;fle
 .ordv #tot{flex:1;font-size:12.5px;line-height:1.4}.ordv .totbar b{font-size:14.5px}
 .ordv .totbar .gobtn{width:auto;flex:none;font-size:14.5px;padding:9px 16px;border-radius:12px}
 /* متابعة 8 (3): مساحة بيضاء أكبر في الرئيسية + سطر تحت «اطلب كتبك» + رجوع تحت على الشمال + أسعار مضغوطة + أغلفة */
-.hm .ttiles.five{flex:0 0 auto;grid-template-rows:96px 100px 100px;gap:18px 20px;margin:12px 8px 18px}
-.ttiles.five .tt.h-or{background:linear-gradient(135deg,#14b8a6,#0f766e);box-shadow:0 8px 18px -8px rgba(15,118,110,.7)}
-.ttiles.five .tt.wd .tti{width:56px;height:56px;font-size:38px}.ttiles.five .tt.wd .ttl{font-size:17px;font-weight:800}.ttiles.five .tt.wd .tsub{font-size:12.5px}
+.hm .ttiles.five{flex:0 0 auto;grid-template-rows:116px 100px 100px;gap:18px 20px;margin:12px 8px 18px}
+.ttiles.five .tt.h-or{background:linear-gradient(135deg,#fdf2f8,#fbcfe8);border:1.5px solid #f9a8d4;box-shadow:0 8px 18px -10px rgba(219,39,119,.55)}
+.ttiles.five .tt.wd .tti{width:64px;height:64px;font-size:44px;background:#fff;box-shadow:0 2px 8px rgba(219,39,119,.2)}
+.ttiles.five .tt.wd .ttl{font-size:19px;font-weight:800;color:#9d174d}.ttiles.five .tt.wd .tsub{font-size:13px;color:#6d28d9;font-weight:600}
 .hm .ttiles.five .tt{padding:8px}
 .ttiles.five .tt.wd .tlx{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start}
 .tsub{font-family:'Reem Kufi',inherit;font-size:12px;font-weight:500;color:#fef3c7;line-height:1.4}
@@ -188,6 +189,7 @@ body:has(.ordv) .back2{bottom:calc(122px + env(safe-area-inset-bottom))}
 .cov .cb{flex:none;height:15px;background:linear-gradient(180deg,#9b2c2c,#7f1d1d);display:flex;align-items:center;justify-content:center;font-size:6.5px;font-weight:800;padding:0 2px;white-space:nowrap}
 .cov .cg{position:absolute;top:12px;left:3px;width:13px;height:13px;border-radius:50%;background:#7f1d1d;border:1.5px solid #fff;font-size:6px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .nch .nci{width:auto;height:auto}
+.covi{display:block;width:48px;height:64px;object-fit:cover;object-position:top;border-radius:2px 5px 5px 2px;box-shadow:0 4px 8px -3px rgba(0,0,0,.4)}
 </style>
 </head>
 <body>
@@ -1121,6 +1123,8 @@ function openTg(ch) {
   }, 1800);
 }
 const NCOV = { ar: ['#fde68a', '#b45309', '📖'], math: ['#bbf7d0', '#15803d', '🧮'], en: ['#e9d5ff', '#7e22ce', '🔤'], sci: ['#fed7aa', '#c2410c', '🔬'], stu: ['#fcd34d', '#78350f', '🏛️'] };   // غلاف كل مادة: لونين للصورة اللي في النص + رسمة
+// صور الأغلفة الحقيقية (من قنوات تليجرام) — اللي مالوش صورة بيترسم
+const NCOVIMG = { prim: { ar: 'p-ar.jpg', math: 'p-math.jpg', en: 'p-en.jpg', stu: 'p-stu.jpg' }, prep: { ar: 'p-ar.jpg', math: 'p-math.jpg', en: 'p-en.jpg', stu: 'm-stu.webp' } };
 const NSTAGE = { prim: ['ابتدائي', '#16a34a'], prep: ['إعدادي', '#2563eb'] };
 const NBG = { ar: '#fef3c7,#fbbf24', math: '#dcfce7,#4ade80', en: '#f3e8ff,#c084fc', sci: '#ffedd5,#fb923c', stu: '#e0f2fe,#38bdf8' };
 const NEWS_L = { ar: 'عربي ودين', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات', all: 'عام' };
@@ -1146,7 +1150,7 @@ function renderNews() {
     // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
     const subs = ['ar', 'math', 'en', 'sci', 'stu'];
     const tile = (st, s) => { const ch = NEWS_CHS[st][s];
-      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci"><span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="icon-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span></span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci">${NCOVIMG[st][s] ? `<img class="covi" src="cov-${NCOVIMG[st][s]}" alt="${NEWS_L[s]}" loading="lazy">` : `<span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="icon-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span>`}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
     const sec = st => `<div class="nhd" style="--c:${NSTAGE[st][1]}">المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
     const hasAll = NEWS.items.some(x => x.s === 'all');
     app.innerHTML = `<div class="phead">اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — اختار المادة</div></div>
