@@ -8,6 +8,28 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="stylesheet" href="common.css">
+<style>
+/* متابعة 10: كارت المدرس مترتب سطور (الاسم كامل · المواد جنب بعض · التليفون · الأيقونات تحت) */
+.titem.tcard{display:block;padding:10px 12px}
+.tcard .tc-h{display:flex;align-items:center;gap:8px}
+.tcard .tc-n{flex:1;min-width:0;font-weight:800;font-size:16px;line-height:1.4;word-break:break-word}
+.tcard .tc-l{font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
+.tcard .tc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tcard .tg{background:var(--line);color:var(--ink);border-radius:8px;padding:1px 8px;font-size:12.5px;white-space:nowrap}
+.tcard .tc-i{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:13px;color:var(--muted);margin-top:4px}
+.tcard .tc-f{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
+.tcard .tck{width:22px;height:22px;flex:none;margin:0}
+.bdg.r{background:#e11d48}
+.selrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.selrow .cnt{font-weight:700;font-size:14px}
+.osum{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.osum button{border:1.5px solid var(--line);background:var(--card);color:inherit;border-radius:12px;padding:8px 2px;font-family:inherit;cursor:pointer;text-align:center;font-size:12px;line-height:1.3}
+.osum b{display:block;font-size:20px}
+.irow{display:flex!important;align-items:center;gap:8px;cursor:pointer;flex-wrap:wrap}
+.irow .grow{flex:1;min-width:150px}
+.rgrp .rq{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+@media (max-width:420px){.osum{grid-template-columns:repeat(2,1fr)}}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="common.js"></script>
@@ -35,8 +57,8 @@ let RECOV = /type=recovery/.test(location.hash + location.search);   // راجع
 const sb = makeClient(true);
 if (sb) sb.auth.onAuthStateChange(ev => { if (ev === 'PASSWORD_RECOVERY') { RECOV = true; setTimeout(renderNewPw, 0); } });
 const app = $('#app');
-let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, lastMsg = {}, ordersBy = {}, pollT = null;
-const ui = { q: '', filter: 'all', rep: '', selMode: false, sel: new Set(), shown: 200, bellTab: 'msgs', invQ: '', invSel: new Set() };
+let me = null, T = [], notesBy = {}, pendSet = new Set(), staffList = [], BC = { edits: 0, orders: 0, msgs: 0 }, unreadBy = {}, lastMsg = {}, ordersBy = {}, retsBy = {}, pollT = null;
+const ui = { q: '', filter: 'all', rep: '', selMode: false, sel: new Set(), shown: 200, bellTab: 'msgs', invQ: '', invSel: new Set(), invK: 'inv', retAll: false };
 const isAdmin = () => me && me.role === 'admin';
 const MB = 1048576, GKEY = 'selah-books-v1';
 
@@ -63,6 +85,8 @@ function gApply(localId, fin) {   // الموافقة تتكتب في البرن
     if (k === 'subjects') { const keep = (t.subjects || []).includes('kash') ? ['kash'] : []; t.subjects = [...new Set([...fin.subjects, ...keep])]; t.subjectText = ''; }
     else if (k === 'grades') { t.grades = (fin.grades || []).filter(g => g <= 6); t.tGrades = fin.grades; }
     else if (map[k]) t[map[k]] = fin[k];
+    // متابعة 10: موقع المدرس الجديد يظهر على خريطة البرنامج على طول
+    if (k === 'loc' && fin.loc && fin.loc.lat && fin.loc.lng) t.loc = { lat: +fin.loc.lat, lng: +fin.loc.lng };
     lines.push(`${FIELD_LABEL[k] || k}: ${valText(k, fin[k])}`);
   }
   (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.id, at: new Date().toISOString(), k: 'تحديث من المدرس (المراسلات)', txt: lines.join(' • ') });
@@ -131,6 +155,9 @@ function inviteLink(t) {
   return base + 'teacher.html#c=' + t.invite_code + (c.custom ? '&p=' + encodeCfg(c.url, c.key) : '');
 }
 const INV_DEF = 'أهلًا أ/ {الاسم} 👋\nده رابط ملفك في «سلاح التلميذ»، افتحه وثبّته على موبايلك وكمّل بياناتك:\n[رابط المدرس]';
+const INV_APP = 'أهلًا أ/ {الاسم} 👋\nعشان توصلك رسايلنا ومواعيد استلام النسخ على طول، ثبّت تطبيق «سلاح التلميذ» على موبايلك من الرابط ده:\n[رابط المدرس]\nافتح الرابط ودوس «ثبّت» وبعدين فعّل الإشعارات 🙏';
+// رسالتين: كل واحدة نصها محفوظ لوحده
+const INV_KEYS = { inv: ['selah-trial-inv', INV_DEF, '✉️ رسالة الدعوة'], app: ['selah-trial-inv-app', INV_APP, '📲 رسالة التثبيت'] };
 function inviteMsg(t, tpl) { tpl = tpl || LS.get('selah-trial-inv') || INV_DEF; if (!tpl.includes('[رابط المدرس]')) tpl += '\n[رابط المدرس]'; return tpl.replace(/(أ\/\s*)?\{الاسم\}/g, 'أ/ ' + t.name).replace(/\[رابط المدرس\]/g, inviteLink(t)); }
 // حالة تحديث بيانات المدرس: full = حدّث كله واتوافق، part = حدّث جزء، none = ماحدّثش خالص
 let apprSet = new Set(), openUpd = new Set();
@@ -141,7 +168,15 @@ function updState(t) {
   return apprSet.has(t.id) && UPD_KEYS.every(has) && !openUpd.has(t.id) && !pendSet.has(t.id) ? 'full' : 'part';
 }
 const UPD_C = { full: ['#16a34a', '🟢 حدّث كله'], part: ['#f59e0b', '🟠 باقيله جزء'], none: ['#94a3b8', '⚪ ماحدّثش'] };
-const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy[id] || 0);   // علامات المدرس جنب اسمه في أي مكان
+const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy[id] || 0) + (retsBy[id] ? `<span class="bdg r" title="عنده مرتجع ما استلمتهوش">↩️ ${retsBy[id]}</span>` : '');   // علامات المدرس جنب اسمه في أي مكان
+// متابعة 10: الأربع زراير جنب اسم المدرس في كل مكان (📞 مكالمة · واتساب · 📨 المراسلات · 🔄 اطلب تحديث)
+function icos4(t) {
+  t = t && (T.find(x => x.id === t.id) || t); if (!t || !t.id) return '';
+  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-ru="${t.id}" title="اطلب تحديث بيانات المدرس ده">🔄</button></span>`;
+}
+// 🔄 في أي مكان بيفتح طلب التحديث للمدرس ده بس (قبل أي حاجة تانية في الصفحة)
+document.addEventListener('click', e => { const b = e.target.closest('[data-ru]'); if (!b) return; e.preventDefault(); e.stopPropagation(); reqUpdateDlg([b.dataset.ru]); }, true);
+const instPill = t => t.app_at ? '<span class="pill ok" title="ثبّت التطبيق">📲 مثبّت</span>' : '<span class="pill new" title="لسه ما فتحش من التطبيق المتثبّت">🌐 مش مثبّت</span>';
 // صور المدرسين للدايرة اللي بره: نسخة صغيرة 72px متخزنة على الموبايل، وبتتحدّث لوحدها لما المدرس يغيّر صورته
 let AVC = LS.get('selah-trial-av') || {};
 async function loadAvatars() {
@@ -219,7 +254,18 @@ async function loadMe() {
     syncPrices().catch(() => { }); loadAvatars().catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
     setInterval(() => counts().catch(() => { }), 30000);
+    nudgeWeekly();
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="boot()">حاول تاني</button>`; }
+}
+// متابعة 10: تذكير للمدرس اللي مثبّت التطبيق وما فتحهوش بقاله أسبوع (مرة في اليوم من الموبايل ده، والقاعدة بتمنع التكرار لنفس المدرس قبل أسبوع)
+function nudgeWeekly() {
+  const k = 'selah-trial-nudge-' + me.id, day = new Date().toDateString();
+  if (LS.get(k) === day || !window.pushToTeacher) return;
+  LS.set(k, day);
+  sb.rpc('nudge_due').then(({ data, error }) => {
+    if (error || !Array.isArray(data)) return;
+    for (const x of data) window.pushToTeacher({ id: x.id }, x.n ? `📬 عندك ${x.n} رسالة جديدة من الأستاذ ${me.name} — افتح «سلاح التلميذ»` : `👋 الأستاذ ${me.name} بيسأل عليك — افتح «سلاح التلميذ» وشوف الجديد`, false).catch(() => { });
+  }).catch(() => { });
 }
 function renderWait(s) {
   me = null; $('#tabs').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('💬 المراسلات', false);
@@ -311,7 +357,7 @@ async function counts() {
 }
 async function loadAll() {
   const [t, n, p, s, u] = await Promise.all([
-    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open').order('name')),
+    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').order('name')),
     fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
     fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'pending')),
     isAdmin() ? fetchAll(() => sb.from('staff').select('id,name,role,active').order('created_at')) : Promise.resolve([me]),
@@ -319,8 +365,11 @@ async function loadAll() {
     fetchAll(() => sb.from('orders').select('teacher_id').eq('status', 'pending')),
     fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'approved')),
     fetchAll(() => sb.from('update_requests').select('teacher_id').eq('status', 'open')),
-    fetchAll(() => sb.from('messages').select('id,teacher_id,from_teacher,read_at,kind').order('id'))
+    // متابعة 10 (السرعة): ملخص من القاعدة بدل كل الرسايل
+    sb.rpc('msg_summary').then(({ data, error }) => { if (error) throw error; return data || []; }),
+    fetchAll(() => sb.from('returns').select('teacher_id').in('status', ['pending', 'approved']))
   ]).then(r => { ordersBy = {}; r[5].forEach(x => ordersBy[x.teacher_id] = (ordersBy[x.teacher_id] || 0) + 1);
+    retsBy = {}; r[9].forEach(x => retsBy[x.teacher_id] = (retsBy[x.teacher_id] || 0) + 1);
     apprSet = new Set(r[6].map(x => x.teacher_id)); openUpd = new Set(r[7].map(x => x.teacher_id)); mSt = mStates(r[8]); return r; });
   T = t; staffList = s; notesBy = {}; n.forEach(x => (notesBy[x.teacher_id] ||= []).push(x.body));
   pendSet = new Set(p.map(x => x.teacher_id)); unreadBy = {}; lastMsg = {};
@@ -335,6 +384,9 @@ function route() {
   clearInterval(pollT); $('#cbar').innerHTML = '';
   const h = location.hash.slice(1) || '/';
   if (h.startsWith('/t/')) { setTab('list'); return viewTeacher(decodeURIComponent(h.slice(3))); }
+  // 🔄 من البرنامج الأخضر: يفتح صفحة المدرس وطلب التحديث على طول
+  if (h.startsWith('/ru/')) { const id = decodeURIComponent(h.slice(4)); history.replaceState(null, '', '#/t/' + encodeURIComponent(id)); setTab('list'); return viewTeacher(id).then(() => { if (T.some(x => x.id === id)) reqUpdateDlg([id]); }); }
+  if (h === '/rets') { setTab('list'); return viewRets(); }
   waTabFor(h.startsWith('/c/') ? decodeURIComponent(h.slice(3)) : '');
   if (h.startsWith('/c/')) { setTab('list'); return viewChat(decodeURIComponent(h.slice(3))); }
   if (h === '/bell') { setTab('bell'); return viewBell(); }
@@ -418,41 +470,79 @@ function gRetCalc(db, localId, items) {
   }
   return { ok, value, items: out };
 }
-async function retCard(r) {
-  const t = r.teachers || {}, db = gdb(), c = db && t.local_id ? gRetCalc(db, t.local_id, r.items || []) : null;
-  return `<div class="card" data-ret="${esc(r.id)}"><div class="nm"><b>${esc(t.name || '—')}</b> <span class="small muted">${fmtDate(r.created_at)}</span></div>
-    <div style="margin:6px 0">${(r.items || []).map(i => `<div class="kv"><span>${esc(i.l || bookLabel(i.b))}</span><b>${i.q}</b></div>`).join('')}</div>
-    ${c ? `<div class="small">${c.ok ? `قيمة المرتجع: <b>${c.value.toLocaleString('ar-EG')} ج</b>` : '<span style="color:#dc2626">⚠️ الكمية دي أكتر من اللي مسجّل في البيع عندك</span>'}</div>` : '<div class="small" style="color:#dc2626">⚠️ المدرس مش في برنامجك على الموبايل ده — سجّل المرتجع بإيدك</div>'}
-    <div class="acts"><button class="btn sm ok" data-ract="ok">✅ موافق</button><button class="btn sm danger" data-ract="no">❌ رفض</button></div>
-    <div class="small muted">لما توافق هتكتب كلمة «موافق» بإيدك، لأنك لازم تكون استلمت الكتب من المدرس.</div></div>`;
+/* ---------- ↩️ المرتجعات (متابعة 10): 3 حالات ----------
+   ⏳ pending طلب من المدرس ← «✅ وافق» ← 🚚 approved مستني تستلمه ← «📦 استلمت» ← ✅ received (هنا بس بيتسجّل في البرنامج الأخضر + فواتير المدرس) */
+const RST = { pending: ['⏳ طلب جديد', 'owe'], approved: ['🚚 وافقت — مستني تستلمه', 'new'], received: ['✅ استلمت', 'ok'], rejected: ['❌ اترفض', 'bad'] };
+const retBooks = l => l.reduce((a, r) => a + (r.items || []).reduce((s, i) => s + (+i.q || 0), 0), 0);
+// كارت لكل مدرس: اسمه + الأربع زراير، وتحته كل طلبات المرتجع بتاعته (الكتب والعدد والتاريخ والحالة)
+function retGroups(list) {
+  const by = {}; for (const r of list) (by[r.teacher_id] ||= []).push(r);
+  return Object.values(by).map(rs => {
+    const r0 = rs[0], t = T.find(x => x.id === r0.teacher_id) || { id: r0.teacher_id, ...(r0.teachers || {}) }, db = gdb();
+    return `<div class="card rgrp"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${avHtml(t)}<a class="grow" href="#/t/${t.id}" style="min-width:120px"><b style="font-size:16px">${esc(t.name || '—')}</b></a>${icos4(t)}</div>
+      ${rs.map(r => { const c = r.status !== 'received' && r.status !== 'rejected' && db && (r.teachers || {}).local_id ? gRetCalc(db, r.teachers.local_id, r.items || []) : null, s = RST[r.status] || [r.status, 'new'];
+        return `<div class="rq" data-ret="${esc(r.id)}"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="pill ${s[1]}">${s[0]}</span><span class="small muted">طلبه ${fmtDate(r.created_at)}${r.received_at ? ' · استلمته ' + fmtDate(r.received_at) : ''}</span></div>
+          <div style="margin:6px 0">${(r.items || []).map(i => `<div class="kv"><span>${esc(i.l || bookLabel(i.b))}</span><b>${i.q}</b></div>`).join('')}</div>
+          ${r.status === 'received' ? (r.value != null ? `<div class="small">قيمته: <b>${(+r.value).toLocaleString('ar-EG')} ج</b></div>` : '')
+            : c ? `<div class="small">${c.ok ? `قيمة المرتجع: <b>${c.value.toLocaleString('ar-EG')} ج</b>` : '<span style="color:#dc2626">⚠️ الكمية دي أكتر من اللي مسجّل في البيع عندك</span>'}</div>` : '<div class="small muted">⚠️ المدرس مش في البرنامج على الموبايل ده — «استلمت» لازم يتعمل من موبايل المندوب بتاعه</div>'}
+          ${r.status === 'pending' ? '<div class="acts"><button class="btn sm ok" data-ract="ok">✅ وافق (هعدّي أستلمه)</button><button class="btn sm danger" data-ract="no">❌ رفض</button></div>'
+            : r.status === 'approved' ? '<div class="acts"><button class="btn sm pri" data-ract="got">📦 استلمت</button><button class="btn sm ghost" data-ract="no">❌ إلغاء</button></div>' : ''}</div>`; }).join('')}</div>`;
+  }).join('');
 }
-async function bindRets(root, list) {
+function bindRets(root, list, after) {
   root.addEventListener('click', async e => {
     const b = e.target.closest('[data-ract]'); if (!b) return;
-    const card = b.closest('[data-ret]'), r = list.find(x => x.id === card.dataset.ret), t = r.teachers || {};
-    const act = b.dataset.ract;
+    const box = b.closest('[data-ret]'), r = list.find(x => x.id === box.dataset.ret), t = r.teachers || {};
+    const act = b.dataset.ract, now = new Date().toISOString(), done = msg => { toast(msg, 4000); loadAll().then(after).catch(() => after()); };
     if (act === 'no') {
-      const reason = await ask('❌ سبب رفض المرتجع (المدرس هيشوفه)'); if (reason === null) return;
-      const { error } = await sb.from('returns').update({ status: 'rejected', reason, decided_at: new Date().toISOString() }).eq('id', r.id);
+      const reason = await ask(r.status === 'approved' ? '❌ سبب إلغاء المرتجع (المدرس هيشوفه)' : '❌ سبب رفض المرتجع (المدرس هيشوفه)'); if (reason === null) return;
+      const { error } = await sb.from('returns').update({ status: 'rejected', reason, decided_at: now }).eq('id', r.id);
       if (error) return toast(errMsg(error));
-      if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '❌ طلب المرتجع اترفض', false).catch(() => { });
-      card.remove(); counts(); return toast('اترفض');
+      if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '❌ طلب المرتجع اترفض' + (reason ? ': ' + reason : ''), false).catch(() => { });
+      return done('اترفض');
     }
-    const db = gdb(); if (!db || !t.local_id) return toast('المدرس مش في برنامجك على الموبايل ده');
-    const c = gRetCalc(db, t.local_id, r.items || []); if (!c.ok) return toast('الكمية أكتر من اللي مسجّل في البيع عندك');
-    const w = await ask('اكتب كلمة «موافق» بإيدك عشان تأكد إنك استلمت الكتب من المدرس', { multi: false, ph: 'موافق', okTxt: 'تأكيد' }); if (w === null) return;
-    if (w.trim() !== 'موافق') return toast('لازم تكتب كلمة موافق بالظبط');
-    $$('button', card).forEach(x => x.disabled = true);
-    const now = new Date().toISOString();
+    if (act === 'ok') {
+      $$('button', box).forEach(x => x.disabled = true);
+      const { error } = await sb.from('returns').update({ status: 'approved', decided_at: now }).eq('id', r.id);
+      if (error) { $$('button', box).forEach(x => x.disabled = false); return toast(errMsg(error)); }
+      if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '✅ وافقنا على المرتجع — هنعدّي نستلم الكتب منك', false).catch(() => { });
+      return done('✅ اتوافق — المرتجع بقى «🚚 مستني تستلمه»');
+    }
+    // 📦 استلمت: هنا بس بيتسجّل في البرنامج الأخضر وفي فواتير المدرس
+    const db = gdb(); if (!db || !t.local_id || !(db.teachers || []).some(x => x.id === t.local_id)) return toast('المدرس مش في البرنامج على الموبايل ده — «استلمت» من موبايل المندوب بتاعه', 4500);
+    const c = gRetCalc(db, t.local_id, r.items || []); if (!c.ok) return toast('الكمية أكتر من اللي مسجّل في البيع عندك — راجع البيع الأول', 4500);
+    if (!confirm(`استلمت الكتب دي من ${t.name || 'المدرس'}؟\n${(r.items || []).map(i => `${i.l || bookLabel(i.b)}: ${i.q}`).join('\n')}\n\nقيمتها ${c.value.toLocaleString('ar-EG')} ج — هتتسجّل مرتجع في البرنامج.`)) return;
+    $$('button', box).forEach(x => x.disabled = true);
+    const q1 = await sb.from('returns').update({ status: 'received', value: c.value, received_at: now }).eq('id', r.id).eq('status', 'approved').select('id');
+    if (q1.error || !(q1.data || []).length) { $$('button', box).forEach(x => x.disabled = false); return toast(q1.error ? errMsg(q1.error) : 'المرتجع ده اتغيّر — اعمل تحديث'); }
     (db.tret ||= []).push({ id: r.id, t: t.local_id, items: (r.items || []).map(i => ({ b: i.b, q: i.q })), at: now });
-    (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.local_id, at: now, k: 'مرتجع', txt: 'مرتجع من المدرس (بموافقتك): ' + (r.items || []).map(i => `${bookLabel(i.b)} ${i.q}`).join('، ') });
+    (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.local_id, at: now, k: 'مرتجع', txt: 'مرتجع من المدرس (استلمته): ' + (r.items || []).map(i => `${bookLabel(i.b)} ${i.q}`).join('، ') });
     gsave(db);
-    const q1 = await sb.from('returns').update({ status: 'approved', value: c.value, decided_at: now }).eq('id', r.id);
     const q2 = await sb.from('ledger').upsert({ teacher_id: r.teacher_id, ref: 'rq:' + r.id, kind: 'ret', at: now, items: c.items, total: c.value }, { onConflict: 'teacher_id,ref' });
-    if (q1.error || q2.error) { $$('button', card).forEach(x => x.disabled = false); return toast(errMsg(q1.error || q2.error)); }
-    if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '✅ طلب المرتجع اتوافق عليه', false).catch(() => { });
-    card.remove(); counts(); toast('✅ اتسجّل المرتجع — هيتكتب في برنامجك الأخضر أول ما تفتحه', 4500);
+    if (q2.error) toast(errMsg(q2.error));
+    if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '✅ استلمنا المرتجع بتاعك — اتسجّل في فواتيرك', false).catch(() => { });
+    done('📦 اتسجّل المرتجع — هيتكتب في البرنامج الأخضر أول ما تفتحه');
   });
+}
+async function viewRets() {
+  setHeader('↩️ المرتجعات', false); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
+  let q = sb.from('returns').select('*, teachers(name,local_id,phone)').order('created_at', { ascending: false }).limit(400);
+  q = ui.retAll ? q.in('status', ['pending', 'approved', 'received']) : q.in('status', ['pending', 'approved']);
+  const { data, error } = await q;
+  if (location.hash !== '#/rets') return;
+  if (error) { app.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
+  const P = data.filter(r => r.status === 'pending'), A = data.filter(r => r.status === 'approved'), R = data.filter(r => r.status === 'received');
+  const nT = l => new Set(l.map(r => r.teacher_id)).size;
+  app.innerHTML = `<div id="retsBox"><div class="card"><h3 style="margin:0 0 6px">📋 الملخص</h3>
+      <div class="kv"><span>🚚 مستني تستلمه</span><b>${nT(A)} مدرس · ${retBooks(A)} كتاب</b></div>
+      <div class="kv"><span>⏳ طلبات جديدة لسه ما ردّتش عليها</span><b>${nT(P)} مدرس · ${retBooks(P)} كتاب</b></div></div>
+    <div class="chips"><button class="chip ${ui.retAll ? '' : 'on'}" data-ra="0">⏳🚚 المستني</button><button class="chip ${ui.retAll ? 'on' : ''}" data-ra="1">📜 الكل (ومعاه اللي استلمته)</button></div>
+    ${A.length ? `<h3 style="margin:12px 0 6px">🚚 مستني تستلمه (${nT(A)})</h3><div id="rA">${retGroups(A)}</div>` : ''}
+    ${P.length ? `<h3 style="margin:12px 0 6px">⏳ طلبات جديدة (${nT(P)})</h3><div id="rP">${retGroups(P)}</div>` : ''}
+    ${ui.retAll && R.length ? `<h3 style="margin:12px 0 6px">✅ استلمتها (${R.length})</h3><div id="rR">${retGroups(R)}</div>` : ''}
+    ${!A.length && !P.length && !(ui.retAll && R.length) ? '<div class="card empty">مفيش مرتجعات مستنية ✅</div>' : ''}</div>`;
+  $$('[data-ra]').forEach(b => b.onclick = () => { ui.retAll = b.dataset.ra === '1'; viewRets(); });
+  bindRets($('#retsBox'), data, () => { if (location.hash === '#/rets') viewRets(); });
 }
 
 /* ---------- البحث الشامل: أي كلمة في أي بيانات للمدرس (الملف كله + الكتب + الرسائل المحفوظة + آخر رسالة + الاستلام والتحديث) ---------- */
@@ -483,6 +573,8 @@ function tHay(t) {
   if (lastMsg[t.id]) out.push(lastMsg[t.id].b);
   if (s) out.push(ST_W[s.st] || '', s.c || '', s.lv || '', s.w ? 'عليه فلوس' : '');
   if (!t.last_seen) out.push('لسه ما فتحش');
+  out.push(t.app_at ? 'مثبت التطبيق' : 'مش مثبت ما ثبتش');
+  if (retsBy[t.id]) out.push('مرتجع عنده مرتجع');
   return norm(out.filter(Boolean).join(' '));
 }
 // أسعار الكتب ← المدرسين (💰 أسعار الكتب + الطلب). بتترفع مع كل فتح لو الأسعار في البرنامج اتغيّرت (المالك بس)
@@ -537,24 +629,22 @@ function gSaleEdit(sid, items) {
 /* ---------- 🔎 فلاتر قايمة المدرسين + البحث ----------
    جوه كل قسم: اختيارات متعددة = أي واحدة. بين الأقسام: لازم يتحقق كله. */
 let mSt = {};   // آخر رسالة ليك عند كل مدرس: u = ما قراش · r = قرأ ومارددش · y = قرأ ورد
+// من msg_summary: my_id/my_read = آخر رسالة ليك واتقرت ولا لأ · their_id = آخر رسالة من المدرس
 function mStates(rows) {
-  const ours = {}, theirs = {}, out = {};
-  for (const m of rows || []) {
-    if (m.kind === 'ring' || m.kind === 'alert') continue;
-    if (m.from_teacher) theirs[m.teacher_id] = m.id; else ours[m.teacher_id] = m;
-  }
-  for (const tid in ours) { const o = ours[tid]; out[tid] = theirs[tid] > o.id ? 'y' : (o.read_at ? 'r' : 'u'); }
+  const out = {};
+  for (const s of rows || []) if (s.my_id) out[s.teacher_id] = (s.their_id || 0) > s.my_id ? 'y' : (s.my_read ? 'r' : 'u');
   return out;
 }
 const FL_OPT = {
   msg: [['u', '🔵 ما قراش'], ['r', '🟡 قرأ ومارددش'], ['y', '🟢 قرأ ورد']],
-  app: [['on', '✅ مفعّل'], ['off', '⬜ مش مفعّل']],
+  app: [['in', '📲 مثبّت التطبيق'], ['out', '🌐 لسه ما ثبّتش']],
   seen: [['today', 'النهارده'], ['d3', 'من يومين لـ 3 أيام'], ['d7', 'من 4 لـ 7 أيام'], ['old', 'أكتر من أسبوع / ما فتحش']],
   upd: [['full', '🟢 حدّث كله'], ['part', '🟠 باقيله جزء'], ['none', '⚪ ماحدّثش']],
-  new: [['nf', '🆕 لسه ما فتحوش'], ['unread', '💬 بعتوا رسايل جديدة'], ['pend', '⏳ عندهم تعديلات مستنية']]
+  new: [['nf', '🆕 لسه ما فتحوش'], ['unread', '💬 بعتوا رسايل جديدة'], ['pend', '⏳ عندهم تعديلات مستنية']],
+  ret: [['r', '↩️ عنده مرتجع']]
 };
-const FL_T = { msg: 'حالة الرسالة (آخر رسالة ليك)', app: 'التطبيق', seen: 'آخر ظهور', upd: 'حالة التحديث', new: 'الجديدة والتعديلات' };
-const FL = () => (ui.fl ||= { msg: new Set(), app: new Set(), seen: new Set(), upd: new Set(), new: new Set() });
+const FL_T = { msg: 'حالة الرسالة (آخر رسالة ليك)', app: 'التطبيق', seen: 'آخر ظهور', upd: 'حالة التحديث', new: 'الجديدة والتعديلات', ret: 'المرتجع' };
+const FL = () => (ui.fl ||= { msg: new Set(), app: new Set(), seen: new Set(), upd: new Set(), new: new Set(), ret: new Set() });
 const flCount = () => Object.values(FL()).reduce((a, s) => a + s.size, 0) + (ui.rep ? 1 : 0);
 // تطبيع للبحث: الهمزات والتاء المربوطة والألف المقصورة والتشكيل والتطويل، والأرقام العربي/الفارسي ← إنجليزي
 const nq = s => norm(s).replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/ـ/g, '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776);
@@ -568,7 +658,8 @@ function flOk(t) {
   const f = FL();
   if (ui.rep && t.rep_id !== ui.rep) return false;
   if (f.msg.size && !f.msg.has(mSt[t.id])) return false;
-  if (f.app.size && !f.app.has(t.enabled ? 'on' : 'off')) return false;
+  if (f.app.size && !f.app.has(t.app_at ? 'in' : 'out')) return false;
+  if (f.ret.size && !retsBy[t.id]) return false;
   if (f.seen.size && !f.seen.has(seenB(t))) return false;
   if (f.upd.size && !f.upd.has(updState(t))) return false;
   if (f.new.size && !((f.new.has('nf') && !t.last_seen) || (f.new.has('unread') && unreadBy[t.id]) || (f.new.has('pend') && pendSet.has(t.id)))) return false;
@@ -591,9 +682,13 @@ function refreshList() {
   const list = filtered(), nF = flCount(), filtering = nF > 0 || !!nq(ui.q).trim();
   $('#tl').innerHTML = list.slice(0, ui.shown).map(tItem).join('') || `<div class="empty">${filtering ? 'مفيش نتائج' : 'مفيش مدرسين هنا'}</div>`;
   $('#flBtn').textContent = '🔎 فلاتر' + (nF ? ` (${nF})` : '');
-  $('#allRow').innerHTML = filtering && list.length ? `<label class="chip" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px"><input type="checkbox" id="selAll" ${list.every(t => ui.sel.has(t.id)) ? 'checked' : ''}> تحديد الكل الظاهر (${list.length})</label>` : '';
-  const sa = $('#selAll');
-  if (sa) sa.onchange = () => { list.forEach(t => sa.checked ? ui.sel.add(t.id) : ui.sel.delete(t.id)); refreshList(); };
+  // صف التحديد الثابت: ☑️ الكل (اللي ظاهرين) · ✕ مسح التحديد · العداد · 🗑️ مسح الرسايل (المحددين)
+  const ns = ui.sel.size;
+  $('#selAll').textContent = `☑️ الكل (${list.length})`; $('#selAll').disabled = !list.length;
+  $('#selN').textContent = `☑️ متحدد: ${ns} مدرس`;
+  $('#selNone').disabled = !ns;
+  $('#delSel').textContent = `🗑️ مسح الرسايل${ns ? ` (${ns})` : ''}`;
+  $('#selAll').onclick = () => { list.forEach(t => ui.sel.add(t.id)); refreshList(); };
   $('#moreRow').innerHTML = list.length > ui.shown ? `<button class="btn ghost" id="more" style="width:100%;margin-top:10px">اعرض أكتر (${list.length - ui.shown})</button>` : '';
   const mo = $('#more'); if (mo) mo.onclick = () => { ui.shown += 300; refreshList(); };
   drawSelbar();
@@ -604,7 +699,7 @@ function openFilters() {
   const grp = key => `<div class="small muted" style="margin:10px 0 4px;font-weight:700">${FL_T[key]}</div><div class="pgrid">${FL_OPT[key].map(([v, l]) => `<label class="chip ${f[key].has(v) ? 'on' : ''}"><input type="checkbox" data-fl="${key}" value="${v}" ${f[key].has(v) ? 'checked' : ''}> ${l}</label>`).join('')}</div>`;
   modal(`<h3>🔎 فلاتر المدرسين</h3>
     <div class="small muted">جوه نفس القسم: اختار أكتر من واحدة = أي واحدة منهم. بين الأقسام: لازم يتحقق كله.</div>
-    ${['msg', 'app', 'seen', 'upd', 'new'].map(grp).join('')}
+    ${['msg', 'app', 'seen', 'upd', 'new', 'ret'].map(grp).join('')}
     ${isAdmin() && staffList.length > 1 ? `<div class="small muted" style="margin:10px 0 4px;font-weight:700">المندوب</div><select id="flRep"><option value="">كل المناديب</option>${staffList.map(s => `<option value="${s.id}" ${ui.rep === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}
     <div class="acts"><button class="btn ghost" id="flReset">امسح الفلاتر</button><button class="btn pri" data-close>تم</button></div>`, box => {
     box.addEventListener('change', e => {
@@ -623,30 +718,38 @@ function openFilters() {
 function viewList() {
   setHeader(`المدرسين — ${me.name}`, false);
   app.innerHTML = `${T.length ? '' : '<div class="note"><b>⏳ بننقل مدرسينك من البرنامج…</b><div class="small">بيتنقلوا لوحدهم ببياناتهم وكتبهم. لو مفيش مدرسين في البرنامج على الموبايل ده، ضيفهم هناك الأول.</div></div>'}
-  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button></div>
-  <div class="acts" style="margin:0 0 10px"><button class="btn sm danger" id="delAllM">🗑️ امسح كل الرسائل</button></div>
-  <div id="allRow"></div>
+  ${isAdmin() ? ownerSum() : ''}
+  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button><a class="btn sm owe" href="#/rets" title="المرتجعات">↩️${Object.keys(retsBy).length ? ' ' + Object.keys(retsBy).length : ''}</a></div>
+  <div class="selrow"><button class="btn sm" id="selAll">☑️ الكل</button><button class="btn sm ghost" id="selNone">✕ مسح التحديد</button><span class="cnt" id="selN"></span><span style="flex:1"></span><button class="btn sm danger" id="delSel">🗑️ مسح الرسايل</button></div>
   <div class="tlist" id="tl"></div>
   <div id="moreRow"></div>
   <div id="selbar"></div>`;
   const qi = $('#q');
   qi.oninput = () => { ui.q = qi.value; ui.shown = 200; refreshList(); };
   $('#flBtn').onclick = openFilters;
-  // بند 44: مسح رسايل كل المدرسين لتفضية المساحة (📌 السجل بيفضل)
-  $('#delAllM').onclick = async () => {
-    const w = prompt('هتتمسح كل الرسايل مع كل المدرسين نهائي (من عندك وعندهم)، ومش هترجع.\nاللي محفوظ في 📌 السجل هيفضل.\n\nللتأكيد اكتب كلمة: امسح');
-    if (w == null) return; if (w.trim() !== 'امسح') return toast('ماتمسحش حاجة — الكلمة مش مظبوطة');
-    const { error } = await sb.from('messages').delete().gt('id', 0); if (error) return toast(errMsg(error));
-    for (const k in unreadBy) delete unreadBy[k]; for (const k in lastMsg) delete lastMsg[k];
-    toast('🗑️ اتمسحت كل الرسايل ✅'); counts(); viewList();
+  $('#selNone').onclick = () => { ui.sel.clear(); refreshList(); };
+  // 🗑️ مسح رسايل المدرسين المحددين بس (📌 السجل بيفضل)
+  $('#delSel').onclick = async () => {
+    const ids = [...ui.sel]; if (!ids.length) return toast('علّم على المدرسين الأول');
+    if (!confirm(`تمسح رسايل ${ids.length} مدرس؟\nهتتمسح من عندك وعندهم ومش هترجع. (اللي محفوظ في 📌 السجل هيفضل)`)) return;
+    $('#delSel').disabled = true;
+    for (let i = 0; i < ids.length; i += 150) {
+      const { error } = await sb.from('messages').delete().in('teacher_id', ids.slice(i, i + 150));
+      if (error) { $('#delSel').disabled = false; return toast(errMsg(error)); }
+    }
+    ids.forEach(id => { delete unreadBy[id]; delete lastMsg[id]; delete mSt[id]; });
+    ui.sel.clear(); $('#delSel').disabled = false; toast(`🗑️ اتمسحت رسايل ${ids.length} مدرس ✅`); counts(); refreshList();
   };
+  $$('[data-os]').forEach(b => b.onclick = () => { const f = FL(), k = b.dataset.os;
+    if (k === 'rets') { location.hash = '#/rets'; return; }
+    Object.values(f).forEach(s => s.clear()); ui.rep = '';
+    if (k === 'in' || k === 'out') f.app.add(k); else if (k === 'unread') f.new.add('unread');
+    refreshList(); });
   $('#tl').onclick = e => {
     const it = e.target.closest('.titem'); if (!it) return;
     const ck = e.target.closest('.tck');   // مربع التحديد عند كل مدرس
     if (ck) { ck.checked ? ui.sel.add(it.dataset.id) : ui.sel.delete(it.dataset.id); refreshList(); return; }
     if (e.target.closest('[data-ic]')) return;
-    if (e.target.closest('[data-upd]')) { reqUpdateDlg([it.dataset.id]); return; }   // 🔄 طلب تحديث لمدرس واحد
-    if (e.target.closest('[data-chat]')) { e.preventDefault(); location.hash = '#/c/' + it.dataset.id; return; }
     location.hash = '#/t/' + it.dataset.id;
   };
   refreshList(); if (ui.q) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
@@ -664,19 +767,30 @@ function gInfo() {
 }
 const STG_T = { p: 'ابتدائي', m: 'إعدادي', pm: 'ابتدائي وإعدادي' };
 // كارت المدرس زي كارت البرنامج الأخضر بالظبط: لون الاستلام في الخلفية + شريط رفيع على الجنب بلون التحديث
+/* متابعة 10: كارت المدرس سطور مترتبة — 1) الصورة والاسم كامل وعلاماته 2) المواد والمرحلة والقرية جنب بعض 3) التليفون وآخر زيارة 4) الأربع زراير + الاستلام */
 function tItem(t) {
-  const pr = t.profile || {}, nn = (notesBy[t.id] || []).length, un = unreadBy[t.id] || 0;
+  const pr = t.profile || {}, nn = (notesBy[t.id] || []).length;
   const lm = lastMsg[t.id], g = gInfo()[t.local_id] || null, s = (g && g.s) || null;
   const uc = UPD_C[updState(t)][0];
   const stc = s ? (s.st === 'part' ? 'st-part' : s.st === 'done' ? 'st-done' : '') : '';
   const avs = (AVC[t.id] && AVC[t.id].th) || (g && g.th), av = avs ? `<img class="av" src="${avs}" alt="" loading="lazy">` : avHtml(t);
   const recv = !s ? '' : (s.d ? `<span class="pill ok">✅ استلم ${s.d}</span> ` : '') + (s.o ? `<span class="pill owe">⏳ باقيله ${s.o}</span>` : '') + (!s.d ? '<span class="pill new">لسه</span>' : '');
   const stg = STG_T[pr.stage || (g && g.stage)] || '';
-  return `<div class="titem ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}"><input type="checkbox" class="tck" style="width:22px;height:22px;flex:none;align-self:center;margin:0 2px" ${ui.sel.has(t.id) ? 'checked' : ''}>${av}<div class="grow"><div class="nm">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div>
-    ${lm ? `<div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
-    <div class="sub">${esc([valText('subjects', pr.subjects), stg, pr.area].filter(x => x && x !== '—').join(' • '))}${isAdmin() ? ' • ' + esc(repName(t.rep_id)) : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div>
-    ${t.phone ? `<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>` : ''}${s && s.lv ? `<div class="lastv">🕘 آخر زيارة: ${esc(s.lv)}</div>` : ''}</div>
-    <div class="side">${recv ? `<div>${recv}</div>` : ''}<div class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-chat href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-upd title="اطلب تحديث بيانات المدرس ده">🔄</button></div></div></div>`;
+  const tg = x => `<span class="tg">${esc(x)}</span>`;
+  const subs = (Array.isArray(pr.subjects) ? pr.subjects : []).map(k => valText('subjects', [k])).filter(x => x && x !== '—');
+  const tags = [...subs.map(tg), stg ? tg(stg) : '', pr.area ? tg('📍 ' + pr.area) : '', isAdmin() ? tg('👤 ' + repName(t.rep_id)) : ''].join('');
+  return `<div class="titem tcard ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">
+    <div class="tc-h"><input type="checkbox" class="tck" ${ui.sel.has(t.id) ? 'checked' : ''}>${av}<div class="tc-n">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div></div>
+    ${lm ? `<div class="tc-l">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
+    <div class="tc-tags">${tags}${instPill(t)}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div>
+    ${t.phone || (s && s.lv) ? `<div class="tc-i">${t.phone ? `<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>` : ''}${s && s.lv ? `<span>🕘 آخر زيارة: ${esc(s.lv)}</span>` : ''}</div>` : ''}
+    <div class="tc-f">${icos4(t)}${recv ? `<span>${recv}</span>` : ''}</div></div>`;
+}
+// متابعة 10 (بند 12): ملخص صغير للمالك فوق القايمة — كل مربع بيفلتر على طول
+function ownerSum() {
+  const inN = T.filter(t => t.app_at).length, msgN = Object.keys(unreadBy).length, retN = Object.keys(retsBy).length;
+  return `<div class="osum"><button data-os="in"><b>${inN}</b>📲 مثبّتين</button><button data-os="out"><b>${T.length - inN}</b>🌐 مش مثبّتين</button>
+    <button data-os="unread"><b>${msgN}</b>💬 مستنيين ردك</button><button data-os="rets"><b>${retN}</b>↩️ عندهم مرتجع</button></div>`;
 }
 // شريط المحددين: يظهر لما تحدد مدرس. 📦 بيتغيّر اسمه: كله مفتوح ← «قفل»، غير كده (أو خليط) ← «فعّل» (والخليط بيفعّل المقفولين بس)
 function drawSelbar() {
@@ -717,30 +831,42 @@ async function recvOpen(ids) {
 }
 
 /* ---------- رسالة الدعوة: تكتب الرسالة + [رابط المدرس] وتختار المدرسين ---------- */
+/* متابعة 10 (بند 6): رسالتين (📲 التثبيت / ✉️ الدعوة) · البحث بيشتغل وإنت بتكتب · جنب كل مدرس مثبّت ولا لأ + الأربع زراير */
 function viewInvite() {
   setHeader('✉️ رسالة الدعوة للمدرسين', false);
-  const tpl = LS.get('selah-trial-inv') || INV_DEF;
-  const q = norm(ui.invQ), list = T.filter(t => !q || stWords(q.split(/\s+/).filter(Boolean)).every(w => tHay(t).includes(w)));
-  app.innerHTML = `<div class="card"><h3>1) اكتب الرسالة</h3>
+  const K = INV_KEYS[ui.invK] ? ui.invK : 'inv', [lk, def] = INV_KEYS[K], tpl = LS.get(lk) || def;
+  app.innerHTML = `<div class="card"><h3>1) اختار الرسالة واكتبها</h3>
+    <div class="chips" style="margin-bottom:6px">${Object.entries(INV_KEYS).map(([k, v]) => `<button class="chip ${K === k ? 'on' : ''}" data-ik="${k}">${v[2]}</button>`).join('')}</div>
     <textarea id="itpl" style="min-height:120px">${esc(tpl)}</textarea>
     <div class="hint small muted">اكتب <b>[رابط المدرس]</b> في المكان اللي عايز الرابط فيه، وهيتبدل لوحده برابط كل مدرس. و<b>{الاسم}</b> بيتبدل باسمه.</div>
     <div class="acts"><button class="btn sm" id="iadd">➕ حط [رابط المدرس]</button><button class="btn sm ghost" id="ires">رجّع الرسالة الأصلية</button></div></div>
-  <div class="card"><h3>2) اختار المدرسين (${ui.invSel.size} متحدد)</h3>
-    <div class="search"><input id="iq" type="search" placeholder="🔍 دوّر بأي حاجة" value="${esc(ui.invQ)}"></div>
-    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="iall">تحديد الكل (${list.length})</button><button class="btn sm" id="inew">اللي لسه ما فتحوش</button><button class="btn sm ghost" id="inone">شيل التحديد</button><button class="btn sm ok" id="isend" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">🟢 ابعت (${ui.invSel.size})</button></div>
-    <div id="il">${list.slice(0, 400).map(t => `<label class="kv" style="justify-content:flex-start;gap:8px;cursor:pointer"><input type="checkbox" value="${t.id}" ${ui.invSel.has(t.id) ? 'checked' : ''}>
-      <span style="flex:1">${esc(t.name)} <span class="small muted">${esc(t.phone || 'مفيش رقم')}${t.last_seen ? ' · ✅ فتح' : ''}</span></span></label>`).join('') || '<div class="small muted">مفيش مدرسين — هاتهم من البرنامج الأول (👥 المدرسين).</div>'}</div></div>
-  `;
-  const saveTpl = () => LS.set('selah-trial-inv', $('#itpl').value);
+  <div class="card"><h3>2) اختار المدرسين (<span id="iselN">${ui.invSel.size}</span> متحدد)</h3>
+    <div class="search"><input id="iq" type="search" placeholder="🔍 اكتب أي حاجة: اسم، رقم، قرية، مادة، «مش مثبت»…" value="${esc(ui.invQ)}" autocomplete="off"></div>
+    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="iall">☑️ الكل</button><button class="btn sm owe" id="iapp">🌐 اللي مش مثبّتين</button><button class="btn sm ghost" id="inone">✕ مسح التحديد</button><button class="btn sm ok" id="isend" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">🟢 ابعت (${ui.invSel.size})</button></div>
+    <div id="il"></div></div>`;
+  const saveTpl = () => LS.set(lk, $('#itpl').value);
+  const shown = () => { const ws = stWords(nq(ui.invQ).split(/\s+/).filter(Boolean)); return T.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))); };
+  const cnt = () => { $('#iselN').textContent = ui.invSel.size; $('#isend').textContent = `🟢 ابعت (${ui.invSel.size})`; };
+  const draw = () => {
+    const l = shown(), notIn = l.filter(t => !t.app_at).length;
+    $('#iall').textContent = `☑️ الكل (${l.length})`; $('#iapp').textContent = `🌐 اللي مش مثبّتين (${notIn})`;
+    $('#il').innerHTML = l.slice(0, 400).map(t => `<label class="kv irow"><input type="checkbox" value="${t.id}" ${ui.invSel.has(t.id) ? 'checked' : ''} style="width:20px;height:20px">${avHtml(t)}
+      <span class="grow"><b>${esc(t.name)}</b> ${instPill(t)} ${tB(t.id)}<br><span class="small muted">${esc([t.phone || 'مفيش رقم', (t.profile || {}).area].filter(Boolean).join(' · '))}</span></span>${icos4(t)}</label>`).join('')
+      + (l.length > 400 ? `<div class="small muted">ظاهر 400 من ${l.length} — اكتب في البحث عشان تضيّق</div>` : '')
+      || `<div class="small muted">${T.length ? 'مفيش نتايج' : 'مفيش مدرسين — هاتهم من البرنامج الأول (👥 المدرسين).'}</div>`;
+    cnt();
+  };
+  $$('[data-ik]').forEach(b => b.onclick = () => { saveTpl(); ui.invK = b.dataset.ik; viewInvite(); });
   $('#itpl').oninput = saveTpl;
   $('#iadd').onclick = () => { const a = $('#itpl'), p = a.selectionStart ?? a.value.length; a.value = a.value.slice(0, p) + '[رابط المدرس]' + a.value.slice(p); saveTpl(); };
-  $('#ires').onclick = () => { LS.del('selah-trial-inv'); viewInvite(); };
-  $('#iq').onchange = () => { ui.invQ = $('#iq').value; viewInvite(); };
-  $('#iall').onclick = () => { list.forEach(t => ui.invSel.add(t.id)); viewInvite(); };
-  $('#inew').onclick = () => { T.filter(t => !t.last_seen).forEach(t => ui.invSel.add(t.id)); viewInvite(); };
-  $('#inone').onclick = () => { ui.invSel.clear(); viewInvite(); };
-  $('#il').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? ui.invSel.add(c.value) : ui.invSel.delete(c.value); $('#isend').textContent = `🟢 ابعت (${ui.invSel.size})`; };
+  $('#ires').onclick = () => { LS.del(lk); viewInvite(); };
+  $('#iq').oninput = () => { ui.invQ = $('#iq').value; draw(); };
+  $('#iall').onclick = () => { shown().forEach(t => ui.invSel.add(t.id)); draw(); };
+  $('#iapp').onclick = () => { shown().filter(t => !t.app_at).forEach(t => ui.invSel.add(t.id)); draw(); };
+  $('#inone').onclick = () => { ui.invSel.clear(); draw(); };
+  $('#il').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? ui.invSel.add(c.value) : ui.invSel.delete(c.value); cnt(); };
   $('#isend').onclick = () => { saveTpl(); const l = T.filter(t => ui.invSel.has(t.id)); if (!l.length) return toast('اختار مدرس واحد على الأقل'); waBulk(l, $('#itpl').value); };
+  draw();
 }
 function waBulk(list, tpl) {
   modal(`<h3>🟢 ابعت على واتساب (${list.length})</h3><div class="hint small muted" style="margin-bottom:8px">اضغط «ابعت» لكل مدرس، هيفتح الواتساب برسالته ورابطه هو جاهزين.</div>
@@ -882,7 +1008,7 @@ async function viewTeacher(id) {
   setHeader(t.name, true);
   const pr = t.profile || {}, link = inviteLink(t), inGreen = t.local_id && (gdb()?.teachers || []).some(x => x.id === t.local_id);
   app.innerHTML = `<div class="card"><div style="display:flex;gap:12px;align-items:center">${avHtml(t, 'lg')}<div class="grow">
-      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)}<div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
+      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)} ${instPill(t)}<div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
       ${isAdmin() ? `<div class="small muted">المندوب: ${esc(repName(t.rep_id))}</div>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
     <div style="margin-top:10px">${FIELDS.filter(f => !['name', 'avatar', 'phone'].includes(f.k)).map(f => `<div class="kv"><span>${FIELD_LABEL[f.k]}</span><span>${fmtVal(f.k, pr[f.k])}</span></div>`).join('')}</div>
     ${(t.books || []).length ? `<div class="kv"><span>الكتب المسجلة</span><span class="small">${esc(t.books.map(b => `${b.l || bookLabel(b.b)}: ${b.q}`).join('، '))}</span></div>` : ''}
@@ -948,7 +1074,7 @@ function reviewCard(e, inTeacher) {
   REQS[e.id] = e;
   const t = e.teachers || {}, ph = e.photos || [];  return `<div class="card" data-req="${e.id}" style="border-color:var(--owe)">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${avHtml(t)}<div class="grow">
-      ${inTeacher ? '<b>📝 طلب تعديل الملف</b>' : `<a href="#/t/${e.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(e.teacher_id)}`}<div class="small muted">${fmtDate(e.updated_at)}</div></div>
+      ${inTeacher ? '<b>📝 طلب تعديل الملف</b>' : `<a href="#/t/${e.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(e.teacher_id)}<div>${icos4({ id: e.teacher_id })}</div>`}<div class="small muted">${fmtDate(e.updated_at)}</div></div>
       ${e.status === 'question' ? '<span class="pill owe">❓ مستني رده</span>' : '<span class="pill new">جديد</span>'}</div>
     ${e.reason && (e.status === 'question' || e.teacher_reply) ? `<div class="small">❓ سؤالك: ${esc(e.reason)}</div>` : ''}
     ${e.teacher_reply ? `<div class="good small" style="padding:8px;margin:6px 0">💬 رد المدرس: ${esc(e.teacher_reply)}</div>` : ''}
@@ -962,7 +1088,8 @@ function orderCard(o, inTeacher) {
   ORDS[o.id] = o;
   const t = o.teachers || {};
   return `<div class="card" data-ord="${o.id}" style="border-color:#b45309">
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="grow">${inTeacher ? '' : `<a href="#/t/${o.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(o.teacher_id)} — `}
+    ${inTeacher ? '' : `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px"><a class="grow" href="#/t/${o.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(o.teacher_id)} ${icos4({ id: o.teacher_id })}</div>`}
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="grow">
       <b>${o.kind === 'order' ? '🛒 طلب كتب' : (o.items || []).some(i => i.sid) ? '✏️ عايز يعدّل طلب البيع اللي سجّلته' : '✏️ طلب تعديل كمية'}</b><div class="small muted">${fmtDate(o.created_at)}</div></div></div>
     ${o.kind === 'edit' ? '<div class="small muted" style="margin-bottom:4px">الطلب كله — اللي اتغيّر متعلّم بالبرتقاني:</div>' : ''}
     <div id="oi-${o.id}">${(o.items || []).map(i => { const chg = o.kind === 'edit' && i.was != null && i.was !== i.q;
@@ -1057,28 +1184,29 @@ function bindReviews(root) {
 }
 
 /* ---------- الجرس ---------- */
-const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['mine', '🧾 طلباتي'], ['edits', '📝 تعديل الملفات'], ['notes', '📋 الملاحظات'], ['del', '🗑️ مسح الرسايل']];
+// متابعة 10: اتشالت تبويبات «قريبًا» (🧾 طلباتي، 📋 الملاحظات، 🗑️ مسح الرسايل)
+const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['edits', '📝 تعديل الملفات']];
 async function viewBell() {
   setHeader('🔔 الإشعارات', false);
   const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets };
-  const live = ['orders', 'edits', 'msgs', 'rets'];
-  app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div class="chips">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''} ${live.includes(k) ? '' : 'soon'}" data-b="${k}">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : ''}</button>`).join('')}</div><div id="bb"></div>`;
+  if (!BELL.some(([k]) => k === ui.bellTab)) ui.bellTab = 'msgs';
+  app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div class="chips">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''}" data-b="${k}">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : ''}</button>`).join('')}</div><div id="bb"></div>`;
   $$('[data-b]').forEach(b => b.onclick = () => { ui.bellTab = b.dataset.b; viewBell(); });
   const bb = $('#bb');
-  if (!live.includes(ui.bellTab)) { bb.innerHTML = '<div class="card empty">قريبًا 🚧</div>'; return; }
   bb.innerHTML = '<div class="loading">جاري التحميل…</div>';
   if (ui.bellTab === 'msgs') {
     const ids = Object.keys(unreadBy);
     ids.sort((a, b) => (lastMsg[b]?.id || 0) - (lastMsg[a]?.id || 0));
-    bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<a class="titem" href="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
-      <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div></div></a>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
+    bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<div class="titem" data-go="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
+      <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
+    bb.onclick = e => { if (e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
     return;
   }
   if (ui.bellTab === 'rets') {
-    const { data, error } = await sb.from('returns').select('*, teachers(name,local_id)').eq('status', 'pending').order('created_at').limit(50);
+    const { data, error } = await sb.from('returns').select('*, teachers(name,local_id,phone)').eq('status', 'pending').order('created_at').limit(50);
     if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
-    bb.innerHTML = (await Promise.all(data.map(retCard))).join('') || '<div class="card empty">مفيش مرتجعات مستنية ✅</div>';
-    bindRets(bb, data); return;
+    bb.innerHTML = `<a class="btn owe" href="#/rets" style="display:block;text-align:center;margin-bottom:8px">↩️ كل المرتجعات (ومعاها اللي مستني تستلمه) ←</a>` + (retGroups(data) || '<div class="card empty">مفيش طلبات مرتجع جديدة ✅</div>');
+    bindRets(bb, data, () => { if (location.hash === '#/bell') viewBell(); }); return;
   }
   if (ui.bellTab === 'orders') {
     const { data, error } = await sb.from('orders').select('*, teachers(name,local_id)').eq('status', 'pending').order('created_at').limit(50);
@@ -1124,7 +1252,7 @@ async function viewSettings() {
   <div class="card"><h3>حدود المساحة</h3><div class="row2"><div class="field"><label>حد القاعدة (ميجا)</label><input id="lim" type="number" value="${lim}"></div>
     <div class="field"><label>نصيب المندوب (ميجا)</label><input id="quo" type="number" value="${quota}"></div></div><button class="btn sm" id="saveLim">حفظ</button></div>`;
   const appUrl = location.href.split('#')[0].replace(/admin\.html.*$/, '');
-  const repMsg = s => `رقمك السري في «المراسلات» في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}\nواضغط «📬 الرسائل» ← «💬 المراسلات» واكتب الرقم زي ما هو بالظبط. (بيشتغل على موبايل واحد بس)`;
+  const repMsg = s => `رقمك السري في «المراسلات» في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}\nوادخل «⚙️ الإعدادات» ← «💬 فعّل المراسلات» واكتب الرقم زي ما هو بالظبط. (بيشتغل على موبايل واحد بس)`;
   $('#upPr').onclick = async () => {
     const db = gdb(); if (!db || !db.prices) return toast('مفيش أسعار في البرنامج على الموبايل ده');
     const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? null }));

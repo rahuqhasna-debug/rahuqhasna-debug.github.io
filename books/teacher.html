@@ -280,8 +280,20 @@ async function load() {
       const { data: rep } = await sb.rpc('t_rep', { p_code: code });
       window.TP = { id: D.id, rep, name: D.name, subs: (D.profile || {}).subjects || [] }; window.pushReady && window.pushReady();
       if (D.unread && window.pushNotifyRep) window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك');
+      reportInstall();
     }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
+}
+/* متابعة 10: المدرس فتح من التطبيق المتثبّت ← بيتسجل في القاعدة (فلتر «📲 مثبّت» عند المندوب)،
+   وأول مرة بس بيوصل إشعار للمندوب والمالك «📲 الأستاذ فلان ثبّت التطبيق» */
+async function reportInstall() {
+  if (!isApp || !code || LS.get('selah-trial-inst') === code) return;
+  try {
+    const { data, error } = await sb.rpc('t_installed', { p_code: code });
+    if (error || !data) return;
+    LS.set('selah-trial-inst', code);
+    if (data.first && (data.to || []).length && window.pushNotifyStaff) window.pushNotifyStaff(data.to, '📲 الأستاذ ' + (data.name || D.name) + ' ثبّت التطبيق');
+  } catch (e) { }
 }
 /* متابعة الجديد في كل الصفحات (طلب شريف 2026-11-12): كل 15 ثانية والتطبيق قدام + أول ما يرجع قدام.
    النغمة بترن مع: رسالة أو تنبيه 🔔 جديد، طلب تحديث، سؤال من المندوب، قرار على تعديل، أي تغيير في الطلبات (استلام/موافقة/رفض/تعديل). */
@@ -933,15 +945,16 @@ async function renderRet() {
   app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#f97316,#dc2626)">↩️ مرتجعات<div class="small">تقدر ترجّع بس اللي اشتريته</div></div><div class="loading">جاري التحميل…</div>`;
   const L = await loadLedger(); if (view !== 'ret') return;
   const { m } = ledSums(L.rows), pend = {};
-  (L.returns || []).filter(r => r.status === 'pending').forEach(r => (r.items || []).forEach(i => pend[i.b] = (pend[i.b] || 0) + (+i.q || 0)));
+  // المحجوز = المستني + اللي اتوافق عليه ولسه المندوب ما استلمهوش
+  (L.returns || []).filter(r => r.status === 'pending' || r.status === 'approved').forEach(r => (r.items || []).forEach(i => pend[i.b] = (pend[i.b] || 0) + (+i.q || 0)));
   const ks = Object.keys(m).map(k => ({ b: k, l: m[k].l, av: m[k].n - m[k].r - (pend[k] || 0) })).filter(x => x.av > 0);
-  const stTxt = { pending: ['⏳ مستني موافقة المندوب', '#d97706'], approved: ['✅ اتوافق عليه', '#16a34a'], rejected: ['❌ اترفض', '#dc2626'] };
+  const stTxt = { pending: ['⏳ مستني موافقة المندوب', '#d97706'], approved: ['🚚 اتوافق — المندوب هيعدّي يستلم الكتب', '#2563eb'], received: ['✅ المندوب استلم الكتب', '#16a34a'], rejected: ['❌ اترفض', '#dc2626'] };
   app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#f97316,#dc2626)">↩️ مرتجعات<div class="small">تقدر ترجّع بس اللي اشتريته</div></div>
     ${ks.length ? `<div class="bklist" id="rl">${ks.map(x => `<div class="bk" data-b="${esc(x.b)}" data-av="${x.av}" data-l="${esc(x.l)}"><div class="bk-n">${esc(x.l)}</div><div class="small muted">اللي ينفع ترجّعه: ${x.av}</div>
       <div class="bk-row"><span class="qty"><button type="button" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" max="${x.av}" value="${retQ[x.b] || ''}" placeholder="0"><button type="button" data-d="1">+</button></span></div></div>`).join('')}</div>
       <div class="totbar"><div id="rtot" class="small">اختار العدد اللي عايز ترجّعه</div><button class="gobtn" id="rs">📤 ابعت طلب المرتجع</button></div>`
     : '<div class="card empty">مفيش كتب تقدر ترجّعها دلوقتي.</div>'}
-    ${(L.returns || []).length ? `<div class="vid-t" style="margin:14px 0 8px">طلبات المرتجع بتاعتك</div>${L.returns.map(r => `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${stTxt[r.status][1]}">${stTxt[r.status][0]}</b><span class="small muted">${fmtDate(r.at)}</span></div><div class="small">${itemsTxt(r.items)}</div>${r.reason ? `<div class="small">السبب: ${esc(r.reason)}</div>` : ''}</div>`).join('')}` : ''}`;
+    ${(L.returns || []).length ? `<div class="vid-t" style="margin:14px 0 8px">طلبات المرتجع بتاعتك</div>${L.returns.map(r => `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${(stTxt[r.status] || stTxt.pending)[1]}">${(stTxt[r.status] || stTxt.pending)[0]}</b><span class="small muted">${fmtDate(r.at)}</span></div><div class="small">${itemsTxt(r.items)}</div>${r.reason ? `<div class="small">السبب: ${esc(r.reason)}</div>` : ''}</div>`).join('')}` : ''}`;
   const rl = $('#rl'); if (!rl) return;
   const calc = () => { let N = 0; $$('.bk', rl).forEach(r => { let q = Math.max(0, parseInt($('input', r).value, 10) || 0); if (q > +r.dataset.av) { q = +r.dataset.av; $('input', r).value = q; } retQ[r.dataset.b] = q; N += q; r.classList.toggle('on', q > 0); }); $('#rtot').textContent = N ? `هترجّع ${N} نسخة` : 'اختار العدد اللي عايز ترجّعه'; };
   rl.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const i = $('input', b.parentNode); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + +b.dataset.d) || ''; calc(); });

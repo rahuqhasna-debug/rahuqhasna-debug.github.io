@@ -620,6 +620,8 @@ function load(){
   db.repKey ||= Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
   db.tlog ||= [];   // سجل المدرس: تعديل البيانات (القديم ← الجديد) والصور
   db.tret ||= [];   // مرتجعات المدرسين اللي اتوافق عليها من المراسلات (admin.html) وبتتنفّذ هنا أول ما البرنامج يفتح
+  // متابعة 10: المدرس اللي حدّد موقعه من التطبيق (tLoc) ومالوش موقع على الخريطة ← يظهر على الخريطة
+  for(const t of db.teachers) if(t && !t.loc && t.tLoc && t.tLoc.lat && t.tLoc.lng) t.loc={lat:+t.tLoc.lat, lng:+t.tLoc.lng};
   db.merchRets ||= []; db.idara ||= '';   // merchRets = مرتجعات للتجار، idara = الإدارة التعليمية
   db.route ||= []; db.editLog ||= []; db.pinH ||= '';   // route = خط السير (أكواد المدرسين)، editLog = سجل تعديل فواتير التجار، pinH = الرقم السري (متشفّر)
   // days = أيام خط السير [{id, n:الاسم, t:[أكواد المدرسين]}]، reg = التسجيل على برنامج الشركة {كود التسليم: تاريخ التسجيل}
@@ -829,6 +831,10 @@ function dayStats(day){
 
 /* ================= التوجيه ================= */
 let homeFilter = 'all', homeArea = '', homeQuery = '';
+/* متابعة 10 (بند 9): فلاتر المدرسين متعددة الاختيار — جوه القسم = أي واحدة، بين الأقسام = لازم يتحقق كله */
+const HF = {st:new Set(), vis:new Set(), acc:new Set(), area:new Set(), app:new Set(), ret:new Set()};
+const hfCount = () => Object.values(HF).reduce((a,s)=>a+s.size, 0);
+function hfReset(){ Object.values(HF).forEach(s=>s.clear()); }
 let curTeacher = null, sel = {}, closedGroups = new Set(), openBox = '', forceCls = false, othersOpen = false, tTab = 'del';
 try { closedGroups = new Set(JSON.parse(localStorage.getItem(KEY+'-closed')||'[]')); } catch(e){}
 const app = $('#app');
@@ -977,7 +983,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles v3">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}<div class="tile mtile"><span class="tl">الرسائل</span><div class="mt2"><a href="#/msgs" title="واتساب"><span class="mi">${WA_ICON}</span><span>واتساب</span></a><a href="admin.html" title="المراسلات"><span class="mi">${HICO.chat}</span><span>المراسلات${sbHas()?'':' 🔒'}</span>${sbBell?`<span class="badge">${sbBell}</span>`:''}</a></div></div>${ic('#/route',HICO.route,'خط السير','c4',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map',HICO.compass,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles v3">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}<div class="tile mtile"><span class="tl">الرسائل</span><div class="mt2"${sbHas()?'':' style="grid-template-columns:1fr"'}><a href="#/msgs" title="واتساب"><span class="mi">${WA_ICON}</span><span>واتساب</span></a>${sbHas()?`<a href="admin.html" title="المراسلات"><span class="mi">${HICO.chat}</span><span>المراسلات</span>${sbBell?`<span class="badge">${sbBell}</span>`:''}</a>`:''}</div></div>${ic('#/route',HICO.route,'خط السير','c4',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map',HICO.compass,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -1007,34 +1013,65 @@ function renderTeachers(){
   setHeader('👨‍🏫 المدرسين', false);
   const today=dayKey(), st=dayStats(today);
   if(!db.teachers.length){ app.innerHTML = topBanners() + EMPTY_T; return; }
-  const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
-  const idx=indexEntries();
-  const planToday=db.teachers.filter(t=>t.plan===today).length;
-  const owedT=db.teachers.filter(t=>idx[t.id]?.o).length;
-  const chip=(k,txt)=>`<button class="chip ${homeFilter===k?'on':''}" data-act="filter" data-k="${k}">${txt}</button>`;
+  // (القديم: homeFilter/homeArea من لينكات تانية) ← يتحوّل للفلاتر الجديدة
+  if(homeArea){ HF.area.add(homeArea); homeArea=''; }
+  if(homeFilter && homeFilter!=='all'){ const m={plan:['vis','plan'], today:['vis','today'], owed:['acc','owed'], done:['st','done'], part:['st','part'], none:['st','none']}[homeFilter]; if(m) HF[m[0]].add(m[1]); homeFilter='all'; }
   app.innerHTML = topBanners() + `
-    <div class="stickbar">${areas.length>1?`<div class="areabar"><select class="area" id="area"><option value="">📍 كل المناطق</option>${areas.map(a=>`<option ${a===homeArea?'selected':''}>${esc(a)}</option>`).join('')}</select></div>`:''}
+    <div class="stickbar">
     <div class="search">
       <input id="q" type="search" placeholder="🔎 أي حاجة: اسم، تليفون، قرية، «عربي إعدادي A»، «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
+      <button class="btn" id="hfBtn" style="white-space:nowrap">🔎 فلاتر${hfCount()?` (${hfCount()})`:''}</button>
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button>
     </div></div>
-    <div class="chips">
-      ${chip('all',`الكل (${db.teachers.length})`)}
-      ${planToday?chip('plan',`خط سير النهارده (${planToday})`):''}
-      ${chip('owed',`ليهم مستحق (${owedT})`)}
-      ${chip('today',`اتزاروا النهارده (${st.visits})`)}
-      ${chip('done',`✅ خلّصوا كتبهم (${db.teachers.filter(t=>idx[t.id]?.d && !idx[t.id].o).length})`)}
-      ${chip('part',`🟠 خدوا جزء وباقيلهم (${db.teachers.filter(t=>idx[t.id]?.d && idx[t.id].o).length})`)}
-      ${chip('none',`⚪ لسه ما استلموش خالص (${db.teachers.filter(t=>!idx[t.id]?.d).length})`)}
-    </div>
+    <div id="hfOn"></div>
     <div class="tlist" id="tlist"></div>`;
   const q=$('#q');
   q.addEventListener('input',()=>{homeQuery=q.value; renderList();});
   q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=document.querySelector('#tlist .titem'); if(f) location.hash='#/t/'+encodeURIComponent(f.dataset.id); }});
-  const ar=$('#area'); if(ar) ar.addEventListener('change',()=>{homeArea=ar.value; renderList();});
+  $('#hfBtn').onclick=openHomeFilters;
   if(matchMedia('(min-width:700px)').matches) q.focus();
   renderList();
 }
+// قايمة الفلاتر: كل اختيار بيتطبق على طول
+function openHomeFilters(){
+  const idx=indexEntries(), today=dayKey(), st=dayStats(today), T=db.teachers;
+  const areas=[...new Set(T.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const visited=new Set(db.entries.filter(e=>dk(e.dd)===today||dk(e.rd)===today).map(e=>e.t)), sbOn=sbHas();
+  const n=f=>T.filter(f).length;
+  const G=[
+    ['st','📦 الاستلام',[['done',`✅ خلّصوا كتبهم (${n(t=>idx[t.id]?.d && !idx[t.id].o)})`],['part',`🟠 خدوا جزء وباقيلهم (${n(t=>idx[t.id]?.d && idx[t.id].o)})`],['none',`⚪ لسه ما استلموش (${n(t=>!idx[t.id]?.d)})`]]],
+    ['vis','🚗 الزيارات',[['today',`اتزاروا النهارده (${st.visits})`],['plan',`خط سير النهارده (${n(t=>t.plan===today)})`]]],
+    ['acc','💰 الحساب',[['owed',`📚 ليهم مستحق كتب (${n(t=>idx[t.id]?.o)})`],['money',`💰 عليهم فلوس (${n(t=>ACC[t.id]?.owe>0)})`]]],
+    ['area','📍 المنطقة',areas.map(a=>[a,`${a} (${n(t=>t.area===a)})`])],
+    ...(sbOn?[['app','📲 التطبيق',[['in',`📲 مثبّت (${n(t=>sbApp[t.id])})`],['out',`🌐 لسه ما ثبّتش (${n(t=>!sbApp[t.id])})`]]],
+      ['ret','↩️ المرتجع',[['r',`↩️ عنده مرتجع (${n(t=>sbCnt[t.id]?.r)})`]]]]:[])
+  ];
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>🔎 فلاتر المدرسين</h3><div class="small muted">علّم على أي عدد. جوه نفس القسم = أي واحدة منهم، وبين الأقسام = لازم يتحقق كله.</div>
+    ${G.filter(g=>g[2].length).map(([k,ttl,opts])=>`<div class="small" style="margin:12px 0 4px;font-weight:800">${ttl}</div><div class="chips" style="flex-wrap:wrap">${opts.map(([v,l])=>`<button type="button" class="chip ${HF[k].has(v)?'on':''}" data-hk="${k}" data-hv="${esc(v)}">${esc(l)}</button>`).join('')}</div>`).join('')}
+    <div class="row2" style="margin-top:14px"><button class="btn ghost" id="hfClr">امسح الفلاتر</button><button class="btn pri" id="hfOk">تم (<span id="hfN"></span> مدرس)</button></div></div>`;
+  document.body.appendChild(m);
+  const upd=()=>{ renderList(); const b=$('#hfBtn'); if(b) b.textContent='🔎 فلاتر'+(hfCount()?` (${hfCount()})`:''); const c=$('#hfN',m); if(c) c.textContent=hfList().length; };
+  m.addEventListener('click', e=>{
+    if(e.target===m || e.target.id==='hfOk'){ m.remove(); return; }
+    if(e.target.id==='hfClr'){ hfReset(); m.querySelectorAll('[data-hk]').forEach(b=>b.classList.remove('on')); upd(); return; }
+    const b=e.target.closest('[data-hk]'); if(!b) return;
+    const s=HF[b.dataset.hk], v=b.dataset.hv; s.has(v)?s.delete(v):s.add(v); b.classList.toggle('on', s.has(v)); upd();
+  });
+  upd();
+}
+// المدرسين اللي بيعدّوا الفلاتر (من غير البحث)
+function hfOk(t, idx, today, visited){
+  const x=idx[t.id];
+  if(HF.st.size && !((HF.st.has('done') && x?.d && !x.o) || (HF.st.has('part') && x?.d && x.o) || (HF.st.has('none') && !x?.d))) return false;
+  if(HF.vis.size && !((HF.vis.has('today') && visited.has(t.id)) || (HF.vis.has('plan') && t.plan===today))) return false;
+  if(HF.acc.size && !((HF.acc.has('owed') && x?.o) || (HF.acc.has('money') && ACC[t.id]?.owe>0))) return false;
+  if(HF.area.size && !HF.area.has(t.area)) return false;
+  if(HF.app.size && !HF.app.has(sbApp[t.id]?'in':'out')) return false;
+  if(HF.ret.size && !sbCnt[t.id]?.r) return false;
+  return true;
+}
+function hfList(){ const idx=indexEntries(), today=dayKey(), v=new Set(db.entries.filter(e=>dk(e.dd)===today||dk(e.rd)===today).map(e=>e.t)); return db.teachers.filter(t=>hfOk(t, idx, today, v)); }
 const SUBJ_RE=[['ar',/^(ال)?عربي/],['math',/^(ال)?رياض/],['stu',/^(ال)?دراس/],['en',/^(ال)?(انجليز|انجلش|english)/],['sci',/^(ال)?علوم/]];
 const subjOf=w=>{ const m=SUBJ_RE.find(([k,re])=>re.test(w)); return m?m[0]:null; };
 // البحث بأي حاجة: كل الكلمات لازم تتطابق. A/B/C لوحده = التصنيف بس
@@ -1116,7 +1153,8 @@ var HICO=(()=>{ const K='stroke="#1f2937" stroke-width="2" stroke-linejoin="roun
 }; })();
 function phoneBtns(t){
   // 📨 = رسايل عبر تطبيق سلاح التلميذ (بتظهر بس للي داخل «💬 المراسلات» بالرقم السري على الموبايل ده)
-  const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>` : '';
+  // متابعة 10: + 🔄 اطلب تحديث (بيفتح المراسلات على صفحة المدرس وطلب التحديث على طول)
+  const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>${sbIds[t.id]?`<a class="ico" data-act="noop" href="admin.html#/ru/${encodeURIComponent(sbIds[t.id])}" title="اطلب تحديث بيانات المدرس">🔄</a>`:''}` : '';
   if(!t.phone) return app;
   return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico wa" data-act="noop" href="https://wa.me/2${esc(normPhone(t.phone))}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>${app}`;
 }
@@ -1126,14 +1164,14 @@ var WA_ICON='<svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true" 
 var sbCnt=(()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-cnt')||'{}'); }catch(e){ return {}; } })();
 function sbTags(t){ const x=sbHas()&&sbCnt[t.id]; if(!x) return '';
   const s=(bg,txt)=>` <span style="background:${bg};color:#fff;border-radius:10px;padding:0 6px;font-size:12px;font-weight:700;white-space:nowrap">${txt}</span>`;
-  return (x.m?s('#16a34a','💬 '+x.m):'')+(x.e?s('#7c3aed','📝'+(x.e>1?' '+x.e:'')):'')+(x.o?s('#ea580c','🛒 '+x.o):''); }
+  return (x.m?s('#16a34a','💬 '+x.m):'')+(x.e?s('#7c3aed','📝'+(x.e>1?' '+x.e:'')):'')+(x.o?s('#ea580c','🛒 '+x.o):'')+(x.r?s('#e11d48','↩️ '+x.r):''); }
 async function sbCntPull(S){
   try{
     const rev={}; for(const k in sbIds) rev[sbIds[k]]=k;
     const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-1999'}}); return r.ok?r.json():[]; };
-    const [m,e,o]=await Promise.all([q('messages?select=teacher_id,id&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id&status=eq.pending'), q('orders?select=teacher_id&status=eq.pending')]);
-    const c={}, add=(l,k)=>l.forEach(x=>{ const id=rev[x.teacher_id]; if(id){ const z=(c[id] ||= {m:0,e:0,o:0,l:0}); z[k]++; if(x.id>z.l) z.l=x.id; } });
-    add(m,'m'); add(e,'e'); add(o,'o');
+    const [m,e,o,rt]=await Promise.all([q('messages?select=teacher_id,id&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id&status=eq.pending'), q('orders?select=teacher_id&status=eq.pending'), q('returns?select=teacher_id&status=in.(pending,approved)')]);
+    const c={}, add=(l,k)=>l.forEach(x=>{ const id=rev[x.teacher_id]; if(id){ const z=(c[id] ||= {m:0,e:0,o:0,r:0,l:0}); z[k]=(z[k]||0)+1; if(x.id>z.l) z.l=x.id; } });
+    add(m,'m'); add(e,'e'); add(o,'o'); add(rt,'r');   // r = مرتجعات لسه ما استلمتهاش (متابعة 10)
     const ch=JSON.stringify(c)!==JSON.stringify(sbCnt); sbCnt=c; try{ localStorage.setItem('selah-trial-cnt', JSON.stringify(c)); }catch(er){}
     if(ch && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.querySelector('.modal')){ const y=scrollY; render(); scrollTo(0,y); }
   }catch(er){}
@@ -1141,6 +1179,7 @@ async function sbCntPull(S){
 /* خريطة: id المدرس في البرنامج ← id بتاعه في المراسلات (عشان أيقونة 📨 تفتح الشات بتاعه على طول) */
 var sbIds = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-ids')||'{}'); }catch(e){ return {}; } })();
 var sbUpd = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-upd')||'{}'); }catch(e){ return {}; } })();
+var sbApp = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-app')||'{}'); }catch(e){ return {}; } })();   // id المدرس في البرنامج ← 1 لو مثبّت التطبيق
 var sbRecv = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-recv')||'{}'); }catch(e){ return {}; } })(), sbPullAt=0;
 /* بند 45: مقارنة اللي المدرس علّمه في «📦 استلمت إيه» باللي المندوب سجّله: ok أخضر، bad أحمر، none أبيض (لسه ماعلّمش) */
 function recvCmp(t){
@@ -1172,11 +1211,15 @@ async function sbMapPull(){
   try{
     if(!sbHas() || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
     const m={}, rows=[];
-    let cols='id,local_id,a:profile->address,l:profile->loc,d:profile->days,ro:recv_open,rv:recv';
+    let cols='id,local_id,a:profile->address,l:profile->loc,d:profile->days,ro:recv_open,rv:recv,ap:app_at';
     for(let i=0;;i+=1000){ let r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:`${i}-${i+999}`}});
+      if(!r.ok && i===0 && cols.includes('app_at')){ cols=cols.replace(',ap:app_at',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema7 لسه ماتشغلش
       if(!r.ok && i===0 && cols.includes('recv')){ cols=cols.replace(',ro:recv_open,rv:recv',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema4 لسه ماتشغلش
       if(!r.ok) return; const j=await r.json(); j.forEach(x=>{ m[x.local_id]=x.id; rows.push(x); }); if(j.length<1000) break; }
     sbIds=m; try{ localStorage.setItem('selah-trial-ids', JSON.stringify(m)); }catch(e){}
+    // متابعة 10: مين مثبّت التطبيق (لفلتر «📲 مثبّت / 🌐 مش مثبّت»)
+    const inst={}; for(const x of rows) if(x.ap) inst[x.local_id]=1;
+    if(cols.includes('app_at') && JSON.stringify(inst)!==JSON.stringify(sbApp)){ sbApp=inst; try{ localStorage.setItem('selah-trial-app', JSON.stringify(inst)); }catch(e){} }
     // حالة تحديث البيانات (زي المراسلات بالظبط): full = حدّث كله، part = باقيله جزء، none = ماحدّثش
     const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-4999'}}); return r.ok?r.json():[]; };
     const [pe,ap,op]=await Promise.all([q('edit_requests?select=teacher_id&status=eq.pending'), q('edit_requests?select=teacher_id&status=eq.approved'), q('update_requests?select=teacher_id&status=eq.open')]);
@@ -1241,28 +1284,26 @@ function renderList(){
   const owedBy={}; for(const e of owedEntries()) (owedBy[e.t] ||= []).push(e);
   const visitedToday=new Set(db.entries.filter(e=>dk(e.dd)===today||dk(e.rd)===today).map(e=>e.t));
   let list=db.teachers.filter(t=>{
-    if(homeArea && t.area!==homeArea) return false;
-    const x=idx[t.id];
-    if(homeFilter==='plan' && t.plan!==today) return false;
-    if(homeFilter==='owed' && !x?.o) return false;
-    if(homeFilter==='today' && !visitedToday.has(t.id)) return false;
-    if(homeFilter==='none' && x?.d) return false;
-    if(homeFilter==='done' && !(x?.d && !x.o)) return false;
-    if(homeFilter==='part' && !(x?.d && x.o)) return false;
+    if(!hfOk(t, idx, today, visitedToday)) return false;   // متابعة 10: الفلاتر المتعددة
     if(!raw) return true;
     if(isNum) return !!qd && (t.phone||'').includes(qd);
     return matchTeacher(t, Q, owedBy[t.id]||[]);
   });
-  const rk=(homeArea || homeFilter==='plan') ? recvRankFn() : null;   // شغال على قرية/خط سير: اللي استلم ينزل تحت واللي لسه فوق
+  const rk=(HF.area.size || HF.vis.has('plan')) ? recvRankFn() : null;   // شغال على قرية/خط سير: اللي استلم ينزل تحت واللي لسه فوق
   const sbOn=sbHas(), sbR=t=>{ const x=sbOn&&sbCnt[t.id]; return x&&(x.m||x.o) ? 1e12+(x.l||0)+(x.o||0) : 0; };   // اللي بعتوا رسايل أو طلبات في المراسلات فوق (الأحدث الأول)
   list.sort((a,b)=>{
     { const d=sbR(b)-sbR(a); if(d) return d; }
     if(rk){ const d=rk(a)-rk(b); if(d) return d; }
     const la=idx[a.id]?.last||'', lb=idx[b.id]?.last||'';
-    if(homeFilter==='all' && !raw && la!==lb) return lb.localeCompare(la);
+    if(!hfCount() && !raw && la!==lb) return lb.localeCompare(la);
     return a.name.localeCompare(b.name,'ar');
   });
   const total=list.length; list=list.slice(0,80);
+  // الفلاتر الشغالة ظاهرة تحت البحث (✕ تشيل الفلتر)
+  const ho=$('#hfOn'); if(ho){ const on=[]; for(const k in HF) for(const v of HF[k]) on.push([k,v]);
+    const LBL={done:'✅ خلّصوا',part:'🟠 خدوا جزء',none:'⚪ لسه ما استلموش',today:'اتزاروا النهارده',plan:'خط سير النهارده',owed:'📚 ليهم مستحق',money:'💰 عليهم فلوس',in:'📲 مثبّت',out:'🌐 مش مثبّت',r:'↩️ عنده مرتجع'};
+    ho.innerHTML=on.length?`<div class="chips" style="flex-wrap:wrap;margin:0 0 6px">${on.map(([k,v])=>`<button type="button" class="chip on" data-hfx="${k}" data-v="${esc(v)}">${esc(k==='area'?'📍 '+v:(LBL[v]||v))} ✕</button>`).join('')}<span class="small muted" style="align-self:center">${total} مدرس</span></div>`:'';
+    ho.onclick=e=>{ const b=e.target.closest('[data-hfx]'); if(!b) return; HF[b.dataset.hfx].delete(b.dataset.v); const hb=$('#hfBtn'); if(hb) hb.textContent='🔎 فلاتر'+(hfCount()?` (${hfCount()})`:''); renderList(); }; }
   const el=$('#tlist');
   if(!total){ el.innerHTML=`<div class="empty" style="grid-column:1/-1">${raw?'مفيش مدرس بالاسم ده في الصفحة دي':'مفيش مدرسين بالاختيار ده'}<br><br><button class="btn" data-act="new-teacher" data-name="${esc(isNum||Q.owed||Q.subjs.length||Q.stages.length||Q.letter?'':raw)}" data-phone="${esc(isNum?raw:'')}">➕ ضيف مدرس جديد</button></div>`; return; }
   let head='';
@@ -1271,7 +1312,7 @@ function renderList(){
     const desc=[Q.owed?'ليهم مستحق':'', ...Q.subjs.map(s=>SUBJ[s]), ...Q.stages.map(s=>STAGES[s].name), Q.letter?`تصنيف ${Q.letter}`:'', areaHit.length===1?`في ${areaHit[0]}`:''].filter(Boolean).join(' ');
     head=`<div class="lhead">${total} مدرس ${esc(desc)}</div>`;
   }
-  const showOwed = Q.owed || homeFilter==='owed';
+  const showOwed = Q.owed || HF.acc.has('owed');
   el.innerHTML = head + list.map(t=>{
     const oe = showOwed ? (owedBy[t.id]||[]).filter(e=>owedMatch(e, Q.owed?Q.subjs:null, Q.owed?Q.stages:null)) : [];
     return teacherCard(t, idx[t.id], oe.length?`<div class="oline">⏳ ${esc(owedLine(oe))}</div>`:'');
@@ -1748,7 +1789,7 @@ function stockCard(){
 function isOwnerApp(){ const h=s=>{let x=5381;for(const c of String(s||'').trim().toLowerCase())x=((x*33)^c.charCodeAt(0))>>>0;return x.toString(36)}; return [db.mail, db.driveMail].some(m=>m && h(m)==='vjbary'); }
 function renderSettings(){
   setHeader('⚙️ الإعدادات', false);
-  app.innerHTML=`${isOwnerApp()?`<a class="card" href="admin.html#/settings" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;border:2px solid #f59e0b;background:linear-gradient(135deg,#fffbeb,#fef3c7)"><span style="font-size:34px">👑</span><span class="grow"><b style="font-size:18px;color:#92400e">لوحة المالك</b><br><span class="small" style="color:#78350f">أرقام المناديب السرية والموافقة عليهم وقفلهم</span></span><span style="font-size:22px;color:#92400e">←</span></a>`:''}
+  app.innerHTML=`${sbHas()?'':`<a class="card" href="admin.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;border:2px solid #7c3aed;background:linear-gradient(135deg,#f5f3ff,#ede9fe)"><span style="font-size:34px">💬</span><span class="grow"><b style="font-size:18px;color:#5b21b6">فعّل المراسلات</b><br><span class="small" style="color:#4c1d95">اكتب الرقم السري اللي وصلك من المالك — بعدها أيقونة المراسلات هتظهر في الرئيسية</span></span><span style="font-size:22px;color:#5b21b6">←</span></a>`}${isOwnerApp()?`<a class="card" href="admin.html#/settings" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;border:2px solid #f59e0b;background:linear-gradient(135deg,#fffbeb,#fef3c7)"><span style="font-size:34px">👑</span><span class="grow"><b style="font-size:18px;color:#92400e">لوحة المالك</b><br><span class="small" style="color:#78350f">أرقام المناديب السرية والموافقة عليهم وقفلهم</span></span><span style="font-size:22px;color:#92400e">←</span></a>`:''}
     <div class="card"><h3 class="sec-t">👤 المندوب</h3>
       <div class="field"><label>اسم المندوب</label><input id="rep" value="${esc(db.rep)}"></div>
       <div class="field"><label>الجيميل (حساب جوجل اللي النسخ بتترفع على الدرايف بتاعه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
@@ -1956,7 +1997,7 @@ document.addEventListener('click', e=>{
     case 'edit-teacher': teacherForm(tById(curTeacher)); break;
     case 'photos': openPhotos(el.dataset.id); break;
     case 'new-teacher': e.preventDefault(); teacherForm(null, {name:el.dataset.name||'', phone:el.dataset.phone||''}); break;
-    case 'filter': homeFilter=el.dataset.k; renderTeachers(); break;
+    case 'filter': hfReset(); homeFilter=el.dataset.k; renderTeachers(); break;
     case 'copy-owed': copyText(owedText()); break;
     case 'range': { const r=el.dataset.r, d=new Date(); repTo=dayKey();
       if(r==='today') repFrom=dayKey(); else if(r==='week') repFrom=dayKey(new Date(Date.now()-6*864e5));
@@ -2160,7 +2201,7 @@ $('#fileXlsx').addEventListener('change', async e=>{
       delete ex.isNew; delete ex.newArea; }   // اتستورد من الشيت → مبقاش «جديد»
     else db.teachers.push({id:uid(), ...rec, name:rec.name||rec.phone, notes:'', created:new Date().toISOString()});
   }
-  save(); location.hash='#/teachers'; homeFilter='all'; render(); toast(`✅ اتستورد ${plan.length} مدرس`);
+  save(); location.hash='#/teachers'; homeFilter='all'; hfReset(); render(); toast(`✅ اتستورد ${plan.length} مدرس`);
 });
 
 /* ================= تصدير إكسل ================= */
@@ -3179,7 +3220,7 @@ function alertA(groups){   // groups = [[القرية, [مدرسين]], ...]
     <button class="btn ghost" style="width:100%" data-al="x">بعدين</button></div>`;
   document.body.appendChild(m);
   m.addEventListener('click', e=>{ const b=e.target.closest('[data-al]'); if(e.target===m){ m.remove(); return; } if(!b) return;
-    if(b.dataset.al==='back'){ homeArea=b.dataset.a; homeFilter='owed'; homeQuery=''; m.remove(); if(location.hash==='#/teachers') render(); else location.hash='#/teachers'; }
+    if(b.dataset.al==='back'){ hfReset(); homeArea=b.dataset.a; homeFilter='owed'; homeQuery=''; m.remove(); if(location.hash==='#/teachers') render(); else location.hash='#/teachers'; }
     else m.remove(); });
 }
 // بعد كل تسليم/بيع: لو دخل قرية تانية والقرية اللي قبلها فيها مدرسين A ما استلموش → تنبيه
@@ -4822,8 +4863,9 @@ function renderMsgs(){
   for(const id of [...msgSel]) if(!tById(id)) msgSel.delete(id);
   const hasSb=sbHas();
   // تبويبين: واتساب (هنا) و 💬 المراسلات (admin.html — بتطلب الرقم السري لو مش داخل)
-  const tabsH=`<div class="row2" style="margin-bottom:10px"><button class="btn ok" style="font-size:16px" disabled>${WA_ICON} واتساب</button>
-    <a class="btn" href="admin.html" style="font-size:16px;text-align:center;position:relative">💬 المراسلات${hasSb?'':' 🔒'}${sbBell?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:0 7px;font-size:13px">${sbBell}</span>`:''}</a></div>`;
+  // متابعة 10: تبويب المراسلات بيظهر بس للي فعّلها (التفعيل من ⚙️ الإعدادات)
+  const tabsH=hasSb?`<div class="row2" style="margin-bottom:10px"><button class="btn ok" style="font-size:16px" disabled>${WA_ICON} واتساب</button>
+    <a class="btn" href="admin.html" style="font-size:16px;text-align:center;position:relative">💬 المراسلات${sbBell?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:0 7px;font-size:13px">${sbBell}</span>`:''}</a></div>`:'';
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const chip=(k,v,l)=>`<button class="chip ${msgF[k]===v?'on':''}" data-act="msg-f" data-k="${k}" data-v="${esc(v)}">${l}</button>`;
   app.innerHTML=tabsH+`<div class="card"><h3 class="sec-t">✍️ الرسالة</h3>
