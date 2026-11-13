@@ -627,10 +627,26 @@ function load(){
   // days = أيام خط السير [{id, n:الاسم, t:[أكواد المدرسين]}]، reg = التسجيل على برنامج الشركة {كود التسليم: تاريخ التسجيل}
   fixDays();
 }
+// متابعة 15: خط السير = السبعة أيام ثابتين (السبت…الجمعة) من غير تاريخ. id اليوم = wk-sat … والعلامة fx:1
+// الأيام القديمة اللي بالتاريخ بتتدمج في يوم الأسبوع بتاعها (wk، وإلا من date)؛ اللي مالوش الاتنين بيفضل زي ما هو تحت السبعة.
+function wk7(){ return [['sat','السبت'],['sun','الأحد'],['mon','الاتنين'],['tue','التلات'],['wed','الأربع'],['thu','الخميس'],['fri','الجمعة']]; }
+function fixWeek(){
+  const JSD=['sun','mon','tue','wed','thu','fri','sat'], fx={}, rest=[];
+  for(const [k] of wk7()) fx[k]=[];
+  for(const d of (Array.isArray(db.days)?db.days:[])){
+    if(!d || typeof d!=='object') continue;
+    if(!Array.isArray(d.t)) d.t=[];
+    const wk = d.wk || (/^\d{4}-\d\d-\d\d$/.test(d.date||'') ? JSD[new Date(d.date+'T12:00:00').getDay()] : '');
+    if(wk && fx[wk]){ for(const id of d.t) if(!fx[wk].includes(id)) fx[wk].push(id); }
+    else rest.push(d);
+  }
+  db.days = wk7().map(([k,n])=>({id:'wk-'+k, n, t:fx[k], wk:k, fx:1})).concat(rest);
+}
 function fixDays(){
   if(!Array.isArray(db.days)) db.days=[]; if(!db.reg || typeof db.reg!=='object' || Array.isArray(db.reg)) db.reg={};
   if(Array.isArray(db.route) && db.route.length && !db.days.length) db.days=[{id:'d'+Date.now().toString(36), n:'اليوم الأول', t:db.route.slice()}];   // خط السير القديم بيبقى «اليوم الأول»
   db.route=[];
+  fixWeek();
   if(!Array.isArray(db.tlog)) db.tlog=[];
   // كشكول بقى مادة مش تخصص: التخصص القديم «كشكول» → مادة كشكول + «كل الصفوف»
   for(const t of db.teachers||[]) if(t && t.spec==='كشكول'){ t.subjects=[...new Set([...(t.subjects||[]),'kash'])]; t.subjectText=subjLabel(t.subjects); t.stage ||= 'p'; t.spec='كل الصفوف'; }
@@ -983,7 +999,7 @@ function renderHome(){
   // كروت: دايرة ملونة + الاسم + سطر صغير بالأرقام + علامة حمرا لو فيه حاجة مستنية
   const ic=(href,e,l,g,sub,badge)=>`<a class="tile" href="${href}"><span class="ti ${g}">${e}</span><span class="tl">${l}</span><span class="ts">${sub}</span>${badge?`<span class="badge">${badge}</span>`:''}</a>`;
   const vn=visitGroups().filter(v=>v.left.length).length, locN=db.teachers.filter(t=>t.loc).length;
-  const grid=`<div class="igrid tiles v3">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}<div class="tile mtile"><span class="tl">الرسائل</span><div class="mt2"${sbHas()?'':' style="grid-template-columns:1fr"'}><a href="#/msgs" title="واتساب"><span class="mi">${WA_ICON}</span><span>واتساب</span></a>${sbHas()?`<a href="admin.html" title="المراسلات"><span class="mi">${HICO.chat}</span><span>المراسلات</span>${sbBell?`<span class="badge">${sbBell}</span>`:''}</a>`:''}</div></div>${ic('#/route',HICO.route,'خط السير','c4',db.days.length?`${db.days.length} يوم`:'رتّب أيامك')}${ic('#/map',HICO.compass,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
+  const grid=`<div class="igrid tiles v3">${ic('#/teachers',HICO.users,'المدرسين','c1',`${db.teachers.length} مدرس`)}${ic('#/sales',HICO.bag,'البيع','c2',po?`${po} طلب مستني`:'بيع وطلبات وتجار',po)}<div class="tile mtile"><span class="tl">الرسائل</span><div class="mt2"${sbHas()?'':' style="grid-template-columns:1fr"'}><a href="#/msgs" title="واتساب"><span class="mi">${WA_ICON}</span><span>واتساب</span></a>${sbHas()?`<a href="admin.html" title="المراسلات"><span class="mi">${HICO.chat}</span><span>المراسلات</span>${sbBell?`<span class="badge">${sbBell}</span>`:''}</a>`:''}</div></div>${ic('#/route',HICO.route,'خط السير','c4',(n=>n?`${n} مدرس`:'رتّب أيامك')(new Set(db.days.flatMap(d=>d.t||[])).size))}${ic('#/map',HICO.compass,'الخريطة','c5',`${locN} ليهم موقع`)}${ic('#/visits',HICO.car,'الزيارات','c6',vn?`${vn} مستني تسجيل`:'كله متسجل ✅',vn)}</div>`;
   setTimeout(maybeHello, 1300);
   if(!db.teachers.length){ app.classList.remove('home','q'); app.innerHTML = topBanners() + EMPTY_T + grid + `<div class="sign">${SIGN}</div>`; return; }
   const x=todayData();
@@ -4362,15 +4378,18 @@ function dayText(d){ const take=dayTake(d.t);
     `\n\n👥 المدرسين (${d.t.length}):\n` + d.t.map(tById).filter(Boolean).map(t=>{ const n=planNeed(t); return `• ${t.name}${t.phone?` (${t.phone})`:''}${t.area?` — ${t.area}`:''}${n.ow.length?` — باقيله ${n.ow.length} كتاب`:''}${n.money?` — عليه ${fmtM(n.money)}`:''}${n.ord.length?' — عنده طلب':''}`; }).join('\n');
 }
 function renderRoute(){
-  setHeader('🧭 خط السير', false); cleanDays();
-  const all=routeIds(), allTake=dayTake(all);
-  app.innerHTML=`<div class="card"><div class="kv"><span>الأيام</span><b style="font-size:20px">${db.days.length}</b></div><div class="kv"><span>المدرسين في كل الأيام</span><b>${all.length}</b></div><div class="kv"><span>🚗 الكتب لكل الأيام</span><b>${takeSum(allTake)}</b></div>
-    <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="day-add">➕ يوم جديد</button><button class="btn" data-act="route-map" ${all.some(id=>tById(id)?.loc)?'':'disabled'}>📍 الكل على الخريطة</button></div>
-    <p class="hint">ضيف الأيام اللي جاية، وفي كل يوم المدرسين اللي ناوي تزورهم (بالقرية أو بالاسم). مش لازم تلتزم بيه — ده ترتيب ليك بس.</p></div>
-    ${db.days.length ? db.days.map(d=>{ const tk=takeSum(dayTake(d.t)); return `<div class="card dayc"><a class="grow" href="#/route/${encodeURIComponent(d.id)}" style="text-decoration:none;color:inherit"><b style="font-size:17px">📅 ${esc(d.n)}</b><div class="small muted">👥 ${d.t.length} مدرس • 🚗 ${tk} كتاب${dayAreas(d.t)}</div></a><button class="btn sm danger" data-act="day-del" data-id="${esc(d.id)}" title="امسح اليوم">🗑️</button></div>`; }).join('')
-      : '<div class="card empty">لسه مفيش أيام.<br>دوس «➕ يوم جديد» وضيف فيه المدرسين اللي هتزورهم.</div>'}
-    ${db.days.length?'<button class="btn danger" data-act="route-clear" style="width:100%">🗑️ امسح كل الأيام</button>':''}`;
+  setHeader('🧭 خط السير', false); cleanDays(); dayAutoPick='';
+  const all=routeIds(), allTake=dayTake(all), tw=WK[new Date().getDay()];
+  const fixed=db.days.filter(d=>d.fx), rest=db.days.filter(d=>!d.fx);
+  const card=d=>{ const tk=takeSum(dayTake(d.t)); return `<div class="card dayc"><a class="grow" href="#/route/${encodeURIComponent(d.id)}" style="text-decoration:none;color:inherit"><b style="font-size:17px">📅 ${esc(d.n)}</b>${d.fx&&d.wk===tw?' <span class="pill ok">النهارده</span>':''}<div class="small muted">${d.t.length?`👥 ${d.t.length} مدرس • 🚗 ${tk} كتاب${dayAreas(d.t)}`:'لسه مفيش مدرسين — دوس واختار'}</div></a>${d.fx?'':`<button class="btn sm danger" data-act="day-del" data-id="${esc(d.id)}" title="امسح اليوم">🗑️</button>`}</div>`; };
+  app.innerHTML=`<div class="card"><div class="kv"><span>المدرسين في كل الأيام</span><b style="font-size:20px">${all.length}</b></div><div class="kv"><span>🚗 الكتب لكل الأيام</span><b>${takeSum(allTake)}</b></div>
+    <button class="btn" style="width:100%;margin-top:8px" data-act="route-map" ${all.some(id=>tById(id)?.loc)?'':'disabled'}>📍 الكل على الخريطة</button>
+    <p class="hint">دوس على اليوم واختار المدرسين اللي هتزورهم فيه (بالساعة أو بالقرية أو بالاسم). مش لازم تلتزم بيه — ده ترتيب ليك بس.</p></div>
+    ${fixed.map(card).join('')}
+    ${rest.length?`<h3 class="sec-t">🗂️ أيام قديمة</h3>${rest.map(card).join('')}`:''}
+    ${all.length||rest.length?'<button class="btn danger" data-act="route-clear" style="width:100%">🗑️ فضّي كل الأيام</button>':''}`;
 }
+var dayAutoPick='';   // اليوم الفاضي بيفتح اختيار المدرسين لوحده (مرة واحدة لكل دخول)
 function renderDay(id){
   const d=dayById(id); if(!d){ location.hash='#/route'; return; }
   cleanDays(); setHeader('📅 '+d.n, true);
@@ -4380,45 +4399,44 @@ function renderDay(id){
   app.innerHTML=`<div class="card"><div class="kv"><span>مدرسين ${esc(d.n)}</span><b style="font-size:20px">${list.length}</b></div>
     ${list.length?`<div class="kv"><span>✅ اتزاروا النهارده</span><b style="color:var(--ok)">${nv} من ${list.length}${nv===list.length?' 🎉 خلّصت':''}</b></div>`:''}
     <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="route-pick" data-id="${esc(d.id)}">➕ ضيف / شيل مدرسين</button><button class="btn" data-act="route-map" data-id="${esc(d.id)}" ${list.some(t=>t.loc)?'':'disabled'}>📍 على الخريطة</button></div>
-    <div class="row2" style="margin-top:8px"><button class="btn ghost sm" data-act="day-ren" data-id="${esc(d.id)}">✏️ غيّر اسم اليوم</button><button class="btn ghost sm" data-act="day-del" data-id="${esc(d.id)}">🗑️ امسح اليوم</button></div></div>
+    ${d.fx ? (list.length?`<button class="btn ghost sm" style="width:100%;margin-top:8px" data-act="day-empty" data-id="${esc(d.id)}">🧹 فضّي اليوم ده</button>`:'')
+      : `<div class="row2" style="margin-top:8px"><button class="btn ghost sm" data-act="day-ren" data-id="${esc(d.id)}">✏️ غيّر اسم اليوم</button><button class="btn ghost sm" data-act="day-del" data-id="${esc(d.id)}">🗑️ امسح اليوم</button></div>`}</div>
     <div class="card">${takeHtml(dayTake(d.t))}${list.length?`<button class="btn" style="width:100%;margin-top:10px" data-act="day-copy" data-id="${esc(d.id)}">📋 انسخ خطة اليوم (للواتساب)</button>`:''}</div>
     ${list.length ? searchBar('rq')+`<div class="tlist" id="rlist">${list.map(t=>{ const n=planNeed(t), o=others(t.id);
-        return teacherCard(t, idx[t.id], (vt(t.id)?'<div class="vtoday">✅ اتزار النهارده</div>':'') + (n.ow.length?`<div class="oline">⏳ ${esc(owedLine(n.ow.map(b=>({b,q:1}))))}</div>`:'') + (n.ord.length?`<div class="oline" style="color:var(--sel-ink)">🛒 طلب: ${n.ord.map(s=>itemsLine(s.items)).join(' • ')}</div>`:'') +
+        return teacherCard(t, idx[t.id], (vt(t.id)?'<div class="vtoday">✅ اتزار النهارده</div>':'') + (d.wk&&tDay(t, d.wk)?`<div class="small" style="color:var(--brand);font-weight:700">${esc(d.n)} ${tDay(t, d.wk)}</div>`:'') + (n.ow.length?`<div class="oline">⏳ ${esc(owedLine(n.ow.map(b=>({b,q:1}))))}</div>`:'') + (n.ord.length?`<div class="oline" style="color:var(--sel-ink)">🛒 طلب: ${n.ord.map(s=>itemsLine(s.items)).join(' • ')}</div>`:'') +
           (o.length?`<div class="small muted">📅 كمان في: ${esc(o.join('، '))}</div>`:'') +
           `<div class="acts" style="margin-top:6px">${t.loc?`<button class="btn sm pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:'<span class="small muted">📍 ملوش موقع</span>'}<button class="btn sm danger" data-act="route-rm" data-id="${esc(t.id)}" data-d="${esc(d.id)}">✕ شيله</button></div>`); }).join('')}</div>`
-      : '<div class="card empty">لسه ما اخترتش مدرسين لليوم ده.<br>دوس «➕ ضيف / شيل مدرسين»: اختار قرية ومنها المدرسين اللي عايزهم، أو دوّر على أي مدرس بالاسم.</div>'}`;
+      : '<div class="card empty">لسه ما اخترتش مدرسين لليوم ده.<br>دوس «➕ ضيف / شيل مدرسين»: حدد الساعة أو اختار قرية، أو دوّر على أي مدرس بالاسم.</div>'}`;
   bindSearch('rq', '#rlist');
+  if(d.fx && !d.t.length && dayAutoPick!==d.id){ dayAutoPick=d.id; setTimeout(()=>{ if(location.hash==='#/route/'+encodeURIComponent(d.id) && !document.querySelector('.modal')) routePick(d.id); }, 250); }
 }
-// يوم جديد بالتاريخ (طلب شريف 2026-11-12): النهارده / بكرة / بعد بكرة / تاريخ تاني ← بعدها يرشّح المدرسين اللي عندهم سنتر في اليوم ده
 var WK=['sun','mon','tue','wed','thu','fri','sat'];
-function dayAdd(){
-  const k=n=>dayKey(new Date(Date.now()+n*864e5));
-  const m=document.createElement('div'); m.className='modal';
-  m.innerHTML=`<div class="box"><h3>📅 يوم جديد — إمتى؟</h3>
-    <div class="dpick">${['النهارده','بكرة','بعد بكرة'].map((l,n)=>`<button class="btn ${n?'':'pri'}" data-dn="${k(n)}"><b>${l}</b><div class="small">${dayName(k(n))} ${fmtDay(k(n))}</div></button>`).join('')}</div>
-    <div class="field" style="margin-top:10px"><label>أو اختار تاريخ تاني</label><input type="date" id="dn_d" value="${k(3)}"></div>
-    <div class="row2"><button class="btn ok" id="dn_ok">✅ اعمل اليوم ده</button><button class="btn ghost" id="dn_x">إلغاء</button></div></div>`;
-  document.body.appendChild(m);
-  const make=dk2=>{ if(!/^\d{4}-\d\d-\d\d$/.test(dk2||'')) return alert('اختار التاريخ');
-    const id=uid(), wk=WK[new Date(dk2+'T12:00:00').getDay()], nm=`${dayName(dk2)} ${fmtDay(dk2)}`;
-    m.remove(); db.days.push({id, n:nm, t:[], date:dk2, wk}); save(); location.hash='#/route/'+encodeURIComponent(id); toast(`📅 ${nm} اتضاف`);
-    setTimeout(()=>routePick(id), 250); };
-  m.addEventListener('click', e=>{ if(e.target===m){ m.remove(); return; } const b=e.target.closest('[data-dn]'); if(b) make(b.dataset.dn); });
-  m.querySelector('#dn_ok').onclick=()=>make(m.querySelector('#dn_d').value); m.querySelector('#dn_x').onclick=()=>m.remove();
-}
 // المدرس عنده سنتر في يوم الأسبوع ده؟ (من «أيام وساعات السنتر» اللي كتبها في المراسلات)
 function tDay(t, wk){ const d=t.tDays && wk && t.tDays[wk]; return d ? (d.f||d.t ? `🕒 ${d.f||'؟'}–${d.t||'؟'}` : '🕒 موجود') : ''; }
+// الساعة «HH:MM» ← دقايق (أو null)
+function hmMin(s){ const m=/^(\d{1,2}):(\d{2})/.exec(String(s||'')); return m ? (+m[1])*60 + (+m[2]) : null; }
+// ساعات سنتر المدرس في اليوم ده بتتقاطع مع الوقت المختار (f/to بالدقايق، أي واحدة ممكن تبقى null)؟ اللي ما كتبش ساعات = لأ
+function tDayIn(t, wk, f, to){
+  const d=t.tDays && wk && t.tDays[wk]; if(!d) return false;
+  let a=hmMin(d.f), b=hmMin(d.t); if(a==null && b==null) return false;
+  if(a==null) a=0; if(b==null) b=1440; if(b<=a) b+=1440;   // سنتر بيعدّي نص الليل
+  let x=f==null?0:f, y=to==null?1440:to; if(y<=x) y+=1440;
+  return a<y && b>x;
+}
+const tNoDays = t => !t.tDays || typeof t.tDays!=='object' || !Object.keys(t.tDays).length;   // لسه ما كتبش أيام السنتر خالص
 function routePick(dayId){
   const day=dayById(dayId); if(!day) return;
-  const chosen=new Set(day.t), AS=new Set(), CS=new Set(); let q='', needOnly=false, onlyDay=!!day.wk;   // AS = القرى المختارة (أكتر من قرية)، CS = التصنيف، onlyDay = اللي عندهم سنتر اليوم ده
-  const WN={sat:'السبت',sun:'الأحد',mon:'الاتنين',tue:'التلات',wed:'الأربع',thu:'الخميس',fri:'الجمعة'}[day.wk]||'';
-  const nDay=day.wk?db.teachers.filter(t=>tDay(t, day.wk)).length:0, nNo=db.teachers.filter(t=>!t.tDays || !Object.keys(t.tDays).length).length;
+  const wk=day.fx?day.wk:'', WN=wk?day.n:'';
+  const chosen=new Set(day.t), AS=new Set(), CS=new Set(); let q='', needOnly=false, showAll=false, tf=null, tt=null;   // AS = القرى المختارة، CS = التصنيف، tf/tt = من/إلى الساعة بالدقايق
+  const nDay=wk?db.teachers.filter(t=>tDay(t, wk)).length:0, nNo=db.teachers.filter(tNoDays).length;
   const areas=[...new Set(db.teachers.map(t=>t.area).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const m=document.createElement('div'); m.className='modal';
   m.innerHTML=`<div class="box"><h3>🧭 مدرسين ${esc(day.n)}</h3>
+    ${wk?`<div class="row2" style="align-items:end"><div class="field" style="margin:0"><label>🕒 من الساعة</label><input type="time" id="rp_f"></div><div class="field" style="margin:0"><label>إلى الساعة</label><input type="time" id="rp_t"></div></div>
+      <div class="small muted" id="rp_h" style="margin:4px 0 8px"></div>`:''}
     <div class="stickytop"><div class="search" style="margin:0 0 8px"><input id="rp_q" type="search" placeholder="🔎 دوّر على أي مدرس: اسم، تليفون، قرية، تصنيف…" autocomplete="off"></div>
     ${areaChips(areas, 'rpa')}</div>
-    ${day.wk?`<label class="dayonly"><input type="checkbox" id="rp_d" checked> 📅 اللي عندهم سنتر يوم ${WN} بس (${nDay} مدرس)</label><div class="small muted">${nNo} مدرس لسه ماكتبوش أيام السنتر — شيل العلامة عشان تشوفهم وتضيفهم بإيدك</div>`:''}
+    ${wk?`<label class="dayonly"><input type="checkbox" id="rp_d"> 👥 اعرض كل المدرسين (حتى اللي مش بتوع يوم ${WN})</label>`:''}
     <div class="chips" style="margin-top:6px">${['A','B','C'].map(c=>`<button type="button" class="chip" data-rc="${c}">تصنيف ${c}</button>`).join('')}</div>
     <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="rp_n"> ⏳ اللي محتاجين زيارة بس (باقيلهم كتب أو فلوس أو طلب)</label>
     <div class="row2" style="margin-top:8px"><button class="btn sm" data-rp="all">☑️ اختار كل اللي ظاهرين</button><button class="btn sm ghost" data-rp="none">⬜ شيل كل اللي ظاهرين</button></div>
@@ -4427,24 +4445,32 @@ function routePick(dayId){
   document.body.appendChild(m);
   const okBtn=()=>{ m.querySelector('[data-rp="ok"]').textContent=`✅ تمام (${chosen.size} مدرس)`; };
   const inDays=id=>db.days.filter(x=>x.id!==day.id && x.t.includes(id)).map(x=>x.n);
+  const timed=()=>tf!=null || tt!=null;
+  // الوقت فاضي ← مدرسين اليوم ده + اللي لسه ما كتبوش أيام السنتر. الوقت متحدد ← اللي ساعاتهم بتتقاطع معاه بس.
+  const dayOk=t=>!wk || showAll || (timed() ? tDayIn(t, wk, tf, tt) : (!!tDay(t, wk) || tNoDays(t)));
   const shown=()=>{ const ws=qWords(q);
-    if(!AS.size && !ws.length && !needOnly && !onlyDay && !CS.size) return day.t.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !day.t.includes(t.id)));
-    const rk=recvRankFn();
-    return db.teachers.filter(t=>(!onlyDay || tDay(t, day.wk)) && (!CS.size || CS.has(clsLetter(t))) && (!AS.size || AS.has(t.area)) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>rk(a)-rk(b) || a.name.localeCompare(b.name,'ar')); };
-  const draw=()=>{ const l=shown(), box=m.querySelector('#rp_l');
-    box.innerHTML = l.length ? l.slice(0,300).map(t=>{ const o=inDays(t.id); return `<label class="trow ${tStC(t)}" style="${tUpdSt(t)}"><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}>${tAv(t)}<div class="grow"><b>${esc(t.name)}</b>${nameTags(t)} ${tRecv(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div>${day.wk&&tDay(t, day.wk)?`<div class="small" style="color:var(--brand);font-weight:700">${WN} ${tDay(t, day.wk)}</div>`:''}${o.length?`<div class="small" style="color:var(--owe)">📅 موجود في: ${esc(o.join('، '))}</div>`:''}</div></label>`; }).join('')
-      : `<div class="empty small">${onlyDay?`مفيش مدرسين عندهم سنتر يوم ${WN} بالاختيار ده — شيل علامة «📅 اللي عندهم سنتر» عشان تشوف الكل`:AS.size||q.trim()?'مفيش مدرس بالاختيار ده':'اختار قرية أو أكتر، أو دوّر على مدرس — والمختارين بيظهروا هنا'}</div>`;
+    if(!wk && !AS.size && !ws.length && !needOnly && !CS.size) return day.t.filter(id=>chosen.has(id)).map(tById).filter(Boolean).concat(db.teachers.filter(t=>chosen.has(t.id) && !day.t.includes(t.id)));
+    const rk=recvRankFn(), dr=t=>wk && !tDay(t, wk) ? 1 : 0;   // بتوع اليوم ده فوق
+    return db.teachers.filter(t=>dayOk(t) && (!CS.size || CS.has(clsLetter(t))) && (!AS.size || AS.has(t.area)) && (!needOnly || planNeed(t).any) && (!ws.length || ws.every(w=>hayT(t).includes(w)))).sort((a,b)=>dr(a)-dr(b) || rk(a)-rk(b) || a.name.localeCompare(b.name,'ar')); };
+  const draw=()=>{ const l=shown(), box=m.querySelector('#rp_l'), hb=m.querySelector('#rp_h');
+    if(hb) hb.innerHTML = timed() ? `⏰ ظاهر بس اللي سنترهم شغال يوم ${esc(WN)} في الوقت ده — اللي ما كتبش ساعات مش ظاهر. <a href="#" data-rp="tclr">✕ امسح الوقت</a>`
+      : `الوقت فاضي = مدرسين يوم ${esc(WN)} (${nDay}) + اللي لسه ما كتبوش أيام السنتر (${nNo}). حدد الساعة عشان تشوف اللي فاتحين فيها بس.`;
+    box.innerHTML = l.length ? l.slice(0,300).map(t=>{ const o=inDays(t.id); return `<label class="trow ${tStC(t)}" style="${tUpdSt(t)}"><input type="checkbox" data-id="${esc(t.id)}" ${chosen.has(t.id)?'checked':''}>${tAv(t)}<div class="grow"><b>${esc(t.name)}</b>${nameTags(t)} ${tRecv(t)}<div class="small muted">${esc([t.area, t.phone, t.subjectText].filter(Boolean).join(' • '))}</div>${wk&&tDay(t, wk)?`<div class="small" style="color:var(--brand);font-weight:700">${esc(WN)} ${tDay(t, wk)}</div>`:wk&&tNoDays(t)?'<div class="small muted">❔ لسه ما كتبش أيام السنتر</div>':''}${o.length?`<div class="small" style="color:var(--owe)">📅 موجود في: ${esc(o.join('، '))}</div>`:''}</div></label>`; }).join('')
+      : `<div class="empty small">${wk&&!showAll&&timed()?`مفيش مدرسين سنترهم شغال يوم ${esc(WN)} في الوقت ده — غيّر الساعة أو امسحها`:wk||AS.size||q.trim()?'مفيش مدرس بالاختيار ده':'اختار قرية أو أكتر، أو دوّر على مدرس — والمختارين بيظهروا هنا'}</div>`;
     markWords(box, qWords(q)); okBtn(); };
   m.querySelector('#rp_q').addEventListener('input', e=>{ q=e.target.value; draw(); });
   bindAreaChips(m, 'rpa', AS, draw);
   m.querySelector('#rp_n').addEventListener('change', e=>{ needOnly=e.target.checked; draw(); });
-  const rd=m.querySelector('#rp_d'); if(rd) rd.addEventListener('change', e=>{ onlyDay=e.target.checked; draw(); });
+  const rd=m.querySelector('#rp_d'); if(rd) rd.addEventListener('change', e=>{ showAll=e.target.checked; draw(); });
+  const rf=m.querySelector('#rp_f'), rt=m.querySelector('#rp_t');
+  if(rf) for(const el of [rf, rt]) for(const ev of ['input','change']) el.addEventListener(ev, ()=>{ tf=hmMin(rf.value); tt=hmMin(rt.value); draw(); });
   m.querySelectorAll('[data-rc]').forEach(b=>b.addEventListener('click', e=>{ e.preventDefault(); const c=b.dataset.rc; CS.has(c)?CS.delete(c):CS.add(c); b.classList.toggle('on', CS.has(c)); draw(); }));
   m.addEventListener('change', e=>{ const c=e.target.closest('input[type=checkbox][data-id]'); if(!c) return; c.checked ? chosen.add(c.dataset.id) : chosen.delete(c.dataset.id); okBtn(); });
   m.addEventListener('click', e=>{
     if(e.target===m){ m.remove(); return; }
     const b=e.target.closest('[data-rp]'); if(!b) return; const a=b.dataset.rp;
-    if(a==='all' || a==='none'){ for(const t of shown()) a==='all' ? chosen.add(t.id) : chosen.delete(t.id); draw(); }
+    if(a==='tclr'){ e.preventDefault(); rf.value=''; rt.value=''; tf=tt=null; draw(); }
+    else if(a==='all' || a==='none'){ for(const t of shown()) a==='all' ? chosen.add(t.id) : chosen.delete(t.id); draw(); }
     else if(a==='x') m.remove();
     else if(a==='ok'){ m.remove(); const keep=day.t.filter(id=>chosen.has(id)), add=[...chosen].filter(id=>!keep.includes(id));
       withUndo(`🧭 ${day.n}: ${chosen.size} مدرس`, ()=>{ const d=dayById(day.id); if(d) d.t=[...keep, ...add]; }); }
@@ -5187,13 +5213,13 @@ document.addEventListener('click', e=>{
     case 'loc-template': locTemplate(); break;
     case 'route-pick': routePick(id); break;
     case 'route-rm': { const t=tById(id), dd=el.dataset.d; withUndo(`✕ اتشال ${t?t.name:''} من اليوم`, ()=>{ const d=dayById(dd); if(d) d.t=d.t.filter(x=>x!==id); }); break; }
-    case 'route-clear': typeConfirm('🗑️ امسح كل أيام خط السير', `هتمسح ${db.days.length} يوم. لو غلطت تقدر ترجّعها من زرار «رجوع» اللي هيظهر تحت.`, 'امسح', ()=>withUndo('🗑️ كل الأيام اتمسحت', ()=>{ db.days=[]; })); break;
+    case 'route-clear': typeConfirm('🗑️ فضّي كل أيام خط السير', `هتشيل كل المدرسين من كل الأيام. لو غلطت تقدر ترجّعها من زرار «رجوع» اللي هيظهر تحت.`, 'امسح', ()=>withUndo('🗑️ كل الأيام اتفضّت', ()=>{ db.days=db.days.filter(d=>d.fx); for(const d of db.days) d.t=[]; })); break;
     case 'route-map': mapDay=id||''; mapRouteOnly=true; mapCat=''; location.hash='#/map'; break;
-    case 'day-add': dayAdd(); break;
+    case 'day-empty': { const d=dayById(id); if(!d || !d.t.length || !confirm(`تشيل كل المدرسين من يوم «${d.n}»؟`)) break; withUndo(`🧹 ${d.n} اتفضّى`, ()=>{ const x=dayById(id); if(x) x.t=[]; }); break; }
     case 'day-copy': { const d=dayById(id); if(d) copyText(dayText(d)); break; }
-    case 'day-ren': { const d=dayById(id); if(!d) break; const v=(prompt('اسم اليوم (مثلاً: السبت 15/11 — أبو حمص):', d.n)||'').trim();
+    case 'day-ren': { const d=dayById(id); if(!d || d.fx) break; const v=(prompt('اسم اليوم (مثلاً: السبت 15/11 — أبو حمص):', d.n)||'').trim();
       if(v && v!==d.n) withUndo('✏️ الاسم اتغيّر', ()=>{ dayById(id).n=v; }); break; }
-    case 'day-del': { const d=dayById(id); if(!d || !confirm(`تمسح «${d.n}»؟`)) break;
+    case 'day-del': { const d=dayById(id); if(!d || d.fx || !confirm(`تمسح «${d.n}»؟`)) break;
       withUndo(`🗑️ ${d.n} اتمسح`, ()=>{ db.days=db.days.filter(x=>x.id!==id); }); location.hash='#/route'; break; }
     case 'pin-set': setPin(); break;
     case 'pin-forgot': { e.preventDefault(); const v=fixMail(prompt('اكتب الجيميل المتسجّل في البرنامج عشان تمسح الرقم السري القديم:')||'');

@@ -371,8 +371,10 @@ async function loadAll() {
     fetchAll(() => sb.from('update_requests').select('teacher_id').eq('status', 'open')),
     // متابعة 10 (السرعة): ملخص من القاعدة بدل كل الرسايل
     sb.rpc('msg_summary').then(({ data, error }) => { if (error) throw error; return data || []; }),
-    fetchAll(() => sb.from('returns').select('teacher_id').in('status', ['pending', 'approved']))
-  ]).then(r => { ordersBy = {}; r[5].forEach(x => ordersBy[x.teacher_id] = (ordersBy[x.teacher_id] || 0) + 1);
+    fetchAll(() => sb.from('returns').select('teacher_id').in('status', ['pending', 'approved'])),
+    // متابعة 15: المدرسين اللي عندهم رسالة «🔔 مطلوب رد» لسه مستنية
+    fetchAll(() => sb.from('messages').select('teacher_id').eq('need_reply', true).is('reply_closed_at', null).order('id'))
+  ]).then(r => { needSet = new Set(r[10].map(x => x.teacher_id)); ordersBy = {}; r[5].forEach(x => ordersBy[x.teacher_id] = (ordersBy[x.teacher_id] || 0) + 1);
     retsBy = {}; r[9].forEach(x => retsBy[x.teacher_id] = (retsBy[x.teacher_id] || 0) + 1);
     apprSet = new Set(r[6].map(x => x.teacher_id)); openUpd = new Set(r[7].map(x => x.teacher_id)); mSt = mStates(r[8]); return r; });
   T = t; staffList = s; notesBy = {}; n.forEach(x => (notesBy[x.teacher_id] ||= []).push(x.body));
@@ -597,7 +599,7 @@ function tHay(t) {
   hayVals(pr, out, 0); (t.books || []).forEach(b => out.push(b.l || bookLabel(b.b)));
   if (lastMsg[t.id]) out.push(lastMsg[t.id].b);
   if (s) out.push(ST_W[s.st] || '', s.c || '', s.lv || '', s.w ? 'عليه فلوس' : '');
-  if (!t.last_seen) out.push('لسه ما فتحش');
+  if (needSet.has(t.id)) out.push('مستني رد مطلوب رد');
   out.push(t.app_at ? 'مثبت التطبيق' : 'مش مثبت ما ثبتش');
   if (retsBy[t.id]) out.push('مرتجع عنده مرتجع');
   return norm(out.filter(Boolean).join(' '));
@@ -653,6 +655,7 @@ function gSaleEdit(sid, items) {
 /* ---------- قائمة المدرسين ---------- */
 /* ---------- 🔎 فلاتر قايمة المدرسين + البحث ----------
    جوه كل قسم: اختيارات متعددة = أي واحدة. بين الأقسام: لازم يتحقق كله. */
+var needSet = new Set();   // متابعة 15: مدرسين عندهم «🔔 مطلوب رد» مفتوح
 let mSt = {};   // آخر رسالة ليك عند كل مدرس: u = ما قراش · r = قرأ ومارددش · y = قرأ ورد
 // من msg_summary: my_id/my_read = آخر رسالة ليك واتقرت ولا لأ · their_id = آخر رسالة من المدرس
 let mTot = {};   // متابعة 12: عدد كل الرسايل في صندوق كل مدرس (📦)
@@ -666,7 +669,7 @@ const FL_OPT = {
   app: [['in', '📲 مثبّت التطبيق'], ['out', '🌐 لسه ما ثبّتش']],
   seen: [['today', 'النهارده'], ['d3', 'من يومين لـ 3 أيام'], ['d7', 'من 4 لـ 7 أيام'], ['old', 'أكتر من أسبوع / ما فتحش']],
   upd: [['full', '🟢 حدّث كله'], ['part', '🟠 باقيله جزء'], ['none', '⚪ ماحدّثش']],
-  new: [['nf', '🆕 لسه ما فتحوش'], ['unread', '💬 بعتوا رسايل جديدة'], ['pend', '⏳ عندهم تعديلات مستنية']],
+  new: [['unread', '💬 بعتوا رسايل جديدة'], ['pend', '⏳ عندهم تعديلات مستنية']],
   ret: [['r', '↩️ عنده مرتجع']],
   box: [['any', '📦 عنده رسايل'], ['10', 'أكتر من 10'], ['20', 'أكتر من 20']]
 };
@@ -690,7 +693,7 @@ function flOk(t) {
   if (f.box.size) { const n = mTot[t.id] || 0; if (!((f.box.has('any') && n > 0) || (f.box.has('10') && n > 10) || (f.box.has('20') && n > 20))) return false; }
   if (f.seen.size && !f.seen.has(seenB(t))) return false;
   if (f.upd.size && !f.upd.has(updState(t))) return false;
-  if (f.new.size && !((f.new.has('nf') && !t.last_seen) || (f.new.has('unread') && unreadBy[t.id]) || (f.new.has('pend') && pendSet.has(t.id)))) return false;
+  if (f.new.size && !((f.new.has('unread') && unreadBy[t.id]) || (f.new.has('pend') && pendSet.has(t.id)))) return false;
   return true;
 }
 function filtered() {
@@ -811,7 +814,7 @@ function tItem(t) {
   return `<div class="titem tcard ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">
     <div class="tc-h"><input type="checkbox" class="tck" ${ui.sel.has(t.id) ? 'checked' : ''}>${av}<div class="tc-n">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div></div>
     ${lm ? `<div class="tc-l">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
-    <div class="tc-tags">${tags}${instPill(t)}${mTot[t.id] ? ` <span class="pill ${mTot[t.id] > 20 ? 'bad' : mTot[t.id] > 10 ? 'owe' : 'new'}" title="عدد الرسايل في صندوقه">📦 ${mTot[t.id]} رسالة</span>` : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div>
+    <div class="tc-tags">${tags}${instPill(t)}${mTot[t.id] ? ` <span class="pill ${mTot[t.id] > 20 ? 'bad' : mTot[t.id] > 10 ? 'owe' : 'new'}" title="عدد الرسايل في صندوقه">📦 ${mTot[t.id]} رسالة</span>` : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${needSet.has(t.id) ? ' <span class="pill owe" title="بعتّله رسالة مطلوب ردها ولسه ما ردش">🔔 مستني رد</span>' : ''}</div>
     ${t.phone || (s && s.lv) ? `<div class="tc-i">${t.phone ? `<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>` : ''}${s && s.lv ? `<span>🕘 آخر زيارة: ${esc(s.lv)}</span>` : ''}</div>` : ''}
     <div class="tc-f">${icos4(t)}${recv ? `<span>${recv}</span>` : ''}</div></div>`;
 }
@@ -960,9 +963,13 @@ async function viewChat(id) {
     <div class="acts" style="margin:0 0 6px"><button class="btn sm owe" id="ring"><span id="ringI" style="display:inline-block">🔔</span> نبّه المدرس</button><a class="btn sm ghost" href="#/t/${t.id}">👤 ملفه</a>
     <button class="btn sm ghost" id="keep">📌 احفظ رسالة في سجله</button><button class="btn sm danger" id="delm">🗑️ مسح رسايل</button></div>
     <div id="delbar" hidden class="alert" style="padding:8px"><b>دوس على الرسايل اللي عايز تمسحها</b><div class="acts"><button class="btn sm danger" id="delgo">🗑️ امسح المحدد (0)</button><button class="btn sm ghost" id="delx">إلغاء</button></div></div>
+    <div id="nrbar" hidden style="position:sticky;top:var(--hh,56px);z-index:5;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:12px;padding:8px 10px;margin-bottom:6px;display:none;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1;min-width:150px">🔔 التذكير شغال — مستني رد المدرس</b><button class="btn sm" id="nrstop">⏹️ وقّف التذكير</button></div>
     <div class="small muted" style="text-align:center">${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
-  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
+  $('#cbar').innerHTML = `<div class="chatbar"><div style="max-width:836px;margin:0 auto 6px;display:flex;justify-content:flex-end"><label id="nrl" style="display:inline-flex;gap:6px;align-items:center;font-weight:700;font-size:14px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:999px;padding:4px 12px;cursor:pointer"><input type="checkbox" id="nr" style="width:18px;height:18px"> 🔔 مطلوب رد</label></div><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
   chatMsgs = []; chatLast = 0;
+  // متابعة 15: الشريط الأصفر بيظهر بس لو فيه رسالة «مطلوب رد» لسه مفتوحة
+  const nrOpen = () => chatMsgs.some(m => m.need_reply && !m.reply_closed_at && !m.from_teacher);
+  const nrDraw = () => { const b = $('#nrbar'); if (!b) return; const on = nrOpen(); b.hidden = !on; b.style.display = on ? 'flex' : 'none'; on ? needSet.add(t.id) : needSet.delete(t.id); };
   const pull = async first => {
     const { data, error } = await sb.from('messages').select('*').eq('teacher_id', t.id).gt('id', first ? 0 : chatLast).order('id').limit(300);
     if (error || !$('#chat')) return;
@@ -971,16 +978,24 @@ async function viewChat(id) {
     if (chatMsgs.length) chatLast = chatMsgs[chatMsgs.length - 1].id;
     if (data.some(m => m.from_teacher && !m.read_at)) { await sb.from('messages').update({ read_at: new Date().toISOString() }).eq('teacher_id', t.id).eq('from_teacher', true).is('read_at', null); delete unreadBy[t.id]; delete lastMsg[t.id]; counts(); }
     if (!first) { const { data: rd } = await sb.from('messages').select('id,read_at').eq('teacher_id', t.id).eq('from_teacher', false).not('read_at', 'is', null).gt('id', Math.max(0, chatLast - 50)); (rd || []).forEach(r => { const m = chatMsgs.find(x => x.id === r.id); if (m) m.read_at = r.read_at; }); }
+    if (!first) { const { data: nr } = await sb.from('messages').select('id,reply_closed_at').eq('teacher_id', t.id).eq('need_reply', true).not('reply_closed_at', 'is', null).limit(50); (nr || []).forEach(r => { const m = chatMsgs.find(x => x.id === r.id); if (m) m.reply_closed_at = r.reply_closed_at; }); }
+    nrDraw();
     if (!chatSel) $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>';
     if (first || data.some(m => m.kind !== 'ring' && m.kind !== 'alert')) scrollTo(0, document.body.scrollHeight);
   };
-  const send = async (kind, body) => {
-    const { error } = await sb.from('messages').insert({ teacher_id: t.id, from_teacher: false, kind, body, sender: me.name });
+  const send = async (kind, body, need) => {
+    const { error } = await sb.from('messages').insert({ teacher_id: t.id, from_teacher: false, kind, body, sender: me.name, ...(need ? { need_reply: true } : {}) });
     if (error) return toast(errMsg(error));
     pull(false);
     if (window.pushToTeacher) window.pushToTeacher(t, kind === 'ring' ? `🔔 رُدّ على الأستاذ ${me.name}` : `💬 الأستاذ ${me.name}: ${body.slice(0, 80)}`, kind === 'ring').catch(() => { });
   };
-  $('#ms').onclick = async () => { const v = $('#mt').value.trim(); if (!v) return; $('#mt').value = ''; await send('text', v); };
+  $('#ms').onclick = async () => { const v = $('#mt').value.trim(); if (!v) return; const need = $('#nr').checked; $('#mt').value = ''; $('#nr').checked = false; await send('text', v, need); };
+  $('#nrstop').onclick = async () => {
+    if (!confirm('توقّف التذكير ومطلوب الرد على الرسالة دي؟')) return;
+    const { error } = await sb.from('messages').update({ reply_closed_at: new Date().toISOString() }).eq('teacher_id', t.id).eq('need_reply', true).is('reply_closed_at', null);
+    if (error) return toast(errMsg(error));
+    chatMsgs.forEach(m => { if (m.need_reply && !m.reply_closed_at) m.reply_closed_at = new Date().toISOString(); }); nrDraw(); toast('⏹️ التذكير اتوقف');
+  };
   $('#ring').onclick = async () => {
     const i = $('#ringI'); i.classList.remove('ringing'); void i.offsetWidth; i.classList.add('ringing');
     try { navigator.vibrate && navigator.vibrate([200, 80, 200]); } catch (e) { }
@@ -1236,9 +1251,18 @@ async function viewBell() {
     const { data, error } = await sb.from('teachers').select('id,name,phone,app_at').not('app_at', 'is', null).order('app_at', { ascending: false }).limit(200);
     if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
     const seen = LS.get('selah-trial-inst-seen') || new Date(0).toISOString();
-    bb.innerHTML = data.length ? `<div class="small muted" style="margin-bottom:6px">${data.length} مدرس ثبّتوا التطبيق</div><div class="tlist" style="display:flex">${data.map(t => `<div class="titem" data-go="#/t/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${t.app_at > seen ? '<span class="pill ok">🆕 جديد</span>' : ''}</div>
-      <div class="sub">📲 ثبّت ${fmtDate(t.app_at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">لسه ولا مدرس ثبّت التطبيق</div>';
-    bb.onclick = e => { if (e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
+    // متابعة 15: مسح الإشعار بالسحب يمين/شمال أو ✕ — بيخفيه على الجهاز ده بس (المدرس يفضل مثبّت)
+    const hid = new Set(LS.get('selah-trial-inst-hide') || []);
+    const vis = data.filter(t => !hid.has(t.id));
+    bb.innerHTML = vis.length ? `<div class="small muted" style="margin-bottom:6px">${vis.length} مدرس ثبّتوا التطبيق — اسحب الإشعار يمين أو شمال أو دوس ✕ عشان تمسحه</div><div class="tlist" style="display:flex">${vis.map(t => `<div class="titem" data-go="#/t/${t.id}" data-hid="${t.id}" style="position:relative;touch-action:pan-y;transition:transform .2s,opacity .2s">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${t.app_at > seen ? '<span class="pill ok">🆕 جديد</span>' : ''}</div>
+      <div class="sub">📲 ثبّت ${fmtDate(t.app_at)}</div><div style="margin-top:6px">${icos4(t)}</div></div><button type="button" data-x="${t.id}" title="امسح الإشعار" style="position:absolute;top:4px;inset-inline-end:6px;border:0;background:none;font-size:15px;color:#9ca3af;padding:4px 8px;cursor:pointer">✕</button></div>`).join('')}</div>` : `<div class="card empty">${data.length ? 'مفيش إشعارات (اتمسحوا كلهم) ✅' : 'لسه ولا مدرس ثبّت التطبيق'}</div>`;
+    const hideIt = id => { hid.add(id); LS.set('selah-trial-inst-hide', [...hid]); const el = bb.querySelector(`[data-hid="${id}"]`); if (el) { el.style.opacity = 0; setTimeout(() => { el.remove(); const n = bb.querySelectorAll('[data-hid]').length; if (!n) viewBell(); }, 200); } };
+    let sx = null, sy = 0, sel = null, moved = false;
+    bb.addEventListener('touchstart', e => { const el = e.target.closest('[data-hid]'); if (!el || e.target.closest('[data-ic],[data-x]')) { sel = null; return; } sel = el; sx = e.touches[0].clientX; sy = e.touches[0].clientY; moved = false; }, { passive: true });
+    bb.addEventListener('touchmove', e => { if (!sel) return; const dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy; if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) { moved = true; sel.style.transition = 'none'; sel.style.transform = `translateX(${dx}px)`; sel.style.opacity = Math.max(.3, 1 - Math.abs(dx) / 300); } }, { passive: true });
+    bb.addEventListener('touchend', e => { if (!sel) return; const el = sel; sel = null; const dx = (e.changedTouches[0].clientX - sx); el.style.transition = 'transform .2s,opacity .2s';
+      if (moved && Math.abs(dx) > 90) { el.style.transform = `translateX(${dx > 0 ? 500 : -500}px)`; hideIt(el.dataset.hid); } else { el.style.transform = ''; el.style.opacity = ''; } if (moved) setTimeout(() => { moved = false; }, 50); });
+    bb.onclick = e => { const x = e.target.closest('[data-x]'); if (x) { e.stopPropagation(); hideIt(x.dataset.x); return; } if (moved || e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
     if (data.length && data[0].app_at > seen) { LS.set('selah-trial-inst-seen', data[0].app_at); counts().catch(() => { }); }
     return;
   }

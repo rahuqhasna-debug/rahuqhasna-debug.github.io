@@ -282,7 +282,7 @@ async function load() {
     if (error) throw error;
     if (rv && rv.data) RV = rv.data;
     if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
-    const first = !D; D = normD(data); SEEN = evSig(D); loadNews(); $('#tabs').hidden = false; render(); setBadge(); startWatch();
+    const first = !D; D = normD(data); refNeed(); SEEN = evSig(D); loadNews(); $('#tabs').hidden = false; render(); setBadge(); startWatch();
     // طلب تحديث جديد من آخر مرة ← صوت
     const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);
     if (ids.some(i => !seen.includes(i))) ding(); LS.set('selah-trial-tupd', ids);
@@ -315,9 +315,13 @@ function evSig(x) {
 function isNewer(a, b) {
   return (view !== 'msgs' && a.u > b.u) || (!!a.up && a.up.split(',').some(i => !b.up.split(',').includes(i))) || (!!a.q && a.q !== b.q) || a.d > b.d || a.o !== b.o;
 }
+// متابعة 15: «🔔 مطلوب رد» — الرقم 1 يفضل على الرسائل لحد ما المدرس يرد (من t_need)
+var NEEDN = 0;
+const msgBadge = () => Math.max((D && D.unread) || 0, NEEDN ? 1 : 0);
+function refNeed() { if (!code) return; sb.rpc('t_need', { p_code: code }).then(({ data, error }) => { if (error) return; const n = (data || []).length; if (n !== NEEDN) { NEEDN = n; try { updCounts(); setBadge(); } catch (e) { } } }); }
 function updCounts() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
-  $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n; $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread; updBell();
+  $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n; $('#msgCnt').hidden = !msgBadge(); $('#msgCnt').textContent = msgBadge(); updBell();
 }
 async function watchTick() {
   if (document.hidden || !code || !D || !isApp) return;
@@ -325,7 +329,7 @@ async function watchTick() {
     let [{ data }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]); if (!data) return; data = normD(data);
     if (rv && rv.data && !!rv.data.open !== !!(RV && RV.open)) { RV = rv.data; if (view === 'home') { D = data; render(); } }
     const a = evSig(data), b = SEEN || evSig(D); SEEN = a;
-    if (isNewer(a, b)) ding();
+    if (isNewer(a, b)) ding(); refNeed();
     if (JSON.stringify(a) !== JSON.stringify(evSig(D))) {
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
       D = data; setBadge();
@@ -343,7 +347,7 @@ function normD(d) { const done = LS.get('selah-trial-tupd-done', []); d.updates 
 function go(v) { view = v; if (!isApp) toast('📲 ثبّت التطبيق الأول', 2500); render(); scrollTo(0, 0); }
 // عدد الجديد على أيقونة البرنامج (في الموبايلات اللي بتسمح)
 function setBadge() {
-  const n = (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
+  const n = msgBadge() + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   try { if (navigator.setAppBadge) n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } catch (e) { }
 }
 function render() {
@@ -355,7 +359,7 @@ function render() {
   $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.v === view));
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
-  $('#msgCnt').hidden = !D.unread; $('#msgCnt').textContent = D.unread;
+  $('#msgCnt').hidden = !msgBadge(); $('#msgCnt').textContent = msgBadge();
   $('#title').textContent = { me: '👤 بياناتي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', inv: '🧾 فواتيري', ret: '↩️ مرتجعات', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
   if (view !== 'news') newsSub = null;
   if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else if (view === 'inv') renderInv(); else if (view === 'ret') renderRet(); else renderHome();
@@ -371,7 +375,7 @@ function renderHome() {
     <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span><span>💳 الدفع بعدين</span></div>
     <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
   h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="tlx"><span class="ttl">🎁 كتبك بخصم خاص</span><span class="tsub">شوف الأسعار واطلب 👆</span></span><span class="orar">←</span><span class="orgo">👆 اضغط هنا</span></button>
-    <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
+    <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${msgBadge() ? `<span class="ttb">${msgBadge()}</span>` : ''}</button>
     <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${HI.rv}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
@@ -851,7 +855,7 @@ async function pullMsgs(first) {
   for (const x of ups) { const k = x.at ? parts.findIndex(p => p.at && p.at > x.at) : -1; const h = updBubble(x.u); if (k < 0) parts.push({ at: x.at, h }); else parts.splice(k, 0, { at: x.at, h }); }
   box.innerHTML = parts.map(p => p.h).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
   if (first || fresh.length) scrollTo(0, document.body.scrollHeight);
-  D.unread = 0; $('#msgCnt').hidden = true; setBadge();
+  D.unread = 0; $('#msgCnt').hidden = !msgBadge(); $('#msgCnt').textContent = msgBadge(); setBadge(); if (!first) refNeed();
 }
 function renderMsgs() {
   app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn stick" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
@@ -869,7 +873,7 @@ function renderMsgs() {
     const { error } = await sb.rpc('t_send', { p_code: code, p_body: t });
     $('#ms').disabled = false;
     if (error) return toast(errMsg(error));
-    $('#mt').value = ''; pullMsgs(false); window.pushNotifyRep && window.pushNotifyRep('💬 ' + D.name + ': ' + t.slice(0, 80));
+    $('#mt').value = ''; NEEDN = 0; updCounts(); setBadge(); pullMsgs(false); setTimeout(refNeed, 800); window.pushNotifyRep && window.pushNotifyRep('💬 ' + D.name + ': ' + t.slice(0, 80));
   };
   pullMsgs(true); pollT = setInterval(() => pullMsgs(false), 8000);
 }
@@ -1245,7 +1249,7 @@ function drawPhotos() {
 
 $$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
 $('#reload').onclick = () => load();
-function updBell() { const n = D ? (D.unread || 0) + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && !$('#tabs').hidden); }
+function updBell() { const n = D ? msgBadge() + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && !$('#tabs').hidden); }
 $('#bell').onclick = () => { if (D && D.unread) go('msgs'); else if (D && (D.updates.length || (D.pending && D.pending.status === 'question'))) go('home'); else if (D && newsTotal()) go('news'); else toast('مفيش جديد دلوقتي 👌', 1800); };
 $('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go(view === 'inv' || view === 'ret' ? 'order' : 'home'); };
 $('#back2').onclick = () => $('#back').onclick();
