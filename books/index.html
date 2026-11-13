@@ -3954,8 +3954,36 @@ async function pullPrices(manual){
     else { save(false); if(manual){ toast('💲 الأسعار زي ما هي'); render(); } }
   }catch(e){ if(manual) toast('⚠️ مش قادر أجيب الأسعار دلوقتي'); }
 }
+/* متابعة 13: المالك يشوف كل المناديب (جيميل، مثبّت البرنامج ولا لأ، آخر فتح) ويقفل/يفتح البرنامج عند أي مندوب.
+   الموبايل بيبلّغ السيرفر مع كل فتح (rping) ويرجعله «locked». المقفول بيشوف شاشة «البرنامج موقوف» وماتتمسحله أي بيانات. */
+var LOCK_KEY=KEY+'-locked';
+function isLockedApp(){ try{ return localStorage.getItem(LOCK_KEY)==='1'; }catch(e){ return false; } }
+function applyLock(){
+  const on=isLockedApp(); let ov=document.getElementById('lockov');
+  if(!on){ if(ov) ov.remove(); return; }
+  if(ov) return;
+  ov=document.createElement('div'); ov.id='lockov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;font-family:inherit';
+  ov.innerHTML=`<div style="font-size:64px">⛔</div><div style="font-size:24px;font-weight:800">البرنامج موقوف</div><div style="font-size:16px;color:#444;max-width:320px;line-height:1.7">كلّم الأستاذ شريف حشيش عشان يفتحه ليك.<br>بياناتك كلها محفوظة ومش هتتمسح، وهترجع زي ما هي أول ما يتفتح.</div><button id="lockRetry" class="btn pri" style="font-size:17px;padding:10px 24px">🔄 جرّب تاني</button>`;
+  document.body.appendChild(ov);
+  document.getElementById('lockRetry').onclick=async()=>{ const b=document.getElementById('lockRetry'); b.disabled=true; b.textContent='⏳…'; await repPing(true); b.disabled=false; b.textContent='🔄 جرّب تاني'; };
+}
+function setLockedApp(v){ try{ localStorage.setItem(LOCK_KEY, v?'1':'0'); }catch(e){} applyLock(); }
+let pingAt=0;
+async function repPing(force){
+  if(!CLOUD_URL || !db.mail || !navigator.onLine) return;
+  if(!force && Date.now()-pingAt<5*60000) return; pingAt=Date.now();
+  try{
+    const inst = matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+    const j=await cloudPost({k:'rping', mail:db.mail, name:db.rep||'', inst, code:sbHas(), owner:isOwnerApp()});
+    setLockedApp(!!j.locked);
+  }catch(e){}
+}
+applyLock();
 if(CLOUD_URL){
   const dchk=()=>{ if(driveDue()) driveBackup(); };
+  setTimeout(repPing, 1500); setInterval(()=>repPing(), 10*60000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) repPing(); });
   setTimeout(()=>{ pullPrices(); cloudSync(); dchk(); if(GCLIENT_ID && !db.driveKey) loadGis(); }, 3000);
   setTimeout(()=>flushSheets(), 9000);
   window.addEventListener('online', ()=>{ pullPrices(); cloudSync(); setTimeout(dchk, 4000); });

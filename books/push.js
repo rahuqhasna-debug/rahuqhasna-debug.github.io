@@ -16,7 +16,7 @@
     window.pushNotifyRep = text => window.TP && TP.rep ? nsend(['s-' + TP.rep], 'سلاح التلميذ', text, BASE + 'admin.html#/bell') : Promise.resolve();
     window.pushNotifyStaff = (ids, text) => ids && ids.length ? nsend(ids.map(id => 's-' + id), 'سلاح التلميذ', text, BASE + 'admin.html') : Promise.resolve();
     // تجربة: تنبيه لنفس المدرس بعد 15 ثانية (عشان يقفل الشاشة ويسمع)
-    window.pushSelfTest = () => { if (!window.TP || !CLOUD) return; setTimeout(() => fetch(CLOUD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'push', to: ['t-' + TP.id], title: '🔔 سلاح التلميذ', body: '✅ تمام! الإشعار بيرن عندك — كده رسايل الأستاذ هتوصلك', url: BASE + 'teacher.html', ring: true }) }).catch(() => { }), 15000); };
+    window.pushSelfTest = () => { if (!window.TP || !CLOUD) return; setTimeout(() => fetch(CLOUD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'push', to: ['t-' + TP.id], title: '🔔 سلاح التلميذ', body: '✅ تمام! الإشعار بيرن عندك — كده رسايل سلاح التلميذ هتوصلك', url: BASE + 'teacher.html', ring: true }) }).catch(() => { }), 15000); };
     if (window.TP) nlink();
     return;
   }
@@ -55,7 +55,7 @@
   // متابعة 10: إشعار للمندوب والمالك (مثلًا «📲 الأستاذ فلان ثبّت التطبيق»)
   window.pushNotifyStaff = (ids, text) => ids && ids.length ? send(ids.map(id => 's-' + id), 'سلاح التلميذ', text, BASE + 'admin.html', false) : Promise.resolve();
   // بند 50: تجربة الرنة من التطبيق المتثبّت من المتصفح (بعد 15 ثانية عشان يقفل الشاشة)
-  window.pushSelfTest = () => { if (!window.TP) return; link('t-' + TP.id, false); setTimeout(() => send(['t-' + TP.id], '🔔 سلاح التلميذ', '✅ تمام! الإشعار بيرن عندك — كده رسايل الأستاذ هتوصلك', BASE + 'teacher.html', true), 15000); };
+  window.pushSelfTest = () => { if (!window.TP) return; link('t-' + TP.id, false); setTimeout(() => send(['t-' + TP.id], '🔔 سلاح التلميذ', '✅ تمام! الإشعار بيرن عندك — كده رسايل سلاح التلميذ هتوصلك', BASE + 'teacher.html', true), 15000); };
 
   // المندوب / المالك (admin.html)
   window.pushInitStaff = async me => link('s-' + me.id, true);

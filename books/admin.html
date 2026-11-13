@@ -1250,6 +1250,40 @@ async function viewBell() {
   bindReviews(bb);
 }
 
+/* ---------- متابعة 13: كارت «📲 المناديب والبرنامج الأخضر» (المالك): كل جيميل دخل البرنامج + مثبّت ولا لأ + قفل/فتح ----------
+   بيكلّم Apps Script بجلسة المالك (السيرفر بيتأكد منها). اللي معاه الرقم السري للمراسلات سطره بلون مميز 🔑. */
+async function repsCall(body) {
+  const { data: { session } } = await sb.auth.getSession(); if (!session) throw new Error('ادخل الأول');
+  const C = window.SILAH_CONFIG || {}; if (!C.CLOUD_URL) throw new Error('السيرفر مش متظبط');
+  const r = await fetch(C.CLOUD_URL, { method: 'POST', body: JSON.stringify({ ...body, token: session.access_token }) });
+  const j = await r.json(); if (!j.ok) throw new Error(j.err === 'auth' ? 'مش مسموح' : j.err === 'owner' ? 'ده حسابك إنت' : (j.err || 'فشل')); return j;
+}
+async function loadRepsCard() {
+  const box = $('#repsCard'); if (!box) return;
+  let reps;
+  try { reps = (await repsCall({ k: 'rlist' })).reps || []; }
+  catch (e) { box.innerHTML = `<h3 style="margin:0 0 6px">📲 المناديب والبرنامج الأخضر</h3><div class="small" style="color:#dc2626">⚠️ ${esc(e.message)} — اتأكد إن السيرفر اتحدّث (نسخة جديدة من Apps Script)</div>`; return; }
+  reps.sort((a, b) => (b.last || '').localeCompare(a.last || ''));
+  const nIn = reps.filter(r => r.inst).length, nCode = reps.filter(r => r.code).length;
+  box.innerHTML = `<h3 style="margin:0 0 6px">📲 المناديب والبرنامج الأخضر</h3>
+    <div class="small muted" style="margin-bottom:8px">${reps.length} جيميل دخل البرنامج · <b>${nIn}</b> مثبّت البرنامج · <b style="color:#7c3aed">${nCode}</b> 🔑 معاهم الرقم السري للمراسلات</div>
+    ${reps.map(r => `<div class="kv" data-m="${esc(r.mail)}" style="display:block;padding:10px;margin-bottom:6px;border-radius:12px;${r.code ? 'background:#f5f3ff;border:2px solid #7c3aed' : 'border:1px solid var(--line)'}">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="grow" style="min-width:150px"><b>${esc(r.name || 'من غير اسم')}</b> ${r.code ? '<span class="pill" style="background:#7c3aed;color:#fff">🔑 معاه الرقم السري</span>' : ''}${r.owner ? ' <span class="pill ok">👑 إنت</span>' : ''}
+        <div class="small muted" dir="ltr" style="text-align:start">${esc(r.mail)}</div></div>
+        ${r.owner ? '' : `<button class="btn sm ${r.locked ? 'ok' : 'danger'}" data-lk="${r.locked ? 0 : 1}">${r.locked ? '🔓 فتح' : '🔒 قفل'}</button>`}</div>
+      <div class="small" style="margin-top:4px">${r.old ? '<span class="pill new">لسه ما فتحش بعد التحديث</span>' : (r.inst ? '<span class="pill ok">📲 مثبّت البرنامج</span>' : '<span class="pill new">🌐 من المتصفح</span>')}${r.locked ? ' <span class="pill bad">⛔ موقوف</span>' : ''}
+        <span class="muted"> · آخر فتح ${r.last ? fmtDate(r.last) : '—'}</span></div></div>`).join('') || '<div class="small muted">لسه مفيش حد فتح البرنامج بعد التحديث</div>'}
+    <div class="small muted">القفل بيوقّف البرنامج عند المندوب من غير ما يمسح أي بيانات، وبيشتغل أول ما يكون معاه نت.</div>`;
+  box.onclick = async e => {
+    const b = e.target.closest('[data-lk]'); if (!b) return;
+    const row = b.closest('[data-m]'), r = reps.find(x => x.mail === row.dataset.m), lock = b.dataset.lk === '1';
+    if (!confirm(lock ? `تقفل البرنامج على ${r.name || r.mail}؟\nمش هيقدر يستخدمه، ومفيش حاجة هتتمسح.` : `تفتح البرنامج لـ ${r.name || r.mail}؟`)) return;
+    b.disabled = true;
+    try { await repsCall({ k: 'rlock', mail: r.mail, lock }); toast(lock ? '🔒 اتقفل' : '🔓 اتفتح'); loadRepsCard(); }
+    catch (er) { b.disabled = false; toast(er.message, 4000); }
+  };
+}
+
 /* ---------- إعدادات المالك ---------- */
 function meter(pct) { const c = pct > 90 ? 'r' : pct > 75 ? 'y' : ''; return `<div class="meter"><i class="${c}" style="width:${Math.min(100, pct).toFixed(1)}%"></i></div>`; }
 function dot(pct) { return pct > 90 ? '🔴' : pct > 75 ? '🟡' : '🟢'; }
@@ -1268,6 +1302,7 @@ async function viewSettings() {
   ${waitReps.length ? `<div class="card" style="border:2px solid #f59e0b"><h3>👤 مناديب مستنيين موافقتك (${waitReps.length})</h3>
     ${waitReps.map(s => `<div class="kv" data-s="${s.id}"><span><b>${esc(s.name || 'مندوب')}</b><br><span class="small muted">دخل ${fmtDate(s.claimed_at)} · الرقم <span dir="ltr">${esc(s.rep_code || '')}</span></span></span>
       <span class="acts" style="margin:0"><button class="btn sm ok" data-a="ok">✅ موافق</button><button class="btn sm danger" data-a="no">❌ مش موافق</button></span></div>`).join('')}</div>` : ''}
+  <div class="card" id="repsCard"><h3 style="margin:0 0 6px">📲 المناديب والبرنامج الأخضر</h3><div class="loading">جاري التحميل…</div></div>
   <div class="card"><div style="display:flex;align-items:center"><h3 style="flex:1">🔑 أرقام المناديب</h3><button class="btn pri" id="newRep">➕ رقم جديد</button></div>
     <div class="small muted" style="margin-bottom:6px">اعمل رقم وابعته للمندوب. لما يدخله هيجيلك تطلب الموافقة. كل رقم لمندوب واحد وموبايل واحد.</div>
     ${data.staff.map(s => { const x = SX[s.id] || {}, pct = s.bytes / (quota * MB) * 100; const st = s.role === 'admin' ? '<span class="pill ok">👑 المالك</span>' : !x.device_id ? '<span class="pill owe">لسه ما استخدمش الرقم</span>' : !s.active ? '<span class="pill bad">🔴 مقفول</span>' : x.approved === false ? '<span class="pill owe">⏳ مستني موافقتك</span>' : '<span class="pill ok">🟢 شغّال</span>';
@@ -1279,6 +1314,7 @@ async function viewSettings() {
         <details style="display:inline-block"><summary class="btn sm ghost" style="list-style:none">⋮</summary><button class="btn sm ghost" data-a="unlink" style="margin-top:6px">📱 غيّر الموبايل</button></details></div>` : ''}</div>`; }).join('')}</div>
   <div class="card"><h3>حدود المساحة</h3><div class="row2"><div class="field"><label>حد القاعدة (ميجا)</label><input id="lim" type="number" value="${lim}"></div>
     <div class="field"><label>نصيب المندوب (ميجا)</label><input id="quo" type="number" value="${quota}"></div></div><button class="btn sm" id="saveLim">حفظ</button></div>`;
+  loadRepsCard();
   const appUrl = location.href.split('#')[0].replace(/admin\.html.*$/, '');
   const repMsg = s => `رقمك السري في «المراسلات» في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}\nوادخل «⚙️ الإعدادات» ← «💬 فعّل المراسلات» واكتب الرقم زي ما هو بالظبط. (بيشتغل على موبايل واحد بس)`;
   $('#upPr').onclick = async () => {
