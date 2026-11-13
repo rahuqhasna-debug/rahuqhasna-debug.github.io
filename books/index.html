@@ -4531,7 +4531,7 @@ function editInvoice(sid){
     m.querySelector('#ev_sum').innerHTML = rows.every(r=>r.q===r.q0) ? '<span class="muted">لسه ما غيّرتش حاجة</span>'
       : `<div class="small">الكتب: ${n0} ← <b>${n1}</b> • الإجمالي: ${fmtN(a)} ← <b>${fmtN(b)}</b> ج</div>`
         + short().map(r=>`<div class="small" style="color:var(--bad)">⚠️ ${esc(bookLabel(r.b))}: مفيش في بضاعة التجار كفاية</div>`).join(''); };
-  const rowHtml=(r,i)=>`<div class="srow"><div class="grow"><b style="color:var(--c-${bookParts(r.b).sb})">${r.ret?'↩️ مرتجع: ':''}${esc(bookLabel(r.b))}</b>${r.fresh?' <span class="pill new">جديد</span>':''}
+  const rowHtml=(r,i)=>`<div class="srow" style="background:${r.ret?'#fff7ed':'#eff6ff'};border-inline-start:5px solid ${r.ret?'#ea580c':'#2563eb'};border-radius:10px;padding:6px 8px;margin-bottom:6px"><div class="grow"><b style="color:var(--c-${bookParts(r.b).sb})">${r.ret?'↩️ مرتجع: ':''}${esc(bookLabel(r.b))}</b>${r.fresh?' <span class="pill new">جديد</span>':''}
       <div class="small muted">كان ${r.q0}${!r.ret&&r.pr!=null?` • ${fmtN(r.pr)} ج للواحد`:''}</div></div>
     <div class="step"><button data-ev="dec" data-i="${i}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-i="${i}" value="${r.q}"><button class="plus" data-ev="inc" data-i="${i}" aria-label="زوّد">+</button></div></div>`;
   const paintList=()=>{ m.querySelector('#ev_l').innerHTML=rows.map(rowHtml).join(''); paintSum(); };
