@@ -535,9 +535,9 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 <nav class="tabs" id="tabs">
   <a href="#/" data-tab="home"><span class="i">🏠</span>الرئيسية</a>
   <a href="#/teachers" data-tab="teachers"><span class="i">👨‍🏫</span>المدرسين</a>
-  <a href="#/owed" data-tab="owed"><span class="i">📦</span>اللي عليا<span class="badge" id="owedBadge" hidden></span></a>
   <a href="#/report" data-tab="report"><span class="i">📊</span>التقارير</a>
   <a href="#/sales" data-tab="sales"><span class="i">💰</span>البيع<span class="badge" id="salesBadge" hidden></span></a>
+  <a href="#/owed" data-tab="owed"><span class="i">📦</span>اللي عليا<span class="badge" id="owedBadge" hidden></span></a>
   <a href="#/settings" data-tab="settings"><span class="i">⚙️</span>الإعدادات</a>
 </nav>
 <nav class="tabs hbar" id="hbar" hidden>
@@ -1337,8 +1337,9 @@ function renderTeacher(id){
     html += `<div class="card"><h3 class="sec-t">🔔 طلبات المدرس (بتظهر في الجرس فوق)</h3>
       <div style="display:flex;gap:8px"><input id="rq_t" class="grow" style="flex:1;min-width:0" placeholder="اللي طلبه منك… مثلاً: كتاب رياضة تالتة" autocomplete="off"><button class="btn ok" data-act="req-add" data-id="${esc(id)}">➕ ضيف</button></div>
       ${rqs.map(r=>`<div class="hrow"><div class="grow">${r.done?`<s class="muted">${esc(r.txt)}</s> <span class="pill ok">خلص</span>`:esc(r.txt)}<div class="small muted">${fmtDT(r.at)}</div></div>${r.done?'':`<button class="btn sm ok" data-act="req-done" data-id="${esc(r.id)}">✔️</button>`}<button class="btn sm danger" data-act="req-del" data-id="${esc(r.id)}">🗑️</button></div>`).join('')}</div>`;
-    app.innerHTML = html + `<div class="card"><h3 class="sec-t">📝 ملاحظات</h3><textarea id="notes" style="min-height:160px" placeholder="مثلاً: عايز كتاب لابنه في رابعة…">${esc(t.notes||'')}</textarea></div>`;
+    app.innerHTML = html + `<div class="card"><h3 class="sec-t">📝 ملاحظات</h3><textarea id="notes" style="min-height:160px" placeholder="مثلاً: عايز كتاب لابنه في رابعة…">${esc(t.notes||'')}</textarea><button class="btn danger" id="notesDel" style="margin-top:8px;width:100%">🗑️ امسح الملاحظة</button></div>`;
     const n=$('#notes'); let nt; n.addEventListener('input',()=>{ clearTimeout(nt); nt=setTimeout(()=>{ t.notes=n.value; save(); },400); });
+    $('#notesDel').onclick=()=>{ if(!confirm('امسح نص الملاحظة دي؟ مش هيرجع تاني.')) return; clearTimeout(nt); n.value=''; t.notes=''; save(); toast('اتمسحت الملاحظة 🗑️'); };
     updateActbar(); return; }
   if(tTab==='hist'){ const vl=tVisitLog(id), KC={'تسليم':'ok','بيع':'sale','دفعة':'pay','مرتجع':'owe'};
     const vh=`<div class="card"><h3 class="sec-t">👣 الزيارات (${new Set(vl.map(v=>v.at.slice(0,16))).size})</h3>${vl.length ? vl.map(v=>`<div class="kv"><span>${visitLabel(v)}</span><span><span class="pill vk-${KC[v.k]}">${v.k}</span> ${esc(v.txt)}</span></div>`).join('') : '<div class="muted">لسه ما اتزارش.</div>'}</div>`;

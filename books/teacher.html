@@ -190,7 +190,8 @@ body:has(.ordv) .back2{bottom:calc(122px + env(safe-area-inset-bottom))}
 .cov .cg{position:absolute;top:12px;left:3px;width:13px;height:13px;border-radius:50%;background:#7f1d1d;border:1.5px solid #fff;font-size:6px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .nch .nci{width:auto;height:auto}
 .covi{display:block;width:48px;height:64px;object-fit:cover;object-position:top;border-radius:2px 5px 5px 2px;box-shadow:0 4px 8px -3px rgba(0,0,0,.4)}
-</style>
+/* لوحة الإيموشنات: طافية فوق خانة الكتابة (مش بتاخد مساحة من الرسايل)، وقصيرة */
+.chatbar .emop{position:absolute;left:12px;right:12px;bottom:100%;margin:0 auto 4px;max-height:120px;z-index:27;box-shadow:0 -6px 18px rgba(0,0,0,.15)}</style>
 </head>
 <body>
 <header class="top"><div class="in"><button class="hb backpill" id="back" hidden aria-label="رجوع">رجوع ➜</button><h1 id="title">سلاح التلميذ</h1><button class="hb" id="bell" aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></button><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
@@ -815,9 +816,12 @@ function updBubble(u) {
     <button class="updgo" onclick="go('me')">✏️ ادخل حدّث بياناتك دلوقتي ←</button>${u.created_at || u.at ? `<span class="tm">${fmtDate(u.created_at || u.at)}</span>` : ''}</div>`;
 }
 async function pullMsgs(first) {
-  const { data, error } = await sb.rpc('t_msgs', { p_code: code, p_after: first ? 0 : lastId });
+  // بنجيب كل الرسايل كل مرة (عشان علامة ✓✓ القراية تتحدّث على رسايل اتبعتت قبل كده)
+  const { data, error } = await sb.rpc('t_msgs', { p_code: code, p_after: 0 });
   if (error) return;
-  if (first) msgs = data; else if (data.length) { msgs = msgs.concat(data); if (data.some(m => !m.me)) ding(); }
+  const fresh = (data || []).filter(m => m.id > lastId);
+  msgs = data || msgs;
+  if (!first && fresh.some(m => !m.me)) ding();
   if (msgs.length) lastId = msgs[msgs.length - 1].id;
   const box = $('#chat'); if (!box) return;
   // طلبات التحديث بتظهر في الرسائل كمان (بمكانها حسب الوقت) بزرار كبير يفتح «ملفي»
@@ -825,13 +829,18 @@ async function pullMsgs(first) {
   const parts = msgs.map((m, i, all) => ({ at: m.at || '', h: bubble(m, i, all) }));
   for (const x of ups) { const k = x.at ? parts.findIndex(p => p.at && p.at > x.at) : -1; const h = updBubble(x.u); if (k < 0) parts.push({ at: x.at, h }); else parts.splice(k, 0, { at: x.at, h }); }
   box.innerHTML = parts.map(p => p.h).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
-  if (first || data.length) scrollTo(0, document.body.scrollHeight);
+  if (first || fresh.length) scrollTo(0, document.body.scrollHeight);
   D.unread = 0; $('#msgCnt').hidden = true; setBadge();
 }
 function renderMsgs() {
   app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn stick" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
     <div class="small muted" style="text-align:center">الرسائل كتابة بس</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
-  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
+  $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; if (!EMOJIS.includes('👆')) EMOJIS.push('👆');
+  bindEmoji($('#mt'));
+  // القايمة تقفل أول ما يتختار إيموشن، أو لما يتداس على خانة الكتابة
+  const emp = document.querySelector('#cbar .emop');
+  if (emp) emp.addEventListener('click', e => { if (e.target.closest('button')) emp.hidden = true; });
+  $('#mt').addEventListener('focus', () => { if (emp) emp.hidden = true; });
   const o = $('#ord'); o && (o.onclick = orderDlg);
   $('#ms').onclick = async () => {
     const t = $('#mt').value.trim(); if (!t) return;
@@ -985,23 +994,6 @@ function renderOrder() {
   };
 }
 function orderDlg() { go('order'); }
-function orderDlgOld() {
-  const ps = prices();
-  if (!ps.length) return toast('قايمة الأسعار لسه مش متاحة — اسأل المندوب');
-  modal(`<h3>🛒 اطلب كتب بأسعار مميزة</h3><div class="small muted" style="margin-bottom:6px">اختار الكتب والعدد، والمندوب هيأكد معاك.</div>
-    <div id="ol">${ps.map(p => qtyRowH(p.b, p.l, 0, p.post ? `🔥 <b style="color:#dc2626">${p.post} ج</b>${p.pre ? ` بدل <s>${p.pre} ج</s>` : ''}` : '')).join('')}</div>
-    <div class="field"><label>ملاحظة (اختياري)</label><textarea id="on"></textarea></div>
-    <div class="acts"><button class="btn pri" id="os">ابعت الطلب</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
-    bindQty($('#ol', box));
-    $('#os', box).onclick = async () => {
-      const its = readQty($('#ol', box)).filter(x => x.q > 0).map(x => ({ ...x, l: bookLabel(x.b) }));
-      if (!its.length) return toast('اختار كتاب واحد على الأقل');
-      const { error } = await sb.rpc('t_order', { p_code: code, p_kind: 'order', p_items: its, p_note: $('#on', box).value });
-      if (error) return toast(errMsg(error));
-      close(); toast('اتبعت الطلب ✅'); window.pushNotifyRep && window.pushNotifyRep('🛒 ' + D.name + ' طلب كتب'); load();
-    };
-  });
-}
 // طلب بيع سجّله المندوب في البرنامج (كل كتاب فيه sid = رقم الطلب عنده)
 function isRepOrd(o) { return o.kind === 'order' && (o.items || []).some(i => i.sid); }
 function sidOf(o) { return ((o.items || []).find(i => i.sid) || {}).sid; }
