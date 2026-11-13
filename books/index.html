@@ -1346,7 +1346,7 @@ function renderTeacher(id){
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}
       <button class="rbtn" data-act="show-cls-change" title="التخصص">🎯</button><button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button></div>
-    <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:'<span class="small" style="align-self:center;color:var(--owe);font-weight:700">📍 الموقع ناقص</span>'}</div></div>
+    <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:'<span class="small" style="align-self:center;color:var(--owe);font-weight:700">📍 الموقع ناقص</span>'}</div>${t.loc?`<a class="btn ok" data-act="noop" href="${gmapsDir(t.loc)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;text-align:center;text-decoration:none">🗺️ افتح الطريق في خرائط جوجل</a>`:''}</div>
     ${recvBox(t)}
     <div class="bigbuy"><button class="btn gold" data-act="sell-t" data-mode="order">📝 طلب بيع</button><button class="btn owe" data-act="sell-t" data-mode="sell">🛒 بيع دلوقتي</button></div>`;
   if(isDup(t)) html += `<div class="banner">⚠️ الرقم ده متكرر — ممنوع تسليم أو بيع لحد ما تمسح المتكرر. <a href="#" data-act="go-dups">افتح الأرقام المتكررة</a></div>`;
@@ -4143,12 +4143,15 @@ function loadLeaflet(){
   return LF;
 }
 function killMap(){ if(MAP){ try{ MAP.remove(); }catch(e){} MAP=null; } }
+// متابعة 11: الطريق للمدرس في خرائط جوجل (بيفتح التطبيق على الموبايل والمدرس متحدد)
+function gmapsDir(loc){ return `https://www.google.com/maps/dir/?api=1&destination=${+loc.lat},${+loc.lng}&travelmode=driving`; }
 function tMarker(t, r){
   const LL=window.L, mk=LL.circleMarker([t.loc.lat, t.loc.lng], {radius:r||9, color:'#fff', weight:2, fillColor:CAT[tCat(t)][1], fillOpacity:1});
   // متابعة 11: الدوسة على المدرس بتفتح كارت صغير فيه «🚗 روح للمدرس» (يرسم الطريق ويبدأ الملاحة) و«👤 صفحته»
   const id=encodeURIComponent(t.id);
   mk.bindPopup(`<div style="text-align:center;min-width:170px"><b style="font-size:15px">${esc(t.name)}</b>${t.area?`<div class="small muted">${esc(t.area)}</div>`:''}
     <button type="button" class="btn pri" data-go="nav" style="width:100%;margin-top:8px;font-size:16px">🚗 روح للمدرس</button>
+    <a class="btn ok" href="${gmapsDir(t.loc)}" target="_blank" rel="noopener" style="display:block;width:100%;margin-top:6px;text-align:center;text-decoration:none">🗺️ افتح في خرائط جوجل</a>
     <button type="button" class="btn ghost sm" data-go="t" style="width:100%;margin-top:6px">👤 صفحته</button></div>`, {closeButton:true, offset:[0,-4]});
   mk.on('popupopen', e=>{ const el=e.popup.getElement(); if(!el) return;
     el.querySelector('[data-go="nav"]').onclick=()=>{ location.hash='#/nav/'+id; };
