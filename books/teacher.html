@@ -170,6 +170,16 @@ main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;fle
 .hm .ttiles.five .tt{padding:8px}
 .ttiles.five .tt.wd .tlx{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start}
 .tsub{font-family:'Reem Kufi',inherit;font-size:12px;font-weight:500;color:#fef3c7;line-height:1.4}
+/* متابعة 12: «🎁 كتبك بخصم خاص» = اطلب + أسعار الكتب في أيقونة واحدة، باينة إنها زرار (نبض + لمعة + «👆 اضغط هنا» + سهم) */
+.ttiles.five .tt.h-or{background:linear-gradient(135deg,#f472b6,#db2777 55%,#9d174d);border:0;overflow:hidden;animation:orPulse 1.8s ease-in-out infinite}
+.ttiles.five .tt.h-or .ttl{color:#fff!important}.ttiles.five .tt.h-or .tsub{color:#fde68a!important;font-size:14px!important;font-weight:800!important}
+.ttiles.five .tt.h-or::after{content:'';position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:orShine 2.6s ease-in-out infinite}
+.tt.h-or .orgo{position:absolute;top:6px;left:8px;background:#fde047;color:#7c2d12;border-radius:12px;padding:2px 9px;font-size:12.5px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.tt.h-or .orar{margin-inline-start:auto;font-size:28px;color:#fff;font-weight:900}
+.ttiles.five .tt.h-rv{grid-column:1/-1}
+@keyframes orPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@keyframes orShine{0%,60%{left:-60%}100%{left:130%}}
+@media (prefers-reduced-motion:reduce){.ttiles.five .tt.h-or,.ttiles.five .tt.h-or::after{animation:none}}
 .back2{position:fixed;left:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:31;border:0;border-radius:20px;padding:6px 14px;font:800 13.5px inherit;font-family:inherit;color:#fff;background:linear-gradient(135deg,#ec4899,#db2777);box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer}
 .back2[hidden]{display:none}
 body:has(.savebar) .back2,body:has(main:not(.ordv) .totbar) .back2{bottom:calc(140px + env(safe-area-inset-bottom))}
@@ -360,9 +370,8 @@ function renderHome() {
   let h = `<div class="promo"><div class="pr-t">كتب سلاح التلميذ <b>بسعر مميز</b></div>
     <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span><span>💳 الدفع بعدين</span></div>
     <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
-  h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="tlx"><span class="ttl">اطلب كتبك بسعر مميز</span><span class="tsub">اطلب دلوقتي بأقل سعر وأسرع توصيل.. والحساب بعدين</span></span></button>
+  h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="tlx"><span class="ttl">🎁 كتبك بخصم خاص</span><span class="tsub">شوف الأسعار واطلب 👆</span></span><span class="orar">←</span><span class="orgo">👆 اضغط هنا</span></button>
     <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${D.unread ? `<span class="ttb">${D.unread}</span>` : ''}</button>
-    <button class="tt h-pr" data-v="prices"><span class="tti">${HI.pr}</span><span class="ttl">أسعار الكتب</span></button>
     <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${HI.rv}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
   const notif = NATIVE ? (window.SilahApp.pushOn() ? 'granted' : 'default') : 'Notification' in window ? Notification.permission : 'unsupported';
@@ -976,7 +985,7 @@ function renderOrder() {
   const ps = myPrices();
   if (!ps.length) { app.innerHTML = INVBAR() + '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; bindInvBar(); return; }
   app.className = 'wrap ordv';
-  app.innerHTML = INVBAR() + `<div class="phead hot">اطلب كتبك بسعر مميز<div class="small">اكتب العدد جنب كل كتاب، والحساب بيطلع لوحده</div></div>
+  app.innerHTML = INVBAR() + `<div class="phead hot">🎁 كتبك بخصم خاص<div class="small">ده سعر كل كتاب قبل وبعد الخصم — اكتب العدد جنب اللي عايزه، والحساب بيطلع لوحده</div></div>
     <div class="oscr"><div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}"><div>${bookHead(p)}</div>
       <span class="qty"><button type="button" data-d="1">+</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="-1">−</button></span>
       <div class="bk-sum"></div></div>`).join('')}</div>

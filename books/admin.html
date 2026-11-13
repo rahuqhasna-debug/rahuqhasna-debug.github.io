@@ -48,7 +48,7 @@
   <a href="index.html#/msgs" id="waTab"><span class="i wai"></span>واتساب</a>
   <a href="#/" data-tab="list"><span class="i">👥</span>المدرسين</a>
   <a href="#/invite" data-tab="invite"><span class="i">✉️</span>رسالة الدعوة</a>
-  <a href="#/bell" data-tab="bell"><span class="i">🔔</span>الإشعارات</a>
+  <a href="#" data-tab="chat" id="chatTab"><span class="i">💬</span>المحادثة</a>
   <a href="#/settings" data-tab="settings" id="setTab" hidden><span class="i">⚙️</span>الإعدادات</a>
 </nav>
 <script>
@@ -349,8 +349,12 @@ $('#backBtn').onclick = () => { const h = location.hash.slice(1) || '/'; if (!me
 /* ---------- البيانات ---------- */
 async function counts() {
   const { data } = await sb.rpc('bell_counts'); if (!data) return;
-  const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0); BC = data;
-  const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
+  // متابعة 12: المدرسين اللي ثبّتوا التطبيق من آخر مرة فتحت تبويب «📲 ثبّتوا التطبيق»
+  const seen = LS.get('selah-trial-inst-seen') || new Date(0).toISOString();
+  const ir = await sb.from('teachers').select('id', { count: 'exact', head: true }).gt('app_at', seen);
+  data.inst = ir.error ? 0 : (ir.count || 0);
+  const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0); BC = data;
+  const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
   const stt = $('#setTab'); if (stt) stt.innerHTML = `<span class="i">⚙️</span>الإعدادات${BC.reps ? `<span class="cnt">${BC.reps}</span>` : ''}`;
   if (n > was) ding();
   LS.set('selah-trial-bell', { n, at: Date.now() });   // البرنامج الأخضر بيقراه للجرس
@@ -388,13 +392,22 @@ function route() {
   if (h.startsWith('/ru/')) { const id = decodeURIComponent(h.slice(4)); history.replaceState(null, '', '#/t/' + encodeURIComponent(id)); setTab('list'); return viewTeacher(id).then(() => { if (T.some(x => x.id === id)) reqUpdateDlg([id]); }); }
   if (h === '/rets') { setTab('list'); return viewRets(); }
   waTabFor(h.startsWith('/c/') ? decodeURIComponent(h.slice(3)) : '');
-  if (h.startsWith('/c/')) { setTab('list'); return viewChat(decodeURIComponent(h.slice(3))); }
-  if (h === '/bell') { setTab('bell'); return viewBell(); }
+  if (h.startsWith('/c/')) { setTab('chat'); LS.set('selah-trial-lastchat', decodeURIComponent(h.slice(3))); return viewChat(decodeURIComponent(h.slice(3))); }
+  if (h === '/bell') { setTab(''); return viewBell(); }
   if (h === '/invite') { setTab('invite'); return viewInvite(); }
   if (h === '/settings' && isAdmin()) { setTab('settings'); return viewSettings(); }
   setTab('list'); viewList();
 }
 window.addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
+// متابعة 12: «💬 المحادثة» اللي تحت: لو فاتح ملف مدرس ← المحادثة معاه، غير كده ← آخر محادثة كنت فيها
+$('#chatTab').onclick = e => {
+  e.preventDefault();
+  const h = location.hash.slice(1);
+  const id = h.startsWith('/t/') ? decodeURIComponent(h.slice(3)) : h.startsWith('/c/') ? '' : LS.get('selah-trial-lastchat');
+  if (h.startsWith('/c/')) return;
+  if (id && T.some(x => x.id === id)) { location.hash = '#/c/' + encodeURIComponent(id); return; }
+  toast('افتح ملف مدرس الأول، أو اختار مدرس من القايمة', 3000); if (h !== '/' && h !== '') location.hash = '#/';
+};
 
 // أيقونة الواتساب اللي تحت: جوه شات مدرس بتفتح شات الواتساب معاه على طول، وفي أي مكان تاني صفحة الواتساب في البرنامج
 function waTabFor(tid) {
@@ -630,9 +643,10 @@ function gSaleEdit(sid, items) {
    جوه كل قسم: اختيارات متعددة = أي واحدة. بين الأقسام: لازم يتحقق كله. */
 let mSt = {};   // آخر رسالة ليك عند كل مدرس: u = ما قراش · r = قرأ ومارددش · y = قرأ ورد
 // من msg_summary: my_id/my_read = آخر رسالة ليك واتقرت ولا لأ · their_id = آخر رسالة من المدرس
+let mTot = {};   // متابعة 12: عدد كل الرسايل في صندوق كل مدرس (📦)
 function mStates(rows) {
-  const out = {};
-  for (const s of rows || []) if (s.my_id) out[s.teacher_id] = (s.their_id || 0) > s.my_id ? 'y' : (s.my_read ? 'r' : 'u');
+  const out = {}; mTot = {};
+  for (const s of rows || []) { if (s.total) mTot[s.teacher_id] = +s.total; if (s.my_id) out[s.teacher_id] = (s.their_id || 0) > s.my_id ? 'y' : (s.my_read ? 'r' : 'u'); }
   return out;
 }
 const FL_OPT = {
@@ -641,10 +655,11 @@ const FL_OPT = {
   seen: [['today', 'النهارده'], ['d3', 'من يومين لـ 3 أيام'], ['d7', 'من 4 لـ 7 أيام'], ['old', 'أكتر من أسبوع / ما فتحش']],
   upd: [['full', '🟢 حدّث كله'], ['part', '🟠 باقيله جزء'], ['none', '⚪ ماحدّثش']],
   new: [['nf', '🆕 لسه ما فتحوش'], ['unread', '💬 بعتوا رسايل جديدة'], ['pend', '⏳ عندهم تعديلات مستنية']],
-  ret: [['r', '↩️ عنده مرتجع']]
+  ret: [['r', '↩️ عنده مرتجع']],
+  box: [['any', '📦 عنده رسايل'], ['10', 'أكتر من 10'], ['20', 'أكتر من 20']]
 };
-const FL_T = { msg: 'حالة الرسالة (آخر رسالة ليك)', app: 'التطبيق', seen: 'آخر ظهور', upd: 'حالة التحديث', new: 'الجديدة والتعديلات', ret: 'المرتجع' };
-const FL = () => (ui.fl ||= { msg: new Set(), app: new Set(), seen: new Set(), upd: new Set(), new: new Set(), ret: new Set() });
+const FL_T = { msg: 'حالة الرسالة (آخر رسالة ليك)', app: 'التطبيق', seen: 'آخر ظهور', upd: 'حالة التحديث', new: 'الجديدة والتعديلات', ret: 'المرتجع', box: '📦 الصندوق (عدد الرسايل — الأكتر فوق)' };
+const FL = () => (ui.fl ||= { msg: new Set(), app: new Set(), seen: new Set(), upd: new Set(), new: new Set(), ret: new Set(), box: new Set() });
 const flCount = () => Object.values(FL()).reduce((a, s) => a + s.size, 0) + (ui.rep ? 1 : 0);
 // تطبيع للبحث: الهمزات والتاء المربوطة والألف المقصورة والتشكيل والتطويل، والأرقام العربي/الفارسي ← إنجليزي
 const nq = s => norm(s).replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/ـ/g, '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776);
@@ -660,6 +675,7 @@ function flOk(t) {
   if (f.msg.size && !f.msg.has(mSt[t.id])) return false;
   if (f.app.size && !f.app.has(t.app_at ? 'in' : 'out')) return false;
   if (f.ret.size && !retsBy[t.id]) return false;
+  if (f.box.size) { const n = mTot[t.id] || 0; if (!((f.box.has('any') && n > 0) || (f.box.has('10') && n > 10) || (f.box.has('20') && n > 20))) return false; }
   if (f.seen.size && !f.seen.has(seenB(t))) return false;
   if (f.upd.size && !f.upd.has(updState(t))) return false;
   if (f.new.size && !((f.new.has('nf') && !t.last_seen) || (f.new.has('unread') && unreadBy[t.id]) || (f.new.has('pend') && pendSet.has(t.id)))) return false;
@@ -668,7 +684,8 @@ function flOk(t) {
 function filtered() {
   const words = stWords(nq(ui.q).split(/\s+/).filter(Boolean));
   // اللي عندهم رسايل أو طلبات جديدة فوق
-  const rank = t => (lastMsg[t.id] || ordersBy[t.id] ? 1e12 : 0) + (lastMsg[t.id] ? lastMsg[t.id].id : 0) + (ordersBy[t.id] || 0);
+  // فلتر الصندوق شغال ← الأكتر رسايل فوق
+  const rank = FL().box.size ? (t => mTot[t.id] || 0) : (t => (lastMsg[t.id] || ordersBy[t.id] ? 1e12 : 0) + (lastMsg[t.id] ? lastMsg[t.id].id : 0) + (ordersBy[t.id] || 0));
   return T.filter(t => {
     if (!flOk(t)) return false;
     if (!words.length) return true;
@@ -699,7 +716,7 @@ function openFilters() {
   const grp = key => `<div class="small muted" style="margin:10px 0 4px;font-weight:700">${FL_T[key]}</div><div class="pgrid">${FL_OPT[key].map(([v, l]) => `<label class="chip ${f[key].has(v) ? 'on' : ''}"><input type="checkbox" data-fl="${key}" value="${v}" ${f[key].has(v) ? 'checked' : ''}> ${l}</label>`).join('')}</div>`;
   modal(`<h3>🔎 فلاتر المدرسين</h3>
     <div class="small muted">جوه نفس القسم: اختار أكتر من واحدة = أي واحدة منهم. بين الأقسام: لازم يتحقق كله.</div>
-    ${['msg', 'app', 'seen', 'upd', 'new', 'ret'].map(grp).join('')}
+    ${['box', 'msg', 'app', 'seen', 'upd', 'new', 'ret'].map(grp).join('')}
     ${isAdmin() && staffList.length > 1 ? `<div class="small muted" style="margin:10px 0 4px;font-weight:700">المندوب</div><select id="flRep"><option value="">كل المناديب</option>${staffList.map(s => `<option value="${s.id}" ${ui.rep === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}
     <div class="acts"><button class="btn ghost" id="flReset">امسح الفلاتر</button><button class="btn pri" data-close>تم</button></div>`, box => {
     box.addEventListener('change', e => {
@@ -737,7 +754,7 @@ function viewList() {
       const { error } = await sb.from('messages').delete().in('teacher_id', ids.slice(i, i + 150));
       if (error) { $('#delSel').disabled = false; return toast(errMsg(error)); }
     }
-    ids.forEach(id => { delete unreadBy[id]; delete lastMsg[id]; delete mSt[id]; });
+    ids.forEach(id => { delete unreadBy[id]; delete lastMsg[id]; delete mSt[id]; delete mTot[id]; });
     ui.sel.clear(); $('#delSel').disabled = false; toast(`🗑️ اتمسحت رسايل ${ids.length} مدرس ✅`); counts(); refreshList();
   };
   $$('[data-os]').forEach(b => b.onclick = () => { const f = FL(), k = b.dataset.os;
@@ -782,7 +799,7 @@ function tItem(t) {
   return `<div class="titem tcard ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">
     <div class="tc-h"><input type="checkbox" class="tck" ${ui.sel.has(t.id) ? 'checked' : ''}>${av}<div class="tc-n">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div></div>
     ${lm ? `<div class="tc-l">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
-    <div class="tc-tags">${tags}${instPill(t)}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div>
+    <div class="tc-tags">${tags}${instPill(t)}${mTot[t.id] ? ` <span class="pill ${mTot[t.id] > 20 ? 'bad' : mTot[t.id] > 10 ? 'owe' : 'new'}" title="عدد الرسايل في صندوقه">📦 ${mTot[t.id]} رسالة</span>` : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${t.last_seen ? '' : ' <span class="pill new">لسه ما فتحش</span>'}</div>
     ${t.phone || (s && s.lv) ? `<div class="tc-i">${t.phone ? `<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>` : ''}${s && s.lv ? `<span>🕘 آخر زيارة: ${esc(s.lv)}</span>` : ''}</div>` : ''}
     <div class="tc-f">${icos4(t)}${recv ? `<span>${recv}</span>` : ''}</div></div>`;
 }
@@ -1185,10 +1202,10 @@ function bindReviews(root) {
 
 /* ---------- الجرس ---------- */
 // متابعة 10: اتشالت تبويبات «قريبًا» (🧾 طلباتي، 📋 الملاحظات، 🗑️ مسح الرسايل)
-const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['edits', '📝 تعديل الملفات']];
+const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['edits', '📝 تعديل الملفات'], ['inst', '📲 ثبّتوا التطبيق']];
 async function viewBell() {
   setHeader('🔔 الإشعارات', false);
-  const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets };
+  const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets, inst: BC.inst };
   if (!BELL.some(([k]) => k === ui.bellTab)) ui.bellTab = 'msgs';
   app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div class="chips">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''}" data-b="${k}">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : ''}</button>`).join('')}</div><div id="bb"></div>`;
   $$('[data-b]').forEach(b => b.onclick = () => { ui.bellTab = b.dataset.b; viewBell(); });
@@ -1200,6 +1217,17 @@ async function viewBell() {
     bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<div class="titem" data-go="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
       <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
     bb.onclick = e => { if (e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
+    return;
+  }
+  // متابعة 12: المدرسين اللي ثبّتوا التطبيق (الأحدث فوق، والجديد من آخر مرة متعلّم 🆕)
+  if (ui.bellTab === 'inst') {
+    const { data, error } = await sb.from('teachers').select('id,name,phone,app_at').not('app_at', 'is', null).order('app_at', { ascending: false }).limit(200);
+    if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
+    const seen = LS.get('selah-trial-inst-seen') || new Date(0).toISOString();
+    bb.innerHTML = data.length ? `<div class="small muted" style="margin-bottom:6px">${data.length} مدرس ثبّتوا التطبيق</div><div class="tlist" style="display:flex">${data.map(t => `<div class="titem" data-go="#/t/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${t.app_at > seen ? '<span class="pill ok">🆕 جديد</span>' : ''}</div>
+      <div class="sub">📲 ثبّت ${fmtDate(t.app_at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">لسه ولا مدرس ثبّت التطبيق</div>';
+    bb.onclick = e => { if (e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
+    if (data.length && data[0].app_at > seen) { LS.set('selah-trial-inst-seen', data[0].app_at); counts().catch(() => { }); }
     return;
   }
   if (ui.bellTab === 'rets') {
