@@ -4145,10 +4145,17 @@ function loadLeaflet(){
 function killMap(){ if(MAP){ try{ MAP.remove(); }catch(e){} MAP=null; } }
 function tMarker(t, r){
   const LL=window.L, mk=LL.circleMarker([t.loc.lat, t.loc.lng], {radius:r||9, color:'#fff', weight:2, fillColor:CAT[tCat(t)][1], fillOpacity:1});
-  const go=()=>{ location.hash='#/t/'+encodeURIComponent(t.id); };
+  // متابعة 11: الدوسة على المدرس بتفتح كارت صغير فيه «🚗 روح للمدرس» (يرسم الطريق ويبدأ الملاحة) و«👤 صفحته»
+  const id=encodeURIComponent(t.id);
+  mk.bindPopup(`<div style="text-align:center;min-width:170px"><b style="font-size:15px">${esc(t.name)}</b>${t.area?`<div class="small muted">${esc(t.area)}</div>`:''}
+    <button type="button" class="btn pri" data-go="nav" style="width:100%;margin-top:8px;font-size:16px">🚗 روح للمدرس</button>
+    <button type="button" class="btn ghost sm" data-go="t" style="width:100%;margin-top:6px">👤 صفحته</button></div>`, {closeButton:true, offset:[0,-4]});
+  mk.on('popupopen', e=>{ const el=e.popup.getElement(); if(!el) return;
+    el.querySelector('[data-go="nav"]').onclick=()=>{ location.hash='#/nav/'+id; };
+    el.querySelector('[data-go="t"]').onclick=()=>{ location.hash='#/t/'+id; }; });
+  const open=()=>mk.openPopup();
   mk.bindTooltip(esc(t.name)+(clsLetter(t)?` (${clsLetter(t)})`:''), {permanent:true, direction:'top', offset:[0,-8], className:'mlbl'});
-  mk.on('tooltipopen', e=>{ const el=e.tooltip.getElement(); if(el && !el._go){ el._go=1; el.style.pointerEvents='auto'; el.style.cursor='pointer'; el.addEventListener('click', go); } });
-  mk.on('click', go);
+  mk.on('tooltipopen', e=>{ const el=e.tooltip.getElement(); if(el && !el._go){ el._go=1; el.style.pointerEvents='auto'; el.style.cursor='pointer'; el.addEventListener('click', ev=>{ ev.stopPropagation(); open(); }); } });
   return mk;
 }
 function mapList(){ const ws=qWords(PQ.mq||''), rs=new Set(mapRouteIds());
