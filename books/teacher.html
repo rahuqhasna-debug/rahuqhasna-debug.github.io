@@ -804,7 +804,7 @@ function renderPasteCode() {
 /* ---------- الرسائل ---------- */
 // التنبيه = صوت بس. بعد 3 تنبيهات ورا بعض تظهر جملة «الأستاذ … بينبّهك»
 function bubble(m, i, all) {
-  if (m.kind === 'ring') {
+  if (m.kind === 'ring' || m.kind === 'alert') {   // alert = التنبيه الجديد (schema6)، بيتمسح من القاعدة بعد 30 دقيقة
     // بند 47: كل تنبيه بيظهر رسالة، وبتختفي بعد نص ساعة (وبتتمسح من القاعدة في t_recv_get)
     if (Date.now() - new Date(m.at).getTime() > 30 * 60000) return '';
     return `<div class="bub ring">🔔 الأستاذ ${esc(m.sender || D.rep || '')} بينبّه حضرتك<span class="tm">${fmtDate(m.at)}</span></div>`;

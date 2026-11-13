@@ -540,7 +540,7 @@ let mSt = {};   // آخر رسالة ليك عند كل مدرس: u = ما قر�
 function mStates(rows) {
   const ours = {}, theirs = {}, out = {};
   for (const m of rows || []) {
-    if (m.kind === 'ring') continue;
+    if (m.kind === 'ring' || m.kind === 'alert') continue;
     if (m.from_teacher) theirs[m.teacher_id] = m.id; else ours[m.teacher_id] = m;
   }
   for (const tid in ours) { const o = ours[tid]; out[tid] = theirs[tid] > o.id ? 'y' : (o.read_at ? 'r' : 'u'); }
@@ -773,7 +773,8 @@ function reqUpdateDlg(ids) {
 /* ---------- 🔔 التنبيه: صوت + إشعار. الإشعار بيقوله يحدّث إيه (لو فيه طلب تحديث)، وبعد 3 تنبيهات «الأستاذ … بينبّهك» ---------- */
 async function ringTeachers(ids) {
   if (!ids.length) return;
-  const { error } = await sb.from('messages').insert(ids.map(id => ({ teacher_id: id, from_teacher: false, kind: 'ring', body: '', sender: me.name })));
+  // schema6: t_alert بيكتب رسالة «🔔 الأستاذ … بينبّهك» نوعها alert، وبتتمسح لوحدها بعد 30 دقيقة
+  const { error } = await sb.rpc('t_alert', { p_teacher_ids: ids });
   if (error) return toast(errMsg(error));
   const { data: ups } = await sb.from('update_requests').select('teacher_id,fields').in('teacher_id', ids).eq('status', 'open');
   const need = {}; (ups || []).forEach(u => (need[u.teacher_id] ||= new Set()) && (u.fields || []).forEach(f => need[u.teacher_id].add(f)));
@@ -792,7 +793,7 @@ async function ringTeachers(ids) {
 let chatMsgs = [], chatLast = 0;
 let chatSel = null;   // وضع التحديد للمسح
 function bubbleS(m, t) {
-  if (m.kind === 'ring') return '';   // التنبيه مايظهرش في الشات عند المندوب
+  if (m.kind === 'ring' || m.kind === 'alert') return '';   // التنبيه مايظهرش في الشات عند المندوب
   const mine = !m.from_teacher, sel = chatSel && chatSel.has(m.id);
   return `<div class="bub ${mine ? 'me' : 'them'}" data-mid="${m.id}" style="${chatSel ? 'cursor:pointer;' : ''}${sel ? 'outline:3px solid #dc2626;' : ''}">${chatSel ? (sel ? '☑️ ' : '⬜ ') : ''}${esc(m.body)}<span class="tm">${fmtDate(m.created_at)}${mine ? (m.read_at ? ' <b style="color:#2563eb">✓✓</b>' : ' ✓') : ''}</span></div>`;
 }
@@ -816,7 +817,7 @@ async function viewChat(id) {
     if (data.some(m => m.from_teacher && !m.read_at)) { await sb.from('messages').update({ read_at: new Date().toISOString() }).eq('teacher_id', t.id).eq('from_teacher', true).is('read_at', null); delete unreadBy[t.id]; delete lastMsg[t.id]; counts(); }
     if (!first) { const { data: rd } = await sb.from('messages').select('id,read_at').eq('teacher_id', t.id).eq('from_teacher', false).not('read_at', 'is', null).gt('id', Math.max(0, chatLast - 50)); (rd || []).forEach(r => { const m = chatMsgs.find(x => x.id === r.id); if (m) m.read_at = r.read_at; }); }
     if (!chatSel) $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>';
-    if (first || data.some(m => m.kind !== 'ring')) scrollTo(0, document.body.scrollHeight);
+    if (first || data.some(m => m.kind !== 'ring' && m.kind !== 'alert')) scrollTo(0, document.body.scrollHeight);
   };
   const send = async (kind, body) => {
     const { error } = await sb.from('messages').insert({ teacher_id: t.id, from_teacher: false, kind, body, sender: me.name });
