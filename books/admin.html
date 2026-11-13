@@ -424,6 +424,18 @@ async function importGreen() {
   const sig = me.id + '|' + (db.lastChange || '') + '|' + db.teachers.length;
   if (LS.get('selah-trial-isync') === sig && T.some(t => t.rep_id === me.id)) return false;
   const mine = new Map(T.filter(t => t.rep_id === me.id && t.local_id).map(t => [t.local_id, t]));
+  // متابعة 14: لو البرنامج الأخضر غيّر كود المدرس (استرجاع نسخة مثلًا) ← بنحوّل كود المدرس القديم للكود الجديد
+  // بدل ما نعمل مدرس جديد (ده اللي كان بيكرّر المدرسين 3 مرات). بالاسم + التليفون، وبس لو التليفون موجود.
+  try {
+    const gids = new Set(db.teachers.filter(t => t && t.id).map(t => t.id)), nk = t => norm(t.name) + '|' + String(t.phone || '').replace(/\D/g, '').slice(-10);
+    const stale = {}; for (const t of T) if (t.rep_id === me.id && t.local_id && !gids.has(t.local_id) && String(t.phone || '').replace(/\D/g, '').length >= 8) (stale[nk(t)] ||= []).push(t);
+    for (const gt of db.teachers) {
+      if (!gt || !gt.id || !gt.name || mine.has(gt.id) || String(gt.phone || '').replace(/\D/g, '').length < 8) continue;
+      const arr = stale[nk(gt)]; if (!arr || !arr.length) continue;
+      const old = arr.shift(), { error } = await sb.from('teachers').update({ local_id: gt.id }).eq('id', old.id);
+      if (!error) { mine.delete(old.local_id); old.local_id = gt.id; mine.set(gt.id, old); }
+    }
+  } catch (e) { console.warn('relink', e); }
   const rows = db.teachers.filter(t => t && t.id && t.name).map(t => {
     const old = mine.get(t.id), prof = { ...(old ? old.profile : {}), ...gProfile(t) };
     return { rep_id: me.id, local_id: t.id, name: t.name, phone: t.phone || '', profile: prof, books: gBooks(db, t.id) };
