@@ -4493,48 +4493,79 @@ function shrinkSrc(s, i, d){   // ينقّص التقسيم على التجار 
     const can=x.q-r; if(can<=0) continue; const n=Math.min(d,can); x.q-=n; d-=n; }
   s.items[i].src=src.filter(x=>x.q>0);
 }
+// قص المرتجع: بيشيل n من أحدث مرتجع على الكتاب ده في الفاتورة دي، وبيرجّع الكمية للتاجر
+function cutRetParts(tid, sid, i, n){
+  let need=n;
+  const rets=db.payments.filter(p=>p.k==='ret' && p.t===tid).sort((a,b)=>String(b.d||'').localeCompare(String(a.d||'')));
+  for(const p of rets){
+    if(!need) break;
+    for(const pt of p.parts||[]){
+      if(!need) break; if(pt.sale!==sid || pt.i!==i) continue;
+      const c=Math.min(need, pt.q); pt.q-=c; need-=c;
+      let lc=c; for(let j=(pt.lots||[]).length-1; j>=0 && lc>0; j--){ const x=pt.lots[j], r=Math.min(lc,x.q); x.q-=r; lc-=r; }
+      pt.lots=(pt.lots||[]).filter(x=>x.q>0);
+    }
+    p.parts=(p.parts||[]).filter(pt=>pt.q>0);
+    if(p.parts.length) p.q=p.parts.reduce((a,pt)=>a+pt.q,0);
+    else db.payments=db.payments.filter(x=>x!==p);
+  }
+}
 function editInvoice(sid){
   const s=db.sales.find(x=>x.id===sid && x.st==='sold'); if(!s) return; const t=tById(s.t); if(!t) return;
   const doneOf=i=>{ let n=0; for(const p of db.payments) if(p.k==='ret' && p.t===s.t) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) n+=pt.q; return n; };
   const anyRet=s.items.some((_,i)=>doneOf(i)>0), left=lotLeft();
-  const rows=s.items.map((it,i)=>({id:'x', i, b:it.b, q0:it.q, q:it.q, pr:it.post, min:anyRet?Math.max(doneOf(i),1):0}));
+  // صفوف الكتب في الفاتورة + صفوف المرتجع (ret:true) تحتها لكل كتاب فيه مرتجع
+  const rows=s.items.map((it,i)=>({id:'x', i, b:it.b, q0:it.q, q:it.q, pr:it.post, min:0}));
+  s.items.forEach((it,i)=>{ const dn=doneOf(i); if(dn>0) rows.push({id:'x', i, b:it.b, q0:dn, q:dn, pr:null, min:0, ret:true}); });
+  const sale=()=>rows.filter(r=>!r.ret);
   const tot=(f)=>rows.reduce((a,r)=>a+(r.pr!=null?f(r)*r.pr:0),0);
+  const short=()=>sale().filter(r=>r.q>r.q0 && db.merchants.length && (r.q-r.q0)>merchAvail(r.b,left).reduce((a,[,n])=>a+n,0));
   const m=document.createElement('div'); m.className='modal';
-  m.innerHTML=`<div class="box"><h3>✏️ تعديل فاتورة ${esc(t.name)}</h3><div class="small muted" style="margin-bottom:8px">فاتورة ${fmtDay(dk(s.sd||s.d))} — زوّد أو نقّص الأعداد، والحساب وبضاعة التجار بيتعدّلوا لوحدهم.${anyRet?' (فيها مرتجع، فمش هينفع تنزل عن اللي اترجّع ولا تشيل كتاب)':' صفّر الخانة عشان تشيل الكتاب.'}</div>
+  m.innerHTML=`<div class="box"><h3>✏️ تعديل فاتورة ${esc(t.name)}</h3><div class="small muted" style="margin-bottom:8px">فاتورة ${fmtDay(dk(s.sd||s.d))} — زوّد أو نقّص الكتب، والحساب وبضاعة التجار بيتعدّلوا لوحدهم.${anyRet?' تحت الكتب فيه المرتجعات، تقدر تعدّلها هي كمان (المرتجع ما ينفعش يزيد عن الكمية اللي في الفاتورة).':''}</div>
     <div id="ev_l"></div>
     <div class="field" style="margin-top:8px"><label>➕ ضيف كتاب للفاتورة</label><select id="ev_add"><option value="">اختار الكتاب…</option>${[...SELL_KEYS].map(b=>`<option value="${b}">${esc(bookLabel(b))}</option>`).join('')}</select></div>
     <div id="ev_sum" class="tot" style="margin:8px 0"></div>
     <div class="row2"><button class="btn pri" id="ev_ok">💾 حفظ التعديل</button><button class="btn ghost" id="ev_x">إلغاء</button></div></div>`;
   document.body.appendChild(m);
-  const short=()=>rows.filter(r=>r.q>r.q0 && db.merchants.length && (r.q-r.q0)>merchAvail(r.b,left).reduce((a,[,n])=>a+n,0));
-  const paintSum=()=>{ const a=tot(r=>r.q0), b=tot(r=>r.q), n0=rows.reduce((x,r)=>x+r.q0,0), n1=rows.reduce((x,r)=>x+r.q,0);
-    m.querySelector('#ev_sum').innerHTML = (n0===n1 && a===b && rows.every(r=>r.q===r.q0)) ? '<span class="muted">لسه ما غيّرتش حاجة</span>'
+  const paintSum=()=>{ const sl=sale(), a=tot(r=>r.q0), b=tot(r=>r.q), n0=sl.reduce((x,r)=>x+r.q0,0), n1=sl.reduce((x,r)=>x+r.q,0);
+    m.querySelector('#ev_sum').innerHTML = rows.every(r=>r.q===r.q0) ? '<span class="muted">لسه ما غيّرتش حاجة</span>'
       : `<div class="small">الكتب: ${n0} ← <b>${n1}</b> • الإجمالي: ${fmtN(a)} ← <b>${fmtN(b)}</b> ج</div>`
         + short().map(r=>`<div class="small" style="color:var(--bad)">⚠️ ${esc(bookLabel(r.b))}: مفيش في بضاعة التجار كفاية</div>`).join(''); };
-  const paintList=()=>{ m.querySelector('#ev_l').innerHTML=qtyRows(rows, true); paintSum(); };
+  const rowHtml=(r,i)=>`<div class="srow"><div class="grow"><b style="color:var(--c-${bookParts(r.b).sb})">${r.ret?'↩️ مرتجع: ':''}${esc(bookLabel(r.b))}</b>${r.fresh?' <span class="pill new">جديد</span>':''}
+      <div class="small muted">كان ${r.q0}${!r.ret&&r.pr!=null?` • ${fmtN(r.pr)} ج للواحد`:''}</div></div>
+    <div class="step"><button data-ev="dec" data-i="${i}" aria-label="أقل">−</button><input class="qin" inputmode="numeric" data-i="${i}" value="${r.q}"><button class="plus" data-ev="inc" data-i="${i}" aria-label="زوّد">+</button></div></div>`;
+  const paintList=()=>{ m.querySelector('#ev_l').innerHTML=rows.map(rowHtml).join(''); paintSum(); };
   bindQtyEditor(m, rows, paintList, paintSum, r=>r.min);
   m.querySelector('#ev_x').onclick=()=>m.remove();
   m.querySelector('#ev_ok').onclick=()=>{
     if(rows.every(r=>r.q===r.q0)){ alert('ما غيّرتش حاجة'); return; }
+    const sl=sale(), rt=rows.filter(r=>r.ret);
+    for(const r of rt){ const sv=sl.find(x=>!x.fresh && x.i===r.i), nq=sv?sv.q:0; if(r.q>nq){ alert(`المرتجع من ${bookLabel(r.b)} أكبر من الكمية اللي في الفاتورة`); return; } }
     if(short().length && !confirm('فيه كتب مفيش منها كفاية في بضاعة التجار، هتتسجّل من غير تاجر. تكمّل؟')) return;
-    const ch=rows.filter(r=>r.q!==r.q0).map(r=>({f:bookLabel(r.b)+(r.fresh?' (جديد)':''), o:r.fresh?'—':String(r.q0), n:r.q?String(r.q):'اتشال'}));
+    const ch=rows.filter(r=>r.q!==r.q0).map(r=>({f:(r.ret?'↩️ مرتجع ':'')+bookLabel(r.b)+(r.fresh?' (جديد)':''), o:r.fresh?'—':String(r.q0), n:r.q?String(r.q):'اتشال'}));
     const a=tot(r=>r.q0), b=tot(r=>r.q), inv=fmtDay(dk(s.sd||s.d)); if(a!==b) ch.push({f:'إجمالي الفاتورة', o:fmtN(a)+' ج', n:fmtN(b)+' ج'});
     m.remove();
     withUndo('✏️ الفاتورة اتعدّلت — الحساب والرصيد اتحسبوا', ()=>{
-      for(const r of rows){
+      const now=new Date().toISOString();
+      // 1) المرتجع اللي اتقلّل: بيتشال من أحدث مرتجع
+      for(const r of rt.filter(r=>r.q<r.q0)) cutRetParts(s.t, s.id, r.i, r.q0-r.q);
+      // 2) الكتب في الفاتورة
+      for(const r of sl){
         if(r.fresh){ const p=priceOf(r.b); s.items.push({b:r.b, q:r.q, pre:p?p.pre:null, post:p?p.post:null, src:allocate(r.b, r.q, left)}); continue; }
         const it=s.items[r.i], d=r.q-r.q0; if(!d) continue;
         if(d>0) it.src=[...(it.src||[]), ...allocate(it.b, d, left)]; else shrinkSrc(s, r.i, -d);
         it.q=r.q;
       }
+      // 3) المرتجع اللي اتزوّد: مرتجع جديد على الفاتورة دي بالتاريخ ده
+      for(const r of rt.filter(r=>r.q>r.q0)){ const it=s.items[r.i]; if(!it) continue; const d=r.q-r.q0;
+        db.payments.push({id:uid(), k:'ret', t:s.t, b:it.b, q:d, d:now, g:uid(), parts:[{sale:s.id, i:r.i, q:d, lots:retLots(s.t, s, r.i, d)}]}); }
       for(let i=s.items.length-1;i>=0;i--) if(s.items[i].q<=0) s.items.splice(i,1);
       if(!s.items.length) db.sales=db.sales.filter(x=>x!==s);
       logEdit('invoice', s.t, ch, {inv});
     });
   };
   paintList();
-}
-function editLogCard(tid){   // من غير tid = السجل كله (الإعدادات)، ومعاه tid = تعديلات المدرس ده (صفحته ← السجل)
+}function editLogCard(tid){   // من غير tid = السجل كله (الإعدادات)، ومعاه tid = تعديلات المدرس ده (صفحته ← السجل)
   const Lg=(db.editLog||[]).filter(x=>!tid || x.t===tid);
   if(!Lg.length) return '';
   const items=[...Lg].reverse().map(x=>{ const t=x.t?tById(x.t):null, nm=t&&!tid?esc(t.name):'';
