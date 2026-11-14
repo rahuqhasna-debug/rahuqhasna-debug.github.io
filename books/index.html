@@ -1729,14 +1729,13 @@ function renderReport(){
     <div class="card"><h3 class="sec-t">☁️ الشيتات بتترفع على الدرايف بتاعك</h3>
       <p class="hint" style="margin-top:0">كل شيت بيترفع على طول في فولدر «شيتات سلاح التلميذ» على الدرايف، كل نوع في فولدره. لو مفيش نت بيترفع لوحده أول ما النت يرجع.${shq().length?` <b>مستني يترفع: ${shq().length} شيت.</b>`:''}</p>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-part="del">📚 شيت التسليمات</button>
-      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="dd-xlsx">📚 شيت الكتب اللي اتسلّمت بالأيام</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="edafat">➕ شيت الإضافات</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="tdata">👥 شيت بيانات المدرسين</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="sale-sheets">💰 شيت البيع</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-part="mer">🏪 شيت حساب التجار</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="jard">📋 شيت الجرد</button>
       <button class="btn pri" style="width:100%" data-act="sjard">🧮 شيت جرد المبيعات</button>
-      <p class="hint">• <b>التسليمات</b>: تسليمات 1 • تسليمات 2 • أعداد المدرسين.<br>• <b>شيت البيع</b> بيسألك: «حساب المدرسين» (الطلبات • الملخص اليومي • فواتير البيع • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا) ولا «بيع الشركة» (بنفس شكل بيع مباشر).<br>• <b>حساب التجار</b>: حسابات التجار • صافي التجار.<br>• <b>الجرد</b>: بنفس شكل جرد الشركة، كل كتاب رابطة + فرد. <b>جرد المبيعات</b>: الباقي معاك من بضاعة التجار.<br>كل الشيتات بتطلع حسب الأيام اللي مختارها فوق (📅).</p></div>`;
+      <p class="hint">• <b>التسليمات</b>: التسليمات اليومية • تسليمات 2 • أعداد المدرسين.<br>• <b>شيت البيع</b> بيسألك: «حساب المدرسين» (الطلبات • الملخص اليومي • فواتير البيع (فيها الحساب والمرتجع والدفعات) • صافي كتب المدرسين • ترتيب الهدايا) ولا «بيع الشركة» (بنفس شكل بيع مباشر).<br>• <b>حساب التجار</b>: حسابات التجار • صافي التجار.<br>• <b>الجرد</b>: بنفس شكل جرد الشركة، كل كتاب رابطة + فرد. <b>جرد المبيعات</b>: الباقي معاك من بضاعة التجار.<br>كل الشيتات بتطلع حسب الأيام اللي مختارها فوق (📅).</p></div>`;
 }
 // «💰 شيت البيع» بيسأل: حساب المدرسين ولا بيع الشركة
 function saleSheetChoice(){
@@ -1811,6 +1810,17 @@ function exportDelDays(){
 }
 
 /* ================= الإعدادات ================= */
+// حماية المخزون (بند 8 ج): فواتير فيها كتب اتباعت من غير بضاعة تاجر (lot:null أو مجموع src أقل من العدد)
+function noStockCard(){
+  if(!db.merchants.length) return '';
+  const bad=[];
+  for(const s of db.sales) if(s.st==='sold'){ const ks=s.items.filter(it=>{ const src=it.src||[]; return src.some(x=>!x.lot) || src.reduce((a,x)=>a+x.q,0)<it.q; });
+    if(ks.length) bad.push({s, n:ks.reduce((a,it)=>a+(it.src||[]).filter(x=>!x.lot).reduce((y,x)=>y+x.q,0)+Math.max(0,it.q-(it.src||[]).reduce((y,x)=>y+x.q,0)),0), ks}); }
+  if(!bad.length) return '';
+  return `<div class="card" style="border:2px solid #dc2626"><h3 class="sec-t" style="color:#b91c1c">⚠️ فيه كتب اتباعت من غير مخزون (${bad.length} فاتورة)</h3>
+    ${bad.map(x=>`<div class="kv"><span class="grow"><b>${esc(tById(x.s.t)?.name||'؟')}</b> — ${fmtDay(dk(x.s.sd||x.s.d))}<br><span class="small muted">${esc(x.ks.map(it=>bookLabel(it.b)).join('، '))} (${x.n} كتاب من غير تاجر)</span></span><button class="btn sm pri" data-act="inv-edit" data-id="${esc(x.s.id)}">✏️ افتح الفاتورة</button></div>`).join('')}
+    <p class="hint">الكتب دي اتباعت قبل ما بضاعة التاجر تتسجّل، فالمخزون بيطلع بالسالب. افتح الفاتورة وصلّح العدد أو سجّل بضاعة التاجر.</p></div>`;
+}
 function stockCard(){
   const rec=stockMap(), dl=deliveredMap();
   const recT=db.stock.reduce((s,x)=>s+x.q,0);
@@ -1842,6 +1852,7 @@ function renderSettings(){
       <button class="btn pri" style="width:100%" data-act="import-xlsx">اختار شيت الإكسل</button>
       <p class="hint">بيقرا أعمدة: اسم المدرس، رقم الهاتف، المرحلة، المادة، المنطقة، التصنيف (A/B/C)، عدد الطلاب، التاريخ. لو المدرس موجود (نفس رقم التليفون) بيحدّث بياناته بس ومش بيمسح تسليماته، ونفس الرقم مرتين في الشيت بيتضاف مرة واحدة.</p></div>
     ${dupsCard()}
+    ${noStockCard()}
     ${stockCard()}
     ${locCard()}
     ${pricesCard()}
@@ -2257,7 +2268,7 @@ const cellFill = c => (c && typeof c==='object' && ('v' in c || 'f' in c) && typ
 const rowFill = r => typeof r.fill==='string' ? (FILLMAP[r.fill]||r.fill) : null;
 // ستايلات الشرط (conditional formatting): أخضر / أحمر / أصفر
 const DXN={ok:0, bad:1, wait:2};
-function sheetXml(sh, FX){
+function sheetXml(sh, FX, notes=[]){
   const {rows, widths, head=0, freezeCol=false, dv=null, merges=[], af=true, noFreeze=false}=sh;
   const dvs=[...(sh.dvs||[])], cfs=[...(sh.cfs||[])];
   // style: 0 عادي، 1 عنوان، 2 تاريخ، 3 ملفوف، 4 إجمالي — ولكل لون: 4 ستايلات (عادي، تاريخ، ملفوف، إجمالي)
@@ -2271,7 +2282,7 @@ function sheetXml(sh, FX){
     const ref=colName(ci)+(ri+1);
     let c=c0, f=rf, b=!!r.bold, fm=null, wr=false;
     // خلية: قيمة، أو {v, f (معادلة), fill, bold, wrap}
-    if(c && typeof c==='object' && ('v' in c || 'f' in c)){ f=cellFill(c)||f; b=c.bold||b; fm=c.f||null; wr=!!c.wrap; c=c.v; }
+    if(c && typeof c==='object' && ('v' in c || 'f' in c)){ if(c.note) notes.push({ref, r:ri, c:ci, t:c.note}); f=cellFill(c)||f; b=c.bold||b; fm=c.f||null; wr=!!c.wrap; c=c.v; }
     if(isH) return c===null||c===undefined||c==='' ? `<c r="${ref}" s="1"/>` : `<c r="${ref}" t="inlineStr" s="1"><is><t xml:space="preserve">${xmlEsc(c)}</t></is></c>`;
     const k0 = b?3:wr?2:0;
     if(fm){ const hasV = c!==null && c!==undefined && c!=='';
@@ -2294,7 +2305,17 @@ function sheetXml(sh, FX){
   const cfx=cfs.map(c=>`<conditionalFormatting sqref="${c.rg}">${c.rules.map(r=>`<cfRule type="cellIs" dxfId="${DXN[r.dx]}" priority="${pr++}" operator="${r.op||'equal'}"><formula>${r.op?xmlEsc(r.val):`"${xmlEsc(r.eq)}"`}</formula></cfRule>`).join('')}</conditionalFormatting>`).join('');
   const dvx=dvs.length?`<dataValidations count="${dvs.length}">${dvs.map(d=>`<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${d.rg}"><formula1>"${xmlEsc(d.list.join(','))}"</formula1></dataValidation>`).join('')}</dataValidations>`:'';
   const mg=merges.length?`<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`:'';
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0" rightToLeft="1">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/>${cols}<sheetData>${out}</sheetData>${af&&!head&&rows.length>1&&rows[0].length?`<autoFilter ref="A1:${colName(rows[0].length-1)}${rows.length}"/>`:''}${mg}${cfx}${dvx}</worksheet>`;
+  // فلتر: af=true على كل الجدول، أو af=رقم آخر صف (عشان سطور الإجمالي تحت ما تدخلش في الفلتر)
+  const afEnd = typeof af==='number' ? af : rows.length;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0" rightToLeft="1">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/>${cols}<sheetData>${out}</sheetData>${af&&!head&&afEnd>1&&rows[0].length?`<autoFilter ref="A1:${colName(rows[0].length-1)}${afEnd}"/>`:''}${mg}${cfx}${dvx}${notes.length?'<legacyDrawing r:id="rIdN1"/>':''}</worksheet>`;
+}
+// ملاحظات الخلايا (المثلث الأحمر): لما تقف/تدوس على الخلية تظهر التفاصيل
+function notesXml(notes){
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><authors><author>سلاح التلميذ</author></authors><commentList>${notes.map(n=>`<comment ref="${n.ref}" authorId="0"><text><r><rPr><sz val="11"/><rFont val="Calibri"/></rPr><t xml:space="preserve">${xmlEsc(n.t).replace(/\n/g,'&#10;')}</t></r></text></comment>`).join('')}</commentList></comments>`;
+}
+function notesVml(notes, si){
+  return `<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="${si+1}"/></o:shapelayout><v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe"><v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>${notes.map((n,j)=>{ const h=Math.min(400, 30+String(n.t).split('\n').length*16);
+    return `<v:shape id="_x0000_s${(si+1)*1024+j+1}" type="#_x0000_t202" style="position:absolute;margin-left:60pt;margin-top:2pt;width:260pt;height:${h}pt;z-index:${j+1};visibility:hidden" fillcolor="#ffffe1" o:insetmode="auto"><v:fill color2="#ffffe1"/><v:shadow on="t" color="black" obscured="t"/><v:path o:connecttype="none"/><v:textbox style="mso-direction-alt:auto"><div style="text-align:right"></div></v:textbox><x:ClientData ObjectType="Note"><x:MoveWithCells/><x:SizeWithCells/><x:Anchor>${n.c+1}, 15, ${n.r}, 2, ${n.c+5}, 15, ${n.r+Math.ceil(h/18)}, 4</x:Anchor><x:AutoFill>False</x:AutoFill><x:Row>${n.r}</x:Row><x:Column>${n.c}</x:Column></x:ClientData></v:shape>`; }).join('')}</xml>`;
 }
 function buildXlsx(sheets){
   // كل الألوان اللي في الشيتات
@@ -2307,13 +2328,19 @@ function buildXlsx(sheets){
   const XF4=fi=>`<xf numFmtId="0" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="${fi}" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="${fi}" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>`;
   const xfs=colors.map((c,j)=>XF4(4+j)).join('');
   const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><fonts count="3"><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="12"/><color rgb="FF000000"/><name val="Calibri"/></font><font><b/><sz val="13"/><color rgb="FF000000"/><name val="Calibri"/></font></fonts><fills count="${4+colors.length}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF9D98B"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF8E7"/><bgColor indexed="64"/></patternFill></fill>${fills}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF6B7280"/></left><right style="thin"><color rgb="FF6B7280"/></right><top style="thin"><color rgb="FF6B7280"/></top><bottom style="thin"><color rgb="FF6B7280"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${5+colors.length*4}"><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>${xfs}</cellXfs><dxfs count="3"><dxf><font><b/><color rgb="FF15803D"/></font><fill><patternFill><bgColor rgb="FFD7F5DF"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FFB91C1C"/></font><fill><patternFill><bgColor rgb="FFFDE7E7"/></patternFill></fill></dxf><dxf><font><b/><color rgb="FF854D0E"/></font><fill><patternFill><bgColor rgb="FFFEF9C3"/></patternFill></fill></dxf></dxfs></styleSheet>`;
+  const NT=sheets.map(()=>[]), SX=sheets.map((s,i)=>sheetXml(s, FX, NT[i]));
+  const noteFiles=NT.flatMap((n,i)=>n.length?[
+    {name:`xl/comments${i+1}.xml`, data:notesXml(n)},
+    {name:`xl/drawings/vmlDrawing${i+1}.vml`, data:notesVml(n,i)},
+    {name:`xl/worksheets/_rels/sheet${i+1}.xml.rels`, data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdN1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing${i+1}.vml"/><Relationship Id="rIdN2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments${i+1}.xml"/></Relationships>`}]:[]);
   const files=[
-    {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
+    {name:'[Content_Types].xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>${NT[i].length?`<Override PartName="/xl/comments${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>`:''}`).join('')}</Types>`},
     {name:'_rels/.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
-    {name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView rightToLeft="1"/></bookViews><sheets>${sheets.map((s,i)=>`<sheet name="${xmlEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${sheets.some(s=>s.rows.length>1&&!s.head&&s.af!==false)?`<definedNames>${sheets.map((s,i)=>s.rows.length>1&&!s.head&&s.af!==false?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xmlEsc(s.name)}'!$A$1:$${colName(s.rows[0].length-1)}$${s.rows.length}</definedName>`:'').join('')}</definedNames>`:''}<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`},
+    {name:'xl/workbook.xml', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView rightToLeft="1"/></bookViews><sheets>${sheets.map((s,i)=>`<sheet name="${xmlEsc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${sheets.some(s=>s.rows.length>1&&!s.head&&s.af!==false)?`<definedNames>${sheets.map((s,i)=>s.rows.length>1&&!s.head&&s.af!==false?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xmlEsc(s.name)}'!$A$1:$${colName(s.rows[0].length-1)}$${typeof s.af==='number'?s.af:s.rows.length}</definedName>`:'').join('')}</definedNames>`:''}<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>`},
     {name:'xl/_rels/workbook.xml.rels', data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
     {name:'xl/styles.xml', data:styles},
-    ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, data:sheetXml(s, FX)}))
+    ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, data:SX[i]})),
+    ...noteFiles
   ];
   return zipBlob(files, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
@@ -2356,36 +2383,36 @@ function exportExcel(all, part){
   const linesByT=groupBy(lines, l=>l.t), tids=[...linesByT.keys()].sort(tsort);
 
   /* ---------- 1) فواتير البيع بمرتجعات: الكتب صفوف، وجنبها المستلم والمرتجع والصافي ---------- */
-  const s1=[['المدرس','التليفون','الكتاب','المستلم','المرتجع','الصافي']];
-  { const c=colorer(), totRows=[], GT={q:0,r:0};
-    for(const tid of tids){ const f=c(tid), by=new Map();
-      for(const ln of linesByT.get(tid)){ if(!by.has(ln.b)) by.set(ln.b,{q:0,r:0}); const x=by.get(ln.b); x.q+=ln.q; x.r+=ln.rq; }
-      const a=s1.length+1; let tq=0, tr_=0;
-      for(const k of [...by.keys()].sort((x,y)=>bookRank[x]-bookRank[y])){ const x=by.get(k), rn=s1.length+1;
-        const row=[TN(tid), TP(tid), bookLabel(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:x.q-x.r}]; row.fill=f; s1.push(row); tq+=x.q; tr_+=x.r; }
-      const rn=s1.length+1, tr=['إجمالي: '+TN(tid), '', '', {f:`SUM(D${a}:D${rn-1})`, v:tq}, {f:`SUM(E${a}:E${rn-1})`, v:tr_}, {f:`SUM(F${a}:F${rn-1})`, v:tq-tr_}];
-      tr.fill=f; tr.bold=true; s1.push(tr); totRows.push(rn); GT.q+=tq; GT.r+=tr_; }
-    if(totRows.length){ const tr=['الإجمالي العام', '', '', {f:plus('D',totRows), v:GT.q}, {f:plus('E',totRows), v:GT.r}, {f:plus('F',totRows), v:GT.q-GT.r}]; tr.fill=TOTF; tr.bold=true; s1.push(tr); } }
-  /* ---------- 2) حسابات المدرسين: سطر لكل دفعة مرتجع، والكتاب الأصلي بيتكرر ---------- */
-  const s2=[['المدرس','التليفون','المادة','الصف','التاجر اللي اتسحب منه','تاريخ التسليم','المسحوب','السعر','السعر بعد الخصم','تاريخ الدفعة','عدد الدفعة','التاجر اللي رجع له','المرتجع التراكمي','الباقي بعد الدفعة','المبلغ قبل الخصم','المبلغ بعد الخصم']];
-  { const c=colorer(), totRows=[], GT={G:0,M:0,N:0,O:0,P:0};
-    for(const tid of tids){ const f=c(tid), last=[], V={G:0,M:0,N:0,O:0,P:0};
-      const lns=[...linesByT.get(tid)].sort((a,b)=>(a.s.sd||'').localeCompare(b.s.sd||'') || bookRank[a.b]-bookRank[b.b]);
-      for(const ln of lns){ const steps=ln.rets.length?ln.rets:[null]; let cum=0;
-        steps.forEach((r,j)=>{ const rn=s2.length+1; cum+=r?r.q:0; const rem=ln.q-cum;
-          const row=[TN(tid), TP(tid), SB(ln.b), GR(ln.b), mName(ln.lot), {date:ln.s.sd||ln.s.d}, ln.q, ln.pre??'', ln.post??'',
-            r?{date:r.d}:'', r?r.q:'', r?mName(ln.lot):'',
-            {f: j ? `M${rn-1}+K${rn}` : `K${rn}`, v:cum}, {f:`G${rn}-M${rn}`, v:rem},
-            ln.pre!=null?{f:`N${rn}*H${rn}`, v:r2(rem*ln.pre)}:'', ln.post!=null?{f:`N${rn}*I${rn}`, v:r2(rem*ln.post)}:''];
-          row.fill=f; s2.push(row);
-          if(j===steps.length-1){ last.push(rn); V.G+=ln.q; V.M+=cum; V.N+=rem; if(ln.pre!=null) V.O+=rem*ln.pre; if(ln.post!=null) V.P+=rem*ln.post; } }); }
-      // إجمالي المدرس = آخر باقي لكل كتاب (مش مجموع الأسطر)
-      const rn=s2.length+1;
-      const tr=['إجمالي: '+TN(tid), '', '', '', '', '', {f:plus('G',last), v:V.G}, '', '', '', '', '', {f:plus('M',last), v:V.M}, {f:plus('N',last), v:V.N}, {f:plus('O',last), v:r2(V.O)}, {f:plus('P',last), v:r2(V.P)}];
-      tr.fill=f; tr.bold=true; s2.push(tr); totRows.push(rn); for(const k in GT) GT[k]+=V[k]; }
-    if(totRows.length){ const tr=['الإجمالي العام', '', '', '', '', '', {f:plus('G',totRows), v:GT.G}, '', '', '', '', '', {f:plus('M',totRows), v:GT.M}, {f:plus('N',totRows), v:GT.N}, {f:plus('O',totRows), v:r2(GT.O)}, {f:plus('P',totRows), v:r2(GT.P)}];
-      tr.fill=TOTF; tr.bold=true; s2.push(tr); } }
-
+  // + سعر الكتاب بعد الخصم • إجمالي الكتاب، وخلايا مدموجة لكل مدرس: إجمالي حسابه • المرتجع التراكمي (ملاحظة: الكتب بتواريخها) • المدفوع (ملاحظة: الدفعات بتواريخها) • الباقي عليه
+  const s1=[['المدرس','التليفون','الكتاب','المستلم','المرتجع','الصافي','سعر الكتاب بعد الخصم','إجمالي الكتاب','إجمالي حساب المدرس','المرتجع التراكمي','المدفوع','الباقي عليه']], m1=[];
+  { const c=colorer(), totRows=[], aRows=[], GT={q:0,r:0,h:0,p:0};
+    const dd=d=>`${dayName(dk(d))} ${fmtDay(dk(d))}`;
+    for(const tid of tids){ const f=c(tid), by=new Map(), rets=[];
+      for(const ln of linesByT.get(tid)){ if(!by.has(ln.b)) by.set(ln.b,{q:0,r:0,v:0,ps:new Set()}); const x=by.get(ln.b); x.q+=ln.q; x.r+=ln.rq;
+        if(ln.post!=null){ x.v+=(ln.q-ln.rq)*ln.post; x.ps.add(ln.post); }
+        for(const r of ln.rets) rets.push({d:r.d, b:ln.b, q:r.q}); }
+      const a=s1.length+1; let tq=0, tr_=0, th=0;
+      for(const k of [...by.keys()].sort((x,y)=>bookRank[x]-bookRank[y])){ const x=by.get(k), rn=s1.length+1, net=x.q-x.r;
+        const one=x.ps.size===1, post = one ? [...x.ps][0] : (x.ps.size && net ? r2(x.v/net) : '');
+        const tot = one ? {f:`F${rn}*G${rn}`, v:r2(x.v)} : (x.ps.size ? r2(x.v) : '');
+        const row=[TN(tid), TP(tid), bookLabel(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:net}, post, tot, '', '', '', '']; row.fill=f; s1.push(row);
+        tq+=x.q; tr_+=x.r; th+=x.v; }
+      const rn=s1.length+1;
+      // ملاحظة المرتجع: كل يوم وكتبه
+      const rByDay=groupBy(rets.sort((p,q)=>p.d.localeCompare(q.d)), r=>dk(r.d));
+      const rNote=rets.length ? 'الكتب اللي رجعت:\n'+[...rByDay].map(([,l])=>{ const m=new Map(); for(const r of l) m.set(r.b,(m.get(r.b)||0)+r.q);
+        return `${dd(l[0].d)}: ${[...m].map(([b,q])=>`${bookLabel(b)} × ${q}`).join('، ')}`; }).join('\n')+`\nالإجمالي: ${tr_} كتاب` : '';
+      const pays=db.payments.filter(p=>p.k==='pay' && p.t===tid).sort((p,q)=>(p.d||'').localeCompare(q.d||'')), paid=r2(pays.reduce((s,p)=>s+p.amt,0));
+      const pNote=pays.length ? 'الدفعات:\n'+pays.map(p=>`دفع ${fmtM(p.amt)} يوم ${dd(p.d)}`).join('\n')+`\nالإجمالي: ${fmtM(paid)}\nالباقي عليه: ${fmtM(r2(th-paid))}` : '';
+      const ra=s1[a-1];
+      ra[8]={f:`H${rn}`, v:r2(th), bold:true}; ra[9]={f:`E${rn}`, v:tr_, bold:true, note:rNote||undefined};
+      ra[10]={v:paid, bold:true, note:pNote||undefined}; ra[11]={f:`I${a}-K${a}`, v:r2(th-paid), bold:true, fill:th-paid>0?'FECACA':'D7F5DF'};
+      const tr=['إجمالي: '+TN(tid), '', '', {f:`SUM(D${a}:D${rn-1})`, v:tq}, {f:`SUM(E${a}:E${rn-1})`, v:tr_}, {f:`SUM(F${a}:F${rn-1})`, v:tq-tr_}, '', {f:`SUM(H${a}:H${rn-1})`, v:r2(th)}, '', '', '', ''];
+      tr.fill=f; tr.bold=true; s1.push(tr); totRows.push(rn); aRows.push(a);
+      for(const col of ['I','J','K','L']) m1.push(`${col}${a}:${col}${rn}`);
+      GT.q+=tq; GT.r+=tr_; GT.h+=th; GT.p+=paid; }
+    if(totRows.length){ const tr=['الإجمالي العام', '', '', {f:plus('D',totRows), v:GT.q}, {f:plus('E',totRows), v:GT.r}, {f:plus('F',totRows), v:GT.q-GT.r}, '', {f:plus('H',totRows), v:r2(GT.h)},
+      {f:plus('I',aRows), v:r2(GT.h)}, {f:plus('J',aRows), v:GT.r}, {f:plus('K',aRows), v:r2(GT.p)}, {f:plus('L',aRows), v:r2(GT.h-GT.p)}]; tr.fill=TOTF; tr.bold=true; s1.push(tr); } }
   /* ---------- 3) صافي كتب المدرسين (بعد المرتجع، من غير ذكر المرتجع) ---------- */
   const N3='صافي كتب المدرسين';
   const s3=[['المدرس','التليفون','المادة','الصف','التاجر','الصافي','السعر','السعر بعد الخصم','المبلغ قبل الخصم','المبلغ بعد الخصم']];
@@ -2418,7 +2445,8 @@ function exportExcel(all, part){
 
   /* ---------- 4) حسابات التجار: الكتب صفوف، وجنبها المستلمة والمرتجع والصافي ---------- */
   const N4='حسابات التجار';
-  const s4=[['التاجر','المادة','الصف','الكتب المستلمة','المرتجع','الصافي','السعر قبل الخصم','السعر بعد الخصم','الإجمالي']], m4=[], mref={}, bkNet={};
+  const s4=[['التاجر','المادة','الصف','الكتب المستلمة','المرتجع','الصافي','السعر قبل الخصم','السعر بعد الخصم','الإجمالي','الفلوس اللي وصلت التاجر','الباقي للتاجر']], m4=[], mref={}, bkNet={};
+  const MS=Object.fromEntries(merchSum().map(x=>[x.name,x]));
   const rl4={}; for(const r of db.merchRets) for(const z of r.lots||[]) rl4[z.lot]=(rl4[z.lot]||0)+z.q;   // مرتجع كل فاتورة (عشان سعر الصافي)
   const newX=()=>({q:0,r:0,v:0,ps:new Set(),miss:false});
   const mNames=[...new Set([...db.merchants.map(l=>l.m), ...db.merchRets.map(r=>r.m)])].sort((a,b)=>a.localeCompare(b,'ar'));
@@ -2433,15 +2461,18 @@ function exportExcel(all, part){
         // السعر بعد الخصم: لو كل الفواتير بنفس السعر → معادلة الصافي × السعر، لو مختلف → متوسط بالقيمة الفعلية
         const post = x.ps.size===1 ? [...x.ps][0] : (x.ps.size && net ? r2(x.v/net) : '');
         const tot = x.ps.size===1 ? {f:`F${rn}*H${rn}`, v:r2(x.v)} : (x.ps.size ? r2(x.v) : '');
-        const row=[name, SB(k), GR(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:net}, p?.pre??'', post, tot]; row.fill=f; s4.push(row); tk+=x.q; rt+=x.r;
+        const row=[name, SB(k), GR(k), x.q, x.r||'', {f:`D${rn}-E${rn}`, v:net}, p?.pre??'', post, tot, '', '']; row.fill=f; s4.push(row); tk+=x.q; rt+=x.r;
         tv += typeof tot==='object' ? tot.v : (tot===''?0:tot);
         (bkNet[k] ||= {n:0}).n+=net; }
-      const rn=s4.length+1, tr=['إجمالي: '+name, '', '', {f:`SUM(D${a}:D${rn-1})`, v:tk}, {f:`SUM(E${a}:E${rn-1})`, v:rt}, {f:`SUM(F${a}:F${rn-1})`, v:tk-rt}, '', '', {f:`SUM(I${a}:I${rn-1})`, v:r2(tv)}];
+      const rn=s4.length+1, tr=['إجمالي: '+name, '', '', {f:`SUM(D${a}:D${rn-1})`, v:tk}, {f:`SUM(E${a}:E${rn-1})`, v:rt}, {f:`SUM(F${a}:F${rn-1})`, v:tk-rt}, '', '', {f:`SUM(I${a}:I${rn-1})`, v:r2(tv)}, '', ''];
       tr.fill=f; tr.bold=true; s4.push(tr);
-      const mt=merchTeachers(name);
-      const rr=[name, 'المدرسين اللي كتبه راحت لهم', {v:mt.length?mt.map(z=>`${z.t.name} (${z.n-z.r})`).join('، '):'—', wrap:true}, '', '', '', '', '', ''];
-      rr.fill=f; rr.bold=true; s4.push(rr); m4.push(`C${s4.length}:I${s4.length}`);
-      mref[name]={tr:rn, tkv:tk, rtv:rt}; } }
+      // الفلوس اللي وصلت التاجر (ملاحظة بالدفعات وتواريخها) والباقي له — خلايا مدموجة على كتب التاجر
+      const ms=MS[name], pays=[...(ms?.pays||[])].sort((p,q)=>(p.d||'').localeCompare(q.d||'')), paid=r2(ms?.paid||0);
+      const ra=s4[a-1];
+      ra[9]={v:paid, bold:true, note:pays.length?'دفعت للتاجر:\n'+pays.map(p=>`${fmtM(p.amt)} يوم ${dayName(dk(p.d))} ${fmtDay(dk(p.d))}`).join('\n')+`\nالإجمالي: ${fmtM(paid)}`:undefined};
+      ra[10]={f:`I${rn}-J${a}`, v:r2(tv-paid), bold:true, fill:tv-paid>0?'FECACA':'D7F5DF'};
+      m4.push(`J${a}:J${rn}`, `K${a}:K${rn}`);
+      mref[name]={tr:rn, tkv:tk, rtv:rt, paid}; } }
 
   /* ---------- 4-ب) أسعار الكتب: السعر قبل وبعد الخصم، وعدد الكتب × كل سعر، والإجماليات تحت ---------- */
   const s4b=[['الكتاب','العدد (الصافي)','سعر الكتاب قبل الخصم','سعر الكتاب بعد الخصم','العدد × السعر قبل الخصم','العدد × السعر بعد الخصم']];
@@ -2451,43 +2482,41 @@ function exportExcel(all, part){
       row.fill=XP[hashC(bookParts(k).sb)%XP.length]; s4b.push(row); TV.n+=n; if(p?.pre!=null) TV.pre+=n*p.pre; if(p?.post!=null) TV.post+=n*p.post; }
     if(s4b.length>1){ const b=s4b.length, tr=['الإجماليات', {f:`SUM(B2:B${b})`, v:TV.n}, '', '', {f:`SUM(E2:E${b})`, v:r2(TV.pre)}, {f:`SUM(F2:F${b})`, v:r2(TV.post)}]; tr.fill=TOTF; tr.bold=true; s4b.push(tr); } }
   /* ---------- 5) صافي التجار ---------- */
-  const s5=[['التاجر','إجمالي المأخوذ','إجمالي المرتجع','الصافي','السعر قبل الخصم','السعر بعد الخصم']];
+  const s5=[['التاجر','إجمالي المأخوذ','إجمالي المرتجع','الصافي','السعر قبل الخصم','السعر بعد الخصم','المبلغ اللي اديته للتاجر','الباقي عليك']];
   { const rl={}; for(const r of db.merchRets) for(const z of r.lots||[]) rl[z.lot]=(rl[z.lot]||0)+z.q;
     const c=colorer(), a=2;
     for(const name of mNames){ const x=mref[name]; if(!x) continue; let pre=0, post=0, pm=false, qm=false;
       for(const l of db.merchants) if(l.m===name){ const n=l.q-(rl[l.id]||0); const p=priceOf(l.b);
         if(p?.pre!=null) pre+=n*p.pre; else pm=true; if(l.p!=null) post+=n*l.p; else qm=true; }
       const rn=s5.length+1;
-      const row=[name, {f:`'${N4}'!D${x.tr}`, v:x.tkv}, {f:`'${N4}'!E${x.tr}`, v:x.rtv}, {f:`B${rn}-C${rn}`, v:x.tkv-x.rtv}, pre||!pm?r2(pre):'', post||!qm?r2(post):''];
+      const row=[name, {f:`'${N4}'!D${x.tr}`, v:x.tkv}, {f:`'${N4}'!E${x.tr}`, v:x.rtv}, {f:`B${rn}-C${rn}`, v:x.tkv-x.rtv}, pre||!pm?r2(pre):'', post||!qm?r2(post):'', x.paid, {f:`F${rn}-G${rn}`, v:r2(post-x.paid)}];
       row.fill=c(name); s5.push(row); }
     if(s5.length>1){ const b=s5.length; const sum=(col,i)=>({f:`SUM(${col}${a}:${col}${b})`, v:r2(s5.slice(1).reduce((s,r)=>s+(typeof r[i]==='object'?r[i].v:(+r[i]||0)),0))});
-      const tr=['الإجمالي', sum('B',1), sum('C',2), sum('D',3), sum('E',4), sum('F',5)]; tr.fill=TOTF; tr.bold=true; s5.push(tr); } }
+      const tr=['الإجمالي', sum('B',1), sum('C',2), sum('D',3), sum('E',4), sum('F',5), sum('G',6), sum('H',7)]; tr.fill=TOTF; tr.bold=true; s5.push(tr); } }
 
   /* ---------- التسليمات (الفترة = تاريخ التسليم) ---------- */
   const dents=db.entries.filter(e=>e.s==='d' && e.dd && inRange(dk(e.dd)));
   const tInfo=id=>{ const t=tmap[id]||{}; return [cls(t), spec(t), t.area||'', t.school||'']; };
 
-  /* 6) تسليمات 1: المواد أعمدة، وآخر كل يوم عدد المدرسين وإجمالي الكتب */
-  const s6=[['الاسم','التليفون','التاريخ','الساعة','التصنيف','التخصص','المنطقة','المدرسة', ...SC.map(s=>SUBJ[s]), 'إجمالي الكتب','الكتب','عدد المدرسين']];
-  { const c=colorer(), sc0=8, scL=colName(sc0), scR=colName(sc0+SC.length-1), totC=colName(sc0+SC.length), cntC=colName(sc0+SC.length+2), dayTot=[];
-    const visits=[...groupBy(dents, e=>e.t+'|'+e.dd).values()].map(l=>({t:l[0].t, dd:l[0].dd, l})).sort((a,b)=>a.dd.localeCompare(b.dd));
-    for(const [day, vs] of groupBy(visits, v=>dk(v.dd))){
-      const a=s6.length+1;
-      for(const v of vs){ const by={}; let n=0; for(const e of v.l){ const sb=bookParts(e.b).sb; by[sb]=(by[sb]||0)+e.q; n+=e.q; }
-        const rn=s6.length+1, ks=[...v.l].sort((x,y)=>bookRank[x.b]-bookRank[y.b]);
-        const row=[TN(v.t), TP(v.t), {date:v.dd}, timeStr(new Date(v.dd)), ...tInfo(v.t), ...SC.map(s=>by[s]||''), {f:`SUM(${scL}${rn}:${scR}${rn})`, v:n},
-          ks.map(e=>bookLabel(e.b)+(e.q>1?` × ${e.q}`:'')).join('، '), ''];
-        row.fill=c(v.t); s6.push(row); }
-      const b=s6.length, rn=b+1;
-      const tr=[`إجمالي ${dayName(day)} ${fmtDay(day)}`, '', '', '', '', '', '', '',
-        ...SC.map((s,i)=>{ const col=colName(sc0+i); return {f:`SUM(${col}${a}:${col}${b})`, v:vs.reduce((x,v)=>x+v.l.filter(e=>bookParts(e.b).sb===s).reduce((y,e)=>y+e.q,0),0)}; }),
-        {f:`SUM(${totC}${a}:${totC}${b})`, v:vs.reduce((x,v)=>x+v.l.reduce((y,e)=>y+e.q,0),0)}, '',
-        {f:`SUMPRODUCT(1/COUNTIF(A${a}:A${b},A${a}:A${b}))`, v:new Set(vs.map(v=>TN(v.t))).size}];
-      tr.fill=TOTF; tr.bold=true; s6.push(tr); dayTot.push(rn); }
-    if(dayTot.length){ const g=['الإجمالي الكلي', '', '', '', '', '', '', '', ...SC.map((s,i)=>{ const col=colName(sc0+i); return {f:plus(col,dayTot), v:dayTot.reduce((x,r)=>x+(s6[r-1][sc0+i].v||0),0)}; }),
-        {f:plus(totC,dayTot), v:dayTot.reduce((x,r)=>x+s6[r-1][sc0+SC.length].v,0)}, '', {f:plus(cntC,dayTot), v:dayTot.reduce((x,r)=>x+s6[r-1][sc0+SC.length+2].v,0)}];
-      g.fill=TOTF; g.bold=true; s6.push(g); } }
-
+  /* 6) التسليمات اليومية: سطر لكل (مدرس × يوم)، والكتب أعمدة (كل كتاب بصفه)، وتحت: إجمالي اللي اتسلّم + المتبقي في المخزون */
+  const s6=[['الاسم','التليفون','التاريخ','التصنيف','التخصص','المرحلة','المنطقة','المدرسة', ...BOOK_ORDER.map(bookLabel), 'إجمالي كتبه']];
+  let s6af=1;
+  { const c=colorer(), b0=8, bL=colName(b0), bR=colName(b0+BOOK_ORDER.length-1), totC=colName(b0+BOOK_ORDER.length);
+    const visits=[...groupBy(dents, e=>e.t+'|'+dk(e.dd)).values()].map(l=>({t:l[0].t, day:dk(l[0].dd), l}))
+      .sort((x,y)=>x.day.localeCompare(y.day) || tsort(x.t,y.t));
+    for(const v of visits){ const by={}; let n=0; for(const e of v.l){ by[e.b]=(by[e.b]||0)+e.q; n+=e.q; }
+      const rn=s6.length+1, t=tmap[v.t]||{};
+      const row=[TN(v.t), TP(v.t), {date:v.day+'T12:00:00'}, cls(t), spec(t), STAGE_TXT[t.stage]||'', t.area||'', t.school||'',
+        ...BOOK_ORDER.map(k=>by[k]||''), {f:`SUM(${bL}${rn}:${bR}${rn})`, v:n}];
+      row.fill=c(v.t); s6.push(row); }
+    s6af=s6.length;
+    if(visits.length){ const b=s6.length, sl=stockLeft();
+      const tr=['إجمالي الكتب اللي اتسلّمت', '', '', '', '', '', '', '', ...BOOK_ORDER.map((k,i)=>{ const col=colName(b0+i); return {f:`SUM(${col}2:${col}${b})`, v:dents.filter(e=>e.b===k).reduce((x,e)=>x+e.q,0)}; }),
+        {f:`SUM(${totC}2:${totC}${b})`, v:dents.reduce((x,e)=>x+e.q,0)}];
+      tr.fill=TOTF; tr.bold=true; s6.push(tr);
+      const sr=['إجمالي الكتب المتبقية في المخزون', '', '', '', '', '', '', '', ...BOOK_ORDER.map(k=>{ const n=sl[k]||0; return n<=LOW?{v:n, fill:'FECACA'}:n; }),
+        {f:`SUM(${bL}${b+2}:${bR}${b+2})`, v:BOOK_ORDER.reduce((x,k)=>x+(sl[k]||0),0)}];
+      sr.fill='D7F5DF'; sr.bold=true; s6.push(sr); } }
   /* 7) تسليمات 2: كل كتاب في سطر + خلية مدمجة لكل مدرس «التسجيل على برنامج الشركة» */
   // شريف بيختار بإيده في الإكسل نفسه (قايمة منسدلة في خلية مدمجة لكل مدرس) — الافتراضي «لم يتم التسجيل»
   const REG_Y='تم التسجيل', REG_N='لم يتم التسجيل';
@@ -2500,7 +2529,7 @@ function exportExcel(all, part){
       if(s7.length>a) m7.push(`K${a}:K${s7.length}`); } }
   const R7=s7.length>1?`K2:K${s7.length}`:null;
 
-  /* 8) الملخص اليومي للكتب + المتبقي في المخزون (من بضاعة التجار، من غير رصيد افتتاحي) */
+  /* 8) الملخص اليومي للكتب: التاريخ | الأموال المحصّلة (ملاحظة بالتفاصيل) | بيع كل كتاب | إجمالي البيع | المتبقي لكل كتاب | إجمالي المتبقي | مرتجع كل كتاب | مرتجع المدرسين */
   const s8=[]; let s8w=[];
   { const ev={}, add=(d,b,f,q)=>{ if(!d) return; const k=dk(d); ((ev[k] ||= {})[b] ||= {sold:0, in:0, tret:0, out:0})[f]+=q; };
     for(const l of db.merchants) add(l.d, l.b, 'in', l.q);
@@ -2508,23 +2537,30 @@ function exportExcel(all, part){
     for(const s of db.sales) if(s.st==='sold') for(const it of s.items) add(s.sd||s.d, it.b, 'sold', it.q);
     for(const p of db.payments) if(p.k==='ret' && p.b) add(p.d, p.b, 'tret', p.q||0);
     for(const g of db.gifts||[]) for(const it of g.items||[]) add(g.d, it.b, 'out', it.q);   // الهدايا بتتخصم من المخزون
+    const cash={}; for(const p of db.payments) if(p.k==='pay' && p.d){ const k=dk(p.d); (cash[k] ||= []).push(p); ev[k] ||= {}; }
     const allDays=Object.keys(ev).sort(), days=allDays.filter(inRange);
     const stockKs=[...new Set(allDays.flatMap(k=>Object.keys(ev[k])))].sort((a,b)=>bookRank[a]-bookRank[b]);
-    const soldKs=stockKs.filter(b=>days.some(k=>ev[k][b]?.sold));
-    s8.push(['التاريخ', ...soldKs.map(bookLabel), 'إجمالي اليوم', 'مرتجع من المدرسين', ...stockKs.map(k=>'المتبقي: '+bookLabel(k))]);
-    s8w=[13, ...soldKs.map(()=>14), 12, 13, ...stockKs.map(()=>15)];
-    const bal={}, sR=soldKs.length?`B{r}:${colName(soldKs.length)}{r}`:null;
+    const soldKs=stockKs.filter(b=>days.some(k=>ev[k][b]?.sold)), retKs=stockKs.filter(b=>days.some(k=>ev[k][b]?.tret));
+    const nS=soldKs.length, nK=stockKs.length, nR=retKs.length;
+    // أعمدة: A التاريخ، B المحصّل، بعدين البيع (2..)، إجمالي البيع، المتبقي، إجمالي المتبقي، المرتجع، مرتجع المدرسين
+    const cS=2, cST=cS+nS, cK=cST+1, cKT=cK+nK, cR=cKT+1, cRT=cR+nR;
+    s8.push(['التاريخ', 'إجمالي الأموال المحصّلة', ...soldKs.map(k=>'بيع '+bookLabel(k)), 'إجمالي البيع في اليوم', ...stockKs.map(k=>'المتبقي: '+bookLabel(k)), 'إجمالي الكتب المتبقية', ...retKs.map(k=>'مرتجع '+bookLabel(k)), 'مرتجع المدرسين']);
+    s8w=[13, 16, ...soldKs.map(()=>14), 13, ...stockKs.map(()=>15), 14, ...retKs.map(()=>14), 14];
+    const rng=(c0,n,rn)=>n?`SUM(${colName(c0)}${rn}:${colName(c0+n-1)}${rn})`:null;
+    const bal={};
     for(const k of allDays){ for(const b in ev[k]){ const x=ev[k][b]; bal[b]=(bal[b]||0)+x.in-x.out-x.sold+x.tret; }
       if(!inRange(k)) continue;
-      const rn=s8.length+1, sv=soldKs.map(b=>ev[k][b]?.sold||0), tr=Object.values(ev[k]).reduce((a,x)=>a+x.tret,0);
-      s8.push([{date:k+'T12:00:00'}, ...sv.map(n=>n||''), sR?{f:`SUM(${sR.replace(/\{r\}/g,rn)})`, v:sv.reduce((a,n)=>a+n,0)}:0, tr||'',
-        ...stockKs.map(b=>{ const n=bal[b]||0; return n<=LOW ? {v:n, fill:'FECACA'} : n; })]); }
-    if(s8.length>2){ const b=s8.length; const tr=['الإجمالي', ...soldKs.map((k,i)=>{ const col=colName(1+i); return {f:`SUM(${col}2:${col}${b})`, v:days.reduce((a,d)=>a+(ev[d][k]?.sold||0),0)}; }),
-        (()=>{ const col=colName(1+soldKs.length); return {f:`SUM(${col}2:${col}${b})`, v:days.reduce((a,d)=>a+Object.values(ev[d]).reduce((x,y)=>x+y.sold,0),0)}; })(),
-        (()=>{ const col=colName(2+soldKs.length); return {f:`SUM(${col}2:${col}${b})`, v:days.reduce((a,d)=>a+Object.values(ev[d]).reduce((x,y)=>x+y.tret,0),0)}; })()];
+      const rn=s8.length+1, sv=soldKs.map(b=>ev[k][b]?.sold||0), rv=retKs.map(b=>ev[k][b]?.tret||0), kv=stockKs.map(b=>bal[b]||0);
+      const cp=cash[k]||[], ct=r2(cp.reduce((a,p)=>a+p.amt,0));
+      const cNote=cp.length?`التحصيل يوم ${dayName(k)} ${fmtDay(k)}:\n`+cp.map(p=>`${TN(p.t)}${TP(p.t)?' ('+TP(p.t)+')':''}: ${fmtM(p.amt)}`).join('\n')+`\nالإجمالي: ${fmtM(ct)}`:undefined;
+      const S=(f,v)=>f?{f,v}:v;
+      s8.push([{date:k+'T12:00:00'}, {v:ct||'', note:cNote}, ...sv.map(n=>n||''), S(rng(cS,nS,rn), sv.reduce((a,n)=>a+n,0)),
+        ...kv.map(n=>n<=LOW ? {v:n, fill:'FECACA'} : n), S(rng(cK,nK,rn), kv.reduce((a,n)=>a+n,0)),
+        ...rv.map(n=>n||''), S(rng(cR,nR,rn), rv.reduce((a,n)=>a+n,0))]); }
+    if(s8.length>2){ const b=s8.length, sumC=ci=>{ const col=colName(ci); return {f:`SUM(${col}2:${col}${b})`, v:r2(s8.slice(1).reduce((a,r)=>{ const c=r[ci]; return a+(+(c&&typeof c==='object'?c.v:c)||0); },0))}; };
+      const tr=['الإجمالي', sumC(1), ...soldKs.map((_,i)=>sumC(cS+i)), sumC(cST), ...stockKs.map(()=>''), '', ...retKs.map((_,i)=>sumC(cR+i)), sumC(cRT)];
       tr.fill=TOTF; tr.bold=true; s8.push(tr); }
-    if(!days.length) s8.push(['مفيش بيع في الفترة دي']); }
-
+    if(!days.length) s8.push(['مفيش حركة في الفترة دي']); }
   /* 9) أعداد المدرسين */
   const s9=[['التاريخ','إجمالي المدرسين','استكمال','تسليم جديد','كانوا على البرنامج','ضفتهم جداد']];
   { const first={}; for(const e of db.entries) if(e.s==='d' && e.dd){ const k=dk(e.dd); if(!first[e.t] || k<first[e.t]) first[e.t]=k; }
@@ -2535,15 +2571,24 @@ function exportExcel(all, part){
     if(days.length){ const b=s9.length, sum=(col,i)=>({f:`SUM(${col}2:${col}${b})`, v:s9.slice(1).reduce((a,r)=>a+(typeof r[i]==='object'?r[i].v:r[i]),0)});
       const tr=['الإجمالي', sum('B',1), sum('C',2), sum('D',3), sum('E',4), sum('F',5)]; tr.fill=TOTF; tr.bold=true; s9.push(tr); }
     // تحت: كل مندوب في كل يوم
-    const bks=[...new Set(dents.map(e=>e.b))].sort((a,b)=>bookRank[a]-bookRank[b]);
+    // تحت: كل الكتب حتى الصفر، وبعد كتب كل مادة عمود «إجمالي المادة»
+    const cols9=[]; for(const sb of ['ar','math','stu','sci','en']){ const ks=BOOK_ORDER.filter(k=>bookParts(k).sb===sb); if(!ks.length) continue; ks.forEach(k=>cols9.push({k})); cols9.push({sb}); }
     s9.push([]); s9.push([]);
-    const h=['المندوب','التاريخ', ...bks.map(bookLabel), 'إجمالي كتبه','عدد المدرسين','استكمال','أول مرة']; h.hdr=true; s9.push(h);
-    const c=colorer();
+    const h=['المندوب','التاريخ', ...cols9.map(x=>x.k?bookLabel(x.k):'إجمالي '+SUBJ_ALL[x.sb]), 'إجمالي كتبه','عدد المدرسين','استكمال','أول مرة']; h.hdr=true; s9.push(h);
+    const h9=s9.length, c=colorer(), totCol=colName(2+cols9.length), bookCols=cols9.map((x,i)=>x.k?colName(2+i):null).filter(Boolean);
+    const val9=(x, el)=> x.k ? el.filter(e=>e.b===x.k).reduce((a,e)=>a+e.q,0) : el.filter(e=>bookParts(e.b).sb===x.sb).reduce((a,e)=>a+e.q,0);
     for(const [rep, l] of [...groupBy(dents, e=>e.rep||db.rep||'—')].sort((x,y)=>x[0].localeCompare(y[0],'ar'))){ const f=c(rep);
       for(const [k, el] of [...groupBy(l, e=>dk(e.dd))].sort((x,y)=>x[0].localeCompare(y[0]))){
-        const rn=s9.length+1, cnt=bks.map(b=>el.filter(e=>e.b===b).reduce((a,e)=>a+e.q,0)), ts=[...new Set(el.map(e=>e.t))], cont=ts.filter(t=>first[t]<k).length;
-        const row=[rep, {date:k+'T12:00:00'}, ...cnt.map(n=>n||''), bks.length?{f:`SUM(C${rn}:${colName(1+bks.length)}${rn})`, v:cnt.reduce((a,n)=>a+n,0)}:0, ts.length, cont, ts.length-cont];
-        row.fill=f; s9.push(row); } } }
+        const rn=s9.length+1, ts=[...new Set(el.map(e=>e.t))], cont=ts.filter(t=>first[t]<k).length;
+        const row=[rep, {date:k+'T12:00:00'}, ...cols9.map(x=>{ const n=val9(x, el); return x.sb ? {v:n, bold:true} : (n||''); }),
+          {f:bookCols.map(cc=>cc+rn).join('+')||'0', v:el.reduce((a,e)=>a+e.q,0)}, ts.length, cont, ts.length-cont];
+        row.fill=f; s9.push(row); } }
+    if(s9.length>h9){ const b=s9.length, sl=stockLeft();
+      const tr=['إجمالي الكتب اللي اتسلّمت', '', ...cols9.map((x,i)=>{ const col=colName(2+i); return {f:`SUM(${col}${h9+1}:${col}${b})`, v:val9(x, dents)}; }), {f:`SUM(${totCol}${h9+1}:${totCol}${b})`, v:dents.reduce((a,e)=>a+e.q,0)}];
+      tr.fill=TOTF; tr.bold=true; s9.push(tr);
+      const slv=x=> x.k ? (sl[x.k]||0) : BOOK_ORDER.filter(k=>bookParts(k).sb===x.sb).reduce((a,k)=>a+(sl[k]||0),0);
+      const sr=['إجمالي الكتب المتبقية في المخزون', '', ...cols9.map(x=>{ const n=slv(x); return x.k&&n<=LOW?{v:n, fill:'FECACA'}:n; }), BOOK_ORDER.reduce((a,k)=>a+(sl[k]||0),0)];
+      sr.fill='D7F5DF'; sr.bold=true; s9.push(sr); } }
 
   /* 10) الإضافات */
   const s10=[['الاسم','التليفون','التخصص','التصنيف','المادة','المرحلة','المنطقة','المدرسة','عدد الطلاب','قرية جديدة','تاريخ الإضافة']];
@@ -2554,18 +2599,15 @@ function exportExcel(all, part){
 
   /* 11) طلبات مستنية التنفيذ (سجل: الطلبات بتفضل حتى بعد البيع أو الإلغاء) */
   const ST={order:'مستني التنفيذ', sold:'تم البيع', cancel:'تم الإلغاء', refused:'رفض الشراء'};
-  const s11=[['المدرس','التليفون','تاريخ الطلب','المادة','الصف','العدد المطلوب','المتاح','الناقص','الحالة','تاريخ التحويل','الكمية اللي اتباعت','ملاحظات']];
+  // الطلبات اللي لسه مستنية بس (اللي اتباع/اتلغى/رفض الشراء مش بيظهر)
+  const s11=[['المدرس','التليفون','تاريخ الطلب','المادة','الصف','العدد المطلوب','المتاح','الناقص','ملاحظات']];
   { const c=colorer(), lf=lotLeft(), av={}; for(const l of db.merchants) av[l.b]=(av[l.b]||0)+Math.max(0,lf[l.id]||0);
-    const ords=db.sales.filter(s=>(s.st==='order'||s.st==='cancel'||s.st==='refused'||(s.st==='sold'&&s.ord)) && inRange(dk(s.d))).sort((a,b)=>a.d.localeCompare(b.d));
-    for(const s of ords){ const f=c(s.t), oq=s.oq||Object.fromEntries(s.items.map(it=>[it.b,it.q])), got={};
-      if(s.st==='sold') for(const it of s.items) got[it.b]=(got[it.b]||0)+it.q;
-      const ks=[...new Set([...Object.keys(oq), ...Object.keys(got)])].sort((a,b)=>bookRank[a]-bookRank[b]);
-      for(const b of ks){ const rn=s11.length+1, req=oq[b]||0, pend=s.st==='order', a=av[b]||0, sh=Math.max(0,req-a);
-        const conv=s.st==='sold'?s.sd:(s.cd||'');
-        const row=[TN(s.t), TP(s.t), {date:s.d}, SB(b), GR(b), pend&&sh?{v:req, fill:'FECACA'}:req, pend?a:'', pend?{f:`MAX(0,F${rn}-G${rn})`, v:sh, fill:sh?'FECACA':undefined}:'',
-          ST[s.st], conv?{date:conv}:'', s.st==='sold'?(got[b]||0):'', s.note||''];
+    const ords=db.sales.filter(s=>s.st==='order' && inRange(dk(s.d))).sort((a,b)=>a.d.localeCompare(b.d));
+    for(const s of ords){ const f=c(s.t), oq=s.oq||Object.fromEntries(s.items.map(it=>[it.b,it.q]));
+      for(const b of Object.keys(oq).sort((a,b)=>bookRank[a]-bookRank[b])){ const rn=s11.length+1, req=oq[b]||0, a=av[b]||0, sh=Math.max(0,req-a);
+        const row=[TN(s.t), TP(s.t), {date:s.d}, SB(b), GR(b), sh?{v:req, fill:'FECACA'}:req, a, {f:`MAX(0,F${rn}-G${rn})`, v:sh, fill:sh?'FECACA':undefined}, s.note||''];
         row.fill=f; s11.push(row); } } }
-  const R11=s11.length>1?`I2:I${s11.length}`:null;
+  void ST;
 
   /* 12) ترتيب الهدايا: الصافي بعد المرتجع، ولو اتساووا الأعلى في الفاتورة بعد الخصم */
   const s12=[['المدرس','التليفون','إجمالي الكتب الصافي','إجمالي الفاتورة قبل الخصم','إجمالي الفاتورة بعد الخصم','الترتيب']];
@@ -2580,22 +2622,20 @@ function exportExcel(all, part){
   // ملفين: التسليمات والبيع. الثابت في كل شيت: اسم المدرس والتليفون بس. (الإضافات بقت شيت لوحدها: exportAdditions)
   void s10;
   const dSheets=[
-    {name:'تسليمات 1', rows:s6, widths:[22,14,20,10,9,20,14,16, ...SC.map(()=>9), 11,45,12], freezeCol:2, af:false},
+    {name:'التسليمات اليومية', rows:s6, widths:[22,14,12,9,20,13,14,16, ...BOOK_ORDER.map(()=>10), 11], freezeCol:2, af:s6af>1?s6af:false},
     {name:'تسليمات 2', rows:s7, widths:[22,14,12,10,9,20,14,16,26,8,18], freezeCol:2, af:false, merges:m7,
       dvs:R7?[{rg:R7, list:[REG_Y, REG_N]}]:[], cfs:R7?[{rg:R7, rules:[{eq:REG_Y, dx:'ok'}, {eq:REG_N, dx:'bad'}]}]:[]},
-    {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(30).fill(14)], freezeCol:0, af:false}];
+    {name:'أعداد المدرسين', rows:s9, widths:[16,14,11,12,16,13, ...Array(90).fill(12)], freezeCol:0, af:false}];
   // حساب التجار لوحده (حسابات التجار + صافي التجار)
   const mSheets=[
-    {name:N4, rows:s4, widths:[22,12,18,14,11,11,13,13,14], freezeCol:0, af:false, merges:m4},
-    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15], freezeCol:0, af:false},
+    {name:N4, rows:s4, widths:[22,12,18,14,11,11,13,13,14,18,15], freezeCol:0, af:false, merges:m4},
+    {name:'صافي التجار', rows:s5, widths:[18,14,14,12,15,15,20,14], freezeCol:0, af:false},
     {name:'أسعار الكتب', rows:s4b, widths:[26,14,18,18,20,20], freezeCol:0, af:false}];
   // حساب المدرسين = بيع المندوب للمدرسين (من غير التجار)
   const sheets=[
-    {name:'طلبات مستنية التنفيذ', rows:s11, widths:[22,14,12,10,16,12,9,9,15,13,14,24], freezeCol:2, af:false,
-      dvs:R11?[{rg:R11, list:Object.values(ST)}]:[], cfs:R11?[{rg:R11, rules:[{eq:ST.order, dx:'wait'}, {eq:ST.sold, dx:'ok'}, {eq:ST.cancel, dx:'bad'}, {eq:ST.refused, dx:'bad'}]}]:[]},
+    {name:'طلبات مستنية التنفيذ', rows:s11, widths:[22,14,12,10,16,12,9,9,24], freezeCol:2, af:false},
     {name:'الملخص اليومي للكتب', rows:s8, widths:s8w, freezeCol:0, af:false},
-    {name:'فواتير البيع بمرتجعات', rows:s1, widths:[24,14,28,11,11,11], freezeCol:2, af:false},
-    {name:'حسابات المدرسين', rows:s2, widths:[24,14,10,16,18,13,10,9,12,13,10,18,13,13,14,14], freezeCol:2, af:false},
+    {name:'فواتير البيع بمرتجعات', rows:s1, widths:[24,14,28,11,11,11,14,13,16,15,14,14], freezeCol:2, af:false, merges:m1},
     {name:N3, rows:s3, widths:[24,14,10,16,18,10,9,12,14,14], freezeCol:2, af:false},
     {name:'ترتيب الهدايا', rows:s12, widths:[24,14,15,18,18,9], freezeCol:2, af:false}
   ];
@@ -2759,16 +2799,29 @@ function exportTeachersData(){
   if(!db.teachers.length) return toast('مفيش مدرسين لسه');
   const vil=IDARAT[db.idara]||[], vi=a=>{ const i=vil.indexOf(a||''); return i<0?9999:i; };
   const cr=t=>({A:0,B:1,C:2}[clsLetter(t)||String(t.cls||'').toUpperCase()] ?? 3);
-  const ts=[...db.teachers].sort((a,b)=>vi(a.area)-vi(b.area) || (a.area||'').localeCompare(b.area||'','ar') || cr(a)-cr(b) || (a.name||'').localeCompare(b.name||'','ar'));
+  // أيام 📅: «الكل» = كل المدرسين وكل زياراتهم، أيام معينة = اللي استلموا في الأيام دي بس وزياراتهم في الأيام دي
+  repFix(); const allD=!repSel.size;
+  const visits={}; for(const e of db.entries) if(e.s==='d' && e.dd){ const k=dk(e.dd); if(allD || inRep(k)) (visits[e.t] ||= new Set()).add(k); }
+  const base=allD ? db.teachers : db.teachers.filter(t=>visits[t.id]);
+  if(!base.length) return toast('مفيش مدرسين استلموا في الأيام اللي مختارها');
+  const ts=[...base].sort((a,b)=>vi(a.area)-vi(b.area) || (a.area||'').localeCompare(b.area||'','ar') || cr(a)-cr(b) || (a.name||'').localeCompare(b.name||'','ar'));
   const XP=['DCEBFF','E3F4E1','FFF1C9','EDE4F7','D9F2EF','FDE8D7','FDE2E4','E0F2FE'];
-  const rows=[['اسم المدرس','التليفون','التصنيف','المنطقة','المدرسة','التخصص','المادة','المرحلة','عدد الطلاب','على البرنامج','ملاحظات','الموقع']];
+  const WK={sat:'السبت',sun:'الأحد',mon:'الاتنين',tue:'التلات',wed:'الأربع',thu:'الخميس',fri:'الجمعة'};
+  const daysTxt=d=>d&&typeof d==='object' ? Object.entries(d).map(([k,v])=>`${WK[k]||DAY_NM[+k]||k}${v&&(v.f||v.t)?` ${v.f||'؟'}–${v.t||'؟'}`:''}`).join('، ') : '';
+  const routeOf=id=>(db.days||[]).filter(d=>(d.t||[]).includes(id)).map(d=>d.n).join('، ');
+  const gr=g=>(g||[]).slice().sort((a,b)=>a-b).map(x=>GRADE[x-1]||x).join('، ');
+  const rows=[['اسم المدرس','التليفون','التصنيف','المنطقة','المدرسة','التخصص','المادة','المرحلة','الصفوف','عدد الطلاب','جديد / على البرنامج','ملاحظات',
+    'العنوان (من التطبيق)','الموقع','أيام وساعات السنتر','الصفوف (من التطبيق)','دروس / مدارس','يوم خط السير','مثبّت التطبيق','عدد الزيارات','الزيارات']];
   let prev=null, ci=-1;
   for(const t of ts){ if(t.area!==prev){ prev=t.area; ci=(ci+1)%XP.length; }
     const stg=STAGE_TXT[t.stage]||t.stageText||'', sp=t.spec||[t.subjectText, stg].filter(Boolean).join(' — ');
-    const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||'', t.loc?`https://maps.google.com/?q=${t.loc.lat},${t.loc.lng}`:''];
+    const ll=t.loc||t.tLoc, vs=[...(visits[t.id]||[])].sort();
+    const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, gr(t.grades), t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||'',
+      t.tAddress||'', ll&&ll.lat?`https://maps.google.com/?q=${ll.lat},${ll.lng}`:'', daysTxt(t.tDays), gr(t.tGrades), t.where||'', routeOf(t.id), sbApp[t.id]?'مثبّت':'لأ',
+      vs.length||'', {v:vs.map(k=>`${dayName(k)} ${fmtDay(k)}`).join(' • '), wrap:true}];
     row.fill=XP[ci]; rows.push(row); }
   const nm=('بيانات المدرسين — '+(db.idara||'')).trim();
-  sendSheet(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,10,13,24,38], freezeCol:2, af:false}]), `${nm} — ${stamp()}.xlsx`, 'بيانات المدرسين');
+  sendSheet(buildXlsx([{name:'بيانات المدرسين', rows, widths:[24,14,9,16,18,22,16,14,16,10,14,24,26,38,30,16,13,16,11,10,45], freezeCol:2, af:false}]), `${nm} — ${stamp()}.xlsx`, 'بيانات المدرسين');
 }
 
 /* ================= شيت بيع الشركة (نفس شكل «بيع مباشر»: English • Prim • Prep • Summary) ================= */
@@ -2883,10 +2936,12 @@ function merchAvail(k, left){
   for(const l of db.merchants) if(l.b===k && left[l.id]>0) by.set(l.m, (by.get(l.m)||0)+left[l.id]);
   return [...by];
 }
-function allocate(k, q, left){
+// day = يوم البيع: بضاعة تاجر اتاستلمت بعد اليوم ده ما ينفعش يتباع منها (حماية المخزون — بند 8 أ)
+function allocate(k, q, left, day){
   const src=[];
   for(const l of db.merchants){
     if(!q) break; if(l.b!==k || left[l.id]<=0) continue;
+    if(day && l.d && dk(l.d)>day) continue;
     const n=Math.min(q, left[l.id]); src.push({lot:l.id, q:n}); left[l.id]-=n; q-=n;
   }
   if(q) src.push({lot:null, q});
@@ -2900,8 +2955,9 @@ function shortMsg(items){
 }
 // يحوّل الطلب لبيع: السعر وقتها يتحفظ + كل سطر يتقسم على التجار
 function sellItems(s, left){
-  for(const it of s.items){ const p=priceOf(it.b); it.pre=p?p.pre:null; it.post=p?p.post:null; it.src=allocate(it.b, it.q, left); }
-  s.st='sold'; s.sd=new Date().toISOString();
+  const now=new Date().toISOString();
+  for(const it of s.items){ const p=priceOf(it.b); it.pre=p?p.pre:null; it.post=p?p.post:null; it.src=allocate(it.b, it.q, left, dk(now)); }
+  s.st='sold'; s.sd=now;
 }
 function merchSum(){
   const left=lotLeft(), m=new Map();
@@ -3689,7 +3745,11 @@ function retForm(tid){
     if(!pick.length){ alert('اكتب عدد المرتجع قدام الكتاب الأول'); return; }
     const over=pick.filter(k=>rq[k]>by[k]);
     if(over.length){ alert('المرتجع أكتر من اللي خده في:\n'+over.map(k=>`• ${bookLabel(k)}: خد ${by[k]} بس`).join('\n')); return; }
-    const d=pickDate(m.querySelector('#r_d').value), n=pick.reduce((s,k)=>s+rq[k],0); close();
+    const d=pickDate(m.querySelector('#r_d').value), n=pick.reduce((s,k)=>s+rq[k],0);
+    // حماية المخزون (بند 8 ب): تاريخ المرتجع ما ينفعش يبقى قبل تاريخ بيع الكتاب للمدرس
+    const early=pick.map(b=>{ const ds=db.sales.filter(s=>s.st==='sold' && s.t===tid && s.items.some(it=>it.b===b)).map(s=>dk(s.sd||s.d)).sort(); return ds.length && dk(d)<ds[0] ? `• ${bookLabel(b)}: اتباع يوم ${fmtDay(ds[0])}` : ''; }).filter(Boolean);
+    if(early.length){ alert('تاريخ المرتجع قبل تاريخ البيع — غيّر التاريخ:\n'+early.join('\n')); return; }
+    close();
     const g=uid();   // كل الكتب اللي رجعت مع بعض = مرتجع واحد
     withUndo(`↩️ اتسجّل مرتجع ${n} كتاب`, ()=>{
       for(const b of pick) db.payments.push({id:uid(), k:'ret', t:tid, b, q:rq[b], d, g, parts:retPlan(tid, b, rq[b])});
@@ -4191,7 +4251,19 @@ function sellRest(s, sp){
   s.items=sp.sell.map(x=>({b:x.b, q:x.q})); sellItems(s, lotLeft());
 }
 // التسليم (من مخزن الشركة): الكتاب الناقص يتقال عليه ويتساب، والباقي يتسلّم. لو مفيش استلام من المخزن متسجّل خالص → مفيش فحص
-function doDeliver(t, map, after){
+function doDeliver(t, map, after, again){
+  // بند 5: المدرس استلم النهارده قبل كده → اسأل: تعدّل زيارة النهارده ولا تضيف عليها ولا تلغي
+  const today=dayKey(), prev=again?[]:db.entries.filter(e=>e.s==='d' && e.t===t.id && e.dd && dk(e.dd)===today);
+  if(prev.length){ const last=prev.map(e=>e.dd).sort().pop(), n0=prev.reduce((s,e)=>s+e.q,0);
+    const m=document.createElement('div'); m.className='modal';
+    m.innerHTML=`<div class="box"><h3>⚠️ الأستاذ ${esc(t.name)} استلم النهارده</h3><p style="margin-top:0">استلم الساعة <b>${timeStr(new Date(last))}</b> (${n0} كتاب).</p>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-dv="edit">✏️ افتح زيارة النهارده وعدّل فيها</button>
+      <button class="btn ok" style="width:100%;margin-bottom:8px" data-dv="add">➕ ضيف الكتب دي على زيارة النهارده</button>
+      <button class="btn ghost" style="width:100%" data-dv="x">إلغاء</button></div>`;
+    document.body.appendChild(m);
+    m.addEventListener('click', e=>{ if(e.target===m){ m.remove(); return; } const b=e.target.closest('[data-dv]'); if(!b) return; m.remove();
+      if(b.dataset.dv==='edit') editVisit(t.id+'|'+today); else if(b.dataset.dv==='add') doDeliver(t, map, after, true); });
+    return; }
   const left=stockLeft(), ok={}, short=[];
   for(const [b,q] of Object.entries(map)){ const a=Math.max(0,left[b]||0), n=Math.min(q,a); if(n) ok[b]=n; if(q>n) short.push({b, want:q, a}); }
   const keys=Object.keys(ok).sort((a,b)=>bookRank[a]-bookRank[b]);
@@ -4777,9 +4849,9 @@ function editInvoice(sid){
       for(const r of rt.filter(r=>r.q<r.q0)) cutRetParts(s.t, s.id, r.i, r.q0-r.q);
       // 2) الكتب في الفاتورة
       for(const r of sl){
-        if(r.fresh){ const p=priceOf(r.b); s.items.push({b:r.b, q:r.q, pre:p?p.pre:null, post:p?p.post:null, src:allocate(r.b, r.q, left)}); continue; }
+        if(r.fresh){ const p=priceOf(r.b); s.items.push({b:r.b, q:r.q, pre:p?p.pre:null, post:p?p.post:null, src:allocate(r.b, r.q, left, dk(s.sd||s.d))}); continue; }
         const it=s.items[r.i], d=r.q-r.q0; if(!d) continue;
-        if(d>0) it.src=[...(it.src||[]), ...allocate(it.b, d, left)]; else shrinkSrc(s, r.i, -d);
+        if(d>0) it.src=[...(it.src||[]), ...allocate(it.b, d, left, dk(s.sd||s.d))]; else shrinkSrc(s, r.i, -d);
         it.q=r.q;
       }
       // 3) المرتجع اللي اتزوّد: مرتجع جديد على الفاتورة دي بالتاريخ ده
@@ -4804,14 +4876,24 @@ function editInvoice(sid){
 const pendReqs = () => (db.reqs||[]).filter(r=>!r.done && tById(r.t));
 function updateBell(){ const n=pendReqs().length+remoteReqs.length+sbBell, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
 /* إشعارات «💬 المراسلات» (Supabase): بنقرا جلسة admin.html المحفوظة على نفس الموقع */
-var sbBell=0;
+var sbBell=0, sbSid=null;
+async function sbStaffId(S){ if(sbSid && sbSid.u===S.s.user.id) return sbSid.id;
+  const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/staff?select=id&user_id=eq.'+S.s.user.id,{headers:S.h}); const j=r.ok?await r.json():[];
+  if(!j[0]) return null; sbSid={u:S.s.user.id, id:j[0].id}; return sbSid.id; }
 async function pullSbBell(){
   try{
     if(!sbHas() || !navigator.onLine) return;
     const S=await sbSession();
     if(!S){ const b=JSON.parse(localStorage.getItem('selah-trial-bell')||'null'); sbBell=b?(+b.n||0):0; updateBell(); return; }
     const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/bell_counts',{method:'POST',headers:S.h,body:'{}'});
-    if(!r.ok) return; const j=await r.json(); const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0)+(+j.rets||0);
+    if(!r.ok) return; const j=await r.json();
+    // 2026-11-14: الجرس = مدرسيني أنا بس (حتى المالك ما يتبلّغش بمدرسين المناديب) — reps (مناديب مستنيين موافقة) بيفضل زي ما هو
+    try{ const sid=await sbStaffId(S), U=S.c.SUPABASE_URL+'/rest/v1/';
+      const cnt=async q=>{ const x=await fetch(U+q+'&teachers.rep_id=eq.'+sid,{headers:{...S.h, Prefer:'count=exact', Range:'0-0'}}); if(!x.ok) throw 0; return +((x.headers.get('content-range')||'').split('/')[1])||0; };
+      if(sid){ const s='?select=id,teachers!inner(rep_id)';
+        [j.edits, j.orders, j.msgs, j.rets]=await Promise.all([cnt('edit_requests'+s+'&status=eq.pending'), cnt('orders'+s+'&status=eq.pending'),
+          cnt('messages'+s+'&from_teacher=is.true&read_at=is.null'), cnt('returns'+s+'&status=eq.pending')]); } }catch(e){}
+    const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0)+(+j.rets||0);
     if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} msgPop(); }   // نغمة الجرس للمدرسين بس
     const was=sbBell; sbBell=n; updateBell();
     if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»

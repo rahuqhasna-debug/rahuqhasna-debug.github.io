@@ -350,6 +350,12 @@ $('#backBtn').onclick = () => { const h = location.hash.slice(1) || '/'; if (!me
 /* ---------- البيانات ---------- */
 async function counts() {
   const { data } = await sb.rpc('bell_counts'); if (!data) return;
+  // 2026-11-14 (طلب شريف): الجرس لكل واحد = مدرسينه هو بس (حتى المالك). «reps» (مناديب مستنيين موافقة) بيفضل للمالك.
+  const mine = (tb, f) => f(sb.from(tb).select('id,teachers!inner(rep_id)', { count: 'exact', head: true }).eq('teachers.rep_id', me.id)).then(r => r.error ? null : (r.count || 0));
+  const [e1, o1, m1, r1] = await Promise.all([
+    mine('edit_requests', q => q.eq('status', 'pending')), mine('orders', q => q.eq('status', 'pending')),
+    mine('messages', q => q.eq('from_teacher', true).is('read_at', null)), mine('returns', q => q.eq('status', 'pending'))]);
+  if (e1 != null) data.edits = e1; if (o1 != null) data.orders = o1; if (m1 != null) data.msgs = m1; if (r1 != null) data.rets = r1;
   // متابعة 12: المدرسين اللي ثبّتوا التطبيق من آخر مرة فتحت تبويب «📲 ثبّتوا التطبيق»
   const seen = LS.get('selah-trial-inst-seen') || new Date(0).toISOString();
   // 2026-11-14: كل واحد (حتى المالك) بيتبلّغ بس عن المدرسين بتوعه — المتابعة الكاملة في ⚙️ إعدادات المالك «📲 مين ثبّت التطبيق»
@@ -819,13 +825,17 @@ function drawSelbar() {
   const sel = T.filter(t => ui.sel.has(t.id)), n = sel.length;
   if (!n) { b.innerHTML = ''; return; }
   const ids = sel.map(t => t.id), closed = sel.filter(t => !t.recv_open).map(t => t.id), allOpen = !closed.length;
+  const notIn = sel.filter(t => !t.app_at);   // المحددين اللي لسه ما ثبّتوش البرنامج
   b.innerHTML = `<div class="selbar"><div class="in"><b>${n} متحدد</b>
+    ${notIn.length ? `<button class="btn sm ok" id="sInv">📲 ابعت كارت دعوة (${notIn.length})</button>` : ''}
     <button class="btn sm danger" id="sRing">🔔 ابعت تنبيه (${n})</button>
     <button class="btn sm owe" id="sUpd">🔄 اطلب تحديث (${n})</button>
     <button class="btn sm" id="sRv">📦 ${allOpen ? 'قفل' : 'فعّل'} «استلمت إيه» (${n})</button>
     <button class="btn sm ghost" id="sX">✕ شيل التحديد</button></div></div>`;
   $('#sRing').onclick = async () => { if (!confirm(`تنبّه ${n} مدرس؟`)) return; $('#sRing').disabled = true; await ringTeachers(ids); $('#sRing').disabled = false; };
   $('#sUpd').onclick = () => reqUpdateDlg(ids);
+  // كارت الدعوة = «📲 رسالة التثبيت» المحفوظة في صفحة رسالة الدعوة (نفس النص المتفق عليه) + رابط كل مدرس
+  if ($('#sInv')) $('#sInv').onclick = () => waBulk(notIn, LS.get(INV_KEYS.app[0]) || INV_APP);
   $('#sRv').onclick = () => allOpen ? recvSet(ids, false) : recvSet(closed, true);
   $('#sX').onclick = () => { ui.sel.clear(); refreshList(); };
 }
@@ -1228,7 +1238,7 @@ async function viewBell() {
   const bb = $('#bb');
   bb.innerHTML = '<div class="loading">جاري التحميل…</div>';
   if (ui.bellTab === 'msgs') {
-    const ids = Object.keys(unreadBy);
+    const ids = Object.keys(unreadBy).filter(id => (T.find(t => t.id === id) || {}).rep_id === me.id);
     ids.sort((a, b) => (lastMsg[b]?.id || 0) - (lastMsg[a]?.id || 0));
     bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<div class="titem" data-go="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
       <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
@@ -1256,18 +1266,18 @@ async function viewBell() {
     return;
   }
   if (ui.bellTab === 'rets') {
-    const { data, error } = await sb.from('returns').select('*, teachers(name,local_id,phone)').eq('status', 'pending').order('created_at').limit(50);
+    const { data, error } = await sb.from('returns').select('*, teachers!inner(name,local_id,phone,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending').order('created_at').limit(50);
     if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
     bb.innerHTML = `<a class="btn owe" href="#/rets" style="display:block;text-align:center;margin-bottom:8px">↩️ كل المرتجعات (ومعاها اللي مستني تستلمه) ←</a>` + (retGroups(data) || '<div class="card empty">مفيش طلبات مرتجع جديدة ✅</div>');
     bindRets(bb, data, () => { if (location.hash === '#/bell') viewBell(); }); return;
   }
   if (ui.bellTab === 'orders') {
-    const { data, error } = await sb.from('orders').select('*, teachers(name,local_id)').eq('status', 'pending').order('created_at').limit(50);
+    const { data, error } = await sb.from('orders').select('*, teachers!inner(name,local_id,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending').order('created_at').limit(50);
     if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
     bb.innerHTML = data.map(o => orderCard(o)).join('') || '<div class="card empty">مفيش طلبات كتب مستنية ✅</div>';
     bindReviews(bb); return;
   }
-  const { data, error } = await sb.from('edit_requests').select('*, teachers(name,phone,avatar,local_id)').in('status', ['pending', 'question']).order('updated_at').limit(40);
+  const { data, error } = await sb.from('edit_requests').select('*, teachers!inner(name,phone,avatar,local_id,rep_id)').eq('teachers.rep_id', me.id).in('status', ['pending', 'question']).order('updated_at').limit(40);
   if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
   const pend = data.filter(e => e.status === 'pending'), q = data.filter(e => e.status === 'question');
   bb.innerHTML = (pend.map(e => reviewCard(e)).join('') || '<div class="card empty">مفيش تعديلات مستنية ✅</div>')
