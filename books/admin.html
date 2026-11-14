@@ -33,6 +33,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="common.js"></script>
+<script src="ret.js"></script>
 </head>
 <body>
 <header class="top"><div class="in">
@@ -482,21 +483,7 @@ async function syncLedger(db) {
   for (let i = 0; i < gone.length; i += 100) await sb.from('ledger').delete().in('id', gone.slice(i, i + 100));
 }
 // حساب المرتجع بنفس طريقة البرنامج الأخضر: من أحدث بيع الأول، وبسعر البيع نفسه
-function gRetCalc(db, localId, items) {
-  const done = {};
-  for (const p of db.payments || []) if (p.k === 'ret' && p.t === localId) for (const pt of p.parts || []) done[pt.sale + ':' + pt.i] = (done[pt.sale + ':' + pt.i] || 0) + pt.q;
-  const lines = [];
-  for (const s of db.sales || []) if (s.st === 'sold' && s.t === localId) (s.items || []).forEach((it, i) => { const left = it.q - (done[s.id + ':' + i] || 0); if (left > 0) lines.push({ it, left, sd: s.sd || '' }); });
-  lines.sort((x, y) => y.sd.localeCompare(x.sd));
-  const resv = {}; for (const r of db.tret || []) if (!r.done && r.t === localId) for (const i of r.items || []) resv[i.b] = (resv[i.b] || 0) + i.q;
-  let value = 0, ok = true; const out = [];
-  for (const i of items) {
-    let skip = resv[i.b] || 0, need = i.q, v = 0;
-    for (const l of lines.filter(x => x.it.b === i.b)) { if (!need) break; let left = l.left; const sk = Math.min(skip, left); skip -= sk; left -= sk; const n = Math.min(need, left); if (n > 0) { v += n * (l.it.post || 0); need -= n; } }
-    if (need) ok = false; value += v; out.push({ b: i.b, l: i.l || bookLabel(i.b), q: i.q, post: i.q ? v / i.q : null });
-  }
-  return { ok, value, items: out };
-}
+function gRetCalc(db, localId, items) { return window.SilahRet ? SilahRet.calc(db, localId, items) : { ok: false, value: 0, items: [] }; }   // الحساب نفسه في ret.js (مشترك مع البرنامج الأخضر)
 /* ---------- ↩️ المرتجعات (متابعة 10): 3 حالات ----------
    ⏳ pending طلب من المدرس ← «✅ وافق» ← 🚚 approved مستني تستلمه ← «📦 استلمت» ← ✅ received (هنا بس بيتسجّل في البرنامج الأخضر + فواتير المدرس) */
 const RST = { pending: ['⏳ طلب جديد', 'owe'], approved: ['🚚 وافقت — مستني تستلمه', 'new'], received: ['✅ استلمت', 'ok'], rejected: ['❌ اترفض', 'bad'] };
@@ -536,18 +523,17 @@ function bindRets(root, list, after) {
       return done('✅ اتوافق — المرتجع بقى «🚚 مستني تستلمه»');
     }
     // 📦 استلمت: هنا بس بيتسجّل في البرنامج الأخضر وفي فواتير المدرس
-    const db = gdb(); if (!db || !t.local_id || !(db.teachers || []).some(x => x.id === t.local_id)) return toast('المدرس مش في البرنامج على الموبايل ده — «استلمت» من موبايل المندوب بتاعه', 4500);
-    const c = gRetCalc(db, t.local_id, r.items || []); if (!c.ok) return toast('الكمية أكتر من اللي مسجّل في البيع عندك — راجع البيع الأول', 4500);
-    if (!confirm(`استلمت الكتب دي من ${t.name || 'المدرس'}؟\n${(r.items || []).map(i => `${i.l || bookLabel(i.b)}: ${i.q}`).join('\n')}\n\nقيمتها ${c.value.toLocaleString('ar-EG')} ج — هتتسجّل مرتجع في البرنامج.`)) return;
-    $$('button', box).forEach(x => x.disabled = true);
-    const q1 = await sb.from('returns').update({ status: 'received', value: c.value, received_at: now }).eq('id', r.id).eq('status', 'approved').select('id');
-    if (q1.error || !(q1.data || []).length) { $$('button', box).forEach(x => x.disabled = false); return toast(q1.error ? errMsg(q1.error) : 'المرتجع ده اتغيّر — اعمل تحديث'); }
-    (db.tret ||= []).push({ id: r.id, t: t.local_id, items: (r.items || []).map(i => ({ b: i.b, q: i.q })), at: now });
-    (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.local_id, at: now, k: 'مرتجع', txt: 'مرتجع من المدرس (استلمته): ' + (r.items || []).map(i => `${bookLabel(i.b)} ${i.q}`).join('، ') });
-    gsave(db);
-    const q2 = await sb.from('ledger').upsert({ teacher_id: r.teacher_id, ref: 'rq:' + r.id, kind: 'ret', at: now, items: c.items, total: c.value }, { onConflict: 'teacher_id,ref' });
-    if (q2.error) toast(errMsg(q2.error));
-    if (window.pushToTeacher) window.pushToTeacher({ id: r.teacher_id }, '✅ استلمنا المرتجع بتاعك — اتسجّل في فواتيرك', false).catch(() => { });
+    // المنطق نفسه في ret.js (SilahRet.receive) — مشترك مع تبويب «↩️ مرتجع» في البرنامج الأخضر
+    if (!window.SilahRet) return toast('حدّث الصفحة وجرّب تاني', 4000);
+    const btns = $$('button', box); btns.forEach(x => x.disabled = true);
+    const res = await SilahRet.receive(gdb(), r, {
+      mark: async (id, body) => { const q1 = await sb.from('returns').update(body).eq('id', id).eq('status', 'approved').select('id'); return q1.error ? { ok: false, err: errMsg(q1.error) } : { ok: (q1.data || []).length > 0 }; },
+      save: gsave,
+      ledger: async row => { const q2 = await sb.from('ledger').upsert(row, { onConflict: 'teacher_id,ref' }); return q2.error ? errMsg(q2.error) : ''; },
+      notify: (tid, text) => { if (window.pushToTeacher) window.pushToTeacher({ id: tid }, text, false).catch(() => { }); }
+    });
+    if (!res.ok) { btns.forEach(x => x.disabled = false); if (res.err) toast(res.err, 4500); return; }
+    if (res.warn) toast(res.warn);
     done('📦 اتسجّل المرتجع — هيتكتب في البرنامج الأخضر أول ما تفتحه');
   });
 }
@@ -604,13 +590,15 @@ function tHay(t) {
   if (retsBy[t.id]) out.push('مرتجع عنده مرتجع');
   return norm(out.filter(Boolean).join(' '));
 }
+// قاعدة الخصم التلقائي لما «بعد الخصم» فاضي (زي index.html بالظبط): إنجليزي ابتدائي 30% • إعدادي 17.5% ثم 7% على الباقي • غير كده من غير خصم. من غير تقريب لجنيه.
+const autoPost = (b, pre) => { const [st, sb] = String(b).split('-'); return Math.round(pre * (st === 'm' ? 0.825 * 0.93 : sb === 'en' ? 0.70 : 1) * 1e6) / 1e6; };
 // أسعار الكتب ← المدرسين (💰 أسعار الكتب + الطلب). بتترفع مع كل فتح لو الأسعار في البرنامج اتغيّرت (المالك بس)
 async function syncPrices() {
   const db = gdb(); if (!isAdmin() || !db || !db.prices) return;
   // الأفضل: الأسعار اللي البرنامج حسبها (فيها بعد الخصم بنسبة الخصم) — وإلا الأسعار الخام
   let gp = null; try { gp = JSON.parse(localStorage.getItem('selah-green-prices') || 'null'); } catch (e) { }
   const items = (Array.isArray(gp) && gp.length ? gp.map(p => ({ b: p.b, l: bookLabel(p.b), pre: p.pre ?? null, post: p.post ?? null }))
-    : Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? (p.pre != null ? Math.round(p.pre * (1 - (String(b).split('-')[0] === 'm' ? 0.245 : 0.30)) * 100) / 100 : null) }))).filter(i => i.post || i.pre);   // نفس خصم البرنامج: إعدادي 24.5%، إنجليزي 30%
+    : Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? (p.pre != null ? autoPost(b, p.pre) : null) }))).filter(i => i.post || i.pre);   // نفس قاعدة البرنامج (autoPost)
   if (!items.length) return;
   const sig = JSON.stringify(items.map(i => [i.b, i.pre, i.post]));
   if (LS.get('selah-trial-psig') === sig) return;
@@ -1355,7 +1343,7 @@ async function viewSettings() {
   const repMsg = s => `رقمك السري في «المراسلات» في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}\nوادخل «⚙️ الإعدادات» ← «💬 فعّل المراسلات» واكتب الرقم زي ما هو بالظبط. (بيشتغل على موبايل واحد بس)`;
   $('#upPr').onclick = async () => {
     const db = gdb(); if (!db || !db.prices) return toast('مفيش أسعار في البرنامج على الموبايل ده');
-    const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? null }));
+    const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? (p.pre != null ? autoPost(b, p.pre) : null) }));
     const { error: e } = await sb.from('app_settings').upsert({ key: 'prices', value: { items, at: new Date().toISOString() } }); if (e) return toast(errMsg(e));
     toast(`✅ اترفع ${items.length} سعر`); viewSettings();
   };
