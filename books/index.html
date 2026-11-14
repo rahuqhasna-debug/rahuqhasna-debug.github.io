@@ -1679,16 +1679,42 @@ function owedText(){
 
 /* ================= التقارير ================= */
 let repFrom=null, repTo=dayKey();
-// أول يوم شغل (التقارير بتفتح من الأول)
+// فلتر واحد للتقارير وكل الشيتات (2026-11-14): repSel = الأيام المختارة؛ فاضية = الكل. الافتراضي = النهارده
+let repSel=null;
+// أول يوم شغل
 function firstDay(){ let m=dayKey();
   const chk=d=>{ const k=d&&dk(d); if(k && k<m) m=k; };
   for(const e of db.entries){ chk(e.dd); chk(e.rd); } for(const s of db.sales){ chk(s.d); chk(s.sd); }
   for(const l of db.merchants) chk(l.d); for(const x of db.stock) chk(x.d);
   return m; }
+function repAllDays(){ const a=firstDay(), out=[]; let d=new Date(dayKey()+'T12:00:00');
+  for(let i=0;i<1000;i++){ const k=dayKey(d); if(k<a) break; out.push(k); d=new Date(d.getTime()-864e5); } return out; }   // الأحدث فوق
+function repFix(){ if(!repSel) repSel=new Set([dayKey()]);
+  const ks=[...repSel].sort(); repFrom=ks[0]||firstDay(); repTo=ks[ks.length-1]||dayKey(); }
+const inRep = k => !!k && (!repSel || !repSel.size || repSel.has(k));
+function repLabel(){ repFix(); const n=repSel.size, k=[...repSel][0];
+  return !n ? 'كل الأيام' : n===1 ? (k===dayKey() ? 'النهارده' : `${dayName(k)} ${dShort(k)}`) : `${n} أيام`; }
+function repPer(){ repFix(); const n=repSel.size;
+  return !n ? `لحد ${dayKey()}` : n===1 ? repFrom : `${n} أيام من ${repFrom} لحد ${repTo}`; }
+function repPicker(){
+  repFix(); const ks=repAllDays(), sel=new Set(repSel), D=delByDay();
+  const m=document.createElement('div'); m.className='modal';
+  const row=k=>`<label class="ddrow"><input type="checkbox" data-rk="${k}" ${sel.has(k)?'checked':''}><span class="grow">${k===dayKey()?'<b>النهارده</b> — ':''}${dayName(k)} ${fmtDay(k)}</span>${D[k]?`<span class="small muted">${D[k].n} كتاب</span>`:''}</label>`;
+  m.innerHTML=`<div class="box"><h3>📅 اختار الأيام</h3>
+    <label class="ddrow" style="font-weight:800"><input type="checkbox" id="rk_all" ${!sel.size?'checked':''}><span class="grow">🗓️ الكل (من أول الشغل)</span></label>
+    <div style="max-height:55vh;overflow:auto;border-top:1px solid var(--line)">${ks.map(row).join('')}</div>
+    <div class="row2" style="margin-top:10px"><button class="btn pri" id="rk_ok">تمام</button><button class="btn ghost" id="rk_x">إلغاء</button></div></div>`;
+  document.body.appendChild(m); const close=()=>m.remove();
+  m.addEventListener('click', e=>{ if(e.target===m) close(); }); m.querySelector('#rk_x').onclick=close;
+  const all=m.querySelector('#rk_all');
+  all.onchange=()=>{ if(all.checked){ sel.clear(); m.querySelectorAll('[data-rk]').forEach(c=>c.checked=false); } };
+  m.querySelectorAll('[data-rk]').forEach(c=>c.onchange=()=>{ c.checked?sel.add(c.dataset.rk):sel.delete(c.dataset.rk); all.checked=!sel.size; });
+  m.querySelector('#rk_ok').onclick=()=>{ repSel=sel; repFix(); close(); renderReport(); };
+}
 function renderReport(){
-  if(!repFrom) repFrom=firstDay();
+  repFix();
   setHeader('📊 التقارير والإكسل', false);
-  const inRange=k=>k && k>=repFrom && k<=repTo;
+  const inRange=inRep;
   const days={};
   for(const e of db.entries){
     if(e.s==='d' && inRange(dk(e.dd))){ const x=days[dk(e.dd)] ||= {v:new Set(),d:0,o:0}; x.d+=e.q; x.v.add(e.t); }
@@ -1696,31 +1722,21 @@ function renderReport(){
   }
   const dkeys=Object.keys(days).sort().reverse();
   const tv=dkeys.reduce((s,k)=>s+days[k].v.size,0), td=dkeys.reduce((s,k)=>s+days[k].d,0), to=dkeys.reduce((s,k)=>s+days[k].o,0);
-  app.innerHTML=`<div class="card">
-    <div class="row2"><div class="field"><label>من</label><input type="date" id="rf" value="${repFrom}"></div><div class="field"><label>لحد</label><input type="date" id="rt" value="${repTo}"></div></div>
-    <div class="chips" style="margin:0">
-      <button class="chip" data-act="range" data-r="today">النهارده</button>
-      <button class="chip" data-act="range" data-r="week">آخر 7 أيام</button>
-      <button class="chip" data-act="range" data-r="month">الشهر ده</button>
-      <button class="chip" data-act="range" data-r="all">من الأول</button>
-    </div></div>
+  app.innerHTML=`<div class="stickbar"><button class="btn pri" style="width:100%;font-size:17px" data-act="rep-days">📅 ${repLabel()} ▾</button>
+    ${repSel.size>1?`<div class="small muted" style="text-align:center;margin-top:4px">${[...repSel].sort().map(k=>`${dayName(k)} ${dShort(k)}`).join(' • ')}</div>`:''}</div>
     <div class="stats"><div class="stat"><b>${tv}</b><span>زيارة</span></div><div class="stat"><b>${td}</b><span>كتاب اتسلّم</span></div><div class="stat"><b>${to}</b><span>مستحق اتسجّل</span></div></div>
     <div class="card"><h3 class="sec-t">📅 يوم بيوم</h3>${dkeys.length?dkeys.map(k=>`<div class="kv"><span>${fmtDay(k)}</span><span class="small">${days[k].v.size} زيارة • ✅ ${days[k].d} • ⏳ ${days[k].o}</span></div>`).join(''):'<div class="muted">مفيش تعاملات في الفترة دي.</div>'}</div>
-    ${delDaysCard()}
     <div class="card"><h3 class="sec-t">☁️ الشيتات بتترفع على الدرايف بتاعك</h3>
       <p class="hint" style="margin-top:0">كل شيت بيترفع على طول في فولدر «شيتات سلاح التلميذ» على الدرايف، كل نوع في فولدره. لو مفيش نت بيترفع لوحده أول ما النت يرجع.${shq().length?` <b>مستني يترفع: ${shq().length} شيت.</b>`:''}</p>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-part="del">📚 شيت التسليمات</button>
+      <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="dd-xlsx">📚 شيت الكتب اللي اتسلّمت بالأيام</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="edafat">➕ شيت الإضافات</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="tdata">👥 شيت بيانات المدرسين</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="sale-sheets">💰 شيت البيع</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="export" data-part="mer">🏪 شيت حساب التجار</button>
       <button class="btn pri" style="width:100%;margin-bottom:8px" data-act="jard">📋 شيت الجرد</button>
       <button class="btn pri" style="width:100%" data-act="sjard">🧮 شيت جرد المبيعات</button>
-      <p class="hint">• <b>التسليمات</b>: تسليمات 1 • تسليمات 2 • أعداد المدرسين.<br>• <b>شيت البيع</b> بيسألك: «حساب المدرسين» (الطلبات • الملخص اليومي • فواتير البيع • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا) ولا «بيع الشركة» (بنفس شكل بيع مباشر).<br>• <b>حساب التجار</b>: حسابات التجار • صافي التجار.<br>• <b>الجرد</b>: بنفس شكل جرد الشركة، كل كتاب رابطة + فرد. <b>جرد المبيعات</b>: الباقي معاك من بضاعة التجار.<br>التسليمات والبيع والتجار حسب الفترة اللي فوق (بتبدأ من أول الشغل).</p></div>`;
-  $('#rf').addEventListener('change',e=>{repFrom=e.target.value||dayKey(); renderReport();});
-  $('#rt').addEventListener('change',e=>{repTo=e.target.value||dayKey(); renderReport();});
-  app.querySelectorAll('[data-dd]').forEach(cb=>cb.addEventListener('change',()=>{ cb.checked?delDays.add(cb.dataset.dd):delDays.delete(cb.dataset.dd); ddSum(); }));
-  ddSum();
+      <p class="hint">• <b>التسليمات</b>: تسليمات 1 • تسليمات 2 • أعداد المدرسين.<br>• <b>شيت البيع</b> بيسألك: «حساب المدرسين» (الطلبات • الملخص اليومي • فواتير البيع • حسابات المدرسين • صافي كتب المدرسين • ترتيب الهدايا) ولا «بيع الشركة» (بنفس شكل بيع مباشر).<br>• <b>حساب التجار</b>: حسابات التجار • صافي التجار.<br>• <b>الجرد</b>: بنفس شكل جرد الشركة، كل كتاب رابطة + فرد. <b>جرد المبيعات</b>: الباقي معاك من بضاعة التجار.<br>كل الشيتات بتطلع حسب الأيام اللي مختارها فوق (📅).</p></div>`;
 }
 // «💰 شيت البيع» بيسأل: حساب المدرسين ولا بيع الشركة
 function saleSheetChoice(){
@@ -1787,9 +1803,10 @@ function delSheetOf(days){
   return {name:'الكتب اللي اتسلّمت', rows, head:5, freezeCol:1, merges, widths:[18, ...cols.map(c=>c.k?11:13)]};
 }
 function exportDelDays(){
-  if(!delDays.size){ alert('اختار يوم أو أكتر الأول'); return; }
-  const sh=delSheetOf(delDays); if(!sh) return;
-  const ks=[...delDays].sort();
+  repFix(); const D=delByDay(), days=Object.keys(D).filter(inRep);
+  if(!days.length){ alert('مفيش تسليمات في الأيام اللي مختارها فوق (📅).'); return; }
+  const sh=delSheetOf(days); if(!sh) return;
+  const ks=days.sort();
   sendSheet(buildXlsx([sh]), `الكتب اللي اتسلمت — ${db.rep} — ${ks[0]}${ks.length>1?' لحد '+ks[ks.length-1]:''} — ${stamp()}.xlsx`, 'شيتات التسليمات');
 }
 
@@ -1829,7 +1846,6 @@ function renderSettings(){
     ${locCard()}
     ${pricesCard()}
     ${merchCard()}
-    ${pinCard()}${editLogCard()}
     <div class="card"><h3 class="sec-t">💾 نسخة احتياطية / نقل لجهاز تاني</h3>
       <div class="row2"><button class="btn pri" data-act="backup">⬇️ اعمل نسخة</button><button class="btn" data-act="restore">⬆️ رجّع نسخة</button></div>
       <p class="hint">البيانات محفوظة على الجهاز ده بس. اعمل نسخة كل كام يوم وابعتها لنفسك على الواتساب أو الدرايف. علشان تنقل للكمبيوتر أو الموبايل: اعمل نسخة هنا، وافتح البرنامج على الجهاز التاني ودوس «رجّع نسخة».</p></div>
@@ -2029,11 +2045,8 @@ document.addEventListener('click', e=>{
     case 'new-teacher': e.preventDefault(); teacherForm(null, {name:el.dataset.name||'', phone:el.dataset.phone||''}); break;
     case 'filter': hfReset(); homeFilter=el.dataset.k; renderTeachers(); break;
     case 'copy-owed': copyText(owedText()); break;
-    case 'range': { const r=el.dataset.r, d=new Date(); repTo=dayKey();
-      if(r==='today') repFrom=dayKey(); else if(r==='week') repFrom=dayKey(new Date(Date.now()-6*864e5));
-      else if(r==='month') repFrom=isoDay(d.getFullYear(), d.getMonth()+1, 1);
-      else { const all=db.entries.map(x=>dk(actDate(x))).filter(Boolean).sort(); repFrom=all[0]||dayKey(); }
-      renderReport(); break; }
+    case 'rep-days': repPicker(); break;
+    case 'price-send': try{ localStorage.setItem(KEY+'-msg', priceMsg()); }catch(er){} msgSel.clear(); msgF.q=''; location.hash='#/msgs'; break;
     case 'export': exportExcel(el.dataset.scope==='all', el.dataset.part||''); break;
     case 'sale-sheets': saleSheetChoice(); break;
     case 'dd-q': ddQuick(el.dataset.r); break;
@@ -2307,7 +2320,7 @@ function buildXlsx(sheets){
 // part: 'del' = شيت التسليمات، 'tch' = شيت حساب المدرسين (بيع المندوب للمدرسين)، 'mer' = شيت حساب التجار، غير كده = التلاتة
 function exportExcel(all, part){
   // ملف واحد «سلاح التلميذ» فيه 12 شيت. الأسعار والمبلغ بعد الخصم جايين جاهزين من البرنامج (it.pre / it.post / l.p)، مفيش أي نسبة خصم بتتحسب هنا.
-  const inRange = k => all || (k && k>=repFrom && k<=repTo);
+  repFix(); const inRange = k => all || inRep(k);
   const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t])), L=lotMap();
   const TN=id=>tmap[id]?.name||'؟', TP=id=>tmap[id]?.phone||'';
   const tsort=(a,b)=>TN(a).localeCompare(TN(b),'ar') || String(a).localeCompare(String(b));
@@ -2562,7 +2575,7 @@ function exportExcel(all, part){
       const F=col=>ph ? `SUMIFS(${q}!$${col}$2:$${col}$${E3},${q}!$A$2:$A$${E3},A${rn},${q}!$B$2:$B$${E3},B${rn})` : `SUMIF(${q}!$A$2:$A$${E3},A${rn},${q}!$${col}$2:$${col}$${E3})`;
       const row=[TN(tid), ph, {f:F('F'), v:x.n}, {f:F('I'), v:x.pre}, {f:F('J'), v:x.post}, i+1];
       if(i<3) row.fill=MED[i]; s12.push(row); });
-    s12.push([]); s12.push([all?'الفترة: من الأول':`الفترة: من ${fmtDay(repFrom)} لحد ${fmtDay(repTo)}`]); }
+    s12.push([]); s12.push([all||!repSel.size?'الفترة: من الأول':`الأيام: ${[...repSel].sort().map(fmtDay).join('، ')}`]); }
 
   // ملفين: التسليمات والبيع. الثابت في كل شيت: اسم المدرس والتليفون بس. (الإضافات بقت شيت لوحدها: exportAdditions)
   void s10;
@@ -2586,7 +2599,7 @@ function exportExcel(all, part){
     {name:N3, rows:s3, widths:[24,14,10,16,18,10,9,12,14,14], freezeCol:2, af:false},
     {name:'ترتيب الهدايا', rows:s12, widths:[24,14,15,18,18,9], freezeCol:2, af:false}
   ];
-  const per = all ? `لحد ${dayKey()}` : (repFrom===repTo ? repFrom : `من ${repFrom} لحد ${repTo}`);
+  const per = all ? `لحد ${dayKey()}` : repPer();
   const out=[];
   if(!part || part==='del') out.push({blob:buildXlsx(dSheets), name:`التسليمات — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات التسليمات'});
   if(!part || part==='tch') out.push({blob:buildXlsx(sheets), name:`حساب المدرسين — ${db.rep} — ${per} — ${stamp()}.xlsx`, sub:'شيتات البيع'});
@@ -2761,7 +2774,7 @@ function exportTeachersData(){
 /* ================= شيت بيع الشركة (نفس شكل «بيع مباشر»: English • Prim • Prep • Summary) ================= */
 function exportCompanySales(){
   if(!askCode()) return;
-  const inR=k=>k && k>=repFrom && k<=repTo, L=lotMap();
+  repFix(); const inR=inRep, L=lotMap();
   const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t]));
   const sold=db.sales.filter(s=>s.st==='sold' && inR(dk(s.sd||s.d))).sort((a,b)=>(a.sd||a.d||'').localeCompare(b.sd||b.d||''));
   if(!sold.length && !confirm('مفيش بيع في الفترة اللي اخترتها، الشيت هيطلع فاضي. تكمل؟')) return;
@@ -2801,7 +2814,7 @@ function exportCompanySales(){
   const b=srows.length, tr=['Total', ...Array.from({length:W+1},(_,i)=>{ const col=colName(i+1); return {f:`SUM(${col}2:${col}${b})`, v:srows.slice(1).reduce((a,r)=>a+(typeof r[i+1]==='object'?r[i+1].v:r[i+1]),0)}; })];
   tr.fill='FCE3A8'; tr.bold=true; srows.push(tr);
   out.push({name:'Summary', rows:srows, widths:[14, ...Array(W+1).fill(7)], freezeCol:0, af:false});
-  sendSheet(buildXlsx(out), `بيع مباشر — ${db.rep} — ${repFrom} لحد ${repTo} — ${stamp()}.xlsx`, 'شيتات البيع');
+  sendSheet(buildXlsx(out), `بيع مباشر — ${db.rep} — ${repPer()} — ${stamp()}.xlsx`, 'شيتات البيع');
 }
 
 // الكود الوظيفي: بيتسأل كل مرة الشيت بينزل (ومكتوب فيه آخر كود)
@@ -2813,8 +2826,8 @@ function levelTxt(t){ const gs=t.grades||[], st=t.stage||'';
   const lo=st.includes('p') && gs.some(g=>g<4), hi=st.includes('m') || (st.includes('p') && gs.some(g=>g>=4));
   return lo&&hi ? 'صفوف صغرى وعليا' : lo ? 'صفوف صغرى' : hi ? 'صفوف عليا' : ''; }
 function exportAdditions(){
-  const ts=db.teachers.filter(t=>t.isNew).sort((a,b)=>(a.created||'').localeCompare(b.created||''));
-  if(!ts.length) return toast('مفيش مدرسين جداد متسجلين');
+  repFix(); const ts=db.teachers.filter(t=>t.isNew && (!t.created || inRep(dk(t.created)))).sort((a,b)=>(a.created||'').localeCompare(b.created||''));
+  if(!ts.length) return toast('مفيش مدرسين جداد متسجلين في الأيام اللي مختارها');
   if(!askCode()) return;
   const rows=[['الاسم','الرقم','المادة','الصف','المرحلة','كود المندوب','الادارة','المحافظة','دروس / مدارس','ابتدائي / اعدادي']];
   for(const t of ts) rows.push([t.name||'', t.phone||'', t.subjectText||'', gradesTxt(t), levelTxt(t), db.empCode||'', db.idara||'', 'البحيرة', t.where||'', STAGE_TXT[t.stage]||t.stageText||'']);
@@ -3230,7 +3243,7 @@ function renderMerchPage(name){
     <div><span>${x.owe<0?'ليك عنده':'عليك له'}</span><b style="color:${x.owe>0?'var(--bad)':'var(--ok)'}">${fmtN(Math.abs(x.owe))}</b></div></div>`;
   h += recs.map((r,i)=>{ const ids=new Set(r.lots.map(l=>l.id)); let tot=0;
     const rows=[...r.lots].sort(byRank).map(l=>{ const v=l.p!=null?l.q*l.p:null; if(v!=null) tot+=v;
-      return `<tr><td><b style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</b> <button class="btn sm ghost" style="padding:0 6px" data-act="edit-lot" data-id="${l.id}" title="تعديل (بالرقم السري)">✏️</button></td><td>${l.q}</td><td>${l.p!=null?fmtN(l.p):'—'}</td><td>${v!=null?fmtN(v):'—'}</td><td>${Math.max(0,sold[l.id]||0)}</td><td><b>${Math.max(0,left[l.id])}</b></td></tr>`; }).join('');
+      return `<tr><td><b style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</b> <button class="btn sm ghost" style="padding:0 6px" data-act="edit-lot" data-id="${l.id}" title="تعديل">✏️</button></td><td>${l.q}</td><td>${l.p!=null?fmtN(l.p):'—'}</td><td>${v!=null?fmtN(v):'—'}</td><td>${Math.max(0,sold[l.id]||0)}</td><td><b>${Math.max(0,left[l.id])}</b></td></tr>`; }).join('');
     const rr=db.merchRets.filter(m=>m.m===name).map(m=>{ const q=(m.lots||[]).filter(z=>ids.has(z.lot)).reduce((s,z)=>s+z.q,0); if(!q) return '';
       const v=(m.lots||[]).filter(z=>ids.has(z.lot)).reduce((s,z)=>{ const l=lots.find(y=>y.id===z.lot); return s+(l&&l.p!=null?z.q*l.p:0); },0);
       return `<div class="rblock"><div class="hd"><span class="grow">↩️ رجّعتله بتاريخ ${fmtDay(dk(m.d))}</span><b>${fmtM(v)}</b><button class="btn sm danger" data-act="del-mret" data-id="${m.id}" title="امسح">🗑️</button></div>
@@ -3757,12 +3770,22 @@ function pricesCard(){
   return driveCard() + cloud + `<div class="card"><h3 class="sec-t">💲 أسعار الكتب</h3>
     <div class="kv"><span>كتب ليها سعر</span><b>${n} من ${SELL_KEYS.length}</b></div>
     ${CLOUD_URL ? `<div class="kv"><span>آخر تحديث للأسعار</span><b>${db.pricesAt?fmtDT(db.pricesAt):'لسه'}</b></div>
-    <button class="btn" style="width:100%;margin-top:8px" data-act="pull-prices">🔄 حدّث الأسعار دلوقتي</button>
-    <p class="hint">الأسعار بتيجي أوتوماتيك من الإدارة لما يبقى فيه نت، ولو مفيش نت بيستخدم آخر أسعار. البيع اللي اتأكد بيفضل بسعره وقتها.</p>`
+    <p class="hint">الأسعار بتيجي أوتوماتيك من الإدارة كل ما البرنامج يفتح وفيه نت. البيع اللي اتأكد بيفضل بسعره وقتها.</p>`
     : `<div class="row2" style="margin-top:8px"><button class="btn pri" data-act="price-xlsx">📥 ارفع شيت الأسعار</button><button class="btn" data-act="price-template">⬇️ شيت فاضي</button></div>
     <p class="hint">أعمدته: المادة، الصف، المرحلة، السعر قبل الخصم، السعر بعد الخصم. لو «بعد الخصم» فاضي البرنامج بيحسبه (إنجليزي 30%، إعدادي 24.5%). البيع اللي اتأكد بيفضل بسعره وقتها، والطلبات بتاخد السعر الجديد.</p>`}
     ${n?`<details class="stk"><summary>👀 الأسعار الحالية</summary>${SELL_KEYS.map(k=>{ const p=priceOf(k);
-      return `<div class="kv"><span style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</span><span>${p?`${p.pre!=null?`<s class="muted">${fmtN(p.pre)}</s> ← `:''}<b>${fmtN(p.post)}</b>`:'—'}</span></div>`; }).join('')}</details>`:''}</div>`;
+      return `<div class="kv"><span style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</span><span>${p?`${p.pre!=null?`<s class="muted">${fmtN(p.pre)}</s> ← `:''}<b>${fmtN(p.post)}</b>`:'—'}</span></div>`; }).join('')}</details>
+    <button class="btn ok" style="width:100%;margin-top:8px;font-size:17px" data-act="price-send">📤 ابعت الأسعار للمدرسين</button>
+    <p class="hint">بيفتحلك صفحة الرسائل والأسعار مكتوبة: دوّر بالقرية أو التصنيف (A/B/C) أو المادة أو رقم التليفون، اختار مدرس أو أكتر، وابعت على الواتساب.</p>`:''}</div>`;
+}
+// رسالة الأسعار (للواتساب) — الكتب اللي ليها سعر بس، بالمرحلة
+function priceMsg(){
+  const L=['أهلاً {الاسم} 👋', `أسعار كتب سلاح التلميذ (${fmtDay(dayKey())}):`];
+  for(const st of ['p','m']){ const ks=SELL_KEYS.filter(k=>bookParts(k).st===st && priceOf(k)); if(!ks.length) continue;
+    L.push('', `📚 ${STAGES[st].name}:`);
+    for(const k of ks){ const p=priceOf(k); L.push(`• ${bookLabel(k)}: ${fmtN(p.post)} ج${p.pre!=null && p.pre!==p.post?` بدل ${fmtN(p.pre)} ج`:''}`); } }
+  L.push('', `للطلب كلّمني: ${db.rep||''}`.trim());
+  return L.join('\n');
 }
 function merchCard(){
   const ms=merchSum();
@@ -3770,7 +3793,31 @@ function merchCard(){
     ${ms.map(x=>`<div class="kv"><span>${esc(x.name)}</span><span class="small">خدت ${x.q} • فاضل ${x.left}</span></div>`).join('')}
     <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="merch-xlsx">📥 ارفع فاتورة تاجر</button><button class="btn" data-act="merch-template">⬇️ شيت فاضي</button></div>
     <p class="hint">الشيت فيه الكتب في الصفوف، ولكل تاجر عمودين: «محمود عدد» و«محمود سعر». اكتب اسم التاجر مكان «تاجر 1» (ينفع تكتب الاسم بس). لو السعر فاضي بياخد السعر بعد الخصم من شيت الأسعار. كل شيت بيترفع بيتجمع على اللي قبله، والبيع بياخد من الأقدم الأول.</p>
-    ${db.merchants.length?`<details class="stk"><summary>🕘 سجل البضاعة (${db.merchants.length})</summary>${[...db.merchants].reverse().map(l=>`<div class="hrow"><div class="grow"><b>${esc(l.m)}</b> — <span style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</span> × ${l.q}${l.p!=null?` بـ ${fmtN(l.p)}`:''}<div class="small muted">${fmtDT(l.d)}</div></div><button class="btn sm" data-act="edit-lot" data-id="${l.id}" title="تعديل (بالرقم السري)">✏️</button><button class="btn sm danger" data-act="del-lot" data-id="${l.id}" title="امسح">🗑️</button></div>`).join('')}</details>`:''}</div>`;
+    ${merchMerged()}${merchHist()}${lotEditsCard()}</div>`;
+}
+// كل تاجر: الفواتير كلها متجمعة على بعض (كل كتاب بعدده الكلي والفاضل منه)
+function merchMerged(){
+  if(!db.merchants.length) return '';
+  const left=lotLeft(), by={};
+  for(const l of db.merchants){ const m=by[l.m] ||= {}; const x=m[l.b] ||= {q:0, left:0}; x.q+=l.q; x.left+=Math.max(0, left[l.id]??0); }
+  return Object.entries(by).map(([n,bk])=>{ const ks=Object.keys(bk).sort((a,b)=>bookRank[a]-bookRank[b]), tq=ks.reduce((s,k)=>s+bk[k].q,0);
+    return `<details class="stk"><summary>📦 ${esc(n)} — الفاتورة المجمّعة (${tq} كتاب)</summary>
+      <table class="tbl"><thead><tr><th>الكتاب</th><th>خدت</th><th>فاضل</th></tr></thead><tbody>${ks.map(k=>`<tr><td><b style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</b></td><td>${bk[k].q}</td><td><b>${bk[k].left}</b></td></tr>`).join('')}</tbody></table></details>`; }).join('');
+}
+// سجل الفواتير: كل فاتورة اترفعت لوحدها بتاريخها (الأحدث فوق)، وجواها سطورها (تعديل / مسح)
+function merchHist(){
+  if(!db.merchants.length) return '';
+  const gs=new Map();
+  for(const l of db.merchants){ const g=l.g||('d'+dk(l.d)+'|'+l.m); if(!gs.has(g)) gs.set(g, []); gs.get(g).push(l); }
+  const arr=[...gs.values()].sort((a,b)=>(b[0].d||'').localeCompare(a[0].d||''));
+  return `<details class="stk"><summary>🕘 سجل الفواتير (${arr.length})</summary>${arr.map((ls,i)=>{ const ms=[...new Set(ls.map(l=>l.m))].join(' + '), tq=ls.reduce((s,l)=>s+l.q,0);
+    return `<details class="stk" style="margin:6px 0"><summary><b>🧾 فاتورة ${arr.length-i}</b> — ${esc(ms)} • ${tq} كتاب • ${fmtDay(dk(ls[0].d))}</summary>
+      ${ls.sort((a,b)=>(bookRank[a.b]??0)-(bookRank[b.b]??0)).map(l=>`<div class="hrow"><div class="grow"><b>${esc(l.m)}</b> — <span style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</span> × ${l.q}${l.p!=null?` بـ ${fmtN(l.p)}`:''}</div><button class="btn sm" data-act="edit-lot" data-id="${l.id}" title="تعديل">✏️</button><button class="btn sm danger" data-act="del-lot" data-id="${l.id}" title="امسح">🗑️</button></div>`).join('')}</details>`; }).join('')}</details>`;
+}
+// تعديلات فواتير التجار (اتنقلت من سجل الإعدادات العام)
+function lotEditsCard(){
+  const Lg=(db.editLog||[]).filter(x=>x.lot); if(!Lg.length) return '';
+  return `<details class="stk"><summary>✏️ تعديلات فواتير التجار (${Lg.length})</summary>${[...Lg].reverse().map(x=>`<div class="hrow"><div class="grow"><div class="small muted">${fmtDT(x.at)}</div>${x.ch.map(c=>`<div class="small"><b>${esc(c.f)}:</b> <s class="muted">${esc(c.o)}</s> ← <b>${esc(c.n)}</b></div>`).join('')}</div></div>`).join('')}</details>`;
 }
 const sellRow = k => { const {st,sb,g}=bookParts(k); return [SUBJ[sb], g, STAGES[st].name]; };
 function priceTemplate(){
@@ -5296,7 +5343,7 @@ document.addEventListener('click', e=>{
     case 'pin-set': setPin(); break;
     case 'pin-forgot': { e.preventDefault(); const v=fixMail(prompt('اكتب الجيميل المتسجّل في البرنامج عشان تمسح الرقم السري القديم:')||'');
       if(v && v===db.mail){ db.pinH=''; PIN_OK=false; save(); render(); toast('الرقم السري اتمسح — حدد واحد جديد'); } else if(v) alert('الجيميل ده مش هو المتسجّل.'); break; }
-    case 'edit-lot': needPin(()=>lotEditForm(id)); break;
+    case 'edit-lot': if(confirm('تفتح فاتورة التاجر دي للتعديل؟')) lotEditForm(id); break;
     case 'tret-got': tretGot(id, el); break;
   }
 });
