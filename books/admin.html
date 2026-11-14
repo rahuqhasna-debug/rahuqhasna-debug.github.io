@@ -371,7 +371,7 @@ async function counts() {
   LS.set('selah-trial-bell', { n, at: Date.now() });   // البرنامج الأخضر بيقراه للجرس
 }
 async function loadAll() {
-  const [t, n, p, s, u] = await Promise.all([
+  let [t, n, p, s, u] = await Promise.all([
     fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').order('name')),
     fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
     fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'pending')),
@@ -388,8 +388,13 @@ async function loadAll() {
   ]).then(r => { needSet = new Set(r[10].map(x => x.teacher_id)); ordersBy = {}; r[5].forEach(x => ordersBy[x.teacher_id] = (ordersBy[x.teacher_id] || 0) + 1);
     retsBy = {}; r[9].forEach(x => retsBy[x.teacher_id] = (retsBy[x.teacher_id] || 0) + 1);
     apprSet = new Set(r[6].map(x => x.teacher_id)); openUpd = new Set(r[7].map(x => x.teacher_id)); mSt = mStates(r[8]); return r; });
-  T = t; staffList = s; notesBy = {}; n.forEach(x => (notesBy[x.teacher_id] ||= []).push(x.body));
-  pendSet = new Set(p.map(x => x.teacher_id)); unreadBy = {}; lastMsg = {};
+  // شريف: شغلي أنا بس — مفيش مدرسين ولا أسامي لأي مندوب تاني
+  T = t.filter(x => x.rep_id === me.id); staffList = s; notesBy = {}; n.forEach(x => (notesBy[x.teacher_id] ||= []).push(x.body));
+  const mineT = new Set(T.map(x => x.id)), own = x => mineT.has(x.teacher_id);
+  needSet = new Set([...needSet].filter(id => mineT.has(id))); apprSet = new Set([...apprSet].filter(id => mineT.has(id))); openUpd = new Set([...openUpd].filter(id => mineT.has(id)));
+  for (const m of [ordersBy, retsBy]) for (const k of Object.keys(m)) if (!mineT.has(k)) delete m[k];
+  pendSet = new Set(p.filter(own).map(x => x.teacher_id)); unreadBy = {}; lastMsg = {};
+  u = u.filter(own);
   u.forEach(x => { unreadBy[x.teacher_id] = (unreadBy[x.teacher_id] || 0) + 1; lastMsg[x.teacher_id] = { b: x.body, id: x.id, at: x.created_at }; });
   await counts();
 }
@@ -549,7 +554,7 @@ function bindRets(root, list, after) {
 }
 async function viewRets() {
   setHeader('↩️ المرتجعات', false); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
-  let q = sb.from('returns').select('*, teachers(name,local_id,phone)').order('created_at', { ascending: false }).limit(400);
+  let q = sb.from('returns').select('*, teachers!inner(name,local_id,phone,rep_id)').eq('teachers.rep_id', me.id).order('created_at', { ascending: false }).limit(400);   // شغلي أنا بس
   q = ui.retAll ? q.in('status', ['pending', 'approved', 'received']) : q.in('status', ['pending', 'approved']);
   const { data, error } = await q;
   if (location.hash !== '#/rets') return;
@@ -730,7 +735,6 @@ function openFilters() {
   modal(`<h3>🔎 فلاتر المدرسين</h3>
     <div class="small muted">جوه نفس القسم: اختار أكتر من واحدة = أي واحدة منهم. بين الأقسام: لازم يتحقق كله.</div>
     ${['box', 'msg', 'app', 'seen', 'upd', 'new', 'ret'].map(grp).join('')}
-    ${isAdmin() && staffList.length > 1 ? `<div class="small muted" style="margin:10px 0 4px;font-weight:700">المندوب</div><select id="flRep"><option value="">كل المناديب</option>${staffList.map(s => `<option value="${s.id}" ${ui.rep === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : ''}
     <div class="acts"><button class="btn ghost" id="flReset">امسح الفلاتر</button><button class="btn pri" data-close>تم</button></div>`, box => {
     box.addEventListener('change', e => {
       const c = e.target;
@@ -808,7 +812,7 @@ function tItem(t) {
   const stg = STG_T[pr.stage || (g && g.stage)] || '';
   const tg = x => `<span class="tg">${esc(x)}</span>`;
   const subs = (Array.isArray(pr.subjects) ? pr.subjects : []).map(k => valText('subjects', [k])).filter(x => x && x !== '—');
-  const tags = [...subs.map(tg), stg ? tg(stg) : '', pr.area ? tg('📍 ' + pr.area) : '', isAdmin() ? tg('👤 ' + repName(t.rep_id)) : ''].join('');
+  const tags = [...subs.map(tg), stg ? tg(stg) : '', pr.area ? tg('📍 ' + pr.area) : ''].join('');
   return `<div class="titem tcard ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">
     <div class="tc-h"><input type="checkbox" class="tck" ${ui.sel.has(t.id) ? 'checked' : ''}>${av}<div class="tc-n">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div></div>
     ${lm ? `<div class="tc-l">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
@@ -1055,7 +1059,7 @@ async function viewTeacher(id) {
   const pr = t.profile || {}, link = inviteLink(t), inGreen = t.local_id && (gdb()?.teachers || []).some(x => x.id === t.local_id);
   app.innerHTML = `<div class="card"><div style="display:flex;gap:12px;align-items:center">${avHtml(t, 'lg')}<div class="grow">
       <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)} ${instPill(t)}<div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
-      ${isAdmin() ? `<div class="small muted">المندوب: ${esc(repName(t.rep_id))}</div>` : ''}${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
+      ${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
     <div style="margin-top:10px">${FIELDS.filter(f => !['name', 'avatar', 'phone'].includes(f.k)).map(f => `<div class="kv"><span>${FIELD_LABEL[f.k]}</span><span>${fmtVal(f.k, pr[f.k])}</span></div>`).join('')}</div>
     ${(t.books || []).length ? `<div class="kv"><span>الكتب المسجلة</span><span class="small">${esc(t.books.map(b => `${b.l || bookLabel(b.b)}: ${b.q}`).join('، '))}</span></div>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">

@@ -156,6 +156,16 @@ details.subj.mine>summary{background:var(--brand-soft)}
 .pick-row .tav{vertical-align:middle}
 .titem .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
 .icos{display:flex;gap:6px}
+/* كارت المدرس بالعرض (أصغر وأنسق) */
+.titem.tcw{display:block;padding:8px 10px}
+.tcw-h{display:flex;align-items:center;gap:8px}
+.tcw-h .nm{min-width:0;line-height:1.35}
+.tcw-b{flex:none;display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-end;max-width:45%}
+.tline{display:flex;flex-wrap:wrap;gap:2px 0;font-size:12.5px;color:var(--muted);margin-top:4px}
+.tline>span{white-space:nowrap}
+.tline>span+span::before{content:"•";margin:0 6px;color:var(--line);font-weight:700}
+.tcw-i{margin-top:6px;flex-wrap:wrap}
+.tcw-i .ico{width:32px;height:32px;font-size:15px;border-radius:9px}
 .ico{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:var(--brand-soft);text-decoration:none;font-size:18px}
 .oline{font-size:13px;color:var(--owe);font-weight:700;margin-top:3px}
 .lhead{grid-column:1/-1;font-weight:700;color:var(--muted);font-size:14px;margin:2px 2px 0}
@@ -1299,11 +1309,16 @@ function teacherCard(t, x, extra=''){
   const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
   // أبيض = ما استلمش، برتقاني = استلم وباقيله، أخضر = خلّص
   const stc = !x?.d ? '' : x.o ? 'st-part' : 'st-done';
-  return `<div class="titem ${stc}${t.isNew?' is-new':''}" style="${tUpdSt(t)}" title="${esc(tUpdT(t))}" data-act="open-t" data-id="${esc(t.id)}" data-hay="${esc(hayT(t))}">${tAv(t)}
-    <div class="grow"><div class="nm">${esc(t.name)}${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
-      <div class="sub">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).join(' • '))}</div>
-      ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${oldPhLine(t)}${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:''}${tUpdT(t)?`<div class="sub">${tUpdT(t)}</div>`:''}${extra}</div>
-    <div class="side"><div>${badges}</div><div class="icos">${phoneBtns(t)}</div></div></div>`;
+  // الكارت بالعرض: الاسم وعلاماته في سطر، وكل البيانات جنب بعض في سطر (بيلف لو طويل)، والزراير صف صغير تحت
+  const info=[t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).map(x=>`<span>${esc(x)}</span>`)
+    .concat(t.phone?[`<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>`]:[])
+    .concat(oldPh(t).map(x=>`<span style="color:#c2410c;font-weight:700">📞 القديم <span dir="ltr">${esc(x.p)}</span></span>`))
+    .concat(LV[t.id]?[`<span class="lastv" style="margin:0">🕘 ${visitLabel(LV[t.id])} — ${LV[t.id].k}</span>`]:[])
+    .concat(tUpdT(t)?[`<span>${tUpdT(t)}</span>`]:[]);
+  return `<div class="titem tcw ${stc}${t.isNew?' is-new':''}" style="${tUpdSt(t)}" title="${esc(tUpdT(t))}" data-act="open-t" data-id="${esc(t.id)}" data-hay="${esc(hayT(t))}">
+    <div class="tcw-h">${tAv(t)}<div class="nm grow">${esc(t.name)}${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div><div class="tcw-b">${badges}</div></div>
+    <div class="tline">${info.join('')}</div>${extra}
+    <div class="icos tcw-i">${phoneBtns(t)}</div></div>`;
 }
 // 0 = لسه ما استلمش النهارده (يفضل فوق)، 1 = استلم النهارده أو خلّص كتبه (ينزل تحت)
 function recvRankFn(){
