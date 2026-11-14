@@ -1181,7 +1181,8 @@ function phoneBtns(t){
   // متابعة 10: + 🔄 اطلب تحديث (بيفتح المراسلات على صفحة المدرس وطلب التحديث على طول)
   const app = sbHas() ? `<a class="ico" data-act="noop" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل سلاح التلميذ">📨</a>${sbIds[t.id]?`<a class="ico" data-act="noop" href="admin.html#/ru/${encodeURIComponent(sbIds[t.id])}" title="اطلب تحديث بيانات المدرس">🔄</a>`:''}` : '';
   if(!t.phone) return app;
-  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico wa" data-act="noop" href="https://wa.me/2${esc(normPhone(t.phone))}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>${app}`;
+  const inv = sbHas() && sbCodes[t.id] && !sbApp[t.id] ? `<a class="ico" data-act="noop" style="background:#dcfce7" href="https://wa.me/2${esc(normPhone(t.phone))}?text=${encodeURIComponent(appInviteMsg(t))}" target="_blank" rel="noopener" title="ابعت دعوة تثبيت التطبيق (لسه ما ثبّتش)">📲</a>` : '';
+  return `<a class="ico" data-act="noop" href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="ico wa" data-act="noop" href="https://wa.me/2${esc(normPhone(t.phone))}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>${app}${inv}`;
 }
 // لوجو الواتساب الأصلي
 var WA_ICON='<svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true" style="vertical-align:middle"><path fill="#25D366" d="M16 2.5A13.5 13.5 0 0 0 4.4 22.9L2.6 29.5l6.8-1.8A13.5 13.5 0 1 0 16 2.5z"/><path fill="#fff" d="M11.7 9c-.3-.6-.6-.6-.9-.6h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4s1.5 3.9 1.7 4.2c.2.3 2.9 4.6 7.1 6.3 3.5 1.4 4.2 1.1 5 1 .8-.1 2.5-1 2.8-2 .3-1 .3-1.8.2-2-.1-.2-.4-.3-.8-.5l-2.8-1.4c-.4-.1-.7-.2-.9.2-.3.4-1.1 1.4-1.3 1.6-.2.3-.5.3-.9.1-.4-.2-1.7-.6-3.3-2-1.2-1.1-2-2.4-2.3-2.8-.2-.4 0-.6.2-.8l.6-.7c.2-.2.3-.4.4-.7.1-.3 0-.5 0-.7L11.7 9z"/></svg>';
@@ -1203,6 +1204,13 @@ async function sbCntPull(S){
 }
 /* خريطة: id المدرس في البرنامج ← id بتاعه في المراسلات (عشان أيقونة 📨 تفتح الشات بتاعه على طول) */
 var sbIds = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-ids')||'{}'); }catch(e){ return {}; } })();
+var sbCodes = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-codes')||'{}'); }catch(e){ return {}; } })();   // كود رابط كل مدرس (teacher.html#c=)
+// 📲 دعوة التثبيت: نفس «📲 رسالة التثبيت» المحفوظة في المراسلات + رابط المدرس
+const INV_APP_DEF='أهلًا أ/ {الاسم} 👋\nعشان توصلك رسايلنا ومواعيد استلام النسخ على طول، ثبّت تطبيق «سلاح التلميذ» على موبايلك من الرابط ده:\n[رابط المدرس]\nافتح الرابط ودوس «ثبّت» وبعدين فعّل الإشعارات 🙏';
+function appInviteMsg(t){ let tpl; try{ tpl=JSON.parse(localStorage.getItem('selah-trial-inv-app')||'null'); }catch(e){ tpl=localStorage.getItem('selah-trial-inv-app'); }
+  tpl=(typeof tpl==='string'&&tpl)||INV_APP_DEF; if(!tpl.includes('[رابط المدرس]')) tpl+='\n[رابط المدرس]';
+  const link=location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'teacher.html#c='+sbCodes[t.id];
+  return tpl.replace(/(أ\/\s*)?\{الاسم\}/g,'أ/ '+t.name).replace(/\[رابط المدرس\]/g, link); }
 var sbUpd = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-upd')||'{}'); }catch(e){ return {}; } })();
 var sbApp = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-app')||'{}'); }catch(e){ return {}; } })();   // id المدرس في البرنامج ← 1 لو مثبّت التطبيق
 var sbRecv = (()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-recv')||'{}'); }catch(e){ return {}; } })(), sbPullAt=0;
@@ -1236,12 +1244,13 @@ async function sbMapPull(){
   try{
     if(!sbHas() || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
     const m={}, rows=[];
-    let cols='id,local_id,a:profile->address,l:profile->loc,d:profile->days,ro:recv_open,rv:recv,ap:app_at';
+    let cols='id,local_id,ic:invite_code,a:profile->address,l:profile->loc,d:profile->days,ro:recv_open,rv:recv,ap:app_at';
     for(let i=0;;i+=1000){ let r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:`${i}-${i+999}`}});
       if(!r.ok && i===0 && cols.includes('app_at')){ cols=cols.replace(',ap:app_at',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema7 لسه ماتشغلش
       if(!r.ok && i===0 && cols.includes('recv')){ cols=cols.replace(',ro:recv_open,rv:recv',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema4 لسه ماتشغلش
       if(!r.ok) return; const j=await r.json(); j.forEach(x=>{ m[x.local_id]=x.id; rows.push(x); }); if(j.length<1000) break; }
     sbIds=m; try{ localStorage.setItem('selah-trial-ids', JSON.stringify(m)); }catch(e){}
+    const cd={}; for(const x of rows) if(x.ic) cd[x.local_id]=x.ic; sbCodes=cd; try{ localStorage.setItem('selah-trial-codes', JSON.stringify(cd)); }catch(e){}
     // متابعة 10: مين مثبّت التطبيق (لفلتر «📲 مثبّت / 🌐 مش مثبّت»)
     const inst={}; for(const x of rows) if(x.ap) inst[x.local_id]=1;
     if(cols.includes('app_at') && JSON.stringify(inst)!==JSON.stringify(sbApp)){ sbApp=inst; try{ localStorage.setItem('selah-trial-app', JSON.stringify(inst)); }catch(e){} }
@@ -1293,7 +1302,7 @@ function teacherCard(t, x, extra=''){
   return `<div class="titem ${stc}${t.isNew?' is-new':''}" style="${tUpdSt(t)}" title="${esc(tUpdT(t))}" data-act="open-t" data-id="${esc(t.id)}" data-hay="${esc(hayT(t))}">${tAv(t)}
     <div class="grow"><div class="nm">${esc(t.name)}${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div>
       <div class="sub">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).join(' • '))}</div>
-      ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:''}${tUpdT(t)?`<div class="sub">${tUpdT(t)}</div>`:''}${extra}</div>
+      ${t.phone?`<div class="sub">📞 <span dir="ltr">${esc(t.phone)}</span></div>`:''}${oldPhLine(t)}${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:''}${tUpdT(t)?`<div class="sub">${tUpdT(t)}</div>`:''}${extra}</div>
     <div class="side"><div>${badges}</div><div class="icos">${phoneBtns(t)}</div></div></div>`;
 }
 // 0 = لسه ما استلمش النهارده (يفضل فوق)، 1 = استلم النهارده أو خلّص كتبه (ينزل تحت)
@@ -1362,7 +1371,7 @@ function renderTeacher(id){
   const dTot=delivered.reduce((s,[k,v])=>s+v.d,0);
   // 1) كارت فوق بلون حالته: أبيض ما استلمش، برتقاني باقيله، أخضر خلّص
   const stc = !dTot ? '' : owed.length ? 'st-part' : 'st-done';
-  const chipsArr=[phone&&`📞 <span dir="ltr">${esc(phone)}</span>`, t.subjectText&&`📚 ${esc(t.subjectText)}`, t.stage&&`🏫 ${STAGE_TXT[t.stage]}`,
+  const chipsArr=[phone&&`📞 <span dir="ltr">${esc(phone)}</span>`, ...oldPh(t).map(x=>`<span style="color:#c2410c">📞 القديم: <span dir="ltr">${esc(x.p)}</span></span>`), t.subjectText&&`📚 ${esc(t.subjectText)}`, t.stage&&`🏫 ${STAGE_TXT[t.stage]}`,
     t.spec&&`🎯 ${esc(t.spec)}`, t.area&&`📍 ${esc(t.area)}`, t.school&&`🏢 ${esc(t.school)}`, t.cls&&!clsLetter(t)&&`🏷️ ${esc(t.cls)}`,
     t.students&&`👨‍🎓 ${esc(t.students)} طالب`, t.plan&&`🗓️ خط السير ${fmtDay(t.plan)}`,
     t.active===true&&'✅ فعّال', t.active===false&&'⛔ مش فعّال'].filter(Boolean);
@@ -1550,6 +1559,16 @@ function applySpec(t, root){
   const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
   return true;
 }
+// الرقم القديم: لما رقم المدرس يتغيّر، القديم يتحفظ في t.oldPhones [{p, at}] (علشان برنامج الشركة مسجّله بالقديم + البحث بيلاقيه بيه)
+function notePhoneChange(t, oldP){ oldP=String(oldP||'').trim(); const nw=String(t.phone||'').trim();
+  if(!oldP || normPhone(oldP)===normPhone(nw)) return;
+  t.oldPhones=(t.oldPhones||[]).filter(x=>normPhone(x.p)!==normPhone(nw) && normPhone(x.p)!==normPhone(oldP));
+  t.oldPhones.push({p:oldP, at:new Date().toISOString()}); }
+const oldPh = t => (t && t.oldPhones || []).slice().reverse();   // الأحدث الأول
+// سطر برتقاني في الكارت/الصفحة
+const oldPhLine = t => oldPh(t).length ? `<div class="small" style="color:#c2410c;font-weight:700">📞 رقمه القديم: ${oldPh(t).map(x=>`<span dir="ltr">${esc(x.p)}</span> (اتغيّر ${fmtDay(dk(x.at))})`).join(' • ')}</div>` : '';
+// خلية التليفون في الشيتات: الجديد فوق، والقديم تحته وقصاده «قديم»
+const phCell = t => [t?.phone||'', ...oldPh(t).map(x=>`${x.p} قديم`)].filter(Boolean).join('\n');
 // سجل تعديل بيانات المدرس: القديم ← الجديد
 const TFIELDS=[['name','الاسم'],['phone','التليفون'],['stage','المرحلة',v=>STAGE_TXT[v||'']||''],['subjectText','المادة'],['spec','التخصص'],['cls','التصنيف'],
   ['area','المنطقة'],['school','المدرسة'],['grades','الصفوف',v=>(v||[]).slice().sort((a,b)=>a-b).map(g=>GRADE[g-1]).join('، ')],['where','دروس / مدارس'],['students','عدد الطلاب']];
@@ -1932,7 +1951,7 @@ function teacherForm(t, preset={}){
     if(isNew && (!data.grades.length || !data.where) && !confirm('الصفوف أو «دروس / مدارس» لسه ما اتحددوش — دول بيتكتبوا في شيت الإضافات.\nتحفظ كده؟')) return;
     data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
     if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); logT(nt.id, 'اتسجّل مدرس جديد', 'إضافة'); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
-    else { const before={...t}; Object.assign(t,data); const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
+    else { const before={...t}; Object.assign(t,data); notePhoneChange(t, before.phone); const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
       save(); close(); render(); toast('اتحفظ ✅'); }
   };
   const del=m.querySelector('#f_del');
@@ -2283,6 +2302,7 @@ function sheetXml(sh, FX, notes=[]){
     let c=c0, f=rf, b=!!r.bold, fm=null, wr=false;
     // خلية: قيمة، أو {v, f (معادلة), fill, bold, wrap}
     if(c && typeof c==='object' && ('v' in c || 'f' in c)){ if(c.note) notes.push({ref, r:ri, c:ci, t:c.note}); f=cellFill(c)||f; b=c.bold||b; fm=c.f||null; wr=!!c.wrap; c=c.v; }
+    if(typeof c==='string' && c.includes('\n')) wr=true;   // نص فيه سطرين (زي الرقم الجديد والقديم) → يتلف
     if(isH) return c===null||c===undefined||c==='' ? `<c r="${ref}" s="1"/>` : `<c r="${ref}" t="inlineStr" s="1"><is><t xml:space="preserve">${xmlEsc(c)}</t></is></c>`;
     const k0 = b?3:wr?2:0;
     if(fm){ const hasV = c!==null && c!==undefined && c!=='';
@@ -2349,7 +2369,7 @@ function exportExcel(all, part){
   // ملف واحد «سلاح التلميذ» فيه 12 شيت. الأسعار والمبلغ بعد الخصم جايين جاهزين من البرنامج (it.pre / it.post / l.p)، مفيش أي نسبة خصم بتتحسب هنا.
   repFix(); const inRange = k => all || inRep(k);
   const tmap=Object.fromEntries(db.teachers.map(t=>[t.id,t])), L=lotMap();
-  const TN=id=>tmap[id]?.name||'؟', TP=id=>tmap[id]?.phone||'';
+  const TN=id=>tmap[id]?.name||'؟', TP=id=>phCell(tmap[id]);
   const tsort=(a,b)=>TN(a).localeCompare(TN(b),'ar') || String(a).localeCompare(String(b));
   const SB=k=>SUBJ[bookParts(k).sb], GR=k=>{ const p=bookParts(k); return `${GRADE[p.g-1]} ${STAGES[p.st].name}`; };
   const mName=lot=>lotName(L,lot);
@@ -2816,7 +2836,7 @@ function exportTeachersData(){
   for(const t of ts){ if(t.area!==prev){ prev=t.area; ci=(ci+1)%XP.length; }
     const stg=STAGE_TXT[t.stage]||t.stageText||'', sp=t.spec||[t.subjectText, stg].filter(Boolean).join(' — ');
     const ll=t.loc||t.tLoc, vs=[...(visits[t.id]||[])].sort();
-    const row=[t.name||'', t.phone||'', clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, gr(t.grades), t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||'',
+    const row=[t.name||'', phCell(t), clsLetter(t)||t.cls||'', t.area||'', t.school||'', sp, t.subjectText||'', stg, gr(t.grades), t.students||'', t.isNew?'جديد':'على البرنامج', t.notes||'',
       t.tAddress||'', ll&&ll.lat?`https://maps.google.com/?q=${ll.lat},${ll.lng}`:'', daysTxt(t.tDays), gr(t.tGrades), t.where||'', routeOf(t.id), sbApp[t.id]?'مثبّت':'لأ',
       vs.length||'', {v:vs.map(k=>`${dayName(k)} ${fmtDay(k)}`).join(' • '), wrap:true}];
     row.fill=XP[ci]; rows.push(row); }
@@ -4680,7 +4700,8 @@ const bkChips = ents => `<div class="vbk">${ents.map(e=>`<span style="color:var(
 function visitRow(v, reg){
   const t=tById(v.t), dates=[...new Set(v.ents.map(e=>dk(db.reg[e.id])).filter(Boolean))].sort();
   return `<div class="vrow ${tStC(t)}" style="${tUpdSt(t)}" data-hay="${esc(teacherHay(t))}"><div class="tc-top" style="gap:8px">${tAv(t)}<div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}
-      <div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}${reg?` • زيارة ${dayName(v.day)} ${fmtDay(v.day)}`:''}</div></div><div class="icos">${phoneBtns(t)}</div></div>
+      <div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}${reg?` • زيارة ${dayName(v.day)} ${fmtDay(v.day)}`:''}</div>
+      ${oldPh(t).length?`<div class="small" style="color:#b91c1c;font-weight:700;background:#fff7ed;border-radius:8px;padding:4px 6px;margin-top:4px">⚠️ رقمه اتغيّر — على برنامج الشركة بالرقم القديم: ${oldPh(t).map(x=>`<span dir="ltr">${esc(x.p)}</span>`).join(' أو ')}</div>`:''}</div><div class="icos">${phoneBtns(t)}</div></div>
     ${bkChips(reg ? v.ents : v.left)}${recvBox(t)}
     ${reg ? `<div class="regd">✅ تم التسجيل بتاريخ ${dates.map(fmtDay).join(' و ')}</div><div class="row2" style="margin-top:6px"><button class="btn sm ghost" data-act="reg-undo" data-k="${esc(v.k)}">↩️ رجّعها للزيارات</button><button class="btn sm" data-act="vis-edit" data-k="${esc(v.k)}">✏️ تعديل الزيارة</button></div>`
       : `${v.left.length<v.ents.length?'<div class="small muted" style="margin-top:4px">اتسجل منها جزء قبل كده — ده الباقي</div>':''}<div class="row2" style="margin-top:8px"><button class="btn sm ok" data-act="reg-visit" data-k="${esc(v.k)}">✅ تم التسجيل</button><button class="btn sm" data-act="vis-edit" data-k="${esc(v.k)}">✏️ تعديل الزيارة</button></div>`}</div>`;

@@ -79,6 +79,9 @@ function gProfile(t) {
 function gApply(localId, fin) {   // الموافقة تتكتب في البرنامج الأخضر كمان
   const db = gdb(); if (!db || !localId) return false;
   const t = (db.teachers || []).find(x => x.id === localId); if (!t) return false;
+  // الرقم القديم يتحفظ (البرنامج الأخضر بيعرضه وبيدوّر بيه)
+  if (fin.phone && t.phone && String(fin.phone).replace(/\D/g, '').slice(-10) !== String(t.phone).replace(/\D/g, '').slice(-10)) {
+    t.oldPhones = (t.oldPhones || []).filter(x => x.p !== t.phone && x.p !== fin.phone); t.oldPhones.push({ p: t.phone, at: new Date().toISOString() }); }
   const map = { name: 'name', phone: 'phone', stage: 'stage', spec: 'spec', area: 'area', school: 'school', where: 'where', students: 'students', address: 'tAddress', loc: 'tLoc', days: 'tDays' };
   const lines = [];
   for (const k in fin) {
@@ -173,7 +176,7 @@ const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy
 // متابعة 10: الأربع زراير جنب اسم المدرس في كل مكان (📞 مكالمة · واتساب · 📨 المراسلات · 🔄 اطلب تحديث)
 function icos4(t) {
   t = t && (T.find(x => x.id === t.id) || t); if (!t || !t.id) return '';
-  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-ru="${t.id}" title="اطلب تحديث بيانات المدرس ده">🔄</button></span>`;
+  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-ru="${t.id}" title="اطلب تحديث بيانات المدرس ده">🔄</button>${!t.app_at && t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت دعوة تثبيت التطبيق (لسه ما ثبّتش)" style="background:#dcfce7">📲</a>` : ''}</span>`;
 }
 // 🔄 في أي مكان بيفتح طلب التحديث للمدرس ده بس (قبل أي حاجة تانية في الصفحة)
 document.addEventListener('click', e => { const b = e.target.closest('[data-ru]'); if (!b) return; e.preventDefault(); e.stopPropagation(); reqUpdateDlg([b.dataset.ru]); }, true);
@@ -1118,7 +1121,8 @@ function reviewCard(e, inTeacher) {
   const t = e.teachers || {}, ph = e.photos || [];  return `<div class="card" data-req="${e.id}" style="border-color:var(--owe)">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${avHtml(t)}<div class="grow">
       ${inTeacher ? '<b>📝 طلب تعديل الملف</b>' : `<a href="#/t/${e.teacher_id}"><b>${esc(t.name || '')}</b></a> ${tB(e.teacher_id)}<div>${icos4({ id: e.teacher_id })}</div>`}<div class="small muted">${fmtDate(e.updated_at)}</div></div>
-      ${e.status === 'question' ? '<span class="pill owe">❓ مستني رده</span>' : '<span class="pill new">جديد</span>'}</div>
+      ${e.status === 'question' ? '<span class="pill owe">❓ مستني رده</span>' : '<span class="pill new">جديد</span>'}${(e.new_values || {}).phone ? ' <span class="pill bad">📞 غيّر رقمه</span>' : ''}</div>
+    ${(e.new_values || {}).phone ? `<div class="alert" style="margin:6px 0">📞 المدرس عايز يغيّر رقمه: <b dir="ltr">${esc((e.old_values || {}).phone || '—')}</b> ← <b dir="ltr">${esc(e.new_values.phone)}</b><br><span class="small">لو وافقت، الرقم الجديد بيتكتب في البرنامج الأخضر كمان (الواتساب والاتصال والشيتات).</span></div>` : ''}
     ${e.reason && (e.status === 'question' || e.teacher_reply) ? `<div class="small">❓ سؤالك: ${esc(e.reason)}</div>` : ''}
     ${e.teacher_reply ? `<div class="good small" style="padding:8px;margin:6px 0">💬 رد المدرس: ${esc(e.teacher_reply)}</div>` : ''}
     ${Object.keys(e.new_values || {}).length ? `<table class="diff">${diffRows(e)}</table>` : ''}
