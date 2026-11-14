@@ -352,7 +352,8 @@ async function counts() {
   const { data } = await sb.rpc('bell_counts'); if (!data) return;
   // متابعة 12: المدرسين اللي ثبّتوا التطبيق من آخر مرة فتحت تبويب «📲 ثبّتوا التطبيق»
   const seen = LS.get('selah-trial-inst-seen') || new Date(0).toISOString();
-  const ir = await sb.from('teachers').select('id', { count: 'exact', head: true }).gt('app_at', seen);
+  // 2026-11-14: كل واحد (حتى المالك) بيتبلّغ بس عن المدرسين بتوعه — المتابعة الكاملة في ⚙️ إعدادات المالك «📲 مين ثبّت التطبيق»
+  const ir = await sb.from('teachers').select('id', { count: 'exact', head: true }).eq('rep_id', me.id).gt('app_at', seen);
   data.inst = ir.error ? 0 : (ir.count || 0);
   const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0); BC = data;
   const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
@@ -1236,7 +1237,7 @@ async function viewBell() {
   }
   // متابعة 12: المدرسين اللي ثبّتوا التطبيق (الأحدث فوق، والجديد من آخر مرة متعلّم 🆕)
   if (ui.bellTab === 'inst') {
-    const { data, error } = await sb.from('teachers').select('id,name,phone,app_at').not('app_at', 'is', null).order('app_at', { ascending: false }).limit(200);
+    const { data, error } = await sb.from('teachers').select('id,name,phone,app_at').eq('rep_id', me.id).not('app_at', 'is', null).order('app_at', { ascending: false }).limit(200);
     if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
     const seen = LS.get('selah-trial-inst-seen') || new Date(0).toISOString();
     // متابعة 15: مسح الإشعار بالسحب يمين/شمال أو ✕ — بيخفيه على الجهاز ده بس (المدرس يفضل مثبّت)
@@ -1311,6 +1312,21 @@ async function loadRepsCard() {
 /* ---------- إعدادات المالك ---------- */
 function meter(pct) { const c = pct > 90 ? 'r' : pct > 75 ? 'y' : ''; return `<div class="meter"><i class="${c}" style="width:${Math.min(100, pct).toFixed(1)}%"></i></div>`; }
 function dot(pct) { return pct > 90 ? '🔴' : pct > 75 ? '🟡' : '🟢'; }
+// 2026-11-14: متابعة المالك — كل مندوب وعدد اللي ثبّتوا عنده، تدوس عليه تشوف أساميهم (من غير إشعارات)
+async function loadInstCard(staff) {
+  const box = $('#instCard'); if (!box) return;
+  let rows; try { rows = await fetchAll(() => sb.from('teachers').select('id,name,phone,app_at,rep_id').not('app_at', 'is', null).order('app_at', { ascending: false })); }
+  catch (e) { box.innerHTML = `<h3 style="margin:0 0 6px">📲 مين ثبّت التطبيق</h3><div class="alert">${esc(errMsg(e))}</div>`; return; }
+  const by = {}; for (const t of rows || []) (by[t.rep_id] ||= []).push(t);
+  const reps = (staff || []).filter(s => by[s.id] || s.role === 'rep').map(s => ({ s, l: by[s.id] || [] })).sort((a, b) => b.l.length - a.l.length);
+  const orphan = Object.keys(by).filter(id => !(staff || []).some(s => s.id === id)).flatMap(id => by[id]);
+  if (orphan.length) reps.push({ s: { name: 'مندوب مش معروف' }, l: orphan });
+  const total = (rows || []).length;
+  box.innerHTML = `<h3 style="margin:0 0 6px">📲 مين ثبّت التطبيق <span class="small muted">(${total} مدرس)</span></h3>
+    ${reps.length ? reps.map(({ s, l }) => `<details style="border-top:1px solid var(--line,#eee);padding:8px 0"><summary style="cursor:pointer;display:flex;align-items:center;gap:8px"><b style="flex:1">${esc(s.name || 'مندوب')}${s.role === 'admin' ? ' 👑' : ''}</b><span class="pill ${l.length ? 'ok' : ''}">${l.length} ثبّت</span></summary>
+      ${l.length ? l.map(t => `<div class="kv" data-go="#/t/${t.id}" style="cursor:pointer"><span>${esc(t.name)}<br><span class="small muted" dir="ltr">${esc(t.phone || '')}</span></span><span class="small muted">${fmtDate(t.app_at)}</span></div>`).join('') : '<div class="small muted">لسه ولا مدرس ثبّت عنده</div>'}</details>`).join('') : '<div class="small muted">لسه ولا مدرس ثبّت التطبيق</div>'}`;
+  box.onclick = e => { const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
+}
 async function viewSettings() {
   setHeader('⚙️ إعدادات المالك', false); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
   const { data, error } = await sb.rpc('usage_stats');
@@ -1327,6 +1343,7 @@ async function viewSettings() {
     ${waitReps.map(s => `<div class="kv" data-s="${s.id}"><span><b>${esc(s.name || 'مندوب')}</b><br><span class="small muted">دخل ${fmtDate(s.claimed_at)} · الرقم <span dir="ltr">${esc(s.rep_code || '')}</span></span></span>
       <span class="acts" style="margin:0"><button class="btn sm ok" data-a="ok">✅ موافق</button><button class="btn sm danger" data-a="no">❌ مش موافق</button></span></div>`).join('')}</div>` : ''}
   <div class="card" id="repsCard"><h3 style="margin:0 0 6px">📲 المناديب والبرنامج الأخضر</h3><div class="loading">جاري التحميل…</div></div>
+  <div class="card" id="instCard"><h3 style="margin:0 0 6px">📲 مين ثبّت التطبيق</h3><div class="loading">جاري التحميل…</div></div>
   <div class="card"><div style="display:flex;align-items:center"><h3 style="flex:1">🔑 أرقام المناديب</h3><button class="btn pri" id="newRep">➕ رقم جديد</button></div>
     <div class="small muted" style="margin-bottom:6px">اعمل رقم وابعته للمندوب. لما يدخله هيجيلك تطلب الموافقة. كل رقم لمندوب واحد وموبايل واحد.</div>
     ${data.staff.map(s => { const x = SX[s.id] || {}, pct = s.bytes / (quota * MB) * 100; const st = s.role === 'admin' ? '<span class="pill ok">👑 المالك</span>' : !x.device_id ? '<span class="pill owe">لسه ما استخدمش الرقم</span>' : !s.active ? '<span class="pill bad">🔴 مقفول</span>' : x.approved === false ? '<span class="pill owe">⏳ مستني موافقتك</span>' : '<span class="pill ok">🟢 شغّال</span>';
@@ -1338,7 +1355,7 @@ async function viewSettings() {
         <details style="display:inline-block"><summary class="btn sm ghost" style="list-style:none">⋮</summary><button class="btn sm ghost" data-a="unlink" style="margin-top:6px">📱 غيّر الموبايل</button></details></div>` : ''}</div>`; }).join('')}</div>
   <div class="card"><h3>حدود المساحة</h3><div class="row2"><div class="field"><label>حد القاعدة (ميجا)</label><input id="lim" type="number" value="${lim}"></div>
     <div class="field"><label>نصيب المندوب (ميجا)</label><input id="quo" type="number" value="${quota}"></div></div><button class="btn sm" id="saveLim">حفظ</button></div>`;
-  loadRepsCard();
+  loadRepsCard(); loadInstCard(data.staff);
   const appUrl = location.href.split('#')[0].replace(/admin\.html.*$/, '');
   const repMsg = s => `رقمك السري في «المراسلات» في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}\nوادخل «⚙️ الإعدادات» ← «💬 فعّل المراسلات» واكتب الرقم زي ما هو بالظبط. (بيشتغل على موبايل واحد بس)`;
   $('#upPr').onclick = async () => {

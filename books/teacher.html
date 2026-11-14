@@ -306,7 +306,11 @@ async function reportInstall() {
     const { data, error } = await sb.rpc('t_installed', { p_code: code });
     if (error || !data) return;
     LS.set('selah-trial-inst', code);
-    if (data.first && (data.to || []).length && window.pushNotifyStaff) window.pushNotifyStaff(data.to, '📲 الأستاذ ' + (data.name || D.name) + ' ثبّت التطبيق');
+    // 2026-11-14 (طلب شريف): الإشعار للمندوب بتاع المدرس بس — المالك بيتابع من ⚙️ إعداداته «📲 مين ثبّت التطبيق»
+    let rep = window.TP && window.TP.rep;
+    if (!rep) { try { rep = (await sb.rpc('t_rep', { p_code: code })).data; } catch (e) { } }
+    const to = rep ? (data.to || []).filter(x => x === rep) : [];
+    if (data.first && to.length && window.pushNotifyStaff) window.pushNotifyStaff(to, '📲 الأستاذ ' + (data.name || D.name) + ' ثبّت التطبيق');
   } catch (e) { }
 }
 /* متابعة الجديد في كل الصفحات (طلب شريف 2026-11-12): كل 15 ثانية والتطبيق قدام + أول ما يرجع قدام.
