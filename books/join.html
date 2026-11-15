@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#6d28d9">
+<title>سلاح التلميذ - دخول المدرسين</title>
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="common.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<style>
+body{background:#f5f3ff}
+.lw{max-width:520px;margin:0 auto;padding:14px 16px 40px}
+.lh{background:linear-gradient(135deg,#6d28d9,#3b82f6);color:#fff;border-radius:18px;padding:20px 16px;text-align:center;margin-bottom:12px}
+.lh h1{margin:0 0 6px;font-size:23px}.lh p{margin:0;font-size:16px;line-height:1.7}
+#ph{font-size:24px;text-align:center;letter-spacing:2px;padding:12px;width:100%;box-sizing:border-box;border:2px solid #c4b5fd;border-radius:14px}
+.big{width:100%;font-size:19px;padding:13px;margin-top:10px}
+.nf{background:#fef2f2;border:2px solid #fca5a5;border-radius:14px;padding:12px;margin-top:12px;font-size:16px;line-height:1.8}
+.nf .acts{margin-top:8px}
+</style>
+</head>
+<body>
+<div class="lw">
+  <div class="lh"><h1>أهلًا بحضرتك في «سلاح التلميذ»</h1><p>اكتب رقم تليفونك اللي متسجل معانا<br>وهتاخد رابطك الخاص وتثبّت البرنامج</p></div>
+  <div class="card">
+    <label style="font-weight:800;font-size:17px">رقم تليفونك</label>
+    <input id="ph" type="tel" inputmode="numeric" dir="ltr" placeholder="01xxxxxxxxx" autocomplete="tel">
+    <button class="btn ok big" id="go">دخول</button>
+    <div id="msg"></div>
+  </div>
+</div>
+<script>
+"use strict";
+// 2026-11-15 (طلب شريف): لينك واحد للمندوب في جروبات الواتس — المدرس يكتب رقمه ← لو متسجل يتحول على رابطه الخاص (teacher.html#c=)
+const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode';
+const h = new URLSearchParams(location.hash.slice(1));
+if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
+const REP = h.get('r') || '', RN = h.get('n') || 'المندوب', RP = (h.get('ph') || '').replace(/\D/g, '');
+const sb = makeClient(false, TCFG);
+const dev = deviceId();
+const msg = html => $('#msg').innerHTML = html;
+function notFound() {
+  msg(`<div class="nf">⚠️ الرقم ده مش متسجل عندنا.<br>اتأكد من الرقم وجرّب تاني، أو جرّب رقم تاني ليك، أو كلّم <b>أ/ ${esc(RN)}</b>${RP ? ` <span dir="ltr">${esc(RP)}</span>` : ''}.
+    ${RP ? `<div class="acts"><a class="btn pri" href="tel:${esc(RP)}">📞 اتصل</a><a class="btn ok" target="_blank" rel="noopener" href="${waLink(RP, 'السلام عليكم يا أ/ ' + RN + '، أنا مدرس وعايز أدخل على برنامج سلاح التلميذ ورقمي مش متسجل: ' + $('#ph').value.trim())}">واتساب</a></div>` : ''}</div>`);
+}
+async function go() {
+  const p = $('#ph').value.replace(/\D/g, '');
+  if (!REP) return msg('<div class="nf">⚠️ الرابط ناقص — اطلب الرابط تاني من المندوب.</div>');
+  if (p.length < 10) return msg('<div class="nf">اكتب الرقم كامل (11 رقم)</div>');
+  const b = $('#go'); b.disabled = true; b.textContent = '⏳ لحظة…'; msg('');
+  try {
+    const { data, error } = await sb.rpc('t_join', { p_rep: REP, p_phone: p, p_dev: dev });
+    if (error) throw error;
+    if (data && data.c) {
+      LS.set(TCODE, data.c);
+      msg('<div class="nf" style="background:#dcfce7;border-color:#86efac">✅ تمام! بنفتح لحضرتك البرنامج…</div>');
+      location.href = 'teacher.html#c=' + encodeURIComponent(data.c) + (h.get('p') ? '&p=' + h.get('p') : '');
+      return;
+    }
+    if (data && data.err === 'many') msg('<div class="nf">⚠️ محاولات كتير — استنى 10 دقايق وجرّب تاني، أو كلّم المندوب.</div>');
+    else notFound();
+  } catch (e) { msg(`<div class="nf">⚠️ ${esc(errMsg(e))}</div>`); }
+  b.disabled = false; b.textContent = 'دخول';
+}
+$('#go').onclick = go;
+$('#ph').onkeydown = e => { if (e.key === 'Enter') go(); };
+</script>
+</body>
+</html>

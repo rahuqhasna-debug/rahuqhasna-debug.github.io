@@ -267,6 +267,7 @@ async function loadMe() {
     if (data && data.role === 'rep' && data.active && data.approved === false) return renderWait(data);
     if (!data || !data.active) return renderLogin(user.is_anonymous ? (data && !data.active ? 'الرقم ده اتقفل — كلّم المالك' : 'ادخل الرقم السري تاني') : 'الحساب ده مش مسموح له');
     me = data;
+    LS.set('selah-trial-me', { id: me.id, name: me.name });   // البرنامج الأخضر بيعمل منه «🔗 لينك المجموعة»
     $('#bellBtn').hidden = false; $('#outBtn').hidden = false; $('#tabs').hidden = false; $('#setTab').hidden = !isAdmin();
     await loadAll(); route();
     try { const mg = gMergeAll(); if (mg) toast(`🧾 ${mg} مدرس كان عنده أكتر من طلب — بقى طلب واحد (الأحدث)`, 4500); } catch (e) { }
@@ -1085,6 +1086,12 @@ async function viewChat(id) {
 }
 
 /* ---------- صفحة المدرس ---------- */
+// 🔓 رابط المدرس مربوط بأول موبايل فتحه (t_bind) — فك الربط لو المدرس غيّر موبايله
+async function unbindDev(id) {
+  if (!confirm('تفك ربط الموبايل؟ أول موبايل هيفتح رابط المدرس بعد كده هو اللي هيتربط.')) return;
+  const { error } = await sb.from('teachers').update({ t_device: null }).eq('id', id);
+  toast(error ? errMsg(error) : '🔓 اتفك الربط — خلّي المدرس يفتح الرابط من موبايله الجديد', 4000);
+}
 async function viewTeacher(id) {
   setHeader('ملف المدرس', true); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
   const [tR, nR, aR, eR, uR, oR] = await Promise.all([
@@ -1100,7 +1107,7 @@ async function viewTeacher(id) {
   setHeader(t.name, true);
   const pr = t.profile || {}, link = inviteLink(t), inGreen = t.local_id && (gdb()?.teachers || []).some(x => x.id === t.local_id);
   app.innerHTML = `<div class="card"><div style="display:flex;gap:12px;align-items:center">${avHtml(t, 'lg')}<div class="grow">
-      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)} ${instPill(t)}<div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
+      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)} ${instPill(t)} <button type="button" class="pill" style="cursor:pointer;border:1px solid #cbd5e1" onclick="unbindDev('${t.id}')" title="رابط المدرس بيفتح على موبايل واحد بس — دوس هنا لو غيّر موبايله">🔓 فك ربط الموبايل</button><div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
       ${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
     <div style="margin-top:10px">${FIELDS.filter(f => !['name', 'avatar', 'phone'].includes(f.k)).map(f => `<div class="kv"><span>${FIELD_LABEL[f.k]}</span><span>${fmtVal(f.k, pr[f.k])}</span></div>`).join('')}</div>
     ${(t.books || []).length ? `<div class="kv"><span>الكتب المسجلة</span><span class="small">${esc(t.books.map(b => `${b.l || bookLabel(b.b)}: ${b.q}`).join('، '))}</span></div>` : ''}

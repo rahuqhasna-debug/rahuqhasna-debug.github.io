@@ -1882,6 +1882,10 @@ function renderSettings(){
       ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية${db.idara?` (${villages().length} قرية وبندر)`:''}</label>${idaraSelect('idara', db.idara)}</div>`:''}
       <button class="btn pri" style="width:100%" data-act="save-rep">حفظ</button>
       <p class="hint">الاسم بيتكتب على كل تسليم وفي شيت الإكسل والفاتورة.</p></div>
+    <div class="card"><h3 class="sec-t">🔗 لينك المجموعة</h3>
+      <div class="field"><label>رقمك اللي يظهر للمدرس لو رقمه مش متسجل</label><input id="grpPh" type="tel" dir="ltr" inputmode="numeric" placeholder="01xxxxxxxxx" value="${esc(db.repPhone||'')}"></div>
+      <div class="row2"><button class="btn pri" onclick="grpLink('copy')">📋 انسخ اللينك</button><button class="btn" style="background:#dcfce7" onclick="grpLink('wa')">ابعته على واتساب</button></div>
+      <p class="hint">حط اللينك ده في جروبات الواتس. المدرس يكتب رقم تليفونه: لو متسجل عندك ياخد رابطه الخاص ويثبّت البرنامج، ولو مش متسجل يقوله جرّب تاني أو كلّم المندوب.</p></div>
     <div class="card"><h3 class="sec-t">📥 استيراد مدرسين من إكسل</h3>
       <button class="btn pri" style="width:100%" data-act="import-xlsx">اختار شيت الإكسل</button>
       <p class="hint">بيقرا أعمدة: اسم المدرس، رقم الهاتف، المرحلة، المادة، المنطقة، التصنيف (A/B/C)، عدد الطلاب، التاريخ. لو المدرس موجود (نفس رقم التليفون) بيحدّث بياناته بس ومش بيمسح تسليماته، ونفس الرقم مرتين في الشيت بيتضاف مرة واحدة.</p></div>
@@ -1900,6 +1904,17 @@ function renderSettings(){
       <div class="kv"><span>البيع والطلبات</span><b>${db.sales.length}</b></div>
       <button class="btn danger" style="width:100%;margin-top:12px" data-act="wipe">🗑️ امسح كل البيانات</button></div>
     <div class="sign">${SIGN}</div>`;
+}
+// 🔗 2026-11-15: لينك واحد لجروبات الواتس ← join.html (المدرس يدخل برقم تليفونه)
+function grpLink(how){
+  let me=null; try{ me=JSON.parse(localStorage.getItem('selah-trial-me')||'null'); }catch(e){}
+  if(!me||!me.id) return toast('افتح 💬 المراسلات وادخل مرة الأول، وبعدين ارجع هنا');
+  const ph=($('#grpPh')?.value||'').replace(/\D/g,''); if(ph.length<10) return toast('اكتب رقمك الأول (11 رقم)');
+  if(db.repPhone!==ph){ db.repPhone=ph; save(false); }
+  const url=location.href.split('#')[0].replace(/[^\/]*$/,'')+'join.html#r='+me.id+'&n='+encodeURIComponent(db.rep||me.name||'')+'&ph='+ph;
+  const txt='السلام عليكم يا أساتذة\nعشان توصلكم رسايل «سلاح التلميذ» ومواعيد استلام النسخ، ادخلوا على الرابط ده واكتبوا رقم تليفونكم وثبّتوا البرنامج:\n'+url;
+  if(how==='wa'){ window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); return; }
+  try{ navigator.clipboard.writeText(txt).then(()=>toast('اتنسخ ✅ الصقه في الجروب'),()=>prompt('انسخ:',txt)); }catch(e){ prompt('انسخ:',txt); }
 }
 function dupsCard(){
   const gs=dupGroups();
