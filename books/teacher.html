@@ -288,7 +288,13 @@ async function load() {
     const [{ data, error }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]);
     if (error) throw error;
     if (rv && rv.data) RV = rv.data;
-    if (!data) { app.innerHTML = '<div class="alert"><h3>الرابط ده مش شغال</h3>كلّم المندوب يبعتلك رابط جديد.</div>'; $('#tabs').hidden = true; return; }
+    if (!data) {
+      // كود قديم/متمسوح: ننساه، ونرجّع المدرس لصفحة «ادخل برقم تليفونك» (لو جه من لينك المجموعة) أو لصق الرابط
+      LS.del(TCODE); const jl = LS.get('selah-trial-join');
+      app.innerHTML = `<div class="alert"><h3>الرابط ده مش شغال</h3>${jl ? 'ادخل برقم تليفونك تاني، أو كلّم المندوب.' : 'كلّم المندوب يبعتلك رابط جديد، أو الصق رابطك الجديد.'}
+        <div class="acts" style="margin-top:10px">${jl ? `<a class="btn ok" href="${esc(jl)}">📞 ادخل برقم تليفونك</a>` : ''}<button class="btn pri" id="pasteNew">🔑 عندي رابط جديد</button></div></div>`;
+      $('#tabs').hidden = true; $('#pasteNew').onclick = renderPasteCode; return;
+    }
     const first = !D; D = normD(data); refNeed(); SEEN = evSig(D); loadNews(); $('#tabs').hidden = false; render(); setBadge(); startWatch();
     // طلب تحديث جديد من آخر مرة ← صوت
     const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);

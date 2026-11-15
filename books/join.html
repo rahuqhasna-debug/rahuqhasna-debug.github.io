@@ -39,6 +39,7 @@ const h = new URLSearchParams(location.hash.slice(1));
 if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
 const REP = h.get('r') || '', RN = h.get('n') || 'المندوب', RP = (h.get('ph') || '').replace(/\D/g, '');
 const sb = makeClient(false, TCFG);
+if (REP) LS.set('selah-trial-join', location.href);   // لو الكود باظ بعدين، التطبيق يرجّعه هنا
 const dev = deviceId();
 const msg = html => $('#msg').innerHTML = html;
 function notFound() {
