@@ -172,9 +172,11 @@ function locLink(t) {
 }
 function locMsg(t) {
   const g = giftOf(t);
-  return `أ/ ${t.name} 🌹\nالسلام عليكم ورحمة الله وبركاته\nباسم *سلاح التلميذ* بنشكر حضرتك على تعبك ومجهودك مع الطلبة، وعلى ثقتك فينا 🙏\n`
-    + (g ? `وتقديرًا لحضرتك، *سلاح التلميذ* مجهّزة لحضرتك هدية:\n🎁 *${g}*\n\nوأنا عايز آجي لحضرتك بنفسي أسلّمك الهدية 🤝\nفياريت` : `\nوأنا عايز آجي لحضرتك بنفسي أسلّمك نسختك 🤝\nفياريت`)
-    + ` تضغط على اللينك ده وإنت في مكان الدرس، وتحدّد منه الموقع، وتقولّي بتكون موجود فيه أيام إيه ومن الساعة كام لكام، عشان أجيلك في ميعاد يناسبك:\n👈 ${locLink(t)}\n\nدقيقة واحدة بس من وقتك ❤️\nمع خالص التقدير،\n*سلاح التلميذ — البحيرة*`;
+  // من غير إيموجي: الواتساب على الكمبيوتر بيبوّظها في لينك wa.me (بتطلع �)
+  // رموز بسيطة (★ ✿ ➤ ✔) بتظهر في كل مكان بدل الإيموجي اللي بيطلع �
+  return `أ/ ${t.name} ✿\nالسلام عليكم\n`
+    + (g ? `تقديرًا لحضرتك، *سلاح التلميذ* مجهّزة لحضرتك هدية:\n★ *${g}* ★\nوعايز آجي أسلّمها لحضرتك بنفسي.` : `عايز آجي أسلّم لحضرتك نسختك بنفسي.`)
+    + `\nياريت تفتح اللينك ده وإنت في مكان الدرس، وتحدّد الموقع ومواعيدك:\n➤ ${locLink(t)}\n✔ *سلاح التلميذ - البحيرة*`;
 }
 function inviteMsg(t, tpl) { tpl = tpl || LS.get('selah-trial-inv') || INV_DEF; if (!tpl.includes('[رابط المدرس]')) tpl += '\n[رابط المدرس]'; return tpl.replace(/(أ\/\s*)?\{الاسم\}/g, 'أ/ ' + t.name).replace(/\[رابط المدرس\]/g, inviteLink(t)); }
 // حالة تحديث بيانات المدرس: full = حدّث كله واتوافق، part = حدّث جزء، none = ماحدّثش خالص
@@ -946,9 +948,13 @@ function waBulk(list, tpl, mk, ttl) {
   modal(`<h3>🟢 ${ttl ? ttl + ' — ' : ''}ابعت على واتساب (${list.length})</h3><div class="hint small muted" style="margin-bottom:8px">اضغط «ابعت» لكل مدرس، هيفتح الواتساب برسالته ورابطه هو جاهزين.</div>
     <div class="tlist" style="display:flex">${list.map((t, i) => `<div class="titem" style="cursor:default"><div class="grow"><b>${esc(t.name)}</b><div class="sub">${esc(t.phone || 'مفيش رقم')}</div></div>
       ${t.phone ? `<a class="btn sm ok" target="_blank" rel="noopener" data-i="${i}" href="${waLink(t.phone, inviteMsg(t, tpl))}">ابعت</a>` : `<button class="btn sm" data-c="${i}">انسخ</button>`}</div>`).join('')}</div>
-    <div class="acts"><button class="btn" id="cpAll">📋 انسخ كل الرسايل</button><button class="btn ghost" data-close>قفل</button></div>`, box => {
+    <div class="acts"><button class="btn ok" id="waNext" style="width:100%;font-size:18px;padding:12px">▶️ ابعت للي عليه الدور</button><button class="btn" id="cpAll">📋 انسخ كل الرسايل</button><button class="btn ghost" data-close>قفل</button></div>`, box => {
+    // زرار واحد: كل دوسة تفتح واتساب المدرس اللي عليه الدور، وترجع تدوس تاني للي بعده
+    const nx = () => { const a = $$('a[data-i]', box).find(x => !x.classList.contains('ghost')); $('#waNext', box).textContent = a ? `▶️ ابعت للي عليه الدور: ${list[+a.dataset.i].name} (${$$('a[data-i].ghost', box).length + 1} من ${$$('a[data-i]', box).length})` : '✅ خلصت كله'; return a; };
+    nx();
+    $('#waNext', box).onclick = () => { const a = nx(); if (!a) return; window.open(a.href, '_blank'); a.textContent = '✓ اتبعت'; a.classList.replace('ok', 'ghost'); nx(); };
     box.addEventListener('click', e => {
-      const a = e.target.closest('[data-i]'); if (a) { a.textContent = '✓ اتبعت'; a.classList.replace('ok', 'ghost'); }
+      const a = e.target.closest('[data-i]'); if (a) { a.textContent = '✓ اتبعت'; a.classList.replace('ok', 'ghost'); setTimeout(nx, 0); }
       const c = e.target.closest('[data-c]'); if (c) copyText(inviteMsg(list[+c.dataset.c], tpl));
     });
     $('#cpAll', box).onclick = () => copyText(list.map(t => inviteMsg(t, tpl)).join('\n\n'));
