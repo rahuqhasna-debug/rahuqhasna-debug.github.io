@@ -282,10 +282,6 @@ async function load() {
   if (!code && isApp) return renderPasteCode();
   if (!code) { app.innerHTML = '<div class="alert"><h3>افتح الرابط اللي وصلك من المندوب</h3>الرابط ده لازم يكون فيه الكود الخاص بيك.</div>'; return; }
   try {
-    // 2026-11-15 (طلب شريف): الرابط يشتغل على موبايل المدرس بس (أول موبايل فتحه). الآيفون بيتربط من التطبيق المتثبّت بس (سفاري ليه تخزين منفصل)
-    // الربط من التطبيق المتثبّت بس (المتصفح والتطبيق ليهم تخزين منفصل ← لو اتربط من المتصفح التطبيق كان بيتقفل)
-    let bd = {}; try { bd = await sb.rpc('t_bind', { p_code: code, p_dev: isApp ? deviceId() : '' }); } catch (e) { }
-    if (bd && bd.data && bd.data.err === 'dev') { app.innerHTML = '<div class="alert"><h3>🔒 الرابط ده شغال على موبايل تاني</h3>الرابط ده خاص بالمدرس صاحبه وبيفتح على موبايله هو بس.<br>لو ده موبايلك الجديد كلّم المندوب يفك الربط.</div>'; $('#tabs').hidden = true; return; }
     const [{ data, error }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]);
     if (error) throw error;
     if (rv && rv.data) RV = rv.data;

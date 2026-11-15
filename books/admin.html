@@ -42,6 +42,7 @@
   <a class="hb" id="bellBtn" href="#/bell" hidden aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></a>
   <button class="hb" id="outBtn" hidden aria-label="خروج">🚪</button>
 </div></header>
+<div class="wrap" id="qbar" style="padding-bottom:0"></div>
 <main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
 <div id="cbar"></div>
 <nav class="tabs" id="tabs" hidden>
@@ -192,7 +193,7 @@ const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy
 // متابعة 10: الأربع زراير جنب اسم المدرس في كل مكان (📞 مكالمة · واتساب · 📨 المراسلات · 🔄 اطلب تحديث)
 function icos4(t) {
   t = t && (T.find(x => x.id === t.id) || t); if (!t || !t.id) return '';
-  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-ru="${t.id}" title="اطلب تحديث بيانات المدرس ده">🔄</button>${!t.app_at && t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت دعوة تثبيت التطبيق (لسه ما ثبّتش)" style="background:#dcfce7">📲</a>` : ''}${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, locMsg(t))}" title="ابعت لينك تحديد الموقع والمواعيد${giftOf(t) ? ' (فيه الهدية 🎁)' : ''}" style="background:#ede9fe">📍</a>` : ''}</span>`;
+  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a>${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت كارت دعوة" style="background:#dcfce7">📲</a>` : ''}<button type="button" class="tic" data-ru="${t.id}" title="حدّث بيانات المدرس ده">🔄</button></span>`;
 }
 // 🔄 في أي مكان بيفتح طلب التحديث للمدرس ده بس (قبل أي حاجة تانية في الصفحة)
 document.addEventListener('click', e => { const b = e.target.closest('[data-ru]'); if (!b) return; e.preventDefault(); e.stopPropagation(); reqUpdateDlg([b.dataset.ru]); }, true);
@@ -405,8 +406,30 @@ async function autoLoc() {
   } catch (e) { console.warn('autoLoc', e); } finally { autoLocRun = false; }
   return n;
 }
+// 📦 2026-11-15 (طلب شريف): شريط «مساحة الرسائل» (استهلاك المندوب من نصيبه) + عند 85% تنبيه بصوت وإشعار كل 8 ساعات
+let qAt = 0;
+async function quotaCheck() {
+  if (!me || Date.now() - qAt < 10 * 60000) return; qAt = Date.now();
+  const { data, error } = await sb.rpc('my_usage'); if (error || !data) return;
+  const mb = data.bytes / 1048576, q = +data.quota_mb || 100, pct = Math.min(100, mb / q * 100);
+  const col = pct >= 85 ? '#dc2626' : pct >= 60 ? '#f59e0b' : '#16a34a';
+  $('#qbar').innerHTML = `<div style="background:#fff;border-radius:12px;padding:6px 10px;margin-top:6px;box-shadow:0 1px 3px #0001">
+    <div class="small" style="display:flex;justify-content:space-between;gap:6px"><b>📦 مساحة الرسائل</b><span>${mb.toFixed(1)} من ${q} ميجا (${pct.toFixed(0)}%)</span></div>
+    <div style="height:8px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${col}"></div></div>
+    ${pct >= 85 ? '<div class="small" style="color:#dc2626;font-weight:700;margin-top:4px">⚠️ مساحتك قربت تخلص — امسح رسايل قديمة</div>' : ''}</div>`;
+  LS.set('selah-trial-quota', { pct, mb, q, at: Date.now() });   // البرنامج الأخضر بيقراه
+  if (pct >= 85) {
+    const last = +(LS.get('selah-trial-qalert') || 0);
+    if (Date.now() - last >= 8 * 3600000) {
+      LS.set('selah-trial-qalert', Date.now()); ding();
+      toast(`⚠️ مساحة الرسائل وصلت ${pct.toFixed(0)}% — امسح رسايل قديمة`, 6000);
+      if (window.pushToStaff) window.pushToStaff([me.id], `⚠️ مساحة الرسائل عندك وصلت ${pct.toFixed(0)}% — امسح رسايل قديمة`, 'admin.html').catch(() => { });
+    }
+  }
+}
 async function loadAll() {
   await autoLoc();
+  quotaCheck().catch(() => { });
   let [t, n, p, s, u] = await Promise.all([
     fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').order('name')),
     fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
@@ -445,6 +468,7 @@ function route() {
   // 🔄 من البرنامج الأخضر: يفتح صفحة المدرس وطلب التحديث على طول
   if (h.startsWith('/ru/')) { const id = decodeURIComponent(h.slice(4)); history.replaceState(null, '', '#/t/' + encodeURIComponent(id)); setTab('list'); return viewTeacher(id).then(() => { if (T.some(x => x.id === id)) reqUpdateDlg([id]); }); }
   if (h === '/rets') { setTab('list'); return viewRets(); }
+  if (h === '/upd') { setTab('list'); return viewUpd(); }
   waTabFor(h.startsWith('/c/') ? decodeURIComponent(h.slice(3)) : '');
   if (h.startsWith('/c/')) { setTab('chat'); LS.set('selah-trial-lastchat', decodeURIComponent(h.slice(3))); return viewChat(decodeURIComponent(h.slice(3))); }
   if (h === '/bell') { setTab(''); return viewBell(); }
@@ -789,7 +813,7 @@ function viewList() {
   setHeader(`المدرسين — ${me.name}`, false);
   app.innerHTML = `${T.length ? '' : '<div class="note"><b>⏳ بننقل مدرسينك من البرنامج…</b><div class="small">بيتنقلوا لوحدهم ببياناتهم وكتبهم. لو مفيش مدرسين في البرنامج على الموبايل ده، ضيفهم هناك الأول.</div></div>'}
   ${isAdmin() ? ownerSum() : ''}
-  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button><a class="btn sm owe" href="#/rets" title="المرتجعات">↩️${Object.keys(retsBy).length ? ' ' + Object.keys(retsBy).length : ''}</a></div>
+  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button><a class="btn sm owe" href="#/rets" title="المرتجعات">↩️${Object.keys(retsBy).length ? ' ' + Object.keys(retsBy).length : ''}</a><a class="btn sm" href="#/upd" title="حدّث البيانات لمدرسين كتير" style="background:#e0f2fe">🔄</a></div>
   <div class="selrow"><button class="btn sm" id="selAll">☑️ الكل</button><button class="btn sm ghost" id="selNone">✕ مسح التحديد</button><span class="cnt" id="selN"></span><span style="flex:1"></span><button class="btn sm danger" id="delSel">🗑️ مسح الرسايل</button></div>
   <div class="tlist" id="tl"></div>
   <div id="moreRow"></div>
@@ -944,6 +968,47 @@ function viewInvite() {
   $('#isend').onclick = () => { saveTpl(); const l = T.filter(t => ui.invSel.has(t.id)); if (!l.length) return toast('اختار مدرس واحد على الأقل'); waBulk(l, $('#itpl').value); };
   draw();
 }
+/* 🔄 2026-11-15 (طلب شريف): حدّث البيانات لمدرسين كتير — 1) اختار الحاجات 2) اختار المدرسين بالبحث/الكل 3) ابعت */
+const updUi = { f: new Set(), q: '', sel: new Set() };
+function viewUpd() {
+  setHeader('🔄 حدّث البيانات', false);
+  app.innerHTML = `<div class="card"><h3>1) اختار البيانات اللي عايزها تتحدّث</h3>
+    <div class="pgrid" id="uf">${REQ_FIELDS.map(k => `<label class="chip ${updUi.f.has(k) ? 'on' : ''}"><input type="checkbox" value="${k}" ${updUi.f.has(k) ? 'checked' : ''}> ${FIELD_LABEL[k]}</label>`).join('')}</div>
+    <div class="field" style="margin-top:8px"><label>ملاحظة للمدرسين (اختياري)</label><textarea id="un"></textarea></div></div>
+  <div class="card"><h3>2) اختار المدرسين (<span id="uN">${updUi.sel.size}</span> متحدد)</h3>
+    <div class="search"><input id="uq" type="search" placeholder="🔍 اكتب أي حاجة: اسم، رقم، قرية، مادة، «مش مثبت»…" value="${esc(updUi.q)}" autocomplete="off"></div>
+    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="uall">☑️ الكل</button><button class="btn sm ghost" id="unone">✕ مسح التحديد</button>
+      <button class="btn sm ok" id="usend" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">🟢 ابعت طلب التحديث (${updUi.sel.size})</button></div>
+    <div id="ul"></div></div>`;
+  const shown = () => { const ws = stWords(nq(updUi.q).split(/\s+/).filter(Boolean)); return T.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))); };
+  const cnt = () => { $('#uN').textContent = updUi.sel.size; $('#usend').textContent = `🟢 ابعت طلب التحديث (${updUi.sel.size})`; };
+  const draw = () => {
+    const l = shown(); $('#uall').textContent = `☑️ الكل (${l.length})`;
+    $('#ul').innerHTML = l.slice(0, 400).map(t => `<label class="kv irow"><input type="checkbox" value="${t.id}" ${updUi.sel.has(t.id) ? 'checked' : ''} style="width:20px;height:20px">${avHtml(t)}
+      <span class="grow"><b>${esc(t.name)}</b> ${instPill(t)} ${tB(t.id)}<br><span class="small muted">${esc([t.phone || 'مفيش رقم', (t.profile || {}).area].filter(Boolean).join(' · '))}</span></span>${icos4(t)}</label>`).join('')
+      + (l.length > 400 ? `<div class="small muted">ظاهر 400 من ${l.length} — اكتب في البحث عشان تضيّق (☑️ الكل بيحدد الـ ${l.length} كلهم)</div>` : '')
+      || '<div class="small muted">مفيش نتايج</div>';
+    cnt();
+  };
+  $('#uf').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? updUi.f.add(c.value) : updUi.f.delete(c.value); c.parentNode.classList.toggle('on', c.checked); };
+  $('#uq').oninput = () => { updUi.q = $('#uq').value; draw(); };
+  $('#uall').onclick = () => { shown().forEach(t => updUi.sel.add(t.id)); draw(); };
+  $('#unone').onclick = () => { updUi.sel.clear(); draw(); };
+  $('#ul').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? updUi.sel.add(c.value) : updUi.sel.delete(c.value); cnt(); };
+  $('#usend').onclick = async () => {
+    const f = [...updUi.f], ids = T.filter(t => updUi.sel.has(t.id)).map(t => t.id);
+    if (!f.length) return toast('اختار البيانات الأول (خطوة 1)'); if (!ids.length) return toast('اختار مدرس واحد على الأقل');
+    if (!confirm(`تبعت طلب تحديث (${f.map(k => FIELD_LABEL[k]).join('، ')}) لـ ${ids.length} مدرس؟`)) return;
+    const b = $('#usend'); b.disabled = true; let n = 0;
+    for (let i = 0; i < ids.length; i += 150) {
+      const { data, error } = await sb.rpc('request_update', { p_ids: ids.slice(i, i + 150), p_fields: f, p_note: $('#un').value });
+      if (error) { b.disabled = false; return toast(errMsg(error), 5000); } n += +data || 0;
+    }
+    if (window.pushRingTeachers) window.pushRingTeachers(ids, '📝 مطلوب تحديث بياناتك: ' + f.map(k => FIELD_LABEL[k] || k).join('، ')).catch(() => { });
+    toast(`✅ اتبعت لـ ${n || ids.length} مدرس`, 4000); updUi.sel.clear(); b.disabled = false; loadAll().then(() => draw());
+  };
+  draw();
+}
 function waBulk(list, tpl, mk, ttl) {
   const inviteMsg = mk || window.inviteMsg;   // mk = رسالة مخصوصة (زي 📍 لينك الموقع)
   modal(`<h3>🟢 ${ttl ? ttl + ' — ' : ''}ابعت على واتساب (${list.length})</h3><div class="hint small muted" style="margin-bottom:8px">اضغط «ابعت» لكل مدرس، هيفتح الواتساب برسالته ورابطه هو جاهزين.</div>
@@ -962,8 +1027,12 @@ function waBulk(list, tpl, mk, ttl) {
   });
 }
 function reqUpdateDlg(ids) {
-  modal(`<h3>🔄 اطلب تحديث بيانات (${ids.length} مدرس)</h3><div class="small muted" style="margin-bottom:6px">اختار الحاجات المطلوبة:</div>
-    <div class="pgrid">${REQ_FIELDS.map(k => `<label class="chip"><input type="checkbox" value="${k}"> ${FIELD_LABEL[k]}</label>`).join('')}</div>
+  // 2026-11-15 (طلب شريف): لمدرس واحد ← بياناته مكتوبة قدام كل خانة عشان تختار اللي عايزه يتحدّث
+  const one = ids.length === 1 ? T.find(x => x.id === ids[0]) : null, pr = one ? (one.profile || {}) : null;
+  const cur = k => !pr ? '' : k === 'photos' ? '' : k === 'avatar' ? (one.avatar ? '🖼️ موجودة' : '<span style="color:#dc2626">ناقصة</span>') : (v => v === '—' ? '<span style="color:#dc2626">ناقص</span>' : esc(v))(valText(k, k === 'name' ? (pr.name || one.name) : k === 'phone' ? (pr.phone || one.phone) : pr[k]));
+  modal(`<h3>🔄 حدّث البيانات — ${one ? esc(one.name) : ids.length + ' مدرس'}</h3><div class="small muted" style="margin-bottom:6px">علّم على الحاجات اللي عايز المدرس يحدّثها:</div>
+    ${one ? `<div class="rqv">${REQ_FIELDS.map(k => `<label class="kv" style="align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" value="${k}" style="width:20px;height:20px;flex:none"><span class="grow"><b>${FIELD_LABEL[k]}</b>${k === 'photos' ? '' : `<br><span class="small">${cur(k)}</span>`}</span></label>`).join('')}</div>`
+      : `<div class="pgrid">${REQ_FIELDS.map(k => `<label class="chip"><input type="checkbox" value="${k}"> ${FIELD_LABEL[k]}</label>`).join('')}</div>`}
     <div class="field" style="margin-top:8px"><label>ملاحظة للمدرس (اختياري)</label><textarea id="rn"></textarea></div>
     <div class="acts"><button class="btn pri" id="rs">ابعت الطلب</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
     $('#rs', box).onclick = async () => {
@@ -1086,12 +1155,6 @@ async function viewChat(id) {
 }
 
 /* ---------- صفحة المدرس ---------- */
-// 🔓 رابط المدرس مربوط بأول موبايل فتحه (t_bind) — فك الربط لو المدرس غيّر موبايله
-async function unbindDev(id) {
-  if (!confirm('تفك ربط الموبايل؟ أول موبايل هيفتح رابط المدرس بعد كده هو اللي هيتربط.')) return;
-  const { error } = await sb.from('teachers').update({ t_device: null }).eq('id', id);
-  toast(error ? errMsg(error) : '🔓 اتفك الربط — خلّي المدرس يفتح الرابط من موبايله الجديد', 4000);
-}
 async function viewTeacher(id) {
   setHeader('ملف المدرس', true); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
   const [tR, nR, aR, eR, uR, oR] = await Promise.all([
@@ -1107,7 +1170,7 @@ async function viewTeacher(id) {
   setHeader(t.name, true);
   const pr = t.profile || {}, link = inviteLink(t), inGreen = t.local_id && (gdb()?.teachers || []).some(x => x.id === t.local_id);
   app.innerHTML = `<div class="card"><div style="display:flex;gap:12px;align-items:center">${avHtml(t, 'lg')}<div class="grow">
-      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)} ${instPill(t)} <button type="button" class="pill" style="cursor:pointer;border:1px solid #cbd5e1" onclick="unbindDev('${t.id}')" title="رابط المدرس بيفتح على موبايل واحد بس — دوس هنا لو غيّر موبايله">🔓 فك ربط الموبايل</button><div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
+      <b style="font-size:20px">${esc(t.name)}</b> ${tB(t.id)} ${instPill(t)}<div class="small muted">${t.phone ? `<a href="tel:${esc(t.phone)}">${esc(t.phone)}</a> · ` : ''}${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش الرابط'}</div>
       ${t.enabled ? '' : '<span class="pill bad">⛔ الرابط موقوف</span>'}</div></div>
     <div style="margin-top:10px">${FIELDS.filter(f => !['name', 'avatar', 'phone'].includes(f.k)).map(f => `<div class="kv"><span>${FIELD_LABEL[f.k]}</span><span>${fmtVal(f.k, pr[f.k])}</span></div>`).join('')}</div>
     ${(t.books || []).length ? `<div class="kv"><span>الكتب المسجلة</span><span class="small">${esc(t.books.map(b => `${b.l || bookLabel(b.b)}: ${b.q}`).join('، '))}</span></div>` : ''}
@@ -1290,7 +1353,7 @@ async function viewBell() {
   setHeader('🔔 الإشعارات', false);
   const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets, inst: BC.inst };
   if (!BELL.some(([k]) => k === ui.bellTab)) ui.bellTab = 'msgs';
-  app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div class="chips">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''}" data-b="${k}">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : ''}</button>`).join('')}</div><div id="bb"></div>`;
+  app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''}" data-b="${k}" style="width:100%;justify-content:space-between;display:flex;font-size:16px;padding:10px 14px">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : '<span class="small muted">—</span>'}</button>`).join('')}</div><div id="bb"></div>`;   // 2026-11-15: القايمة تحت بعض (مش بالعرض) عشان يبان كل اللي جه
   $$('[data-b]').forEach(b => b.onclick = () => { ui.bellTab = b.dataset.b; viewBell(); });
   const bb = $('#bb');
   bb.innerHTML = '<div class="loading">جاري التحميل…</div>';
