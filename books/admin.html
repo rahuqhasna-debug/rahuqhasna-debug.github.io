@@ -162,6 +162,20 @@ const INV_DEF = 'أهلًا أ/ {الاسم} 👋\nده رابط ملفك في �
 const INV_APP = 'أهلًا أ/ {الاسم} 👋\nعشان توصلك رسايلنا ومواعيد استلام النسخ على طول، ثبّت تطبيق «سلاح التلميذ» على موبايلك من الرابط ده:\n[رابط المدرس]\nافتح الرابط ودوس «ثبّت» وبعدين فعّل الإشعارات 🙏';
 // رسالتين: كل واحدة نصها محفوظ لوحده
 const INV_KEYS = { inv: ['selah-trial-inv', INV_DEF, '✉️ رسالة الدعوة'], app: ['selah-trial-inv-app', INV_APP, '📲 رسالة التثبيت'] };
+// 📍 2026-11-15 (طلب شريف): لينك «حدّد مكان الدرس + أيام ومواعيدك» (loc.html) — والهدية من شيت «الهدايا المستحقة» تظهر في الرسالة يومين بس (15 و16 نوفمبر)
+const GIFTS = {"1000379258":"سبيكة فضة 10 جرام","1000501832":"سبيكة فضة 10 جرام","1001321073":"سبيكة فضة 10 جرام","1002726640":"فاوتشر 300","1003397432":"سبيكة فضة 20 جرام","1006397340":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1008687689":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1009026345":"سبيكة فضة 10 جرام","1009440672":"فاوتشر 200 × 1 + فاوتشر 300 × 1","1011094079":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1011380085":"فاوتشر 300","1012040634":"فاوتشر 300","1012092815":"فاوتشر 200 × 1 + فاوتشر 300 × 1","1015922852":"سبيكة فضة 10 جرام","1019039659":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1019892644":"فاوتشر 300","1020246052":"فاوتشر 200 × 5","1020323209":"سبيكة فضة 10 جرام","1021853493":"سبيكة ذهب","1024056313":"سبيكة فضة 10 جرام","1024140356":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1026008705":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1028038814":"سبيكة فضة 10 جرام","1030798062":"فاوتشر 300","1050311418":"فاوتشر 200 × 5","1061141640":"سبيكة فضة 10 جرام","1063279418":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1066208311":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1066415882":"فاوتشر 300","1067737197":"فاوتشر 300","1068242115":"سبيكة فضة 20 جرام","1069664054":"سبيكة فضة 10 جرام","1090773070":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1092119626":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1093232682":"سبيكة فضة 10 جرام","1093336674":"فاوتشر 200 × 1 + فاوتشر 300 × 1","1093717368":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1095303015":"سبيكة ذهب","1095382308":"سبيكة فضة 10 جرام","1096184440":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1097194303":"سبيكة فضة 10 جرام","1097490762":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1097752748":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1097906573":"فاوتشر 300","1203994256":"فاوتشر 300","1212401996":"سبيكة فضة 10 جرام","1227854931":"فاوتشر 200 × 5","1270376508":"فاوتشر 200 × 2 + فاوتشر 300 × 1","1284075563":"فاوتشر 300","1284719036":"فاوتشر 200 × 1 + فاوتشر 300 × 1","1550673754":"فاوتشر 200 × 5","1551020609":"فاوتشر 200 × 2 + فاوتشر 300 × 1"};
+const GIFT_END = new Date(2026, 10, 17);   // بعد 16 نوفمبر الهدية ما تظهرش
+function giftOf(t) { if (new Date() >= GIFT_END) return ''; return GIFTS[String(t.phone || '').replace(/\D/g, '').slice(-10)] || ''; }
+function locLink(t) {
+  const c = getCfg(), base = location.href.split('#')[0].replace(/admin\.html.*$/, '');
+  return base + 'loc.html#c=' + t.invite_code + (c.custom ? '&p=' + encodeCfg(c.url, c.key) : '');
+}
+function locMsg(t) {
+  const g = giftOf(t);
+  return `أ/ ${t.name} 🌹\nالسلام عليكم ورحمة الله وبركاته\nباسم *سلاح التلميذ* بنشكر حضرتك على تعبك ومجهودك مع الطلبة، وعلى ثقتك فينا 🙏\n`
+    + (g ? `وتقديرًا لحضرتك، *سلاح التلميذ* مجهّزة لحضرتك هدية:\n🎁 *${g}*\n\nوأنا عايز آجي لحضرتك بنفسي أسلّمك الهدية 🤝\nفياريت` : `\nوأنا عايز آجي لحضرتك بنفسي أسلّمك نسختك 🤝\nفياريت`)
+    + ` تضغط على اللينك ده وإنت في مكان الدرس، وتحدّد منه الموقع، وتقولّي بتكون موجود فيه أيام إيه ومن الساعة كام لكام، عشان أجيلك في ميعاد يناسبك:\n👈 ${locLink(t)}\n\nدقيقة واحدة بس من وقتك ❤️\nمع خالص التقدير،\n*سلاح التلميذ — البحيرة*`;
+}
 function inviteMsg(t, tpl) { tpl = tpl || LS.get('selah-trial-inv') || INV_DEF; if (!tpl.includes('[رابط المدرس]')) tpl += '\n[رابط المدرس]'; return tpl.replace(/(أ\/\s*)?\{الاسم\}/g, 'أ/ ' + t.name).replace(/\[رابط المدرس\]/g, inviteLink(t)); }
 // حالة تحديث بيانات المدرس: full = حدّث كله واتوافق، part = حدّث جزء، none = ماحدّثش خالص
 let apprSet = new Set(), openUpd = new Set();
@@ -176,7 +190,7 @@ const tB = id => badgesHtml(unreadBy[id] || 0, pendSet.has(id) ? 1 : 0, ordersBy
 // متابعة 10: الأربع زراير جنب اسم المدرس في كل مكان (📞 مكالمة · واتساب · 📨 المراسلات · 🔄 اطلب تحديث)
 function icos4(t) {
   t = t && (T.find(x => x.id === t.id) || t); if (!t || !t.id) return '';
-  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-ru="${t.id}" title="اطلب تحديث بيانات المدرس ده">🔄</button>${!t.app_at && t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت دعوة تثبيت التطبيق (لسه ما ثبّتش)" style="background:#dcfce7">📲</a>` : ''}</span>`;
+  return `<span class="icos">${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<a class="tic" data-ic href="#/c/${t.id}" title="رسايل سلاح التلميذ">📨</a><button type="button" class="tic" data-ru="${t.id}" title="اطلب تحديث بيانات المدرس ده">🔄</button>${!t.app_at && t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت دعوة تثبيت التطبيق (لسه ما ثبّتش)" style="background:#dcfce7">📲</a>` : ''}${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, locMsg(t))}" title="ابعت لينك تحديد الموقع والمواعيد${giftOf(t) ? ' (فيه الهدية 🎁)' : ''}" style="background:#ede9fe">📍</a>` : ''}</span>`;
 }
 // 🔄 في أي مكان بيفتح طلب التحديث للمدرس ده بس (قبل أي حاجة تانية في الصفحة)
 document.addEventListener('click', e => { const b = e.target.closest('[data-ru]'); if (!b) return; e.preventDefault(); e.stopPropagation(); reqUpdateDlg([b.dataset.ru]); }, true);
@@ -370,7 +384,26 @@ async function counts() {
   if (n > was) ding();
   LS.set('selah-trial-bell', { n, at: Date.now() });   // البرنامج الأخضر بيقراه للجرس
 }
+// 📍 2026-11-15: طلب فيه «الموقع/الأيام والمواعيد» بس (من لينك loc.html) بيتعتمد لوحده ويتكتب في البرنامج الأخضر — من غير مراجعة
+let autoLocRun = false;
+async function autoLoc() {
+  if (autoLocRun || !me) return 0; autoLocRun = true; let n = 0;
+  try {
+    const { data, error } = await sb.from('edit_requests').select('id,teacher_id,new_values,photos,teachers!inner(name,local_id,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending');
+    if (error) return 0;
+    for (const r of data || []) {
+      const ks = Object.keys(r.new_values || {});
+      if (!ks.length || ks.some(k => k !== 'loc' && k !== 'days') || (r.photos || []).length) continue;
+      const { error: e } = await sb.rpc('review_edit', { p_id: r.id, p_action: 'approve', p_final: null, p_reason: null });
+      if (e) continue;
+      gApply((r.teachers || {}).local_id, r.new_values); n++;
+    }
+    if (n) toast(`📍 ${n} مدرس بعتوا الموقع والمواعيد — اتكتبوا في البرنامج ✅`, 4000);
+  } catch (e) { console.warn('autoLoc', e); } finally { autoLocRun = false; }
+  return n;
+}
 async function loadAll() {
+  await autoLoc();
   let [t, n, p, s, u] = await Promise.all([
     fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').order('name')),
     fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
@@ -835,6 +868,7 @@ function drawSelbar() {
   const notIn = sel.filter(t => !t.app_at);   // المحددين اللي لسه ما ثبّتوش البرنامج
   b.innerHTML = `<div class="selbar"><div class="in"><b>${n} متحدد</b>
     ${notIn.length ? `<button class="btn sm ok" id="sInv">📲 ابعت كارت دعوة (${notIn.length})</button>` : ''}
+    <button class="btn sm" id="sLoc" style="background:#ede9fe">📍 ابعت لينك الموقع (${n})</button>
     <button class="btn sm danger" id="sRing">🔔 ابعت تنبيه (${n})</button>
     <button class="btn sm owe" id="sUpd">🔄 اطلب تحديث (${n})</button>
     <button class="btn sm" id="sRv">📦 ${allOpen ? 'قفل' : 'فعّل'} «استلمت إيه» (${n})</button>
@@ -843,6 +877,7 @@ function drawSelbar() {
   $('#sUpd').onclick = () => reqUpdateDlg(ids);
   // كارت الدعوة = «📲 رسالة التثبيت» المحفوظة في صفحة رسالة الدعوة (نفس النص المتفق عليه) + رابط كل مدرس
   if ($('#sInv')) $('#sInv').onclick = () => waBulk(notIn, LS.get(INV_KEYS.app[0]) || INV_APP);
+  $('#sLoc').onclick = () => { const l = sel.filter(t => t.invite_code); if (!l.length) return toast('المدرسين دول مالهمش لينك لسه'); waBulk(l, null, locMsg, '📍 لينك الموقع'); };
   $('#sRv').onclick = () => allOpen ? recvSet(ids, false) : recvSet(closed, true);
   $('#sX').onclick = () => { ui.sel.clear(); refreshList(); };
 }
@@ -906,8 +941,9 @@ function viewInvite() {
   $('#isend').onclick = () => { saveTpl(); const l = T.filter(t => ui.invSel.has(t.id)); if (!l.length) return toast('اختار مدرس واحد على الأقل'); waBulk(l, $('#itpl').value); };
   draw();
 }
-function waBulk(list, tpl) {
-  modal(`<h3>🟢 ابعت على واتساب (${list.length})</h3><div class="hint small muted" style="margin-bottom:8px">اضغط «ابعت» لكل مدرس، هيفتح الواتساب برسالته ورابطه هو جاهزين.</div>
+function waBulk(list, tpl, mk, ttl) {
+  const inviteMsg = mk || window.inviteMsg;   // mk = رسالة مخصوصة (زي 📍 لينك الموقع)
+  modal(`<h3>🟢 ${ttl ? ttl + ' — ' : ''}ابعت على واتساب (${list.length})</h3><div class="hint small muted" style="margin-bottom:8px">اضغط «ابعت» لكل مدرس، هيفتح الواتساب برسالته ورابطه هو جاهزين.</div>
     <div class="tlist" style="display:flex">${list.map((t, i) => `<div class="titem" style="cursor:default"><div class="grow"><b>${esc(t.name)}</b><div class="sub">${esc(t.phone || 'مفيش رقم')}</div></div>
       ${t.phone ? `<a class="btn sm ok" target="_blank" rel="noopener" data-i="${i}" href="${waLink(t.phone, inviteMsg(t, tpl))}">ابعت</a>` : `<button class="btn sm" data-c="${i}">انسخ</button>`}</div>`).join('')}</div>
     <div class="acts"><button class="btn" id="cpAll">📋 انسخ كل الرسايل</button><button class="btn ghost" data-close>قفل</button></div>`, box => {

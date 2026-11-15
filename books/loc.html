@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#6d28d9">
+<title>سلاح التلميذ - مكان الدرس</title>
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="common.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<style>
+body{background:#f5f3ff}
+.lw{max-width:560px;margin:0 auto;padding:14px 16px 40px}
+.lh{background:linear-gradient(135deg,#6d28d9,#3b82f6);color:#fff;border-radius:18px;padding:18px 16px;text-align:center;margin-bottom:12px}
+.lh h1{margin:0 0 6px;font-size:22px}.lh p{margin:0;font-size:16px;line-height:1.7}
+.lok{text-align:center;padding:30px 10px}.lok .i{font-size:64px}
+</style>
+</head>
+<body>
+<div class="lw" id="app"><div class="card" style="text-align:center">⏳ لحظة…</div></div>
+<script>
+"use strict";
+// 2026-11-15 (طلب شريف): لينك خفيف للمدرس ← يحدد موقع مكان الدرس + أيام وساعات تواجده، ويتبعت للمندوب (بيتعتمد لوحده في المراسلات)
+const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode';
+const h = new URLSearchParams(location.hash.slice(1));
+if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
+const code = (h.get('c') || '').trim() || LS.get(TCODE);
+if (h.get('c')) LS.set(TCODE, code);   // لو فتح تطبيق المدرس بعدين يلاقي ملفه
+const sb = makeClient(false, TCFG), app = $('#app'), st = {};
+function done(name) {
+  app.innerHTML = `<div class="card lok"><div class="i">✅</div><h2>شكرًا يا أ/ ${esc(name || '')} 🌹</h2>
+    <p>الموقع والمواعيد وصلوا لـ «سلاح التلميذ».<br>هنتواصل مع حضرتك قريب إن شاء الله.</p></div>`;
+}
+async function start() {
+  if (!code) { app.innerHTML = '<div class="card">⚠️ الرابط ناقص — اطلب من المندوب يبعتهولك تاني.</div>'; return; }
+  let D;
+  try { const r = await sb.rpc('t_get', { p_code: code }); if (r.error) throw r.error; D = r.data; }
+  catch (e) { app.innerHTML = `<div class="card">⚠️ ${esc(errMsg(e))}<div class="acts"><button class="btn pri" onclick="location.reload()">🔄 جرّب تاني</button></div></div>`; return; }
+  if (!D) { app.innerHTML = '<div class="card">⚠️ الرابط ده مش شغال — اطلب من المندوب يبعتهولك تاني.</div>'; return; }
+  const pr = D.profile || {};
+  app.innerHTML = `<div class="lh"><h1>📍 أهلًا أ/ ${esc(D.name || '')}</h1><p>إنت كده هتحدّد <b>موقع مكان الدرس</b><br>وأيام ومواعيد تواجدك فيه، عشان نوصّل لحضرتك لحد مكانك 🚚</p></div>
+    <form id="lf" class="card" onsubmit="return false">${profileForm(pr, { only: ['loc', 'days'], remind: true, noWarn: true })}
+      <div class="acts"><button class="btn ok" id="lsend" style="width:100%;font-size:18px;padding:12px">✅ ابعت</button></div></form>`;
+  const f = $('#lf'); bindProfileForm(f, st, { remind: true });
+  $('#lsend').onclick = async () => {
+    const v = readProfileForm(f, st), out = {};
+    if (st.loc) out.loc = st.loc;
+    if (v.days && Object.keys(v.days).length) {
+      if (Object.values(v.days).some(d => !d.f || !d.t)) return toast('اكتب من الساعة كام لحد كام لكل يوم علّمت عليه', 4000);
+      out.days = v.days;
+    }
+    if (!out.loc) return toast('دوس الأول على زرار «📍» وإنت في مكان الدرس', 4000);
+    if (!out.days) return toast('علّم على الأيام اللي بتكون موجود فيها ومن الساعة كام لكام', 4000);
+    const b = $('#lsend'); b.disabled = true; b.textContent = '⏳ بنبعت…';
+    const { error } = await sb.rpc('t_submit', { p_code: code, p_values: out, p_photos: [], p_reply: null });
+    if (error) { b.disabled = false; b.textContent = '✅ ابعت'; return toast(errMsg(error), 5000); }
+    done(D.name);
+  };
+}
+start();
+</script>
+</body>
+</html>
