@@ -369,7 +369,8 @@ nav.tabs a{font-size:12px}
 .avatar{width:56px;height:56px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex:none}
 .tc-chips{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
 .tc-chips span{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px 8px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rbtns{display:flex;gap:12px;justify-content:center;margin-top:14px}
+.rbtns{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.rbtns .rbtn{width:44px;height:44px;font-size:20px}
 .rbtn{width:50px;height:50px;border-radius:50%;border:0;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.1);font-size:22px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer}
 .bigbuy{display:flex;gap:8px;margin-bottom:14px}
 .btn.gold{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;font-size:18px;padding:15px 10px;flex:2;box-shadow:0 4px 12px rgba(234,88,12,.3)}
@@ -1321,6 +1322,15 @@ async function pushPrices(){
 }
 // دايرة صورة المدرس جنب اسمه (من غير صورة = أول حرف)
 function tAv(t){ return t.thumb ? `<img class="tav" src="${t.thumb}" alt="" loading="lazy" decoding="async">` : `<span class="tav">${esc((t.name||'؟').trim().charAt(0)||'؟')}</span>`; }
+// 2026-11-16: سطر بيانات المدرس (نفس اللي في كارت صفحة المدرسين) — بيتستخدم كمان في صفحة الرسائل/الأسعار
+function tInfoLine(t){
+  return [t.subjectText, STAGE_TXT[t.stage]||'', t.area].filter(Boolean).map(x=>`<span>${esc(x)}</span>`)
+    .concat(t.phone?[`<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>`]:[])
+    .concat(oldPh(t).map(x=>`<span style="color:#c2410c;font-weight:700">📞 القديم <span dir="ltr">${esc(x.p)}</span></span>`))
+    .concat(LV[t.id]?[`<span class="lastv" style="margin:0">🕘 ${visitLabel(LV[t.id])} — ${LV[t.id].k}</span>`]:[])
+    .concat(tUpdT(t)?[`<span>${tUpdT(t)}</span>`]:[])
+    .concat(instTxt(t)?[instTxt(t)]:[]).join('');
+}
 function teacherCard(t, x, extra=''){
   const badges=(x?.d?`<span class="pill ok">✅ استلم ${x.d}</span> `:'')+(x?.o?`<span class="pill owe">⏳ باقيله ${x.o}</span>`:'')+(!x?'<span class="pill new">لسه</span>':'');
   // أبيض = ما استلمش، برتقاني = استلم وباقيله، أخضر = خلّص
@@ -1410,7 +1420,7 @@ function renderTeacher(id){
   let html = `<div class="card tcard ${stc}"><div class="tc-top"><button class="avatar avatar-btn" data-act="photos" data-id="${esc(t.id)}" title="صور المدرس">${t.thumb?`<img src="${t.thumb}" alt="" loading="lazy" decoding="async">`:esc((t.name||'؟').trim().charAt(0)||'؟')}<span class="ph-badge">📷${(t.phN||0)>1?t.phN:''}</span></button>${t.thumb?`<button class="avdel" data-act="ph-del-main" data-id="${esc(t.id)}" title="امسح الصورة">🗑️ امسح الصورة</button>`:''}
       <div class="grow"><h2>${esc(t.name)}${nameTags(t)}</h2>${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:'<div class="lastv muted">لسه ما اتزارش</div>'}</div></div>
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
-    <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}
+    <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}${phone&&sbHas()&&sbCodes[t.id]?`<a class="rbtn" style="background:#dcfce7" href="https://wa.me/2${esc(normPhone(phone))}?text=${encodeURIComponent(appInviteMsg(t))}" target="_blank" rel="noopener" title="ابعت كارت دعوة">📲</a>`:''}${sbHas()&&sbIds[t.id]?`<a class="rbtn" href="admin.html#/ru/${encodeURIComponent(sbIds[t.id])}" title="حدّث بيانات المدرس">🔄</a>`:''}
       <button class="rbtn" data-act="show-cls-change" title="التخصص">🎯</button><button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button></div>
     <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:(instTxt(t)?`<span class="small" style="align-self:center">${instTxt(t)}</span>`:'')}</div>${t.loc?`<a class="btn ok" data-act="noop" href="${gmapsDir(t.loc)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;text-align:center;text-decoration:none">🗺️ افتح الطريق في خرائط جوجل</a>`:''}</div>
     ${recvBox(t)}
@@ -1983,8 +1993,10 @@ function teacherForm(t, preset={}){
     <div class="field"><label>العنوان بالتفصيل</label><textarea id="f_addr" placeholder="مثال: شارع المدرسة، فوق صيدلية النور، جنب مسجد الرحمة">${esc(t.tAddress||'')}</textarea></div>
     <div class="field"><button type="button" class="btn ${t.loc?'pri':'owe'}" id="f_loc" style="width:100%">📍 ارفع الموقع — <span id="f_locst">${t.loc?'الموقع موجود سابقًا':'الموقع ناقص'}</span></button>
       <div class="small muted" style="margin-top:4px">أي دوسة بتاخد موقع المكان اللي إنت واقف فيه دلوقتي.</div></div>
-    <div class="field"><label>الأيام المتواجد فيها في السنتر</label><div id="f_days">${F_DAYS.map(([k,l])=>{ const d=(t.tDays||{})[k]; return `<div class="fday" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px"><label class="chip ${d?'on':''}" style="min-width:86px"><input type="checkbox" value="${k}" ${d?'checked':''}>${l}</label>
-      <span class="ftm" ${d?'':'hidden'}>من <input type="time" data-f="${k}" value="${esc(d?.f||'')}" style="width:auto"> لحد <input type="time" data-t="${k}" value="${esc(d?.t||'')}" style="width:auto"></span></div>`; }).join('')}</div></div></div>
+    <div class="field"><label>الأيام المتواجد فيها في السنتر</label><div class="pgrid" id="f_days">${F_DAYS.map(([k,l])=>`<button type="button" class="chip" data-dk="${k}">${l}</button>`).join('')}</div>
+      <div id="f_dbox" hidden style="margin-top:8px;background:#f0f9ff;border:2px solid #7dd3fc;border-radius:12px;padding:8px 10px">
+        <b id="f_dn"></b>: من <input type="time" id="f_df" style="width:auto"> لحد <input type="time" id="f_dt" style="width:auto">
+        <button type="button" class="btn sm ghost" id="f_drm" style="margin-top:6px">✕ شيل اليوم ده</button></div></div></div>
     <div class="row2 esave"><button class="btn pri" id="f_save">💾 حفظ</button><button class="btn ghost" id="f_cancel">إلغاء</button></div>
     ${isNew?'':'<button class="btn danger" id="f_del" style="width:100%;margin-top:10px">🗑️ امسح المدرس ده وكل تعاملاته</button>'}</div>`;
   document.body.appendChild(m);
@@ -1994,8 +2006,17 @@ function teacherForm(t, preset={}){
   setTimeout(()=>m.querySelector(isNew&&preset.phone?'#f_name':'#f_name').focus(),50);
   // الصفوف على حسب المرحلة (ابتدائي 1–6، إعدادي 7–9، الاتنين 1–9)
   m.querySelector('#f_stage').addEventListener('change', ()=>{ const g=m.querySelector('#f_grades'), cur=[...g.querySelectorAll('input:checked')].map(x=>+x.value); g.innerHTML=fGradeBoxes(m.querySelector('#f_stage').value, cur); });
-  // الأيام: علّم اليوم ← تظهر الساعات
-  m.querySelector('#f_days').addEventListener('change', e=>{ if(e.target.type!=='checkbox') return; const r=e.target.closest('.fday'); r.querySelector('.ftm').hidden=!e.target.checked; e.target.parentNode.classList.toggle('on', e.target.checked); });
+  // الأيام جنب بعض: دوسة على يوم ← توقيته بس يظهر تحت (الساعة أم عقارب بتاعة الموبايل)، واليوم اللي ليه وقت يفضل ملوّن ومكتوب عليه
+  const dayS=JSON.parse(JSON.stringify(t.tDays&&typeof t.tDays==='object'?t.tDays:{})); let curD=null;
+  const hm=v=>{ if(!v) return '؟'; let [h,mi]=v.split(':').map(Number); const s=h>=12?'م':'ص'; h=h%12||12; return h+(mi?':'+String(mi).padStart(2,'0'):'')+s; };
+  const drawDays=()=>{ m.querySelectorAll('#f_days [data-dk]').forEach(b=>{ const k=b.dataset.dk, d=dayS[k], l=F_DAYS.find(x=>x[0]===k)[1];
+      b.classList.toggle('on', !!d); b.style.outline=k===curD?'2px solid #0284c7':''; b.innerHTML=esc(l)+(d&&(d.f||d.t)?` <small style="font-weight:600">${hm(d.f)}–${hm(d.t)}</small>`:''); });
+    const bx=m.querySelector('#f_dbox'); bx.hidden=!curD; if(curD){ m.querySelector('#f_dn').textContent=F_DAYS.find(x=>x[0]===curD)[1]; m.querySelector('#f_df').value=dayS[curD].f||''; m.querySelector('#f_dt').value=dayS[curD].t||''; } };
+  m.querySelector('#f_days').addEventListener('click', e=>{ const b=e.target.closest('[data-dk]'); if(!b) return; const k=b.dataset.dk; if(!dayS[k]) dayS[k]={f:'',t:''}; curD=(curD===k&&dayS[k].f&&dayS[k].t)?null:k; drawDays(); });
+  m.querySelector('#f_df').addEventListener('change', e=>{ if(curD){ dayS[curD].f=e.target.value; drawDays(); } });
+  m.querySelector('#f_dt').addEventListener('change', e=>{ if(curD){ dayS[curD].t=e.target.value; drawDays(); } });
+  m.querySelector('#f_drm').onclick=()=>{ if(curD){ delete dayS[curD]; curD=null; drawDays(); } };
+  drawDays();
   // 📍 ارفع الموقع: أي دوسة = موقع المكان اللي هو فيه دلوقتي (بيتحفظ مع «حفظ»)
   let newLoc=null;
   m.querySelector('#f_loc').onclick=()=>{ const b=m.querySelector('#f_loc'), s=m.querySelector('#f_locst'); s.textContent='⏳ بنجيب الموقع…';
@@ -2016,8 +2037,7 @@ function teacherForm(t, preset={}){
       grades:[...m.querySelectorAll('#f_grades input:checked')].map(x=>+x.value), where:m.querySelector('#f_where').value};
     data.tGrades=data.grades.slice().sort((a,b)=>a-b); data.grades=data.tGrades.filter(g=>g<=6);
     data.tAddress=m.querySelector('#f_addr').value.trim();
-    const days={}; m.querySelectorAll('#f_days .fday').forEach(r=>{ const c=r.querySelector('input[type=checkbox]'); if(c.checked) days[c.value]={f:r.querySelector('[data-f]').value, t:r.querySelector('[data-t]').value}; });
-    data.tDays=days; if(newLoc) data.loc=newLoc;
+    data.tDays=dayS; if(newLoc) data.loc=newLoc;
     if(isNew && (!data.grades.length || !data.where) && !confirm('الصفوف أو «دروس / مدارس» لسه ما اتحددوش — دول بيتكتبوا في شيت الإضافات.\nتحفظ كده؟')) return;
     data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
     if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); logT(nt.id, 'اتسجّل مدرس جديد', 'إضافة'); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
@@ -2146,7 +2166,8 @@ document.addEventListener('click', e=>{
     case 'filter': hfReset(); homeFilter=el.dataset.k; renderTeachers(); break;
     case 'copy-owed': copyText(owedText()); break;
     case 'rep-days': repPicker(); break;
-    case 'price-send': try{ localStorage.setItem(KEY+'-msg', priceMsg()); }catch(er){} msgSel.clear(); msgF.q=''; location.hash='#/msgs'; break;
+    case 'price-send': priceBooksPick(); break;
+    case 'price-own-save': priceOwnSave(); break;
     case 'export': exportExcel(el.dataset.scope==='all', el.dataset.part||''); break;
     case 'sale-sheets': saleSheetChoice(); break;
     case 'dd-q': ddQuick(el.dataset.r); break;
@@ -3925,17 +3946,59 @@ function pricesCard(){
     <p class="hint">أعمدته: المادة، الصف، المرحلة، السعر قبل الخصم، السعر بعد الخصم. لو «بعد الخصم» فاضي البرنامج بيحسبه (إنجليزي 30%، إعدادي 24.5%). البيع اللي اتأكد بيفضل بسعره وقتها، والطلبات بتاخد السعر الجديد.</p>`}
     ${n?`<details class="stk"><summary>👀 الأسعار الحالية</summary>${SELL_KEYS.map(k=>{ const p=priceOf(k);
       return `<div class="kv"><span style="color:var(--c-${bookParts(k).sb})">${esc(bookLabel(k))}</span><span>${p?`${p.pre!=null?`<s class="muted">${fmtN(p.pre)}</s> ← `:''}<b>${fmtN(p.post)}</b>`:'—'}</span></div>`; }).join('')}</details>
+    ${isOwnerApp()?`<details class="stk"><summary>✏️ عدّل الأسعار (المالك بس)</summary>
+      <div class="small muted" style="margin:4px 0">قبل الخصم ← بعد الخصم. لما تحفظ بتنزل عند كل المناديب.</div>
+      ${SELL_KEYS.map(k=>{ const p=db.prices[k]||{}; return `<div class="kv" style="gap:6px"><span style="color:var(--c-${bookParts(k).sb});flex:1">${esc(bookLabel(k))}</span><input data-pk="${esc(k)}" data-w="pre" inputmode="decimal" value="${p.pre??''}" placeholder="قبل" style="width:70px"><input data-pk="${esc(k)}" data-w="post" inputmode="decimal" value="${p.post??''}" placeholder="بعد" style="width:70px"></div>`; }).join('')}
+      <button class="btn pri" style="width:100%;margin-top:8px" data-act="price-own-save">💾 احفظ وابعتها لكل المناديب</button></details>
+      <div class="row2" style="margin-top:8px"><button class="btn" data-act="price-template">⬇️ نزّل شيت الأسعار</button><button class="btn pri" data-act="price-xlsx">⬆️ ارفع شيت الأسعار</button></div>`:''}
     <button class="btn ok" style="width:100%;margin-top:8px;font-size:17px" data-act="price-send">📤 ابعت الأسعار للمدرسين</button>
     <p class="hint">بيفتحلك صفحة الرسائل والأسعار مكتوبة: دوّر بالقرية أو التصنيف (A/B/C) أو المادة أو رقم التليفون، اختار مدرس أو أكتر، وابعت على الواتساب.</p>`:''}</div>`;
 }
 // رسالة الأسعار (للواتساب) — الكتب اللي ليها سعر بس، بالمرحلة
-function priceMsg(){
+function priceMsg(only){
   const L=['أهلاً {الاسم} 👋', `أسعار كتب سلاح التلميذ (${fmtDay(dayKey())}):`];
-  for(const st of ['p','m']){ const ks=SELL_KEYS.filter(k=>bookParts(k).st===st && priceOf(k)); if(!ks.length) continue;
+  for(const st of ['p','m']){ const ks=SELL_KEYS.filter(k=>bookParts(k).st===st && priceOf(k) && (!only || only.includes(k))); if(!ks.length) continue;
     L.push('', `📚 ${STAGES[st].name}:`);
     for(const k of ks){ const p=priceOf(k); L.push(`• ${bookLabel(k)}: ${fmtN(p.post)} ج${p.pre!=null && p.pre!==p.post?` بدل ${fmtN(p.pre)} ج`:''}`); } }
   L.push('', `للطلب كلّمني: ${db.rep||''}`.trim());
   return L.join('\n');
+}
+// 📤 2026-11-16: قبل إرسال الأسعار ← اختار الكتب اللي هتبعت أسعارها
+function priceBooksPick(){
+  const ks=SELL_KEYS.filter(k=>priceOf(k));
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3>📤 اختار الكتب اللي هتبعت أسعارها</h3>
+    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="pbAll">☑️ الكل</button><button class="btn sm ghost" id="pbNone">✕ ولا حاجة</button></div>
+    <div style="max-height:55vh;overflow:auto">${['p','m'].map(st=>{ const l=ks.filter(k=>bookParts(k).st===st); return l.length?`<div class="small" style="font-weight:800;margin:8px 0 4px">📚 ${STAGES[st].name}</div><div class="pgrid">${l.map(k=>`<label class="chip on" style="color:var(--c-${bookParts(k).sb})"><input type="checkbox" value="${esc(k)}" checked>${esc(bookLabel(k))} <small>${fmtN(priceOf(k).post)}ج</small></label>`).join('')}</div>`:''; }).join('')}</div>
+    <div class="row2" style="margin-top:10px"><button class="btn ok" id="pbGo">التالي: اختار المدرسين ←</button><button class="btn ghost" id="pbX">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  const boxes=()=>[...m.querySelectorAll('input[type=checkbox]')];
+  m.addEventListener('change', e=>{ if(e.target.type==='checkbox') e.target.parentNode.classList.toggle('on', e.target.checked); });
+  m.querySelector('#pbAll').onclick=()=>boxes().forEach(c=>{ c.checked=true; c.parentNode.classList.add('on'); });
+  m.querySelector('#pbNone').onclick=()=>boxes().forEach(c=>{ c.checked=false; c.parentNode.classList.remove('on'); });
+  m.querySelector('#pbX').onclick=()=>m.remove(); m.addEventListener('click', e=>{ if(e.target===m) m.remove(); });
+  m.querySelector('#pbGo').onclick=()=>{ const sel=boxes().filter(c=>c.checked).map(c=>c.value); if(!sel.length){ toast('اختار كتاب واحد على الأقل'); return; }
+    m.remove(); try{ localStorage.setItem(KEY+'-msg', priceMsg(sel)); }catch(er){} msgSel.clear(); msgF.q=''; location.hash='#/msgs'; };
+}
+// 💲 2026-11-16: المالك بس يعدّل الأسعار ← بتتحفظ في المراسلات (app_settings «prices_master») وتنزل عند كل المناديب مع pullPrices
+async function pushPriceMaster(){
+  try{ if(!isOwnerApp() || !sbHas()) { toast('⚠️ اتحفظت هنا بس — ادخل 💬 المراسلات بحساب المالك عشان توصل للمناديب', 5000); return; }
+    const S=await sbSession(); if(!S) return;
+    const p={}; for(const k of SELL_KEYS){ const x=db.prices[k]; if(x && (x.pre!=null || x.post!=null)) p[k]={pre:x.pre??null, post:x.post??null}; }
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/app_settings?on_conflict=key',{method:'POST',headers:{...S.h,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify({key:'prices_master', value:{p, at:new Date().toISOString()}})});
+    toast(r.ok?'✅ الأسعار اتبعتت لكل المناديب':'⚠️ ماوصلتش للمناديب — اتأكد إنك داخل المراسلات كمالك', 4000);
+  }catch(e){ toast('⚠️ مفيش نت — الأسعار اتحفظت هنا بس'); }
+}
+async function pullPriceMaster(){
+  try{ if(!sbHas() || !navigator.onLine) return null; const S=await sbSession(); if(!S) return null;
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/app_settings?select=value&key=eq.prices_master',{headers:S.h}); if(!r.ok) return null;
+    const j=await r.json(); return j[0]&&j[0].value&&j[0].value.p ? j[0].value : null;
+  }catch(e){ return null; }
+}
+function priceOwnSave(){
+  const upd={}; document.querySelectorAll('[data-pk]').forEach(i=>{ const k=i.dataset.pk, w=i.dataset.w, v=parseNum(i.value); (upd[k] ||= {pre:db.prices[k]?.pre??null, post:db.prices[k]?.post??null})[w]=v; });
+  withUndo('💲 الأسعار اتحفظت', ()=>{ Object.assign(db.prices, upd); fillPrices(); });
+  pushPriceMaster();
 }
 function merchCard(){
   const ms=merchSum();
@@ -4012,6 +4075,7 @@ $('#filePrice').addEventListener('change', async e=>{
   if(!n){ alert('مفيش أسعار في الشيت.'); return; }
   if(!confirm(`لقيت أسعار ${n} كتاب${bad?`\n⚠️ و ${bad} سطر مش فاهمه (هيتساب)`:''}.\n\nأحفظها؟`)) return;
   withUndo(`💲 اتحفظت أسعار ${n} كتاب`, ()=>{ Object.assign(db.prices, upd); fillPrices(); });
+  if(isOwnerApp()) pushPriceMaster();   // المالك: الشيت بيوصل لكل المناديب
 });
 $('#fileMerch').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
@@ -4227,6 +4291,8 @@ async function pullPrices(manual){
     // لو خانة في شيت الدرايف فاضية (مثلاً «بعد الخصم») ← السعر اللي متسجل في البرنامج مايتمسحش (طلب شريف 2026-11-12)
     for(const k in np){ const o=db.prices[k]||{}; if(np[k].pre==null && o.pre!=null) np[k].pre=o.pre; if(np[k].post==null && o.post!=null) np[k].post=o.post; }
     for(const k in db.prices) if(!np[k] && db.prices[k] && (db.prices[k].pre!=null || db.prices[k].post!=null)) np[k]={...db.prices[k]};
+    // 2026-11-16: أسعار المالك من المراسلات (prices_master) هي الأحدث ← بتغلب
+    const pm=await pullPriceMaster(); if(pm) for(const k in pm.p) if(isSell(k)) np[k]={pre:pm.p[k].pre??null, post:pm.p[k].post??null};
     // رقم واتساب التقارير: من صفحة «إعدادات» في شيت الأسعار (شريف بس اللي بيحدده)
     if(j.phone!=null){ const ph=String(j.phone).trim(); if(ph!==(db.reportPhone||'')){ db.reportPhone=ph; save(false); } }
     const changed=JSON.stringify(np)!==JSON.stringify(db.prices);
@@ -5244,7 +5310,9 @@ function renderMsgs(){
 }
 function msgCount(){ const b=$('#msg_go'); if(b) b.textContent=`📤 ابدأ الإرسال (${[...msgSel].filter(id=>tById(id)?.phone).length} مدرس)`; }
 function msgDraw(){ const box=$('#msg_l'); if(!box) return; const l=msgShown();
-  box.innerHTML = l.length ? l.slice(0,400).map(t=>`<label class="trow ${tStC(t)} ${t.phone?'':'off'}" style="${tUpdSt(t)}"><input type="checkbox" data-id="${esc(t.id)}" ${msgSel.has(t.id)?'checked':''} ${t.phone?'':'disabled'}>${tAv(t)}<div class="grow"><b>${esc(t.name)}</b>${nameTags(t)} ${tRecv(t)}<div class="small muted">${esc([t.area, t.phone||'مفيش رقم', t.subjectText].filter(Boolean).join(' • '))}</div></div><div class="icos">${phoneBtns(t)}</div></label>`).join('')
+  // 2026-11-16 (طلب شريف): المدرس هنا بنفس شكل كارت صفحة المدرسين (الاسم والعلامات والاستلام، سطر البيانات، والخمس أيقونات تحت)
+  box.innerHTML = l.length ? l.slice(0,400).map(t=>`<label class="trow tcw ${tStC(t)} ${t.phone?'':'off'}" style="${tUpdSt(t)};display:block"><div class="tcw-h"><input type="checkbox" data-id="${esc(t.id)}" ${msgSel.has(t.id)?'checked':''} ${t.phone?'':'disabled'} style="width:22px;height:22px;flex:none">${tAv(t)}<div class="nm grow"><b>${esc(t.name)}</b>${nameTags(t)}${ACC[t.id]?.owe>0?` <span class="pill money">💰 عليه ${fmtM(ACC[t.id].owe)}</span>`:''}</div><div class="tcw-b">${tRecv(t)}</div></div>
+    <div class="tline">${tInfoLine(t)||'<span class="muted">مفيش رقم</span>'}</div><div class="icos tcw-i">${phoneBtns(t)}</div></label>`).join('')
     + (l.length>400?`<div class="small muted">ظاهر أول 400 — ضيّق البحث</div>`:'') : '<div class="empty small">مفيش مدرسين بالاختيار ده</div>';
   markWords(box, qWords(msgF.q)); msgCount(); }
 /* [رابط المدرس]: بنجيب (أو نعمل) حساب كل مدرس في 💬 المراسلات (Supabase) بجلسة admin.html المحفوظة على نفس الموقع */
