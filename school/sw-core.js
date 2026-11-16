@@ -21,6 +21,10 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
   if (url.origin !== location.origin) return;
+  if (/devices\.json$/.test(url.pathname)) return; // قائمة الأرقام السرية: من النت دايمًا، مش من المحفوظ
+
+  // طلب التحديث (?v=...) لازم يروح للنت، مش للنسخة المحفوظة (وإلا الدرس المتعدّل مايتحدّثش أبدًا)
+  if (url.searchParams.has('v')) return;
 
   // الدروس: من المحفوظ على الموبايل أولًا (بدون نت)
   if (url.href.indexOf(SCOPE + 'lessons/') === 0) {
