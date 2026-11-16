@@ -22,7 +22,7 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== FONTS).map(k => caches.delete(k)))));
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== FONTS && !k.startsWith('shell-') && !k.startsWith('lessons-')).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
