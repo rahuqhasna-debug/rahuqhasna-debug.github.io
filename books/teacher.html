@@ -1213,7 +1213,8 @@ function renderMe() {
   const pend = D.pending ? D.pending.new_values : null;
   st = {};
   // الملف متقسم كروت ملونة. كل كارت ليه أيقونة في دايرة
-  const V = vals(), o = { req, pend, remind: true, noWarn: true };
+  // 2026-11-17 (طلب شريف): بيانات المدرس المتسجلة عند المندوب ما تظهرش هنا — الخانات فاضية والمدرس يكتب بنفسه
+  const V = {}, o = { req, pend, remind: true, noWarn: true };
   const SEC = [['me', '👤', 'بياناتي', ['name', 'avatar', 'phone']], ['work', '📚', 'شغلي', ['stage', 'subjects', 'spec', 'grades', 'where', 'students', 'area', 'school']],
     ['place', '🚚', 'مكان الدرس', ['address', 'loc']], ['days', '🕒', 'أيام السنتر', ['days']]];
   const reqList = [...req].filter(k => FIELD_LABEL[k]);
@@ -1237,9 +1238,12 @@ function renderMe() {
     for (const fl of files) { try { newPhotos.push(await compressImage(fl, 1280, 60000)); drawPhotos(); } catch (er) { toast(errMsg(er)); } }
   });
   $('#save').onclick = async () => {
-    const nv = readProfileForm(f, st), ch = changedOnly(vals(), nv);
-    if (!Object.keys(ch).length && !newPhotos.length) return toast('مفيش تغيير');
-    if ('name' in ch && !String(ch.name).trim()) return toast('الاسم مينفعش يبقى فاضي');
+    // الخانات بتبدأ فاضية ← نبعت اللي المدرس كتبه بس (الفاضي ما يمسحش بياناته اللي عندنا)
+    const nv = readProfileForm(f, st), filled = {};
+    for (const k in nv) { const v = nv[k]; if (v === '' || v == null || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)) continue; filled[k] = v; }
+    if (!filled.stage) { delete filled.spec; delete filled.grades; }
+    const ch = changedOnly(vals(), filled);
+    if (!Object.keys(ch).length && !newPhotos.length) return toast('اكتب بياناتك الأول');
     const b = $('#save'); b.disabled = true; b.textContent = 'جاري الإرسال…';
     const { error } = await sb.rpc('t_submit', { p_code: code, p_values: ch, p_photos: newPhotos, p_reply: null });
     if (error) { b.disabled = false; b.textContent = '✅ تم — ابعت للمراجعة'; return toast(errMsg(error)); }

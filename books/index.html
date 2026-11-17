@@ -2040,9 +2040,9 @@ function teacherForm(t, preset={}){
     data.tDays=dayS; if(newLoc) data.loc=newLoc;
     if(isNew && (!data.grades.length || !data.where) && !confirm('الصفوف أو «دروس / مدارس» لسه ما اتحددوش — دول بيتكتبوا في شيت الإضافات.\nتحفظ كده؟')) return;
     data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
-    if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); logT(nt.id, 'اتسجّل مدرس جديد', 'إضافة'); save(); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
+    if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); logT(nt.id, 'اتسجّل مدرس جديد', 'إضافة'); save(); sbPushTeacher(nt); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
     else { const before={...t}; Object.assign(t,data); notePhoneChange(t, before.phone); const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
-      save(); close(); render(); toast('اتحفظ ✅'); }
+      save(); if(before.phone!==t.phone || before.name!==t.name) sbPushTeacher(t); close(); render(); toast('اتحفظ ✅'); }
   };
   const del=m.querySelector('#f_del');
   if(del) del.onclick=()=>{
@@ -3647,7 +3647,7 @@ function saleForm(tid, editId, mode='sell'){
       if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تختاره؟`)){ st.tid=dup.id; drawT(); drawB(); } return; }
       const area=(m.querySelector('#sf_na')?.value||'').trim();
       const nt={id:uid(), name, phone, isNew:true, area, newArea:isNewArea(area), stage:'', subjectText:'', subjects:[], school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
-      db.teachers.push(nt); save(); st.tid=nt.id; keep(); drawT(); drawB(); toast(`➕ اتضاف ${name}`);
+      db.teachers.push(nt); save(); sbPushTeacher(nt); st.tid=nt.id; keep(); drawT(); drawB(); toast(`➕ اتضاف ${name}`);
     }
     else if(a==='order') save1(false);
     else if(a==='sell') save1(true);
@@ -5345,6 +5345,17 @@ async function sbLinks(list){
   }
   try{ localStorage.setItem('selah-trial-ids', JSON.stringify(sbIds)); }catch(e){}
   const out={}; for(const t of list) if(codes[t.id]) out[t.id]=base+'#c='+codes[t.id]; return out;
+}
+// 2026-11-17 (طلب شريف): أول ما المندوب يسجّل مدرس أو يعدّل رقمه ← يتبعت للقاعدة على طول، عشان المدرس يقدر يدخل من لينك المجموعة فورًا
+async function sbPushTeacher(t){
+  try{
+    if(!t || !t.id || !t.name || !sbHas() || !navigator.onLine) return;
+    const S=await sbSession(); if(!S) return;
+    const had=!!sbIds[t.id];
+    await sbLinks([t]);   // لو مش موجود بيتعمل (ومعاه كود الدخول)
+    const id=sbIds[t.id];
+    if(id && had) await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?id=eq.'+id,{method:'PATCH',headers:S.h,body:JSON.stringify({name:t.name, phone:t.phone||''})});
+  }catch(e){ console.warn('sbPushTeacher', e); }
 }
 async function msgSend(){
   const txt=($('#msg_t')?.value||'').trim(); if(!txt){ alert('اكتب الرسالة الأول'); return; }
