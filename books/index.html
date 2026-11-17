@@ -1939,7 +1939,7 @@ function grpLink(how){
   const ph=($('#grpPh')?.value||'').replace(/\D/g,''); if(ph.length<10) return toast('اكتب رقمك الأول (11 رقم)');
   if(db.repPhone!==ph){ db.repPhone=ph; save(false); }
   const url=location.href.split('#')[0].replace(/[^\/]*$/,'')+'join.html#r='+me.id+'&n='+encodeURIComponent(db.rep||me.name||'')+'&ph='+ph;
-  const txt='السلام عليكم يا أساتذة\nعشان توصلكم رسايل «سلاح التلميذ» ومواعيد استلام النسخ، ادخلوا على الرابط ده واكتبوا رقم تليفونكم وثبّتوا البرنامج:\n'+url;
+  const txt='السلام عليكم ورحمة الله وبركاته\n‼️ هام وعاجل 📢 @الكل\n‼️ هام وعاجل 📢 @الكل\n🚨 عاجل جدًا 📢 @الكل\n\nيا أساتذة، عشان توصلكم رسايل «سلاح التلميذ» ومواعيد استلام النسخ، ادخلوا على الرابط ده واكتبوا رقم تليفونكم وثبّتوا البرنامج:\n'+url;
   if(how==='wa'){ window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); return; }
   try{ navigator.clipboard.writeText(txt).then(()=>toast('اتنسخ ✅ الصقه في الجروب'),()=>prompt('انسخ:',txt)); }catch(e){ prompt('انسخ:',txt); }
 }

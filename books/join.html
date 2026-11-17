@@ -46,8 +46,9 @@ function notFound() {
   msg(`<div class="nf">⚠️ الرقم ده مش متسجل عندنا.<br>اتأكد من الرقم وجرّب تاني، أو جرّب رقم تاني ليك، أو كلّم <b>أ/ ${esc(RN)}</b>${RP ? ` <span dir="ltr">${esc(RP)}</span>` : ''}.
     ${RP ? `<div class="acts"><a class="btn pri" href="tel:${esc(RP)}">📞 اتصل</a><a class="btn ok" target="_blank" rel="noopener" href="${waLink(RP, 'السلام عليكم يا أ/ ' + RN + '، أنا مدرس وعايز أدخل على برنامج سلاح التلميذ ورقمي مش متسجل: ' + $('#ph').value.trim())}">واتساب</a></div>` : ''}</div>`);
 }
-// الأرقام العربي (٠١٢…) والفارسي (۰۱۲…) تتحول لإنجليزي قبل ما نشيل أي حاجة مش رقم
-const enDigits = s => String(s || '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x6F0);
+// أرقام أي لغة (عربي ٠١٢، فارسي ۰۱۲، هندي ०१२، … وإنجليزي) تتحول لإنجليزي قبل ما نشيل أي حاجة مش رقم
+const isD = cp => /\p{Nd}/u.test(String.fromCodePoint(cp));
+const enDigits = s => String(s || '').replace(/\p{Nd}/gu, ch => { const cp = ch.codePointAt(0); let z = cp; while (z > 0 && isD(z - 1)) z--; return String((cp - z) % 10); });
 async function go() {
   const p = enDigits($('#ph').value).replace(/\D/g, '');
   if (!REP) return msg('<div class="nf">⚠️ الرابط ناقص — اطلب الرابط تاني من المندوب.</div>');
