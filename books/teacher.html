@@ -1263,39 +1263,52 @@ let NEWS = LS.get('selah-news', { items: [], got: 0 }), newsSub = null;
 async function loadNews(force) {
   const u = (window.SILAH_CONFIG || {}).CLOUD_URL;
   // 🧭 مهمة 2 — المرحلة 6: من جوجل مرة في اليوم؛ لو فتح «اعرف الجديد» أو وصل إشعار ← لو عدّت ساعة
-  if (!u || Date.now() - (NEWS.got || 0) < (force ? 3600000 : 864e5)) return;
+  if (!u || Date.now() - (NEWS.got || 0) < (force ? 1800000 : 4 * 3600000)) return;
   try {
     const j = await (await fetch(u + '?k=news')).json(); if (!j || !j.ok) return;
     const ch = JSON.stringify(j.items) !== JSON.stringify(NEWS.items);
     NEWS = { items: j.items || [], got: Date.now() }; LS.set('selah-news', NEWS);
-    if (ch && (view === 'home' || view === 'news')) render();
+    if (ch && (view === 'home' || view === 'news')) render(); else if (ch && D) updBell();
   } catch (e) { }
 }
-const mySubs = () => ((D.profile || {}).subjects || []).filter(s => NEWS_CH[s]);
-function newsNew(s) { const seen = LS.get('selah-news-seen', {})[s] || ''; return NEWS.items.filter(x => x.s === s && x.at > seen).length; }
-function newsTotal() { return [...mySubs(), 'all'].reduce((n, s) => n + newsNew(s), 0); }
+// الجديد بيتحسب من دلوقتي: أول مرة بعد التحديث كل القديم بيتعلّم إنه اتشاف
+(function () {
+  if (LS.get('selah-news-init2')) return;
+  const now = new Date().toISOString(), s = LS.get('selah-news-seen', {});
+  ['ar', 'math', 'en', 'sci', 'stu', 'all'].forEach(k => { s[k] = s[k] || now; });
+  [...Object.values(NEWS_CHS.prim), ...Object.values(NEWS_CHS.prep)].forEach(c => { s['c:' + c] = now; });
+  LS.set('selah-news-seen', s); LS.set('selah-news-init2', 1);
+})();
+const newsIsNew = (x, seen) => x.at > (seen[x.c ? 'c:' + x.c : x.s] || '');
+function newsNew(s) { const seen = LS.get('selah-news-seen', {}); return NEWS.items.filter(x => x.s === s && newsIsNew(x, seen)).length; }
+function newsNewCh(c) { const seen = LS.get('selah-news-seen', {}); return NEWS.items.filter(x => x.c === c && newsIsNew(x, seen)).length; }
+function newsTotal() { const seen = LS.get('selah-news-seen', {}); return NEWS.items.filter(x => newsIsNew(x, seen)).length; }
+function newsBrief() { return ['ar', 'math', 'en', 'sci', 'stu', 'all'].map(s => [NEWS_L[s], newsNew(s)]).filter(x => x[1]).map(x => x[0] + ' ' + x[1]).join('، '); }
 function renderNews() {
   loadNews(true);
-  const mine = mySubs();
   if (!newsSub) {
     // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
     const subs = ['ar', 'math', 'en', 'sci', 'stu'];
     const tile = (st, s) => { const ch = NEWS_CHS[st][s];
-      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]}"><span class="nci">${NCOVIMG[st][s] ? `<img class="covi" src="cov-${NCOVIMG[st][s]}" alt="${NEWS_L[s]}" loading="lazy">` : `<span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="icon-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span>`}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+      const nw = ch ? newsNewCh(ch) : 0;
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]};position:relative">${nw ? `<span class="pill bad" style="position:absolute;top:4px;inset-inline-start:4px;z-index:2;font-weight:800">${nw}</span>` : ''}<span class="nci">${NCOVIMG[st][s] ? `<img class="covi" src="cov-${NCOVIMG[st][s]}" alt="${NEWS_L[s]}" loading="lazy">` : `<span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="icon-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span>`}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
     const sec = st => `<div class="nhd" style="--c:${NSTAGE[st][1]}">المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
-    const hasAll = NEWS.items.some(x => x.s === 'all');
+    // ملفات الدرايف (عام + كل مادة) ليها زراير لوحدها تحت القنوات
+    const fileN = s => { const seen = LS.get('selah-news-seen', {}); return NEWS.items.filter(x => x.s === s && !x.c && newsIsNew(x, seen)).length; };
+    const fileSubs = ['all', ...subs].filter(s => NEWS.items.some(x => x.s === s && !x.c));
     app.innerHTML = `<div class="phead">اعرف الجديد<div class="small">قنوات سلاح التلميذ على تليجرام — اختار المادة</div></div>
       ${sec('prim')}${sec('prep')}
-      ${hasAll ? `<button class="tt" data-ns="all" style="width:100%;margin-top:10px;background:linear-gradient(140deg,#94a3b8,#475569)"><span class="tti">📢</span><span class="ttl">عام</span>${newsNew('all') ? `<span class="ttb">${newsNew('all')}</span>` : ''}</button>` : ''}`;
+      ${fileSubs.map(s => `<button class="tt" data-ns="${s}" style="width:100%;margin-top:10px;background:linear-gradient(140deg,#94a3b8,#475569)"><span class="tti">${s === 'all' ? '📢' : '📁'}</span><span class="ttl">${s === 'all' ? 'عام' : 'ملفات ' + NEWS_L[s]}</span>${fileN(s) ? `<span class="ttb">${fileN(s)}</span>` : ''}</button>`).join('')}`;
     $$('.nch').forEach(b => b.onclick = () => {
       const ch = NEWS_CHS[b.dataset.st][b.dataset.s];
       if (!ch) return toast('قريبًا إن شاء الله 🌟', 2500);
-      openTg(ch);
+      const seen = LS.get('selah-news-seen', {}); seen['c:' + ch] = new Date().toISOString(); LS.set('selah-news-seen', seen);
+      render(); updBell(); openTg(ch);
     });
     $$('[data-ns]').forEach(b => b.onclick = () => { newsSub = b.dataset.ns; render(); scrollTo(0, 0); });
     return;
   }
-  const s = newsSub, seenAll = LS.get('selah-news-seen', {}), seen = seenAll[s] || '', l = NEWS.items.filter(x => x.s === s);
+  const s = newsSub, seenAll = LS.get('selah-news-seen', {}), seen = seenAll[s] || '', l = NEWS.items.filter(x => x.s === s && !x.c);
   app.innerHTML = `<button class="btn sm ghost" id="nback" style="margin-bottom:8px">→ كل المواد</button>
     <div class="phead" style="${s !== 'all' ? `background:${SUBJ_COL[s]}` : ''}">${esc(NEWS_L[s])}</div>
     ${l.length ? l.map(x => `<button class="card" data-nf="${esc(x.id)}" style="display:flex;gap:10px;align-items:center;width:100%;text-align:start;font-family:inherit;font-size:16px;cursor:pointer;border:0"><span style="font-size:30px">${NEWS_IC[x.t] || '📎'}</span><span style="flex:1"><b>${esc(x.n)}</b>${x.at > seen ? ' <span class="pill bad">جديد</span>' : ''}<br><span class="small muted">${fmtDate(x.at)}</span></span><span style="font-size:20px">◀</span></button>`).join('')
@@ -1375,7 +1388,16 @@ function drawPhotos() {
 $$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
 $('#reload').onclick = () => load();
 function updBell() { const n = D ? msgBadge() + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && !$('#tabs').hidden); }
-$('#bell').onclick = () => { if (D && D.unread) go('msgs'); else if (D && (D.updates.length || (D.pending && D.pending.status === 'question'))) go('home'); else if (D && newsTotal()) go('news'); else toast('مفيش جديد دلوقتي 👌', 1800); };
+$('#bell').onclick = () => {
+  if (!D) return;
+  const rows = [];
+  if (msgBadge()) rows.push(['msgs', '💬 عندك رسايل جديدة']);
+  if (D.updates.length || (D.pending && D.pending.status === 'question')) rows.push(['home', '📝 مطلوب منك تحدّث بياناتك']);
+  if (newsTotal()) rows.push(['news', '🆕 اعرف الجديد: ' + newsBrief()]);
+  if (!rows.length) return toast('مفيش جديد دلوقتي 👌', 1800);
+  modal(`<h3 style="margin-top:0">🔔 الإشعارات</h3>${rows.map(r => `<button class="btn" data-bgo="${r[0]}" style="width:100%;margin-bottom:8px;text-align:start;white-space:normal">${esc(r[1])}</button>`).join('')}<button class="btn ghost" data-close style="width:100%">قفل</button>`,
+    (box, close) => { $$('[data-bgo]', box).forEach(b => b.onclick = () => { close(); go(b.dataset.bgo); }); });
+};
 $('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go(view === 'inv' || view === 'ret' ? 'order' : 'home'); };
 $('#back2').onclick = () => $('#back').onclick();
 load();

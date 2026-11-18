@@ -5,11 +5,13 @@
   const C = window.SILAH_CONFIG || {};
   if (!C.ONESIGNAL_APP_ID) return;
   const CLOUD = C.CLOUD_URL;
+  // كل مدرس في مجموعة ثابتة من 12 ← إشعار «اعرف الجديد» بيوصل كل مجموعة بعد التانية بـ5 دقايق
+  const tGroup = id => { let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return String(h % 12); };
   const BASE = location.href.split('#')[0].replace(/[^/]*$/, '');
   // جوه تطبيق الأندرويد الحقيقي (بند 48): الإشعارات من التطبيق نفسه (OneSignal Android) — مش من المتصفح
   if (window.SilahApp) {
     const A = window.SilahApp;
-    const nlink = () => { if (!window.TP) return; try { A.login('t-' + TP.id); const subs = TP.subs || [], tg = { tch: '1', app: '1' }; ['ar', 'math', 'en', 'sci', 'stu'].forEach(s => tg['s_' + s] = subs.indexOf(s) >= 0 ? '1' : '0'); A.tags(JSON.stringify(tg)); } catch (e) { } };
+    const nlink = () => { if (!window.TP) return; try { A.login('t-' + TP.id); const subs = TP.subs || [], tg = { tch: '1', app: '1', g: tGroup(TP.id) }; ['ar', 'math', 'en', 'sci', 'stu'].forEach(s => tg['s_' + s] = subs.indexOf(s) >= 0 ? '1' : '0'); A.tags(JSON.stringify(tg)); } catch (e) { } };
     const nsend = (to, title, body, url) => CLOUD ? fetch(CLOUD, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'push', to, title, body, url, ring: false }) }).catch(() => { }) : Promise.resolve();
     window.pushInit = async () => { nlink(); try { A.askPush(); } catch (e) { } };
     window.pushReady = nlink;
@@ -41,7 +43,7 @@
     // 🆕 اعرف الجديد: علامة لكل مادة بيدرّسها المدرس (s_ar = 1) عشان إشعار الجديد يروح لمدرسين المادة بس
     try {
       if (ext.indexOf('t-') === 0 && window.TP) {
-        const subs = TP.subs || [], tg = { tch: '1' }; ['ar', 'math', 'en', 'sci', 'stu'].forEach(s => tg['s_' + s] = subs.indexOf(s) >= 0 ? '1' : '0');
+        const subs = TP.subs || [], tg = { tch: '1', g: tGroup(TP.id) }; ['ar', 'math', 'en', 'sci', 'stu'].forEach(s => tg['s_' + s] = subs.indexOf(s) >= 0 ? '1' : '0');
         const k = JSON.stringify(tg); if (localStorage.getItem('selah-os-tags') !== k) { await OS.User.addTags(tg); localStorage.setItem('selah-os-tags', k); }
       }
     } catch (e) { }
