@@ -561,6 +561,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 </nav>
 <nav class="tabs hbar" id="hbar" hidden>
   <a href="#/report"><span class="i">📊</span>التقارير</a>
+  <a href="#/team"><span class="i">👥</span>زمايلك</a>
   <a href="#/settings"><span class="i">⚙️</span>الإعدادات</a>
 </nav>
 <input type="file" id="fileXlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
@@ -757,7 +758,7 @@ function parseCls(raw){
     if(normText(k)===n) return v;
   }
   if(/كشكول/.test(n)) return CLS_MAP['كشكول'];
-  if(/فصل/.test(n)) return CLS_MAP['فصل'];
+  if(/فصل|تاسيس/.test(n)) return CLS_MAP['فصل'];   // «تأسيس» = «فصل» (طلب شريف 2026-11-18)
   if(/صفوف.?عليا/.test(n) && /اعدا/.test(n)) return CLS_MAP['صفوف عليا واعدادي'];
   if(/صفوف.?عليا/.test(n)) return CLS_MAP['صفوف عليا'];
   if(/ابتدا/.test(n) && /اعدا/.test(n)) return CLS_MAP['ابتدائي واعدادي'];
@@ -787,10 +788,20 @@ function tStages(t){ const c=teacherCls(t); return [...new Set([...(c?.stages||[
 function myGroups(t){ return new Set(expectedBooks(t).map(k=>k.split('-').slice(0,2).join('-'))); }
 function expectedBooks(t){
   let cls = teacherCls(t);
+  // 2026-11-18 (طلب شريف): لو الصفوف متعلّم عليها (1..6 ابتدائي، 7..9 إعدادي) ← دي بس اللي تظهر وقت التسليم، والباقي في «📚 كتب إضافية»
+  const tg=fGradesOf(t).filter(g=>g>=1 && g<=9);
+  if(tg.length){
+    const books=[], byS={p:tg.filter(g=>g<=6), m:tg.filter(g=>g>=7).map(g=>g-6)};
+    for(const st of ['p','m']){ if(!byS[st].length) continue;
+      const ss=subsFor(t, cls||{}, st);
+      for(const sb of STAGES[st].subjects.filter(x=>ss.has(x))) for(const g of byS[st]) if(g>=(FROM[st+'-'+sb]||1) && g<=STAGES[st].grades) books.push(`${st}-${sb}-${g}`);
+    }
+    if(books.length) return books;
+  }
   if(!cls){ // مفيش تصنيف واضح → من المرحلة + المادة اللي في الشيت
     const sts=(t.stage||'').split('').filter(s=>STAGES[s]);
     if(!sts.length) return [];
-    cls={stages:sts, gradeRange:{}};
+    cls={stages:sts, gradeRange: sts.length>1 ? {p:[4,6], m:[1,3]} : {}};   // ابتدائي+إعدادي من غير صفوف ← من رابعة
   }
   const books = [];
   for(const st of cls.stages){
@@ -943,6 +954,7 @@ function render(){
     else if(h==='/route'){ renderRoute(); setTab(''); }
     else if(h==='/owed'){ renderOwed(); setTab('owed'); }
     else if(h==='/report'){ renderReport(); setTab('report'); }
+    else if(h==='/team'){ renderTeam(); setTab(''); }
     else if(h==='/settings'){ renderSettings(); setTab('settings'); }
     else { renderHome(); setTab('home'); }
   }
@@ -1210,7 +1222,8 @@ async function sbCntPull(S){
   try{
     const rev={}; for(const k in sbIds) rev[sbIds[k]]=k;
     const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-1999'}}); return r.ok?r.json():[]; };
-    const [m,e,o,rt]=await Promise.all([q('messages?select=teacher_id,id&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id&status=eq.pending'), q('orders?select=teacher_id&status=eq.pending'), q('returns?select=teacher_id&status=in.(pending,approved)')]);
+    const sid=await sbStaffId(S).catch(()=>null), J=sid?',teachers!inner(rep_id)&teachers.rep_id=eq.'+sid:'';   // مهمة 2: مدرسيني بس
+    const [m,e,o,rt]=await Promise.all([q('messages?select=teacher_id,id'+J+'&from_teacher=eq.true&read_at=is.null'), q('edit_requests?select=teacher_id'+J+'&status=eq.pending'), q('orders?select=teacher_id'+J+'&status=eq.pending'), q('returns?select=teacher_id'+J+'&status=in.(pending,approved)')]);
     const c={}, add=(l,k)=>l.forEach(x=>{ const id=rev[x.teacher_id]; if(id){ const z=(c[id] ||= {m:0,e:0,o:0,r:0,l:0}); z[k]=(z[k]||0)+1; if(x.id>z.l) z.l=x.id; } });
     add(m,'m'); add(e,'e'); add(o,'o'); add(rt,'r');   // r = مرتجعات لسه ما استلمتهاش (متابعة 10)
     const ch=JSON.stringify(c)!==JSON.stringify(sbCnt); sbCnt=c; try{ localStorage.setItem('selah-trial-cnt', JSON.stringify(c)); }catch(er){}
@@ -1234,7 +1247,10 @@ function recvCmp(t){
   const r=sbRecv[t.id], mine=new Set(db.entries.filter(e=>e.t===t.id && e.s==='d').map(e=>e.b));
   if(!r) return {st:'none', mine};
   const his=new Set(r.b||[]), onlyHis=[...his].filter(b=>!mine.has(b)), onlyMine=[...mine].filter(b=>!his.has(b));
-  return {st:(onlyHis.length||onlyMine.length)?'bad':'ok', onlyHis, onlyMine, at:r.at, mine};
+  // 2026-11-18: المدرس بقى بيكتب العدد (r.q) ← نقارن العدد كمان
+  const qd=[]; if(r.q && typeof r.q==='object'){ const myQ={}; db.entries.forEach(e=>{ if(e.t===t.id && e.s==='d') myQ[e.b]=(myQ[e.b]||0)+e.q; });
+    for(const b of his) if(mine.has(b) && (+r.q[b]||1)!==myQ[b]) qd.push({b, his:+r.q[b]||1, mine:myQ[b]}); }
+  return {st:(onlyHis.length||onlyMine.length||qd.length)?'bad':'ok', onlyHis, onlyMine, qd, at:r.at, mine};
 }
 function recvBox(t){
   if(!sbHas()) return '';
@@ -1245,7 +1261,8 @@ function recvBox(t){
   if(c.st==='ok') return box('#dcfce7','#16a34a',`✅ <b>📦 المدرس أكّد نفس اللي اتسجل بالظبط</b>${when}`);
   return box('#fee2e2','#dc2626',`❌ <b>📦 فيه اختلاف بين اللي المدرس علّمه واللي اتسجل</b>${when}`+
     (c.onlyHis.length?`<div style="margin-top:4px">قال استلم ومش متسجل: ${L(c.onlyHis)}</div>`:'')+
-    (c.onlyMine.length?`<div style="margin-top:4px">متسجل وهو ماعلّمش عليه: ${L(c.onlyMine)}</div>`:''));
+    (c.onlyMine.length?`<div style="margin-top:4px">متسجل وهو ماعلّمش عليه: ${L(c.onlyMine)}</div>`:'')+
+    ((c.qd||[]).length?`<div style="margin-top:4px">العدد مختلف: ${c.qd.map(x=>`<b style="color:var(--c-${bookParts(x.b).sb})">${esc(bookLabel(x.b))}</b> قال ${x.his} ومتسجل ${x.mine}`).join('، ')}</div>`:''));
 }
 var UPD_COL={full:'#16a34a', part:'#f59e0b', none:'#94a3b8'}, UPD_TXT={full:'🟢 حدّث بياناته كلها', part:'🟠 باقيله جزء في التحديث', none:'⚪ ماحدّثش بياناته'};
 /* شكل المدرس في أي مكان (طلب شريف 2026-11-12): لون الخلفية = الاستلام (أبيض/برتقاني/أخضر)،
@@ -1259,8 +1276,10 @@ async function sbMapPull(){
   try{
     if(!sbHas() || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
     const m={}, rows=[];
+    // 🧭 مهمة 2: مدرسيني أنا بس من القاعدة (كان بينزّل مدرسين كل المناديب)
+    const sid=await sbStaffId(S).catch(()=>null), mineQ=sid?'&rep_id=eq.'+sid:'', mineJ=sid?',teachers!inner(rep_id)&teachers.rep_id=eq.'+sid:'';
     let cols='id,local_id,ic:invite_code,a:profile->address,l:profile->loc,d:profile->days,ro:recv_open,rv:recv,ap:app_at';
-    for(let i=0;;i+=1000){ let r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:`${i}-${i+999}`}});
+    for(let i=0;;i+=1000){ let r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null'+mineQ,{headers:{...S.h, Range:`${i}-${i+999}`}});
       if(!r.ok && i===0 && cols.includes('app_at')){ cols=cols.replace(',ap:app_at',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema7 لسه ماتشغلش
       if(!r.ok && i===0 && cols.includes('recv')){ cols=cols.replace(',ro:recv_open,rv:recv',''); r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select='+cols+'&local_id=not.is.null',{headers:{...S.h, Range:'0-999'}}); }   // لو schema4 لسه ماتشغلش
       if(!r.ok) return; const j=await r.json(); j.forEach(x=>{ m[x.local_id]=x.id; rows.push(x); }); if(j.length<1000) break; }
@@ -1271,7 +1290,7 @@ async function sbMapPull(){
     if(cols.includes('app_at') && JSON.stringify(inst)!==JSON.stringify(sbApp)){ sbApp=inst; try{ localStorage.setItem('selah-trial-app', JSON.stringify(inst)); }catch(e){} }
     // حالة تحديث البيانات (زي المراسلات بالظبط): full = حدّث كله، part = باقيله جزء، none = ماحدّثش
     const q=async p=>{ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/'+p,{headers:{...S.h, Range:'0-4999'}}); return r.ok?r.json():[]; };
-    const [pe,ap,op]=await Promise.all([q('edit_requests?select=teacher_id&status=eq.pending'), q('edit_requests?select=teacher_id&status=eq.approved'), q('update_requests?select=teacher_id&status=eq.open')]);
+    const [pe,ap,op]=await Promise.all([q('edit_requests?select=teacher_id'+mineJ+'&status=eq.pending'), q('edit_requests?select=teacher_id'+mineJ+'&status=eq.approved'), q('update_requests?select=teacher_id'+mineJ+'&status=eq.open')]);
     const P=new Set(pe.map(x=>x.teacher_id)), A=new Set(ap.map(x=>x.teacher_id)), O=new Set(op.map(x=>x.teacher_id)), has=v=>v && (typeof v!=='object' || Object.keys(v).length), u={};
     for(const x of rows) u[x.local_id] = (!A.has(x.id) && !P.has(x.id)) ? 'none' : (A.has(x.id) && has(x.a) && has(x.l) && has(x.d) && !O.has(x.id) && !P.has(x.id)) ? 'full' : 'part';
     let ch=JSON.stringify(u)!==JSON.stringify(sbUpd); sbUpd=u; try{ localStorage.setItem('selah-trial-upd', JSON.stringify(u)); }catch(e){}
@@ -1296,7 +1315,8 @@ async function sbQuota(){
   }catch(e){}
 }
 setTimeout(sbQuota, 15000); setInterval(sbQuota, 30*60000);
-setTimeout(sbMapPull, 4000); setInterval(sbMapPull, 10*60000); setTimeout(()=>pushPrices(), 8000); window.addEventListener('online', ()=>pushPrices());
+setTimeout(sbMapPull, 4000); setInterval(()=>{ if(!document.hidden) sbMapPull(); }, 60*60000);   // مهمة 2: كان كل 10 دقايق
+setTimeout(()=>pushPrices(), 8000); window.addEventListener('online', ()=>pushPrices());
 /* ملخص كل مدرس لصفحة 💬 المراسلات (admin.html بيقراه عشان كارت المدرس هناك يبقى زي هنا بالظبط):
    st = none/part/done (الاستلام)، d/o = استلم/باقيله، lv = آخر زيارة، c = التصنيف، w = عليه فلوس */
 function greenSum(){
@@ -1314,10 +1334,12 @@ async function pushPrices(){
   try{
     const items=JSON.parse(localStorage.getItem('selah-green-prices')||'[]').filter(p=>p.post||p.pre).map(p=>({b:p.b, l:bookLabel(p.b), pre:p.pre??null, post:p.post??null}));
     if(!items.length || !sbHas() || !navigator.onLine) return;
-    const sig=JSON.stringify(items.map(i=>[i.b,i.pre,i.post])); if(localStorage.getItem('selah-trial-psig')===JSON.stringify(sig)) return;
+    const sig=JSON.stringify(items.map(i=>[i.b,i.pre,i.post])); if(localStorage.getItem('selah-trial-psig2')===JSON.stringify(sig)) return;
     const S=await sbSession(); if(!S) return;
     const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/app_settings?on_conflict=key',{method:'POST',headers:{...S.h, Prefer:'resolution=merge-duplicates'},body:JSON.stringify({key:'prices', value:{items, at:new Date().toISOString()}})});
-    if(r.ok) localStorage.setItem('selah-trial-psig', JSON.stringify(sig));
+    // 🧭 مهمة 2 — المرحلة 6: نفس الأسعار على جوجل كمان ← المدرس بيسحبها من جوجل مرة في اليوم (مش من قاعدة المراسلات)
+    let g=false; try{ if(CLOUD_URL && db.mail){ await cloudPost({k:'tpset', mail:db.mail, items, at:new Date().toISOString()}); g=true; } }catch(e){}
+    if(r.ok && g) localStorage.setItem('selah-trial-psig2', JSON.stringify(sig));
   }catch(e){}
 }
 // دايرة صورة المدرس جنب اسمه (من غير صورة = أول حرف)
@@ -1421,7 +1443,7 @@ function renderTeacher(id){
       <div class="grow"><h2>${esc(t.name)}${nameTags(t)}</h2>${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:'<div class="lastv muted">لسه ما اتزارش</div>'}</div></div>
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}${phone&&sbHas()&&sbCodes[t.id]?`<a class="rbtn" style="background:#dcfce7" href="https://wa.me/2${esc(normPhone(phone))}?text=${encodeURIComponent(appInviteMsg(t))}" target="_blank" rel="noopener" title="ابعت كارت دعوة">📲</a>`:''}${sbHas()&&sbIds[t.id]?`<a class="rbtn" href="admin.html#/ru/${encodeURIComponent(sbIds[t.id])}" title="حدّث بيانات المدرس">🔄</a>`:''}
-      <button class="rbtn" data-act="show-cls-change" title="التخصص">🎯</button><button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button></div>
+      <button class="rbtn" data-act="show-cls-change" title="التخصص">🎯</button><button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button><button class="rbtn" data-act="team-share" data-id="${esc(t.id)}" title="ابعت للتيم (Promotion Team)" style="background:#dbeafe">📤</button></div>
     <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:(instTxt(t)?`<span class="small" style="align-self:center">${instTxt(t)}</span>`:'')}</div>${t.loc?`<a class="btn ok" data-act="noop" href="${gmapsDir(t.loc)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;text-align:center;text-decoration:none">🗺️ افتح الطريق في خرائط جوجل</a>`:''}</div>
     ${recvBox(t)}
     <div class="bigbuy"><button class="btn gold" data-act="sell-t" data-mode="order">📝 طلب بيع</button><button class="btn owe" data-act="sell-t" data-mode="sell">🛒 بيع دلوقتي</button></div>`;
@@ -1464,25 +1486,28 @@ function renderTeacher(id){
 
   html += `<p class="small muted" style="margin:4px 2px 0">دوس <b>+</b> على الكتب اللي هيستلمها (أو دوس على اسم الكتاب)، وبعدين دوس «سلّمت». المستحق بيتحسب لوحده من التصنيف أو المرحلة والمادة.</p>`;
   // ترتيب الكتب: «⭐ تخصصه» فوق مفتوح (كل مواده في كل مراحله)، وتحته «باقي الكتب» مقفول
-  const left=stockLeft(), mg=myGroups(t);
-  const grp=(st,sb,mine)=>{
+  const left=stockLeft(), mg=myGroups(t), exp=new Set(expectedBooks(t));
+  // 2026-11-18 (طلب شريف): «⭐ تخصصه» = الصفوف المتعلّمة بس؛ باقي صفوف نفس المادة بتنزل في «📚 كتب إضافية»
+  const grp=(st,sb,mine,rest)=>{
     const gkey=`${st}-${sb}`; let dSum=0,oSum=0,rows='';
     for(let g=FROM[gkey]||1; g<=STAGES[st].grades; g++){
-      const k=`${gkey}-${g}`; const b=books[k]||{d:0,o:0};
+      const k=`${gkey}-${g}`; if(mine && !exp.has(k)) continue; if(rest && exp.has(k)) continue;
+      const b=books[k]||{d:0,o:0};
       dSum+=b.d; oSum+=b.o; rows += rowHtml(k,b,sel[k]||0, left?left[k]:undefined);
     }
+    if(!rows) return '';
     return `<details class="subj ${mine?'mine':''}" data-g="${gkey}" style="--sc:var(--c-${sb})" ${!closedGroups.has(gkey)?'open':''}>
       <summary>${mine?'<span class="star">★</span>':''}<span class="sn">${SUBJ[sb]}${mine&&tStages(t).length>1?` <span class="small">${STAGES[st].name}</span>`:''}</span>
         ${dSum?`<span class="pill ok">✅ ${dSum}</span>`:''}${oSum?`<span class="pill owe">⏳ ${oSum}</span>`:''}</summary>
       ${rows}</details>`;
   };
-  const stageBlocks=skip=>['p','m'].map(st=>{ const subs=STAGES[st].subjects.filter(sb=>!skip.has(`${st}-${sb}`));
-    return subs.length ? `<div class="stage-t">${STAGES[st].name}</div><div class="subj-grid">${subs.map(sb=>grp(st,sb,false)).join('')}</div>` : ''; }).join('');
+  const stageBlocks=skip=>['p','m'].map(st=>{ const h=STAGES[st].subjects.map(sb=>grp(st,sb,false,skip.has(`${st}-${sb}`))).join('');
+    return h ? `<div class="stage-t">${STAGES[st].name}</div><div class="subj-grid">${h}</div>` : ''; }).join('');
   if(mg.size){
     const mineList=['p','m'].flatMap(st=>STAGES[st].subjects.filter(sb=>mg.has(`${st}-${sb}`)).map(sb=>[st,sb]));
-    const restSel=Object.keys(sel).some(k=>!mg.has(k.split('-').slice(0,2).join('-')));
+    const restSel=Object.keys(sel).some(k=>!exp.has(k));
     html += `<div class="stage-t">⭐ تخصصه</div><div class="subj-grid">${mineList.map(([st,sb])=>grp(st,sb,true)).join('')}</div>
-      <details class="others-t" ${othersOpen||restSel?'open':''}><summary>📚 باقي الكتب</summary>${stageBlocks(mg)}</details>`;
+      <details class="others-t" ${othersOpen||restSel?'open':''}><summary>📚 كتب إضافية</summary>${stageBlocks(mg)}</details>`;
   } else html += stageBlocks(new Set());
   app.innerHTML = html;
   updateActbar();
@@ -1907,8 +1932,10 @@ function renderSettings(){
       <div class="field"><label>اسم المندوب</label><input id="rep" value="${esc(db.rep)}"></div>
       <div class="field"><label>الجيميل (حساب جوجل اللي النسخ بتترفع على الدرايف بتاعه)</label><input id="mail" type="email" dir="ltr" inputmode="email" value="${esc(db.mail)}"></div>
       ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية${db.idara?` (${villages().length} قرية وبندر)`:''}</label>${idaraSelect('idara', db.idara)}</div>`:''}
+      <div class="field"><label>📞 رقم موبايلك (واتساب)</label><input id="repPh" type="tel" dir="ltr" inputmode="numeric" placeholder="01xxxxxxxxx" value="${esc(db.repPhone||'')}"></div>
       <button class="btn pri" style="width:100%" data-act="save-rep">حفظ</button>
-      <p class="hint">الاسم بيتكتب على كل تسليم وفي شيت الإكسل والفاتورة.</p></div>
+      <p class="hint">الاسم بيتكتب على كل تسليم وفي شيت الإكسل والفاتورة.</p>
+      <button class="btn" style="width:100%;margin-top:8px;background:#dbeafe" data-act="master-pull">📥 نزّل مدرسيني من الشيت الرئيسي</button></div>
     <div class="card"><h3 class="sec-t">🔗 لينك المجموعة</h3>
       <div class="field"><label>رقمك اللي يظهر للمدرس لو رقمه مش متسجل</label><input id="grpPh" type="tel" dir="ltr" inputmode="numeric" placeholder="01xxxxxxxxx" value="${esc(db.repPhone||'')}"></div>
       <div class="row2"><button class="btn pri" onclick="grpLink('copy')">📋 انسخ اللينك</button><button class="btn" style="background:#dcfce7" onclick="grpLink('wa')">ابعته على واتساب</button></div>
@@ -1960,6 +1987,11 @@ function dupsCard(){
 const F_GR=['أولى','تانية','تالتة','رابعة','خامسة','سادسة','أولى إعدادي','تانية إعدادي','تالتة إعدادي'];
 const F_DAYS=[['sat','السبت'],['sun','الأحد'],['mon','الاتنين'],['tue','التلات'],['wed','الأربع'],['thu','الخميس'],['fri','الجمعة']];
 function fGradesOf(t){ return (t.tGrades&&t.tGrades.length?t.tGrades:(t.grades||[])).map(Number); }
+function fAutoGrades(st, subs, spec){
+  if(st==='pm') return [4,5,6,7,8,9]; if(st==='m') return [7,8,9]; if(st!=='p') return [];
+  const sp=String(spec||''); if(/فصل|تأسيس|تاسيس/.test(sp)) return [1,2,3]; if(/صفوف عليا/.test(sp)) return [4,5,6];
+  const s=(subs||[]).filter(Boolean); return s.length && s.every(x=>x==='stu'||x==='sci') ? [4,5,6] : [];
+}
 function fGradeBoxes(stage, cur){ const gs=stage==='m'?[7,8,9]:stage==='pm'?[1,2,3,4,5,6,7,8,9]:[1,2,3,4,5,6];
   return gs.map(g=>`<label class="chip"><input type="checkbox" value="${g}" ${cur.includes(g)?'checked':''}>${F_GR[g-1]}</label>`).join(''); }
 function teacherForm(t, preset={}){
@@ -2005,7 +2037,17 @@ function teacherForm(t, preset={}){
   m.querySelector('#f_cancel').onclick=close;
   setTimeout(()=>m.querySelector(isNew&&preset.phone?'#f_name':'#f_name').focus(),50);
   // الصفوف على حسب المرحلة (ابتدائي 1–6، إعدادي 7–9، الاتنين 1–9)
-  m.querySelector('#f_stage').addEventListener('change', ()=>{ const g=m.querySelector('#f_grades'), cur=[...g.querySelectorAll('input:checked')].map(x=>+x.value); g.innerHTML=fGradeBoxes(m.querySelector('#f_stage').value, cur); });
+  // 2026-11-18 (طلب شريف): الصفوف بتتعلّم لوحدها (fAutoGrades) — ابتدائي+إعدادي 4–9 · إعدادي 7–9 · فصل/تأسيس 1–3 · صفوف عليا 4–6 · علوم/دراسات بس 4–6 · غير كده هو يختار
+  const fSubs=()=>[...m.querySelectorAll('#f_subjs input:checked')].map(x=>x.value);
+  const fAuto=mode=>{ const g=m.querySelector('#f_grades'), st=m.querySelector('#f_stage').value, cur=[...g.querySelectorAll('input:checked')].map(x=>+x.value);
+    const a=fAutoGrades(st, fSubs(), m.querySelector('#f_spec').value);
+    if(mode==='stage') g.innerHTML=fGradeBoxes(st, a);
+    else if(mode==='spec'){ if(a.length) g.innerHTML=fGradeBoxes(st, a); }
+    else if(!cur.length && a.length) g.innerHTML=fGradeBoxes(st, a); };
+  m.querySelector('#f_stage').addEventListener('change', ()=>{ const st=m.querySelector('#f_stage').value; m.querySelector('#f_spec').innerHTML=specSelOpts(st, m.querySelector('#f_spec').value); fAuto('stage'); });
+  m.querySelector('#f_spec').addEventListener('change', ()=>fAuto('spec'));
+  // مادتين بالكتير (زي تطبيق المدرس)
+  m.querySelector('#f_subjs').addEventListener('change', e=>{ if(e.target.checked && fSubs().filter(x=>x!=='kash').length>2){ e.target.checked=false; toast('مادتين بالكتير'); return; } fAuto('subs'); });
   // الأيام جنب بعض: دوسة على يوم ← توقيته بس يظهر تحت (الساعة أم عقارب بتاعة الموبايل)، واليوم اللي ليه وقت يفضل ملوّن ومكتوب عليه
   const dayS=JSON.parse(JSON.stringify(t.tDays&&typeof t.tDays==='object'?t.tDays:{})); let curD=null;
   const hm=v=>{ if(!v) return '؟'; let [h,mi]=v.split(':').map(Number); const s=h>=12?'م':'ص'; h=h%12||12; return h+(mi?':'+String(mi).padStart(2,'0'):'')+s; };
@@ -2166,6 +2208,8 @@ document.addEventListener('click', e=>{
     case 'filter': hfReset(); homeFilter=el.dataset.k; renderTeachers(); break;
     case 'copy-owed': copyText(owedText()); break;
     case 'rep-days': repPicker(); break;
+    case 'team-share': teamShare(el.dataset.id); break;   // مهمة 2 — المرحلة 4
+    case 'master-pull': masterOffer(true); break;   // مهمة 2 — المرحلة 5
     case 'price-send': priceBooksPick(); break;
     case 'price-own-save': priceOwnSave(); break;
     case 'export': exportExcel(el.dataset.scope==='all', el.dataset.part||''); break;
@@ -2175,7 +2219,8 @@ document.addEventListener('click', e=>{
     case 'save-rep': { const v=$('#rep').value.trim(), ml=fixMail($('#mail').value);
       if(!v){ alert('اكتب اسم المندوب'); break; } if(!ml){ alert('اكتب الجيميل صح'); break; }
       const idv=$('#idara')?.value; if(IDARA_LIST.length && !idv){ alert('اختار الإدارة التعليمية'); break; }
-      db.rep=v; db.mail=ml; if(idv!=null) db.idara=idv; save(); render(); toast('اتحفظ ✅'); break; }
+      const phv=phDigits($('#repPh')?.value||''); if(phv && phv.length<11){ alert('رقم الموبايل ناقص'); break; }
+      db.rep=v; db.mail=ml; if(idv!=null) db.idara=idv; if(phv) db.repPhone=phv; save(); render(); toast('اتحفظ ✅'); repPing(true); sbSetPhone(); break; }
     case 'import-xlsx': e.preventDefault(); $('#fileXlsx').value=''; $('#fileXlsx').click(); break;
     case 'backup': backup(); break;
     case 'restore': e.preventDefault(); $('#fileJson').value=''; $('#fileJson').click(); break;
@@ -2212,15 +2257,18 @@ function firstRun(){
     <h3 style="margin:8px 0 2px">أهلاً بيك في برنامج ${APP_NAME}</h3><div class="small muted" style="margin-bottom:14px">${SIGN}</div>
     <div style="text-align:right"><div class="field"><label>اسمك (اسم المندوب)</label><input id="fr_rep" value="${esc(db.rep)}"></div>
     <div class="field"><label>الجيميل بتاعك (النسخ الاحتياطية بتترفع على الدرايف بتاعه)</label><input id="fr_mail" type="email" dir="ltr" inputmode="email" placeholder="name@gmail.com" value="${esc(db.mail)}"></div>
-    ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية اللي ماسكها</label>${idaraSelect('fr_idara', db.idara)}</div>`:''}</div>
+    ${IDARA_LIST.length?`<div class="field"><label>الإدارة التعليمية اللي ماسكها</label>${idaraSelect('fr_idara', db.idara)}</div>`:''}
+    <div class="field"><label>📞 رقم موبايلك (واتساب) — زمايلك والمدرسين بيكلّموك عليه</label><input id="fr_ph" type="tel" dir="ltr" inputmode="numeric" placeholder="01xxxxxxxxx" value="${esc(db.repPhone||'')}"></div></div>
     <button class="btn pri" id="fr_ok" style="width:100%">يلا نبدأ ✅</button>
     <p class="hint">تقدر تغيّرهم بعدين من الإعدادات.</p></div>`;
   document.body.appendChild(m);
   m.querySelector('#fr_ok').onclick=()=>{
-    const r=m.querySelector('#fr_rep').value.trim(), ml=fixMail(m.querySelector('#fr_mail').value), id=m.querySelector('#fr_idara')?.value||'';
+    const r=m.querySelector('#fr_rep').value.trim(), ml=fixMail(m.querySelector('#fr_mail').value), id=m.querySelector('#fr_idara')?.value||'', ph=phDigits(m.querySelector('#fr_ph').value);
     if(!r){ alert('اكتب اسمك'); return; } if(!ml){ alert('اكتب الجيميل بتاعك صح'); return; }
     if(IDARA_LIST.length && !id){ alert('اختار الإدارة التعليمية'); return; }
-    db.rep=r; db.mail=ml; db.idara=id; save(); m.remove(); render();
+    if(ph.length<11){ alert('اكتب رقم موبايلك (11 رقم)'); return; }
+    db.rep=r; db.mail=ml; db.idara=id; db.repPhone=ph; save(); m.remove(); render(); repPing(true); sbSetPhone();
+    setTimeout(()=>masterOffer(false), 2500);   // مهمة 2: مدرسينه من الشيت الرئيسي
     if(id) toast(`📍 اتحمّلت ${villages().length} قرية وبندر لإدارة ${id}`);
   };
 }
@@ -2240,7 +2288,7 @@ $('#fileJson').addEventListener('change', async e=>{
     const when = d.savedAt ? ` (معمولة ${fmtDT(d.savedAt)})` : '';
     if(!confirm(`النسخة دي${when} فيها ${d.teachers.length} مدرس و ${d.entries.length} تعامل.\n\nهتحل مكان البيانات اللي على الجهاز ده (${db.teachers.length} مدرس و ${db.entries.length} تعامل). أكمل؟`)) return;
     const arr=x=>Array.isArray(x)?x:[];
-    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
+    db={v:1, rep:d.rep||db.rep, mail:d.mail||db.mail, idara:d.idara||db.idara||'', repPhone:d.repPhone||db.repPhone||'', invLinks:(d.invLinks && typeof d.invLinks==='object')?d.invLinks:(db.invLinks||{}), masterRep:d.masterRep||db.masterRep||'', empCode:d.empCode||db.empCode||'',merchRets:arr(d.merchRets), teachers:d.teachers, entries:d.entries, stock:arr(d.stock),
       sales:arr(d.sales), payments:arr(d.payments), prices:(d.prices && typeof d.prices==='object' && !Array.isArray(d.prices))?d.prices:{},
       merchants:arr(d.merchants), merchPays:arr(d.merchPays), lastBackup:d.lastBackup||'', vloc:d.vloc||{}, reportPhone:d.reportPhone||db.reportPhone||'',
       route:arr(d.route), days:arr(d.days), reg:(d.reg && typeof d.reg==='object' && !Array.isArray(d.reg))?d.reg:{}, editLog:arr(d.editLog), reqs:arr(d.reqs), tlog:arr(d.tlog), tret:arr(d.tret), pinH:d.pinH||db.pinH||'', repKey:d.repKey||db.repKey||'',
@@ -2333,6 +2381,13 @@ function serialToParts(v){ const d=new Date(Math.round((v-25569)*864e5)); return
 $('#fileXlsx').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return;
   let rows; try{ rows=await readXlsx(f); }catch(err){ alert('مش قادر أقرا الملف ده. اتأكد إنه شيت إكسل (.xlsx).'); return; }
+  importRows(rows, 'الشيت');
+});
+// 🧭 مهمة 2 — المرحلة 5: قواعد الاستيراد (شيت المندوب أو الشيت الرئيسي):
+//   من غير رقم ← يتشال · رقم من غير اسم ← يتشال · الرقم موجود في البرنامج بنفس الاسم ← يكمّل الخانات الفاضية بس ·
+//   الرقم موجود باسم تاني ← مايتضافش ومايتاخدش منه حاجة (اللي في البرنامج هو الصح) · رقم جديد ← يتضاف
+const nmKey=s=>normText(s||'').replace(/^(ا\s*\/\s*|ا\.\s*|الاستاذه?\s+|استاذه?\s+|مستر\s+|مس\s+|د\s*\/\s*)/,'').replace(/\s+/g,' ').trim();
+function importRows(rows, src, after){
   const H=detectHeader(rows);
   if(!H){ alert('مش لاقي عمود «اسم المدرس» في الشيت.'); return; }
   const data=rows.slice(H.row+1).filter(r=>r && (r[H.name] || (H.phone>=0 && r[H.phone])));
@@ -2347,26 +2402,69 @@ $('#fileXlsx').addEventListener('change', async e=>{
     const s=digits(v); let mm=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if(mm) return isoDay(+mm[3],+mm[2],+mm[1]);
     mm=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(mm) return isoDay(+mm[1],+mm[2],+mm[3]); return '';
   };
-  let add=0, upd=0, twice=0; const plan=[], seen=new Map();
+  let add=0, fill=0, same=0, twice=0, noPh=0, noNm=0; const plan=[], seen=new Map(), diff=[];
+  // كل أرقام البرنامج (+ الأرقام القديمة) ← المدرس
+  const byPh=new Map(); for(const t of db.teachers){ for(const p of [t.phone, ...(t.oldPhones||[]).map(o=>o.p)]){ const k=ph10(p); if(k.length===10 && !byPh.has(k)) byPh.set(k, t); } }
+  const empty=v=>v==null || v==='' || (Array.isArray(v) && !v.length);
   for(const r of data){
-    const name=get(r,H.name), phone=normPhone(get(r,H.phone));
+    const name=get(r,H.name), phone=normPhone(get(r,H.phone)), pk=ph10(phone);
+    if(pk.length<10){ noPh++; continue; }        // من غير رقم ← مالوش لازمة
+    if(!name){ noNm++; continue; }               // رقم من غير اسم ← مالوش لازمة
     const subjectText=get(r,H.subject), stageText=get(r,H.stage);
     const rec={name, phone, stage:parseStage(stageText), stageText, subjectText, subjects:[...parseSubjects(subjectText), ...(/كشكول/.test(normText(subjectText))?['kash']:[])],
       area:get(r,H.area), school:get(r,H.school), cls:get(r,H.cls), students:get(r,H.students), plan:parseDate(r[H.date])};
     // نفس الرقم مرتين في نفس الشيت → يتضاف مرة واحدة (السطر التاني يكمّل الخانات الفاضية بس)
-    if(phone && seen.has(phone)){ const p=seen.get(phone).rec; for(const k of Object.keys(rec)) if(!p[k] || (Array.isArray(p[k]) && !p[k].length)) p[k]=rec[k]; twice++; continue; }
-    const ex = phone ? db.teachers.find(t=>t.phone===phone) : db.teachers.find(t=>normText(t.name)===normText(name));
-    const item={rec, ex}; plan.push(item); if(phone) seen.set(phone, item); ex?upd++:add++;
+    if(seen.has(pk)){ const p=seen.get(pk).rec; for(const k of Object.keys(rec)) if(empty(p[k])) p[k]=rec[k]; twice++; continue; }
+    const item={rec}; seen.set(pk, item);
+    const ex=byPh.get(pk);
+    if(ex && nmKey(ex.name)!==nmKey(name)){ diff.push({sheet:name, app:ex.name, phone}); continue; }   // رقم موجود باسم تاني ← اللي في البرنامج هو الصح
+    if(ex){ const ks=Object.keys(rec).filter(k=>k!=='name' && k!=='phone' && !empty(rec[k]) && empty(ex[k])); if(!ks.length){ same++; continue; } item.ex=ex; plan.push(item); fill++; }
+    else { plan.push(item); add++; }
   }
-  if(!plan.length){ alert('الشيت فاضي.'); return; }
-  if(!confirm(`لقيت ${plan.length} مدرس في الشيت:\n• ${add} جديد\n• ${upd} موجودين قبل كده (هتتحدّث بياناتهم بس)${twice?`\n• ${twice} سطر رقمه متكرر في الشيت (اتحسب مرة واحدة)`:''}\n\nأستوردهم؟`)) return;
-  for(const {rec,ex} of plan){
-    if(ex){ for(const k of Object.keys(rec)) if(rec[k] && (!Array.isArray(rec[k]) || rec[k].length)) ex[k]=rec[k];
-      delete ex.isNew; delete ex.newArea; }   // اتستورد من الشيت → مبقاش «جديد»
-    else db.teachers.push({id:uid(), ...rec, name:rec.name||rec.phone, notes:'', created:new Date().toISOString()});
+  const dup=same+diff.length;
+  const sum=`لقيت في ${src}:\n• ${add} مدرس جديد هيتضاف\n• ${fill} موجودين عندك (هيتكمّل الخانات الفاضية بس)\n• ${dup} متكرر عندك ومش هيتضاف${diff.length?` (منهم ${diff.length} الرقم بتاعهم عندك باسم تاني)`:''}`
+    +(twice?`\n• ${twice} سطر رقمه متكرر في الشيت نفسه`:'')+(noPh?`\n• ${noPh} من غير رقم تليفون (اتشالوا)`:'')+(noNm?`\n• ${noNm} رقم من غير اسم (اتشالوا)`:'');
+  if(!plan.length){ alert(sum+'\n\nمفيش حاجة جديدة تتضاف.'); if(diff.length) dupList(diff); return; }
+  if(!confirm(sum+'\n\nأكمّل؟')) return;
+  for(const it of plan){
+    if(it.ex){ for(const k of Object.keys(it.rec)) if(k!=='name' && k!=='phone' && !empty(it.rec[k]) && empty(it.ex[k])) it.ex[k]=it.rec[k]; }   // الخانات الفاضية بس — المدرس اللي في البرنامج اتعدّل وبياناته هي الصح
+    else db.teachers.push({id:uid(), ...it.rec, notes:'', created:new Date().toISOString()});
   }
-  save(); location.hash='#/teachers'; homeFilter='all'; hfReset(); render(); toast(`✅ اتستورد ${plan.length} مدرس`);
-});
+  save(); location.hash='#/teachers'; homeFilter='all'; hfReset(); render(); toast(`✅ اتضاف ${add} مدرس${fill?` واتكمّل ${fill}`:''}`, 4000);
+  if(diff.length) dupList(diff);
+  if(after) after();
+}
+// 🧭 مهمة 2 — المرحلة 5: «📥 مدرسيني من الشيت الرئيسي» (شريف بيملاه على جوجل) — المندوب يختار اسمه من القايمة
+async function masterOffer(force){
+  if(!CLOUD_URL || !db.mail) return;
+  if(!navigator.onLine){ if(force) toast('محتاج نت'); return; }
+  if(!db.idara){ if(force) toast('اختار الإدارة التعليمية الأول من الإعدادات'); return; }
+  if(!force){ try{ if(localStorage.getItem(KEY+'-mdone')===db.idara) return; }catch(e){} }
+  await repPing(true);   // لازم يبقى مسجّل الأول
+  let j; try{ j=await cloudPost({k:'mreps', mail:db.mail, idara:db.idara}); }catch(e){ if(force) toast('⚠️ مش قادر أوصل للشيت دلوقتي'); return; }
+  const reps=j.reps||[]; if(!reps.length){ if(force) alert(`لسه مفيش مدرسين لإدارة ${db.idara} في الشيت الرئيسي.`); return; }
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3 style="margin-top:0">📥 مدرسين إدارة ${esc(db.idara)}</h3><div class="small muted" style="margin-bottom:8px">اختار اسمك — هينزل لك مدرسينك انت بس (والمتكرر عندك مش هيتضاف)</div>
+    ${reps.map(r=>`<button class="btn ${nmKey(r.n)===nmKey(db.masterRep||db.rep)?'pri':''}" style="width:100%;margin-bottom:6px;display:flex;justify-content:space-between" data-n="${esc(r.n)}"><b>${esc(r.n)}</b><span>${r.c} مدرس</span></button>`).join('')}
+    <button class="btn ghost" style="width:100%" data-x="1">مش دلوقتي</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', async e=>{
+    if(e.target===m || e.target.closest('[data-x]')){ m.remove(); try{ localStorage.setItem(KEY+'-mdone', db.idara); }catch(_){} return; }
+    const b=e.target.closest('[data-n]'); if(!b) return; m.remove();
+    db.masterRep=b.dataset.n; save(false); toast('⏳ بنزّل مدرسينك…', 3000);
+    try{ const r=await cloudPost({k:'mrows', mail:db.mail, idara:db.idara, rep:db.masterRep});
+      importRows(r.rows||[], 'الشيت الرئيسي'); try{ localStorage.setItem(KEY+'-mdone', db.idara); }catch(_){} }
+    catch(er){ alert('⚠️ مش قادر أنزّل المدرسين دلوقتي — جرّب تاني من الإعدادات'); }
+  });
+}
+// المتكرر برقم موجود عندك باسم تاني (مااتضافش) — للعرض بس
+function dupList(diff){
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="box"><h3 style="margin-top:0">🔁 ${diff.length} رقم موجود عندك باسم تاني — مااتضافوش</h3><div class="small muted" style="margin-bottom:6px">اللي في البرنامج هو اللي فضل.</div>
+    <div style="max-height:55vh;overflow:auto">${diff.map(d=>`<div class="kv" style="display:block"><span dir="ltr" class="small">${esc(d.phone)}</span><br>في الشيت: <b>${esc(d.sheet)}</b><br>عندك: <b style="color:#0f766e">${esc(d.app)}</b></div>`).join('')}</div>
+    <button class="btn pri" style="width:100%;margin-top:8px">تمام</button></div>`;
+  document.body.appendChild(m); m.addEventListener('click', e=>{ if(e.target===m || e.target.closest('button')) m.remove(); });
+}
 
 /* ================= تصدير إكسل ================= */
 const xmlEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
@@ -4253,7 +4351,10 @@ async function cloudSync(manual){
   syncBusy=true; const at=new Date().toISOString();
   try{
     const {sales, pays, dels}=syncRows();
-    await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels,
+    // مهمة 2 — المرحلة 4: dl = تسليماتي (رقم المدرس، الكتاب، العدد، اليوم) ← «سجل التسليمات الموحّد» للتحذير الأحمر عند الزمايل
+    const tmp={}; db.teachers.forEach(x=>tmp[x.id]=x);
+    const dl=db.entries.filter(e=>e.s==='d' && tmp[e.t] && tmp[e.t].phone).map(e=>[tmp[e.t].phone, e.b, e.q, dk(e.dd)]);
+    await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels, dl,
       data:{app:'selah-books', ...db, teachers:db.teachers.map(({photos, thumb, ...x})=>x), savedAt:at}});   // صور المدرسين مش بتتبعت في المزامنة اليومية
     db.lastSync=at; save(false); if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
   }catch(e){ if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده'); }
@@ -4267,13 +4368,17 @@ function setInvQ(q){ try{ localStorage.setItem(INV_KEY, JSON.stringify(q)); }cat
 function queueInvoice(data, base){
   if(!CLOUD_URL) return;
   try{ const d=new Date(), b64=invoiceCanvas(data).toDataURL('image/jpeg',0.8).split(',')[1];
-    const q=invQ(); q.push({name:`${base}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.jpg`, b64}); setInvQ(q.slice(-15)); }catch(e){}
+    const q=invQ(); q.push({name:`${base}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.jpg`, b64, tid:data.t&&data.t.id, tn:data.t&&data.t.name}); setInvQ(q.slice(-15)); }catch(e){}
   setTimeout(flushInv, 2000);
 }
 async function flushInv(){
   if(!CLOUD_URL || !db.mail || invBusy || !navigator.onLine) return;
   invBusy=true;
-  try{ let q=invQ(); while(q.length){ await cloudPost({k:'inv', mail:db.mail, rep:db.rep, name:q[0].name, b64:q[0].b64}); q=invQ(); q.shift(); setInvQ(q); } }
+  try{ let q=invQ(); while(q.length){ const it=q[0];
+    // 🧭 مهمة 2 — المرحلة 6: نسخة على درايف المندوب (أي حد معاه اللينك) ← اللينك بيوصل للمدرس في «🧾 فواتيري» (بيفتحها من الدرايف — مش من القاعدة)
+    if(db.driveKey && it.tid && !it.rd){ try{ const j=await cloudPost({k:'tinv', mail:db.mail, key:db.driveKey, rep:db.rep, tname:it.tn||'', name:it.name, b64:it.b64});
+      if(j.url){ (db.invLinks ||= {})[it.tid]={url:j.url, at:new Date().toISOString()}; save(false); } }catch(e){} it.rd=1; setInvQ(q); }
+    await cloudPost({k:'inv', mail:db.mail, rep:db.rep, name:it.name, b64:it.b64}); q=invQ(); q.shift(); setInvQ(q); } }
   catch(e){} finally{ invBusy=false; }
 }
 // الأسعار: من شيت «الأسعار» على درايف شريف (المندوب ما بيعدّلهاش)
@@ -4322,10 +4427,141 @@ async function repPing(force){
   if(!force && Date.now()-pingAt<5*60000) return; pingAt=Date.now();
   try{
     const inst = matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
-    const j=await cloudPost({k:'rping', mail:db.mail, name:db.rep||'', inst, code:sbHas(), owner:isOwnerApp()});
+    let sid=''; try{ sid=(JSON.parse(localStorage.getItem('selah-trial-me')||'null')||{}).id||''; }catch(e){}
+    const j=await cloudPost({k:'rping', mail:db.mail, name:db.rep||'', inst, code:sbHas(), owner:isOwnerApp(), phone:db.repPhone||'', idara:db.idara||'', sid});
     setLockedApp(!!j.locked);
   }catch(e){}
 }
+/* ================= 🧭 مهمة 2 — المرحلة 4 (كله على جوجل — مالوش دعوة بقاعدة المراسلات) =================
+   • رقم المندوب (db.repPhone) أول دخول + في الإعدادات ← rping ← «👥 تواصل مع زمايلك» (#/team)
+   • سجل التسليمات الموحّد: كل مزامنة بتبعت تسليماتي (dl)؛ الموبايل بينزّل نسخة مرة كل 6 ساعات (لو اتغيرت) + سؤال سريع وقت التسليم لو فيه نت
+   • وقت التسليم: لو زميل سلّم نفس المدرس (بالرقم) ← تحذير أحمر (📞 / 💬 للزميل / ✅ كمّل تسليم + إشعار للزميل)
+   • 📤 ابعت للتيم: بيانات المدرس + صوره ← مشاركة الموبايل ← واتساب (جروب Promotion Team) */
+function phDigits(v){ return String(v||'').replace(/[٠-٩]/g,c=>c.charCodeAt(0)-0x660).replace(/[۰-۹]/g,c=>c.charCodeAt(0)-0x6F0).replace(/\D/g,''); }
+const ph10=v=>phDigits(v).slice(-10);
+const waOf=p=>{ let d=phDigits(p); if(d.startsWith('00')) d=d.slice(2); if(d.startsWith('0')) d='2'+d; return d; };
+// نفس الرقم في المراسلات (المدرس بيرد على الواتساب ده) — لو داخل المراسلات على الموبايل ده
+async function sbSetPhone(){ try{ if(!sbHas() || !db.repPhone || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
+  await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/set_my_phone',{method:'POST',headers:{...S.h,'Content-Type':'application/json'},body:JSON.stringify({p_phone:db.repPhone})}); }catch(e){} }
+// مندوب قديم من غير رقم ← نسأله مرة في اليوم
+function askRepPhoneOnce(){
+  if(!db.mail || db.repPhone || document.getElementById('firstRun')) return;
+  const k=KEY+'-phask', d=new Date().toDateString(); try{ if(localStorage.getItem(k)===d) return; localStorage.setItem(k,d); }catch(e){}
+  const v=prompt('📞 اكتب رقم موبايلك (واتساب)\nزمايلك والمدرسين هيكلّموك عليه', ''); const ph=phDigits(v||'');
+  if(ph.length>=11){ db.repPhone=ph; save(false); repPing(true); sbSetPhone(); toast('✅ رقمك اتسجّل'); }
+}
+setTimeout(askRepPhoneOnce, 6000);
+
+// ---------- 👥 تواصل مع زمايلك ----------
+const TEAM_KEY=KEY+'-team';
+function teamCache(){ try{ return JSON.parse(localStorage.getItem(TEAM_KEY)||'null')||{v:'',list:[]}; }catch(e){ return {v:'',list:[]}; } }
+async function pullTeam(){
+  if(!CLOUD_URL || !db.mail || !navigator.onLine) return false;
+  try{ const c=teamCache(), j=await cloudPost({k:'team', mail:db.mail, v:c.v});
+    if(!j || !j.ok || j.same || !Array.isArray(j.list)) return false;
+    localStorage.setItem(TEAM_KEY, JSON.stringify({v:j.v, list:j.list, at:Date.now()})); return true; }catch(e){ return false; }
+}
+let teamQ='';
+function renderTeam(){
+  setHeader('👥 تواصل مع زمايلك', true);
+  const draw=()=>{
+    const c=teamCache(), w=normText(teamQ), me=(db.mail||'').toLowerCase();
+    const l=c.list.filter(x=>x.m!==me && (!w || normText([x.n,x.id,x.role,x.ph].join(' ')).includes(w)));
+    const g={}; l.forEach(x=>(g[x.id||'—'] ||= []).push(x));
+    const box=$('#teamL'); if(!box) return;
+    box.innerHTML = l.length ? Object.keys(g).map(id=>`<div class="card"><h3 class="sec-t">📍 ${esc(id)}</h3>${g[id].map(x=>`<div class="kv" style="align-items:center;gap:8px">
+      <span class="grow"><b>${esc(x.n)}</b> <span class="pill ${x.role==='مشرف'?'owe':x.role==='المالك'?'ok':''}">${esc(x.role)}</span>${x.ph?`<br><span class="small muted" dir="ltr">${esc(x.ph)}</span>`:'<br><span class="small muted">لسه ما سجّلش رقمه</span>'}</span>
+      ${x.ph?`<a class="btn sm" href="tel:${esc(x.ph)}">📞</a><a class="btn sm ok" href="https://wa.me/${esc(waOf(x.ph))}" target="_blank" rel="noopener">💬 واتساب</a>`:''}</div>`).join('')}</div>`).join('')
+      : `<div class="card empty">${c.list.length?'مفيش نتايج':navigator.onLine?'جاري التحميل…':'محتاج نت أول مرة بس عشان تنزل القايمة'}</div>`;
+  };
+  app.innerHTML=`<div class="search"><input id="teamS" type="search" placeholder="🔍 اسم، إدارة، رقم…" value="${esc(teamQ)}" autocomplete="off"></div><div id="teamL"></div>`;
+  $('#teamS').oninput=()=>{ teamQ=$('#teamS').value; draw(); };
+  draw(); pullTeam().then(ch=>{ if(ch && location.hash==='#/team') draw(); });
+}
+
+// ---------- سجل التسليمات الموحّد + التحذير الأحمر ----------
+const DLV_KEY=KEY+'-dlvidx';
+function dlvIdx(){ try{ return JSON.parse(localStorage.getItem(DLV_KEY)||'null'); }catch(e){ return null; } }
+async function pullDlv(force){
+  if(!CLOUD_URL || !db.mail || !navigator.onLine) return;
+  const o=dlvIdx(); if(!force && o && Date.now()-(o.got||0)<6*3600000) return;
+  try{ const j=await cloudPost({k:'dlv', mail:db.mail, since:o&&o.at||''}); if(!j || !j.ok) return;
+    if(j.same){ if(o){ o.got=Date.now(); localStorage.setItem(DLV_KEY, JSON.stringify(o)); } return; }
+    localStorage.setItem(DLV_KEY, JSON.stringify({at:j.at, rl:j.rl, rn:j.rn, p:j.p, got:Date.now()})); }catch(e){}
+}
+setTimeout(()=>pullDlv(), 12000); setInterval(()=>{ if(!document.hidden) pullDlv(); }, 30*60000);
+// [{mail, name, books:[[b,q,day]]}] — الزمايل بس (مش أنا)
+function colGroup(rl, rn, rows){
+  const me=(db.mail||'').toLowerCase(), g={};
+  for(const r of rows||[]){ const m=rl[r[0]]; if(!m || m===me) continue; (g[m] ||= {mail:m, name:rn[r[0]]||m, books:[]}).books.push([r[1], r[2], r[3]]); }
+  return Object.values(g);
+}
+async function colCheck(t){
+  try{
+    const p=ph10(t.phone); if(p.length<10 || !db.mail) return [];
+    if(navigator.onLine && CLOUD_URL){
+      const j=await Promise.race([cloudPost({k:'who', mail:db.mail, p}).catch(()=>null), new Promise(r=>setTimeout(()=>r(null), 3000))]);
+      if(j && j.ok) return colGroup(j.rl, j.rn, j.r);
+    }
+    const x=dlvIdx(); return x ? colGroup(x.rl, x.rn, x.p[p]) : [];
+  }catch(e){ return []; }
+}
+function colPerson(mail){ return teamCache().list.find(x=>x.m===mail) || null; }
+function tPlace(t){
+  const a=String(t.area||'').trim(), list=IDARAT[db.idara]||[], city=list[0]||db.idara||'';
+  if(!a) return '';
+  if(a===city || a===db.idara) return 'بندر '+a;
+  return /^(كفر|عزبة|عزب|نجع|منشأة|منشاة)/.test(a) ? a : 'قرية '+a;
+}
+function colModal(t, l, go){
+  const m=document.createElement('div'); m.className='modal';
+  const bl=b=>b.map(([k,q,d])=>`${esc(bookLabel(k))} × ${q}${d?` <span class="small muted">(${esc(fmtDay(d))})</span>`:''}`).join('<br>');
+  m.innerHTML=`<div class="box" style="border:3px solid #dc2626"><h3 style="color:#dc2626;margin-top:0">⚠️ الأستاذ ${esc(t.name)} استلم من زميلك</h3>
+    ${l.map(c=>{ const p=colPerson(c.mail); return `<div class="card" style="background:#fef2f2;border-color:#fca5a5"><b>👤 ${esc(c.name)}</b><div class="small" style="margin:4px 0">${bl(c.books)}</div>
+      ${p&&p.ph?`<div class="acts" style="margin:0"><a class="btn sm" href="tel:${esc(p.ph)}">📞 اتصل بـ${esc(c.name)}</a><a class="btn sm ok" target="_blank" rel="noopener" href="https://wa.me/${esc(waOf(p.ph))}?text=${encodeURIComponent(colMsg(t, c))}">💬 واتساب</a></div>`:'<div class="small muted">زميلك لسه ما سجّلش رقمه</div>'}</div>`; }).join('')}
+    <button class="btn pri" style="width:100%;margin-top:6px" data-c="go">✅ كمّل تسليم</button>
+    <button class="btn ghost" style="width:100%;margin-top:6px" data-c="x">إلغاء</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ const b=e.target.closest('[data-c]'); if(e.target===m || (b && b.dataset.c==='x')){ m.remove(); return; }
+    if(b && b.dataset.c==='go'){ m.remove(); colNotify(t, l); go(); } });
+}
+function colMsg(t, c){
+  return `السلام عليكم يا أستاذ ${c.name} 👋\nالأستاذ ${t.name}${t.phone?` (${normPhone(t.phone)})`:''}${tPlace(t)?` — ${tPlace(t)}`:''}\nانت سلّمته قبل كده. أكمّل له تسليم ولا لأ؟\n— ${db.rep||''}`;
+}
+// إشعار للزميل (من غير قاعدة المراسلات — OneSignal عن طريق السكريبت)
+function colNotify(t, l){
+  try{ const to=l.map(c=>colPerson(c.mail)).filter(p=>p && p.sid).map(p=>'s-'+p.sid); if(!to.length || !CLOUD_URL) return;
+    cloudPost({k:'push', to, title:'⚠️ سلاح التلميذ', body:`${db.rep||'زميلك'} سلّم الأستاذ ${t.name} كمان (اللي انت سلّمته قبل كده)`}).catch(()=>{}); }catch(e){}
+}
+// من غير نت: نفتكر المدرس، وأول ما النت يرجع نسأل ونبلّغ
+const CQ_KEY=KEY+'-colq';
+function colQueue(t){ try{ const q=JSON.parse(localStorage.getItem(CQ_KEY)||'[]'); if(!q.includes(t.id)) q.push(t.id); localStorage.setItem(CQ_KEY, JSON.stringify(q.slice(-50))); }catch(e){} }
+async function colFlush(){
+  let q=[]; try{ q=JSON.parse(localStorage.getItem(CQ_KEY)||'[]'); }catch(e){} if(!q.length || !navigator.onLine) return;
+  localStorage.setItem(CQ_KEY, '[]');
+  for(const id of q){ const t=tById(id); if(!t) continue; const l=await colCheck(t); if(!l.length) continue;
+    const mine=db.entries.filter(e=>e.s==='d' && e.t===t.id).map(e=>`${bookLabel(e.b)} × ${e.q}`).join('، ');
+    alert(`⚠️ الأستاذ ${t.name}\nاستلم منك: ${mine||'—'}\nواستلم من زميلك: ${l.map(c=>c.name+' ('+c.books.map(b=>bookLabel(b[0])+' × '+b[1]).join('، ')+')').join(' • ')}`);
+    colNotify(t, l); }
+}
+window.addEventListener('online', ()=>setTimeout(colFlush, 5000)); setTimeout(colFlush, 15000);
+
+// ---------- 📤 ابعت للتيم ----------
+async function teamShare(id){
+  const t=tById(id); if(!t) return;
+  const spec=[subjLabel(t.subjects||[])||t.subjectText, STAGE_TXT[t.stage]||t.stageText, t.spec].filter(Boolean).join(' — ');
+  const addr=[t.tAddress||t.school||'', tPlace(t)].filter(Boolean).join('، ');
+  const txt=[`👤 ${t.name}`, spec?`📚 ${spec}`:'', addr?`📍 ${addr}`:'', '', `مسؤول دعاية: ${db.rep||''}`, `إدارة: ${db.idara||''} — البحيرة`].filter((x,i,a)=>x!=='' || (i>0 && a[i-1]!=='')).join('\n');
+  let files=[];
+  try{ const d=await pdb(); const arr=await new Promise(res=>{ const r=d.transaction('p').objectStore('p').get(t.id); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>res([]); });
+    files=await Promise.all((arr||[]).slice(0,10).map(async (u,i)=>{ const b=await (await fetch(u)).blob(); return new File([b], `${t.name}-${i+1}.jpg`, {type:b.type||'image/jpeg'}); })); }catch(e){ files=[]; }
+  try{
+    if(files.length && navigator.canShare && navigator.canShare({files})){ await navigator.share({files, text:txt}); return; }
+    if(navigator.share){ await navigator.share({text:txt}); return; }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  location.href='whatsapp://send?text='+encodeURIComponent(txt);
+}
+
 applyLock();
 if(CLOUD_URL){
   const dchk=()=>{ if(driveDue()) driveBackup(); };
@@ -4407,7 +4643,10 @@ function sellRest(s, sp){
   s.items=sp.sell.map(x=>({b:x.b, q:x.q})); sellItems(s, lotLeft());
 }
 // التسليم (من مخزن الشركة): الكتاب الناقص يتقال عليه ويتساب، والباقي يتسلّم. لو مفيش استلام من المخزن متسجّل خالص → مفيش فحص
-function doDeliver(t, map, after, again){
+function doDeliver(t, map, after, again, colOk){
+  // 🧭 مهمة 2 — المرحلة 4: ⚠️ المدرس ده استلم من زميل؟ (من سجل التسليمات الموحّد على جوجل) — قبل أي حاجة
+  if(!colOk && !again){ colCheck(t).then(l=>{ if(l.length) colModal(t, l, ()=>doDeliver(t, map, after, again, true)); else doDeliver(t, map, after, again, true); }); return; }
+  if(!navigator.onLine) colQueue(t);   // من غير نت ← أول ما النت يرجع نتأكد ونبلّغه
   // بند 5: المدرس استلم النهارده قبل كده → اسأل: تعدّل زيارة النهارده ولا تضيف عليها ولا تلغي
   const today=dayKey(), prev=again?[]:db.entries.filter(e=>e.s==='d' && e.t===t.id && e.dd && dk(e.dd)===today);
   if(prev.length){ const last=prev.map(e=>e.dd).sort().pop(), n0=prev.reduce((s,e)=>s+e.q,0);
@@ -5054,10 +5293,25 @@ async function pullSbBell(){
     if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} msgPop(); }   // نغمة الجرس للمدرسين بس
     const was=sbBell; sbBell=n; updateBell();
     if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»
-    sbCntPull(S);
+    sbCntPull(S); egReport(S);
   }catch(e){}
 }
-setTimeout(pullSbBell, 3000); setInterval(pullSbBell, 60000);
+// 🧭 مهمة 2 (توفير الباقة): جرس المراسلات كان بيسأل كل دقيقة ← كل 5 دقايق والبرنامج قدام + لما ترجع له (لو عدّت دقيقة)
+var sbBellAt=0; function sbBellTick(gap){ if(document.hidden || Date.now()-sbBellAt<gap) return; sbBellAt=Date.now(); pullSbBell(); }
+// 🧭 مهمة 2 — المرحلة 7: عدّاد الباقة — كل اللي نازل من القاعدة هنا بيتعد في نفس العدّاد بتاع المراسلات (selah-eg على الموبايل ده)
+(function(){ try{ const U=(window.SILAH_CONFIG||{}).SUPABASE_URL; if(!U || window.__egWrap) return; window.__egWrap=1; const of=window.fetch.bind(window);
+  const add=n=>{ if(!(n>0)) return; try{ const m=new Date().toISOString().slice(0,7); let o=JSON.parse(localStorage.getItem('selah-eg')||'null')||{}; if(o.m!==m) o={m, b:0, rep:0, at:0}; o.b+=n; localStorage.setItem('selah-eg', JSON.stringify(o)); }catch(e){} };
+  window.fetch=function(i,o){ const p=of(i,o); try{ const u=typeof i==='string'?i:(i&&i.url)||''; if(u.indexOf(U)===0) p.then(r=>{ const cl=+r.headers.get('content-length'); if(cl>0) add(cl+400); else r.clone().arrayBuffer().then(b=>add(b.byteLength+400)).catch(()=>{}); }).catch(()=>{}); }catch(e){} return p; };
+}catch(e){} })();
+async function egReport(S){ try{ const m=new Date().toISOString().slice(0,7); const o=JSON.parse(localStorage.getItem('selah-eg')||'null'); if(!o || o.m!==m) return; const d=o.b-(o.rep||0);
+  if(d<=0 || (d<102400 && Date.now()-(o.at||0)<12*3600000)) return;
+  const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/my_eg',{method:'POST',headers:{...S.h,'Content-Type':'application/json'},body:JSON.stringify({p_bytes:d})});
+  if(r.ok){ const n=JSON.parse(localStorage.getItem('selah-eg')||'{}'); n.rep=(n.rep||0)+d; n.at=Date.now(); localStorage.setItem('selah-eg', JSON.stringify(n)); } }catch(e){} }
+// 🧭 مهمة 2 — المرحلة 7: «المندوب فتح البرنامج» ← رنّة التذكير تقف لحد ما ييجي جديد (كل 10 دقايق بالكتير)
+var rseenAt=0; function rSeen(){ try{ if(document.hidden || !CLOUD_URL || Date.now()-rseenAt<600000) return; const me=JSON.parse(localStorage.getItem('selah-trial-me')||'null'); if(!me||!me.id) return;
+  rseenAt=Date.now(); fetch(CLOUD_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({k:'rseen', sid:me.id})}).catch(()=>{}); }catch(e){} }
+setTimeout(rSeen, 2500); document.addEventListener('visibilitychange', rSeen);
+setTimeout(()=>sbBellTick(0), 3000); setInterval(()=>sbBellTick(5*60000), 60000); document.addEventListener('visibilitychange', ()=>sbBellTick(60000));
 setTimeout(()=>migratePhotos().catch(()=>{}), 1500);
 function bellModal(){
   document.getElementById('bellM')?.remove();

@@ -183,6 +183,25 @@ main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;fle
 @keyframes orPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 @keyframes orShine{0%,60%{left:-60%}100%{left:130%}}
 @media (prefers-reduced-motion:reduce){.ttiles.five .tt.h-or,.ttiles.five .tt.h-or::after{animation:none}}
+/* 2026-11-18: «استلمت مننا إيه» بالعدد + زرارين ابعت / رجوع (السهم لبره) */
+.rvq{display:flex;align-items:center;justify-content:space-between;gap:6px;border:2px solid #e5e7eb;border-radius:14px;padding:5px 8px;background:#fff;font-weight:700}
+.rvq.on{border-color:#16a34a;background:#f0fdf4}
+.rvq .qs{display:flex;align-items:center;gap:6px}.rvq .qs b{min-width:22px;text-align:center;font-size:17px}
+.rvq .qs button{width:32px;height:32px;border:0;border-radius:10px;font:900 19px inherit;font-family:inherit;cursor:pointer;background:#e0e7ff;color:#3730a3}
+.rvq.on .qs button{background:#dcfce7;color:#166534}
+.savebar.sb2{display:flex;gap:10px;align-items:center}
+.savebar.sb2 .gobtn{flex:1;width:auto;font-size:16px;padding:10px}
+.savebar.sb2 .sbk{flex:none;border:2px solid #cbd5e1;background:#fff;color:#334155;border-radius:14px;padding:9px 16px;font:800 15px inherit;font-family:inherit;cursor:pointer}
+body:has(.savebar.sb2) .back2{display:none}
+.rvg:has(.rvq){grid-template-columns:repeat(2,1fr)}
+/* 2026-11-18: كارت «اطلب كتبك بسعر مميز من سلاح التلميذ» — 3 زراير جوه إطار مدوّر */
+.ordcard{grid-column:1/-1;display:flex;flex-direction:column;justify-content:center;gap:8px;border-radius:24px;padding:10px 10px 12px;background:linear-gradient(135deg,#fdf2f8,#fce7f3 50%,#fef3c7);border:2.5px solid #f472b6;box-shadow:0 8px 20px -10px rgba(219,39,119,.6)}
+.ordcard .oc-t{text-align:center;font-family:'Reem Kufi',inherit;font-size:18px;font-weight:500;line-height:1.35;background:linear-gradient(90deg,#9d174d,#db2777,#b45309);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ordcard .oc-b{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ordcard .oc{border:0;border-radius:16px;padding:8px 4px;font:800 14px inherit;font-family:inherit;color:#fff;cursor:pointer;box-shadow:0 4px 10px -5px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;gap:2px}
+.ordcard .oc b{font-size:24px;line-height:1}
+.hm .ttiles.five:has(.ordcard){grid-template-rows:auto 100px 100px}
+.ordcard .oc-o{background:linear-gradient(140deg,#f472b6,#db2777)}.ordcard .oc-i{background:linear-gradient(140deg,#38bdf8,#2563eb)}.ordcard .oc-r{background:linear-gradient(140deg,#fb923c,#dc2626)}
 .back2{position:fixed;left:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:31;border:0;border-radius:20px;padding:6px 14px;font:800 13.5px inherit;font-family:inherit;color:#fff;background:linear-gradient(135deg,#ec4899,#db2777);box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer}
 .back2[hidden]{display:none}
 body:has(.savebar) .back2,body:has(main:not(.ordv) .totbar) .back2{bottom:calc(140px + env(safe-area-inset-bottom))}
@@ -241,7 +260,19 @@ const tName = n => 'أ/ ' + String(n || '').trim();
 const vals = () => ({ ...(D.profile || {}), avatar: D.avatar || '' });
 // قاعدة الخصم التلقائي لما «بعد الخصم» فاضي (زي البرنامج الأخضر بالظبط): إنجليزي ابتدائي 30% • إعدادي 17.5% ثم 7% على الباقي • غير كده السعر زي ما هو. من غير تقريب لجنيه.
 const autoPost = (b, pre) => { const [st, sb] = String(b).split('-'); return Math.round(pre * (st === 'm' ? 0.825 * 0.93 : sb === 'en' ? 0.70 : 1) * 1e6) / 1e6; };
-const prices = () => ((D.prices && D.prices.items) || []).map(p => { if (p.post != null || p.pre == null) return p; const post = autoPost(p.b, p.pre); return post < p.pre ? { ...p, post } : { ...p, post, pre: null }; });
+// 🧭 مهمة 2 — المرحلة 6: الأسعار من جوجل (?k=tprices) مرة في اليوم ومحفوظة على الموبايل — ولو لسه مافيش ← اللي جاي من القاعدة زي الأول
+let TPR = (() => { try { return JSON.parse(localStorage.getItem('selah-tprices') || 'null'); } catch (e) { return null; } })();
+async function pullTPrices(force) {
+  const u = (window.SILAH_CONFIG || {}).CLOUD_URL; if (!u || !navigator.onLine) return;
+  if (!force && TPR && Date.now() - (TPR.got || 0) < 864e5) return;
+  try { const j = await (await fetch(u + '?k=tprices')).json(); if (!j || !j.ok) return;
+    const ch = !TPR || JSON.stringify(j.items) !== JSON.stringify(TPR.items);
+    TPR = { items: j.items || [], at: j.at, got: Date.now() }; localStorage.setItem('selah-tprices', JSON.stringify(TPR));
+    if (ch && D && (view === 'order' || view === 'prices')) render(); } catch (e) { }
+}
+setTimeout(() => pullTPrices(), 5000);
+const priceItems = () => (TPR && TPR.items && TPR.items.length) ? TPR.items : ((D && D.prices && D.prices.items) || []);
+const prices = () => priceItems().map(p => { if (p.post != null || p.pre == null) return p; const post = autoPost(p.b, p.pre); return post < p.pre ? { ...p, post } : { ...p, post, pre: null }; });
 // النغمة: الموبايل بيمنع الصوت لحد ما المدرس يلمس الشاشة مرة — فأول لمسة «بتفتح» الصوت (بصمت)، وبعدها النغمة بتشتغل مع أي رسالة أو تنبيه
 // (2026-11-12 تاني) النغمة كانت بتشتغل ساعات وساعات لأ: الموبايل بيوقّف الصوت لما الصفحة تروح الخلفية.
 // الحل: Web Audio — النغمة بتتحمّل مرة واحدة في الذاكرة، والصوت بيتفتح مع أول لمسة، وبيرجع يتفتح لوحده كل ما الصفحة ترجع قدام أو المدرس يلمس الشاشة.
@@ -282,6 +313,12 @@ async function load() {
   if (!code && isApp) return renderPasteCode();
   if (!code) { app.innerHTML = '<div class="alert"><h3>افتح الرابط اللي وصلك من المندوب</h3>الرابط ده لازم يكون فيه الكود الخاص بيك.</div>'; return; }
   try {
+    // 🧭 مهمة 2 (توفير الباقة): نعرض آخر نسخة محفوظة على الموبايل على طول، ونسأل القاعدة سؤال صغير (t_ver) «اتغير حاجة؟» — ننزّل كل البيانات بس لو اتغيرت
+    const C = LS.get(DKEY());
+    if (!D && C && C.D) { D = normD(C.D); RV = C.RV || RV; VER = C.v || null; SEEN = evSig(D); $('#tabs').hidden = false; render(); setBadge(); startWatch(); afterLoad(true, false); }
+    LAST_CHK = Date.now();
+    const v = await tVer();
+    if (D && v && v === VER) return;
     const [{ data, error }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]);
     if (error) throw error;
     if (rv && rv.data) RV = rv.data;
@@ -292,17 +329,34 @@ async function load() {
         <div class="acts" style="margin-top:10px">${jl ? `<a class="btn ok" href="${esc(jl)}">📞 ادخل برقم تليفونك</a>` : ''}<button class="btn pri" id="pasteNew">🔑 عندي رابط جديد</button></div></div>`;
       $('#tabs').hidden = true; $('#pasteNew').onclick = renderPasteCode; return;
     }
-    const first = !D; D = normD(data); refNeed(); SEEN = evSig(D); loadNews(); $('#tabs').hidden = false; render(); setBadge(); startWatch();
+    D = normD(data); VER = v || null; saveD(data);
+    refNeed(); SEEN = evSig(D); $('#tabs').hidden = false; render(); setBadge(); startWatch();
+    afterLoad(!window.TP, true);
+  } catch (e) { if (D) return; app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }   // لو النسخة المحفوظة ظاهرة (مثلًا مفيش نت) نسيبها
+}
+// 🧭 مهمة 2: نسخة بيانات المدرس على الموبايل + رقم نسختها (t_ver)
+let VER = null, LAST_CHK = 0, REP_NOTIFIED = false;
+const DKEY = () => 'selah-trial-D-' + code;
+function saveD(data) { try { const o = LS.get(DKEY()) || {}; LS.set(DKEY(), { v: VER, D: data, RV, rep: (window.TP && TP.rep) || o.rep || null }); } catch (e) { } }
+// undefined = الدالة لسه مش في القاعدة (schema13 ماتشغلش) ← نرجع للطريقة القديمة
+async function tVer() { try { const { data, error } = await sb.rpc('t_ver', { p_code: code }); return error ? undefined : data; } catch (e) { return undefined; } }
+async function afterLoad(first, fresh) {
+  loadNews();
+  egFlush(async d => !(await sb.rpc('t_eg', { p_code: code, p_bytes: d })).error);   // مهمة 2 — المرحلة 7: عدّاد الباقة
+  if (fresh) {
     // طلب تحديث جديد من آخر مرة ← صوت
     const ids = D.updates.map(u => u.id), seen = LS.get('selah-trial-tupd', []);
     if (ids.some(i => !seen.includes(i))) ding(); LS.set('selah-trial-tupd', ids);
-    if (first) {
-      const { data: rep } = await sb.rpc('t_rep', { p_code: code });
-      window.TP = { id: D.id, rep, name: D.name, subs: (D.profile || {}).subjects || [] }; window.pushReady && window.pushReady();
-      if (D.unread && window.pushNotifyRep) window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك');
-      reportInstall();
-    }
-  } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="load()">حاول تاني</button>`; }
+    if (D.unread && !REP_NOTIFIED && window.pushNotifyRep && window.TP) { REP_NOTIFIED = true; window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك'); }
+  }
+  if (first && !window.TP) {
+    let rep = (LS.get(DKEY()) || {}).rep;
+    if (!rep) { try { rep = (await sb.rpc('t_rep', { p_code: code })).data; } catch (e) { } }
+    window.TP = { id: D.id, rep, name: D.name, subs: (D.profile || {}).subjects || [] }; window.pushReady && window.pushReady();
+    if (rep) saveD((LS.get(DKEY()) || {}).D || D);
+    if (fresh && D.unread && !REP_NOTIFIED && window.pushNotifyRep) { REP_NOTIFIED = true; window.pushNotifyRep('✅ ' + D.name + ' فتح البرنامج وبيشوف رسايلك'); }
+    reportInstall();
+  }
 }
 /* متابعة 10: المدرس فتح من التطبيق المتثبّت ← بيتسجل في القاعدة (فلتر «📲 مثبّت» عند المندوب)،
    وأول مرة بس بيوصل إشعار للمندوب والمالك «📲 الأستاذ فلان ثبّت التطبيق» */
@@ -337,10 +391,22 @@ function updCounts() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n; $('#msgCnt').hidden = !msgBadge(); $('#msgCnt').textContent = msgBadge(); updBell();
 }
-async function watchTick() {
+// 🧭 مهمة 2 (توفير الباقة): مفيش سؤال كل 15 ثانية. البرنامج بيسأل بس:
+//   • لما يوصل إشعار والبرنامج قدام (silah-push) — على طول
+//   • لما المدرس يرجع للبرنامج — لو عدّى 5 دقايق من آخر سؤال
+//   • احتياطي كل ساعة والبرنامج مفتوح (لو الإشعارات مقفولة أو إشعار ضاع)
+//   • زرار 🔄 فوق
+// والسؤال نفسه صغير (t_ver = رقم النسخة)، والبيانات كلها بتنزل بس لو اتغيرت.
+const WATCH_GAP = 5 * 60000, WATCH_SAFE = 60 * 60000;
+async function watchTick(force) {
   if (document.hidden || !code || !D || !isApp) return;
+  if (!force && Date.now() - LAST_CHK < WATCH_GAP) return;
+  LAST_CHK = Date.now();
   try {
-    let [{ data }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]); if (!data) return; data = normD(data);
+    const v = await tVer();
+    if (v && v === VER) return;
+    let [{ data }, rv] = await Promise.all([sb.rpc('t_get', { p_code: code }), sb.rpc('t_recv_get', { p_code: code })]); if (!data) return;
+    VER = v || null; const raw = data; data = normD(data); saveD(raw);
     if (rv && rv.data && !!rv.data.open !== !!(RV && RV.open)) { RV = rv.data; if (view === 'home') { D = data; render(); } }
     const a = evSig(data), b = SEEN || evSig(D); SEEN = a;
     if (isNewer(a, b)) ding(); refNeed();
@@ -353,8 +419,9 @@ async function watchTick() {
 }
 function startWatch() {
   if (WATCH || !isApp) return;
-  WATCH = setInterval(watchTick, 15000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) watchTick(); });
+  WATCH = setInterval(() => { if (Date.now() - LAST_CHK >= WATCH_SAFE) watchTick(true); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) watchTick(false); });
+  window.addEventListener('silah-push', () => { watchTick(true); if (view === 'msgs') pullMsgs(false); loadNews(true); });
 }
 // طلبات التحديث اللي المدرس ردّ عليها ماتظهرش تاني
 function normD(d) { const done = LS.get('selah-trial-tupd-done', []); d.updates = (d.updates || []).filter(u => !done.includes(u.id)); return d; }
@@ -388,7 +455,9 @@ function renderHome() {
   let h = `<div class="promo"><div class="pr-t">كتب سلاح التلميذ <b>بسعر مميز</b></div>
     <div class="pr-r"><span>🚚 توصيل لحد السنتر</span><span>↩️ المرتجع علينا</span><span>💳 الدفع بعدين</span></div>
     <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
-  h += `<div class="ttiles five"><button class="tt wd h-or" data-v="order"><span class="tti">${HI.or}</span><span class="tlx"><span class="ttl">🎁 كتبك بخصم خاص</span><span class="tsub">شوف الأسعار واطلب 👆</span></span><span class="orar">←</span><span class="orgo">👆 اضغط هنا</span></button>
+  // 2026-11-18 (طلب شريف): كارت مدوّر فيه 3 زراير (اطلب كتبك · فواتيري · مرتجعات) بدل زرار «كتبك بخصم خاص» — واتشالوا من جوه الصفحات
+  h += `<div class="ttiles five"><div class="ordcard"><div class="oc-t">اطلب كتبك بسعر مميز من سلاح التلميذ</div>
+      <div class="oc-b"><button class="oc oc-o" data-v="order"><b>🛒</b>اطلب كتبك</button><button class="oc oc-i" data-v="inv"><b>🧾</b>فواتيري</button><button class="oc oc-r" data-v="ret"><b>↩️</b>مرتجعات</button></div></div>
     <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${msgBadge() ? `<span class="ttb">${msgBadge()}</span>` : ''}</button>
     <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${HI.rv}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
@@ -854,26 +923,33 @@ function updBubble(u) {
   return `<div class="bub them updb"><b>📝 الأستاذ ${esc(D.rep || '')} محتاج تحدّث بياناتك</b><div class="small" style="margin-top:4px">${esc(fieldsTxt(u.fields || []))}</div>${u.note ? `<div style="margin-top:4px">«${esc(u.note)}»</div>` : ''}
     <button class="updgo" onclick="go('me')">✏️ ادخل حدّث بياناتك دلوقتي ←</button>${u.created_at || u.at ? `<span class="tm">${fmtDate(u.created_at || u.at)}</span>` : ''}</div>`;
 }
+// 🧭 مهمة 2 — المرحلة 2: الرسايل محفوظة على موبايل المدرس، وبنجيب من القاعدة الجديد بس (بعد آخر رسالة عندنا)
+const MKEY = () => 'selah-trial-msgs-' + code;
+function msgsLocal() { const l = LS.get(MKEY(), []); return Array.isArray(l) ? l : []; }
 async function pullMsgs(first) {
-  // بنجيب كل الرسايل كل مرة (عشان علامة ✓✓ القراية تتحدّث على رسايل اتبعتت قبل كده)
-  const { data, error } = await sb.rpc('t_msgs', { p_code: code, p_after: 0 });
-  if (error) return;
-  const fresh = (data || []).filter(m => m.id > lastId);
-  msgs = data || msgs;
+  const old = msgsLocal(), after = old.length ? old[old.length - 1].id : 0;
+  if (first && !msgs.length) msgs = old;
+  const { data, error } = await sb.rpc('t_msgs', { p_code: code, p_after: after });
+  if (error) { if (first) drawMsgs(true, []); return; }
+  const got = (data || []).filter(m => m.id > after);
+  const fresh = got.filter(m => m.id > lastId);
+  msgs = old.concat(got).slice(-300); if (got.length) LS.set(MKEY(), msgs);
   if (!first && fresh.some(m => !m.me)) ding();
+  drawMsgs(first, fresh);
+}
+function drawMsgs(first, fresh) {
   if (msgs.length) lastId = msgs[msgs.length - 1].id;
   const box = $('#chat'); if (!box) return;
   // طلبات التحديث بتظهر في الرسائل كمان (بمكانها حسب الوقت) بزرار كبير يفتح «ملفي»
   const ups = (D.updates || []).map(u => ({ u, at: u.created_at || u.at || '' }));
   const parts = msgs.map((m, i, all) => ({ at: m.at || '', h: bubble(m, i, all) }));
   for (const x of ups) { const k = x.at ? parts.findIndex(p => p.at && p.at > x.at) : -1; const h = updBubble(x.u); if (k < 0) parts.push({ at: x.at, h }); else parts.splice(k, 0, { at: x.at, h }); }
-  box.innerHTML = parts.map(p => p.h).join('') || '<div class="empty small">ابدأ المحادثة مع الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
+  box.innerHTML = parts.map(p => p.h).join('') || '<div class="empty small">لسه مفيش رسايل من الأستاذ ' + esc(D.rep || '') + ' 👋</div>';
   if (first || fresh.length) scrollTo(0, document.body.scrollHeight);
   D.unread = 0; $('#msgCnt').hidden = !msgBadge(); $('#msgCnt').textContent = msgBadge(); setBadge(); if (!first) refNeed();
 }
 function renderMsgs() {
-  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn stick" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}
-    <div class="small muted" style="text-align:center">الرسائل كتابة بس</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
+  app.innerHTML = `<div class="small muted" style="text-align:center">✍️ اكتب رسالتك ودوس «إرسال» ← هتتفتح محادثتك مع الأستاذ ${esc(D.rep || '')} على الواتساب</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
   $('#cbar').innerHTML = `<div class="chatbar"><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; if (!EMOJIS.includes('👆')) EMOJIS.push('👆');
   bindEmoji($('#mt'));
   // القايمة تقفل أول ما يتختار إيموشن، أو لما يتداس على خانة الكتابة
@@ -881,15 +957,35 @@ function renderMsgs() {
   if (emp) emp.addEventListener('click', e => { if (e.target.closest('button')) emp.hidden = true; });
   $('#mt').addEventListener('focus', () => { if (emp) emp.hidden = true; });
   const o = $('#ord'); o && (o.onclick = orderDlg);
+  // 🧭 مهمة 2 — المرحلة 2: الرسالة ماتروحش القاعدة — «إرسال» بيفتح محادثة المدرس مع المندوب على الواتساب والنص مكتوب جاهز
   $('#ms').onclick = async () => {
     const t = $('#mt').value.trim(); if (!t) return;
     $('#ms').disabled = true;
-    const { error } = await sb.rpc('t_send', { p_code: code, p_body: t });
+    const wa = await repWa();
     $('#ms').disabled = false;
-    if (error) return toast(errMsg(error));
-    $('#mt').value = ''; NEEDN = 0; updCounts(); setBadge(); pullMsgs(false); setTimeout(refNeed, 800); window.pushNotifyRep && window.pushNotifyRep('💬 ' + D.name + ': ' + t.slice(0, 80));
+    if (!wa) return toast('⚠️ الأستاذ ' + (D.rep || '') + ' لسه ما سجّلش رقم الواتساب بتاعه — كلّمه تليفون', 5000);
+    $('#mt').value = '';
+    if (NEEDN) { sb.rpc('t_wa_replied', { p_code: code }).then(() => refNeed()).catch(() => { }); NEEDN = 0; updCounts(); setBadge(); }   // «🔔 مطلوب رد» يتقفل
+    openWa(wa, t);
   };
-  pullMsgs(true); pollT = setInterval(() => pullMsgs(false), 8000);
+  pullMsgs(true); pollT = setInterval(() => { if (!document.hidden) pullMsgs(false); }, 5 * 60000);   // مهمة 2: احتياطي كل 5 دقايق (الأساس الإشعار)
+}
+// رقم واتساب المندوب: محفوظ على الموبايل، ولو مش موجود نسأل القاعدة مرة (t_rep_wa)
+async function repWa() {
+  const c = LS.get(DKEY()) || {};
+  if (c.wa && Date.now() - (c.waAt || 0) < 7 * 864e5) return c.wa;
+  try { const { data, error } = await sb.rpc('t_rep_wa', { p_code: code }); if (!error && data) { c.wa = String(data); c.waAt = Date.now(); LS.set(DKEY(), c); return c.wa; } } catch (e) { }
+  return c.wa || '';
+}
+// 01xxxxxxxxx ← 201xxxxxxxxx (أي أرقام عربي/إنجليزي)
+function waNum(p) {
+  let d = String(p || '').replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6F0).replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '2' + d; return d;
+}
+function openWa(phone, text) {
+  const n = waNum(phone), tx = encodeURIComponent(text);
+  if (/Android/i.test(navigator.userAgent)) { location.href = 'whatsapp://send?phone=' + n + '&text=' + tx; return; }
+  const web = 'https://wa.me/' + n + '?text=' + tx; if (!window.open(web, '_blank')) location.href = web;
 }
 
 /* ---------- الكتب ---------- */
@@ -957,6 +1053,7 @@ async function renderInv() {
   const { m, A, R } = ledSums(L.rows), ks = Object.keys(m);
   const kinds = { sale: ['🧾 فاتورة بيع', '#2563eb'], ret: ['↩️ مرتجع', '#ea580c'], free: ['🎁 تسليم مجاني', '#16a34a'] };
   app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#0ea5e9,#6d28d9)">🧾 فواتيري</div>
+    ${L.img && /^https:\/\/drive\.google\.com\//.test(L.img) ? `<a class="btn pri" href="${esc(L.img)}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-bottom:10px;font-size:16px">🖼️ افتح صورة آخر فاتورة</a>` : ''}
     <div class="card"><h3 style="margin:0 0 8px">📑 الفاتورة المجمّعة</h3>
     ${ks.length ? `<div class="tbw"><table class="tb"><thead><tr><th>الكتاب</th><th>اشتريت</th><th>رجّعت</th><th>الصافي</th></tr></thead><tbody>${ks.map(k => `<tr><td>${esc(m[k].l)}</td><td>${m[k].n}</td><td>${m[k].r || ''}</td><td><b>${m[k].n - m[k].r}</b></td></tr>`).join('')}</tbody></table></div>
       <div class="kv"><span>إجمالي المشتريات</span><b>${money(A)}</b></div><div class="kv"><span>إجمالي المرتجعات</span><b style="color:#ea580c">${money(R)}</b></div>
@@ -1001,9 +1098,9 @@ async function renderRet() {
 let ordQ = {};
 function renderOrder() {
   const ps = myPrices();
-  if (!ps.length) { app.innerHTML = INVBAR() + '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; bindInvBar(); return; }
+  if (!ps.length) { app.innerHTML = '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; return; }
   app.className = 'wrap ordv';
-  app.innerHTML = INVBAR() + `<div class="phead hot">🎁 كتبك بخصم خاص<div class="small">ده سعر كل كتاب قبل وبعد الخصم — اكتب العدد جنب اللي عايزه، والحساب بيطلع لوحده</div></div>
+  app.innerHTML = `<div class="phead hot">🎁 كتبك بخصم خاص<div class="small">ده سعر كل كتاب قبل وبعد الخصم — اكتب العدد جنب اللي عايزه، والحساب بيطلع لوحده</div></div>
     <div class="oscr"><div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}"><div>${bookHead(p)}</div>
       <span class="qty"><button type="button" data-d="1">+</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="-1">−</button></span>
       <div class="bk-sum"></div></div>`).join('')}</div>
@@ -1067,7 +1164,7 @@ function renderBooks() {
   const pe = D.orders.find(o => o.kind === 'edit' && o.status === 'pending' && !sidOf(o));
   const bk = (D.books || []).map(x => { const n = pe && (pe.items || []).find(i => i.b === x.b); return n ? { ...x, q: n.q, pend: n.q !== x.q } : x; });
   const ost = { pending: '<span class="pill owe">⏳ مستني</span>', approved: '<span class="pill ok">✅ اتوافق</span>', rejected: '<span class="pill bad">❌ اترفض</span>' };
-  app.innerHTML = `${canOrder(D.profile) ? '<button class="ordbtn" id="ord">🛒 اطلب منا الكتب بأسعار مميزة</button>' : ''}${repOrdersHtml()}
+  app.innerHTML = `${repOrdersHtml()}
     <div class="card"><h3>📚 الكتب اللي حضرتك طلبتها</h3>
     ${bk.length ? `<div class="small muted" style="margin-bottom:6px">لو عايز تغيّر الكمية، عدّلها وابعت طلب تعديل للمندوب.</div>${pe ? '<div class="note small" style="padding:8px">⏳ تعديل الكميات بتاعك في انتظار موافقة المندوب</div>' : ''}<div id="bl">${bk.map(x => qtyRow(x.b, x.l || bookLabel(x.b), x.q, x.pend ? '⏳ في انتظار الموافقة' : '')).join('')}</div>
       <button class="btn owe" id="be" style="width:100%;margin-top:10px">✏️ ابعت طلب تعديل الكمية</button>` : '<div class="small muted">لسه مفيش كتب متسجلة لحضرتك.</div>'}</div>
@@ -1098,22 +1195,28 @@ function recvBooks() {
 }
 function renderRecv() {
   if (!RV || !RV.open) { app.innerHTML = '<div class="card empty">🔒 الصفحة دي هتتفتح لما المندوب يسلّمك الكتب.</div>'; return; }
-  const had = ((RV.recv || {}).b) || [], all = recvBooks(), extra = had.filter(k => !all.includes(k));
-  const box = k => `<label class="${had.includes(k) ? 'on' : ''}"><input type="checkbox" value="${esc(k)}" ${had.includes(k) ? 'checked' : ''}>${esc(B_GRADE[k.split('-')[2] - 1] || bookLabel(k))}</label>`;
-  app.innerHTML = `<div class="phead">📦 استلمت مننا إيه الترم ده؟<div class="small">علّم ✅ على كل كتاب وصلك من سلاح التلميذ، وبعدين دوس «ابعت»</div></div>
+  // 2026-11-18 (طلب شريف): عدد لكل كتاب (استلم 2 من ده و3 من ده) بدل ✅ بس
+  const had = ((RV.recv || {}).b) || [], hq = ((RV.recv || {}).q) || {}, all = recvBooks(), extra = had.filter(k => !all.includes(k));
+  const Q = {}; had.forEach(k => Q[k] = +hq[k] || 1);
+  const box = (k, lbl) => `<div class="rvq ${Q[k] ? 'on' : ''}" data-k="${esc(k)}"><span class="rvn">${esc(lbl || B_GRADE[k.split('-')[2] - 1] || bookLabel(k))}</span><span class="qs"><button type="button" data-d="1">+</button><b>${Q[k] || 0}</b><button type="button" data-d="-1">−</button></span></div>`;
+  app.innerHTML = `<div class="phead">📦 استلمت مننا إيه الترم ده؟<div class="small">اكتب عدد النسخ اللي وصلتك من كل كتاب (➕ / ➖)، وبعدين دوس «ابعت»</div></div>
     ${RV.recv && RV.recv.at ? `<div class="good small">✅ بعتّ قبل كده ${fmtDate(RV.recv.at)} — تقدر تعدّل وتبعت تاني</div>` : ''}
-    <div class="rvl" id="rvl">${RECV_ALL.map(([st, nm, subs]) => `<div class="rvst">${st === 'm' ? '📗' : '📘'} ${nm}</div>${subs.map(s => `<div class="rvsb" style="color:${SUBJ_COL[s] || '#6d28d9'}"><span class="bk-dot" style="background:${SUBJ_COL[s] || '#6d28d9'}"></span>${B_SUBJ[s]} ${nm}</div><div class="rvg">${all.filter(k => k.startsWith(st + '-' + s + '-')).map(box).join('')}</div>`).join('')}`).join('')}
-      ${extra.length ? `<div class="rvst">📚 كتب تانية علّمتها قبل كده</div><div class="rvg">${extra.map(k => `<label class="on"><input type="checkbox" value="${esc(k)}" checked>${esc(bookLabel(k))}</label>`).join('')}</div>` : ''}</div>
-    <div class="savebar"><button class="gobtn" id="rvs">📤 ابعت للأستاذ</button></div>`;
-  $('#rvl').onchange = e => { const c = e.target; if (c.type === 'checkbox') c.closest('label').classList.toggle('on', c.checked); };
+    <div class="rvl" id="rvl">${RECV_ALL.map(([st, nm, subs]) => `<div class="rvst">${st === 'm' ? '📗' : '📘'} ${nm}</div>${subs.map(s => `<div class="rvsb" style="color:${SUBJ_COL[s] || '#6d28d9'}"><span class="bk-dot" style="background:${SUBJ_COL[s] || '#6d28d9'}"></span>${B_SUBJ[s]} ${nm}</div><div class="rvg">${all.filter(k => k.startsWith(st + '-' + s + '-')).map(k => box(k)).join('')}</div>`).join('')}`).join('')}
+      ${extra.length ? `<div class="rvst">📚 كتب تانية علّمتها قبل كده</div><div class="rvg">${extra.map(k => box(k, bookLabel(k))).join('')}</div>` : ''}</div>
+    <div class="savebar sb2"><button class="sbk" id="rvb">➜ رجوع</button><button class="gobtn" id="rvs">📤 ابعت</button></div>`;
+  $('#rvl').onclick = e => { const b = e.target.closest('[data-d]'), r = e.target.closest('.rvq'); if (!b || !r) return;
+    const k = r.dataset.k; Q[k] = Math.max(0, Math.min(99, (Q[k] || 0) + +b.dataset.d)); if (!Q[k]) delete Q[k];
+    $('b', r).textContent = Q[k] || 0; r.classList.toggle('on', !!Q[k]); };
+  $('#rvb').onclick = () => go('home');
   $('#rvs').onclick = async () => {
-    const b = $$('#rvl input:checked').map(i => i.value);
-    if (!b.length && !confirm('ماعلّمتش على أي كتاب — يعني ماستلمتش حاجة؟')) return;
+    const b = Object.keys(Q).filter(k => Q[k] > 0), q = {}; b.forEach(k => q[k] = Q[k]);
+    if (!b.length && !confirm('ماكتبتش أي كتاب — يعني ماستلمتش حاجة؟')) return;
     $('#rvs').disabled = true;
-    const { error } = await sb.rpc('t_recv', { p_code: code, p_books: b });
+    let { error } = await sb.rpc('t_recv2', { p_code: code, p_books: b, p_q: q });
+    if (error && /t_recv2|function/i.test(error.message || '')) ({ error } = await sb.rpc('t_recv', { p_code: code, p_books: b }));   // لو schema13 لسه ماتشغلش
     $('#rvs').disabled = false;
     if (error) return toast(errMsg(error));
-    RV.recv = { b, at: new Date().toISOString() };
+    RV.recv = { b, q, at: new Date().toISOString() };
     toast('اتبعت ✅ شكرًا لحضرتك'); window.pushNotifyRep && window.pushNotifyRep('📦 ' + D.name + ' علّم الكتب اللي استلمها'); go('home');
   };
 }
@@ -1158,7 +1261,8 @@ const NEWS_IC = { video: '🎬', pdf: '📄', image: '🖼️', file: '📎' };
 let NEWS = LS.get('selah-news', { items: [], got: 0 }), newsSub = null;
 async function loadNews(force) {
   const u = (window.SILAH_CONFIG || {}).CLOUD_URL;
-  if (!u || (!force && Date.now() - (NEWS.got || 0) < 15 * 60000)) return;
+  // 🧭 مهمة 2 — المرحلة 6: من جوجل مرة في اليوم؛ لو فتح «اعرف الجديد» أو وصل إشعار ← لو عدّت ساعة
+  if (!u || Date.now() - (NEWS.got || 0) < (force ? 3600000 : 864e5)) return;
   try {
     const j = await (await fetch(u + '?k=news')).json(); if (!j || !j.ok) return;
     const ch = JSON.stringify(j.items) !== JSON.stringify(NEWS.items);
@@ -1170,7 +1274,7 @@ const mySubs = () => ((D.profile || {}).subjects || []).filter(s => NEWS_CH[s]);
 function newsNew(s) { const seen = LS.get('selah-news-seen', {})[s] || ''; return NEWS.items.filter(x => x.s === s && x.at > seen).length; }
 function newsTotal() { return [...mySubs(), 'all'].reduce((n, s) => n + newsNew(s), 0); }
 function renderNews() {
-  loadNews();
+  loadNews(true);
   const mine = mySubs();
   if (!newsSub) {
     // متابعة 7: كل قنوات سلاح التلميذ — مرحلتين × 5 مواد، أيقونة كرتونية لكل مادة، والضغطة تفتح القناة في تليجرام على طول
@@ -1221,7 +1325,7 @@ function renderMe() {
   app.innerHTML = `<form id="pf" class="pform" onsubmit="return false">
     ${reqList.length ? `<div class="reqbar"><b>📝 مطلوب منك تحدّث:</b><div class="pgrid">${reqList.map(k => `<button type="button" class="chip" data-go="${k}">${FIELD_LABEL[k]}</button>`).join('')}</div></div>` : ''}
     <div class="warnbox">${WARN_TXT}</div>
-    <div class="small muted" style="text-align:center;margin-bottom:8px">أي تعديل بيروح للمندوب يراجعه الأول، وبعد الموافقة يتعتمد.</div>
+    <div class="small muted" style="text-align:center;margin-bottom:8px">📍 مكان الدرس والموقع ومواعيد السنتر والصورة الشخصية بيتحفظوا على طول. باقي البيانات وصور الطلبة ⏳ بتتعتمد بعد موافقة المندوب.</div>
     ${SEC.map(([k, ic, t, keys]) => `<section class="psec s-${k}"><div class="psh"><span class="pdot">${ic}</span>${t}</div>${profileForm(V, { ...o, only: keys })}</section>`).join('')}
     <section class="psec s-ph"><div class="psh"><span class="pdot">📷</span>صور مع طلبتك</div>
     <div class="field${req.has('photos') ? ' req' : ''}" data-f="photos"><label>📷 صور إضافية${req.has('photos') ? ' <span class="pill bad">مطلوب تحديثه</span>' : ''}</label>
@@ -1229,7 +1333,7 @@ function renderMe() {
       <div class="photos" id="phs"></div>
       <div class="avbtns" style="margin-top:8px"><label class="btn pri">📷 كاميرا<input type="file" accept="image/*" capture="environment" class="phIn" hidden></label><label class="btn">🖼️ المعرض<input type="file" accept="image/*" multiple class="phIn" hidden></label></div>
       ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div></section>
-    <div class="savebar"><button class="gobtn" id="save">✅ تم — ابعت للمراجعة</button></div></form>`;
+    <div class="savebar"><button class="gobtn" id="save">✅ تم — ابعت</button></div></form>`;
   const f = $('#pf'); bindProfileForm(f, st, { remind: true }); drawPhotos();
   $$('.pgrid input:checked', f).forEach(i => i.parentNode.classList.add('on'));
   $$('[data-go]', f).forEach(b => b.onclick = () => { const x = $(`.field[data-f="${b.dataset.go}"]`, f); x && x.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
@@ -1245,11 +1349,19 @@ function renderMe() {
     const ch = changedOnly(vals(), filled);
     if (!Object.keys(ch).length && !newPhotos.length) return toast('اكتب بياناتك الأول');
     const b = $('#save'); b.disabled = true; b.textContent = 'جاري الإرسال…';
-    const { error } = await sb.rpc('t_submit', { p_code: code, p_values: ch, p_photos: newPhotos, p_reply: null });
-    if (error) { b.disabled = false; b.textContent = '✅ تم — ابعت للمراجعة'; return toast(errMsg(error)); }
+    // 🧭 مهمة 2 — المرحلة 3: المكان/الموقع/المواعيد/الصورة الشخصية ← طلب لوحده بيتحفظ من غير موافقة (t_submit_now)،
+    // وباقي البيانات + صور الطلبة ← موافقة المندوب (t_submit). لو t_submit_now لسه مش في القاعدة ← كله يروح زي الأول.
+    const NOW = ['address', 'loc', 'days', 'avatar'], now = {}, rest = {};
+    for (const k in ch) (NOW.includes(k) ? now : rest)[k] = ch[k];
+    let error = null, nowOk = false;
+    if (Object.keys(now).length) { const r = await sb.rpc('t_submit_now', { p_code: code, p_values: now }); if (!r.error) nowOk = true; else Object.assign(rest, now); }
+    if (Object.keys(rest).length || newPhotos.length) error = (await sb.rpc('t_submit', { p_code: code, p_values: rest, p_photos: newPhotos, p_reply: null })).error;
+    if (error) { b.disabled = false; b.textContent = '✅ تم — ابعت'; return toast(errMsg(error)); }
     // طلبات التحديث اللي اتردّ عليها تتشال من عنده
     const ids = (D.updates || []).map(u => u.id), done = LS.get('selah-trial-tupd-done', []); LS.set('selah-trial-tupd-done', [...new Set([...done, ...ids])].slice(-100));
-    newPhotos = []; toast('اتبعت للمراجعة ✅ — جزاك الله خيرًا'); window.pushNotifyRep && window.pushNotifyRep('📝 ' + D.name + ' عدّل ملفه'); view = 'home'; load();
+    const waitN = Object.keys(rest).length + newPhotos.length;
+    newPhotos = []; toast(nowOk && !waitN ? '✅ اتحفظ — جزاك الله خيرًا' : nowOk ? '✅ المكان والمواعيد اتحفظوا، والباقي ⏳ مستني موافقة المندوب' : 'اتبعت للمراجعة ✅ — جزاك الله خيرًا', 4500);
+    window.pushNotifyRep && window.pushNotifyRep((waitN ? '📝 ' : '📍 ') + D.name + (waitN ? ' عدّل ملفه' : ' حدّث المكان/المواعيد')); view = 'home'; load();
   };
   const first = $('.field.req'); first && first.scrollIntoView({ block: 'center' });
 }

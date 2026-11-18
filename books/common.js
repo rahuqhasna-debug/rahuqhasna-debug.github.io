@@ -9,6 +9,25 @@ const LS = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
 
+/* ---------- 🧭 مهمة 2 — المرحلة 7: عدّاد الباقة (تقديري) ----------
+   كل حاجة نازلة من القاعدة بتتعد على الموبايل ده (حجم الرد + ~400 بايت للعناوين) في الشهر ده،
+   والبرنامج بيبلّغ القاعدة بالزيادة بس (t_eg للمدرس ← بتتحسب على المندوب بتاعه، my_eg للمندوب). */
+const EG_KEY = 'selah-eg';
+const egMonth = () => new Date().toISOString().slice(0, 7);
+function egState() { const o = LS.get(EG_KEY) || {}; return o.m === egMonth() ? o : { m: egMonth(), b: 0, rep: 0, at: 0 }; }
+function egAdd(n) { if (!(n > 0)) return; const o = egState(); o.b += n; LS.set(EG_KEY, o); }
+function egFetch(input, init) {
+  const p = fetch(input, init);
+  p.then(r => { try { const cl = +r.headers.get('content-length'); if (cl > 0) egAdd(cl + 400); else r.clone().arrayBuffer().then(b => egAdd(b.byteLength + 400)).catch(() => { }); } catch (e) { } }).catch(() => { });
+  return p;
+}
+// بيبلّغ بالزيادة لو عدّت 100 ك.ب أو عدّى نص يوم من آخر مرة. send = async delta => true/false
+async function egFlush(send) {
+  const o = egState(), d = o.b - (o.rep || 0);
+  if (d <= 0 || (d < 102400 && Date.now() - (o.at || 0) < 12 * 3600000)) return;
+  try { if (await send(d)) { const n = egState(); n.rep = (n.rep || 0) + d; n.at = Date.now(); LS.set(EG_KEY, n); } } catch (e) { }
+}
+
 /* ---------- الاتصال بالقاعدة (config.js، أو «كود إعداد» = base64 url|key لقاعدة مندوب تانية) ---------- */
 const CFG_KEY = 'selah-trial-cfg';
 function encodeCfg(url, key) { return btoa(url + '|' + key).replace(/=+$/, ''); }
@@ -23,7 +42,7 @@ function cfgReady(c) { return c.url && !/PASTE/.test(c.url) && c.key && !/PASTE/
 function makeClient(persist, cfgKey = CFG_KEY) {
   const c = getCfg(cfgKey);
   if (!cfgReady(c) || !window.supabase) return null;
-  return supabase.createClient(c.url, c.key, { auth: { persistSession: persist, autoRefreshToken: persist, storageKey: 'selah-trial-auth' } });
+  return supabase.createClient(c.url, c.key, { auth: { persistSession: persist, autoRefreshToken: persist, storageKey: 'selah-trial-auth' }, global: { fetch: egFetch } });
 }
 function deviceId() {
   let d = LS.get('selah-trial-device');
@@ -194,6 +213,19 @@ function fieldInput(f, v, stage, opts = {}) {
   }
 }
 function specSel(stage, v) { const o = specOpts(stage); return `<option value="">—</option>` + o.map(x => `<option ${v === x ? 'selected' : ''}>${x}</option>`).join(''); }
+// 2026-11-18 (طلب شريف): الصفوف اللي بتتعلّم لوحدها (1..6 ابتدائي، 7..9 إعدادي) — [] = هو يختار بإيده
+//   ابتدائي+إعدادي ← 4–9 · إعدادي ← 7–9 · ابتدائي: فصل/تأسيس ← 1–3، صفوف عليا ← 4–6، مواده علوم/دراسات بس ← 4–6، غير كده (فيه عربي/رياضة/إنجليزي) ← هو يختار
+function autoGrades(st, subs, spec) {
+  if (st === 'pm') return [4, 5, 6, 7, 8, 9];
+  if (st === 'm') return [7, 8, 9];
+  if (st !== 'p') return [];
+  const sp = String(spec || '');
+  if (/فصل|تأسيس|تاسيس/.test(sp)) return [1, 2, 3];
+  if (/صفوف عليا/.test(sp)) return [4, 5, 6];
+  const s = (subs || []).filter(Boolean);
+  if (s.length && s.every(x => x === 'stu' || x === 'sci')) return [4, 5, 6];
+  return [];
+}
 function gradesBoxes(stage, v) {
   const gs = gradesFor(stage);
   if (!gs.length) return '<span class="small muted">اختار المرحلة الأول</span>';
@@ -232,11 +264,22 @@ function bindProfileForm(root, state, opts = {}) {
     const day = e.target.closest('.dayrow');
     if (day && e.target.type === 'checkbox') { $('.dtimes', day).hidden = !e.target.checked; e.target.parentNode.classList.toggle('on', e.target.checked); day.classList.toggle('on', e.target.checked); }
     if (e.target.type === 'radio') $$(`input[name="${e.target.name}"]`, root).forEach(r => r.parentNode.classList.toggle('on', r.checked));
+    const stIn = () => { const r = $('input[name="stage"]:checked', root) || $('select[name="stage"]', root); return r ? r.value : ''; };
+    const subsIn = () => $$('[data-subjs] input:checked', root).map(i => i.value);
+    const gr = $('[data-grades]', root);
+    // 2026-11-18 (طلب شريف): الصفوف بتتعلّم لوحدها حسب المرحلة/التخصص/المواد (autoGrades) — وتقدر تزوّد أو تشيل بإيدك
+    const autoSet = force => { if (!gr) return; const a = autoGrades(stIn(), subsIn(), ($('[data-spec]', root) || {}).value);
+      const cur = $$('input:checked', gr).map(i => +i.value);
+      if (!force && (cur.length || !a.length)) return;
+      if (force === 'soft' && !a.length) return;   // التخصص اتغيّر لحاجة مالهاش صفوف ثابتة ← نسيب اختياره
+      gr.innerHTML = gradesBoxes(stIn(), force ? a : cur.length ? cur : a); $$('input', gr).forEach(i => i.parentNode.classList.toggle('on', i.checked)); };
     if (e.target.name === 'stage') {
-      const st = e.target.value, sp = $('[data-spec]', root), gr = $('[data-grades]', root);
+      const st = e.target.value, sp = $('[data-spec]', root);
       if (sp) { const cur = sp.value; sp.innerHTML = specSel(st, cur); if (specOpts(st).length === 1) sp.value = specOpts(st)[0]; }
-      if (gr) { const cur = $$('input:checked', gr).map(i => +i.value); gr.innerHTML = gradesBoxes(st, cur); }
+      autoSet(true);
     }
+    if (e.target.name === 'spec') autoSet('soft');
+    if (sub) autoSet(false);
   });
   $$('[data-av]', root).forEach(av => av.addEventListener('change', async () => {
     const f = av.files[0]; av.value = ''; if (!f) return;

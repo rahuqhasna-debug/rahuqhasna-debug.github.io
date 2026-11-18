@@ -27,6 +27,9 @@
   const ready = new Promise(res => OneSignalDeferred.push(async OS => {
     try { await OS.init({ appId: C.ONESIGNAL_APP_ID, serviceWorkerPath: scope.slice(1) + 'sw.js', serviceWorkerParam: { scope }, notifyButton: { enable: false } }); } catch (e) { }
     try { OS.Notifications.addEventListener('permissionChange', g => { if (g && who) OS.login(who).catch(() => { }); }); } catch (e) { }
+    // 🧭 مهمة 2: إشعار وصل والبرنامج مفتوح ← البرنامج يسأل القاعدة دلوقتي بس (بدل السؤال كل شوية)
+    try { OS.Notifications.addEventListener('foregroundWillDisplay', () => { try { window.dispatchEvent(new Event('silah-push')); } catch (e) { } }); } catch (e) { }
+    try { OS.Notifications.addEventListener('click', () => { try { window.dispatchEvent(new Event('silah-push')); } catch (e) { } }); } catch (e) { }
     res(OS);
   }));
   async function link(ext, ask) {

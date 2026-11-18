@@ -111,6 +111,43 @@ async function gPhoto(localId, img) {
     if (t) { t.thumb = th; t.phN = arr.length; delete t.noAv; gsave(db); }
   } catch (e) { console.warn('gPhoto', e); }
 }
+// 🧭 مهمة 2 — المرحلة 3: «📍 اتغيّر لوحده» — قايمة محفوظة على موبايل المندوب (مش في القاعدة)
+const AUTO_KEYS = ['loc', 'days', 'address', 'avatar'];
+const avKey = img => typeof img === 'string' ? img.length + ':' + img.slice(-64) : '';
+const AB = () => (me && LS.get('selah-trial-autobell-' + me.id)) || [];
+const abSave = l => { LS.set('selah-trial-autobell-' + me.id, l.slice(-200)); };
+const abAdd = it => abSave(AB().filter(x => x.id !== it.id).concat(it));
+// اللي هيتعرض في الجرس (الصورة بنحفظ مفتاحها بس + صورة صغيرة بتتعمل بعدين)
+function abNv(nv) { const o = { ...nv }; if (o.avatar) { o.avKey = avKey(o.avatar); delete o.avatar; } return o; }
+// القيم القديمة في البرنامج الأخضر قبل ما تتغير (عشان ✗ إلغاء يرجّعها)
+function gSnap(localId, ks) {
+  const db = gdb(), t = db && (db.teachers || []).find(x => x.id === localId); if (!t) return {};
+  const o = {}; if (ks.includes('address')) o.tAddress = t.tAddress ?? null;
+  if (ks.includes('loc')) { o.tLoc = t.tLoc ?? null; o.loc = t.loc ?? null; }
+  if (ks.includes('days')) o.tDays = t.tDays ?? null;
+  return o;
+}
+async function gPhotoDel(localId, key) {
+  try {
+    if (!window.indexedDB || !key) return;
+    const d = await new Promise((res, rej) => { const r = indexedDB.open('selah-photos', 1); r.onupgradeneeded = () => r.result.createObjectStore('p'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const io = (mode, fn) => new Promise((res, rej) => { const tx = d.transaction('p', mode), r = fn(tx.objectStore('p')); tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); });
+    const arr = ((await io('readonly', s => s.get(localId))) || []).filter(x => avKey(x) !== key);
+    await io('readwrite', s => s.put(arr, localId));
+    const db = gdb(), t = db && (db.teachers || []).find(x => x.id === localId);
+    if (t) { t.thumb = arr[0] ? await gThumb(arr[0]) : ''; t.phN = arr.length; gsave(db); }
+  } catch (e) { console.warn('gPhotoDel', e); }
+}
+// ✗ إلغاء: يرجّع القيم القديمة في البرنامج الأخضر + يشيل الصورة الجديدة
+async function gRevert(it) {
+  const db = gdb(), t = db && (db.teachers || []).find(x => x.id === it.lid);
+  if (t) {
+    for (const k in it.old || {}) { if (it.old[k] == null) delete t[k]; else t[k] = it.old[k]; }
+    (db.tlog ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.id, at: new Date().toISOString(), k: 'إلغاء تعديل المدرس', txt: 'رجع القديم: ' + it.ks.map(k => FIELD_LABEL[k] || k).join('، ') });
+    gsave(db);
+  }
+  if (it.nv && it.nv.avKey) await gPhotoDel(it.lid, it.nv.avKey);
+}
 // طلب بيع واحد بس لكل مدرس (طلب شريف 2026-11-12): آخر طلب هو اللي يتعتمد ويحل محل اللي قبله
 function gOne(db, localId, its, why) {
   const olds = (db.sales || []).filter(s => s.t === localId && s.st === 'order').sort((a, b) => (b.d || '').localeCompare(a.d || ''));
@@ -275,8 +312,18 @@ async function loadMe() {
     importGreen().then(ch => { if (ch) refresh(); }).catch(() => { });
     syncPrices().catch(() => { }); loadAvatars().catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
-    setInterval(() => counts().catch(() => { }), 30000);
+    // 🧭 مهمة 2 (توفير الباقة): الجرس كان بيسأل كل 30 ثانية ← دلوقتي كل 5 دقايق والصفحة قدام + لما ترجع لها (لو عدّى دقيقة) + لما يوصل إشعار
+    // 🧭 مهمة 2 — المرحلة 7: «المندوب فتح البرنامج» ← التذكيرات بتقف لحد ما ييجي جديد
+    const seen = () => { try { const u = (window.SILAH_CONFIG || {}).CLOUD_URL; if (u && !document.hidden) fetch(u, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'rseen', sid: me.id }) }).catch(() => { }); } catch (e) { } };
+    seen(); document.addEventListener('visibilitychange', seen);
+    egFlush(async d => !(await sb.rpc('my_eg', { p_bytes: d })).error);   // مهمة 2 — المرحلة 7: عدّاد الباقة
+    let cAt = Date.now(); const cTick = gap => { if (document.hidden || Date.now() - cAt < gap) return; cAt = Date.now(); counts().catch(() => { }); };
+    setInterval(() => cTick(5 * 60000), 60000);
+    document.addEventListener('visibilitychange', () => cTick(60000));
+    window.addEventListener('silah-push', () => cTick(0));
     nudgeWeekly();
+    // 🧭 مهمة 2: رقم الواتساب لو لسه مش متسجّل (بعد ما schema13 يتشغّل — العمود phone يبقى موجود) — نسأل مرة في اليوم بالكتير
+    if ('phone' in me && !me.phone) { const k = 'selah-trial-ph-ask', d = new Date().toDateString(); if (LS.get(k) !== d) { LS.set(k, d); setTimeout(() => askPhone().catch(() => { }), 1500); } }
   } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="boot()">حاول تاني</button>`; }
 }
 // متابعة 10: تذكير للمدرس اللي مثبّت التطبيق وما فتحهوش بقاله أسبوع (مرة في اليوم من الموبايل ده، والقاعدة بتمنع التكرار لنفس المدرس قبل أسبوع)
@@ -382,8 +429,9 @@ async function counts() {
   // 2026-11-14: كل واحد (حتى المالك) بيتبلّغ بس عن المدرسين بتوعه — المتابعة الكاملة في ⚙️ إعدادات المالك «📲 مين ثبّت التطبيق»
   const ir = await sb.from('teachers').select('id', { count: 'exact', head: true }).eq('rep_id', me.id).gt('app_at', seen);
   data.inst = ir.error ? 0 : (ir.count || 0);
-  const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0); BC = data;
-  const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
+  data.auto = AB().length;   // مهمة 2: «📍 اتغيّر لوحده»
+  const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0) + (BC.auto || 0); BC = data;
+  const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0) + (BC.auto || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
   const stt = $('#setTab'); if (stt) stt.innerHTML = `<span class="i">⚙️</span>الإعدادات${BC.reps ? `<span class="cnt">${BC.reps}</span>` : ''}`;
   if (n > was) ding();
   LS.set('selah-trial-bell', { n, at: Date.now() });   // البرنامج الأخضر بيقراه للجرس
@@ -393,16 +441,19 @@ let autoLocRun = false;
 async function autoLoc() {
   if (autoLocRun || !me) return 0; autoLocRun = true; let n = 0;
   try {
-    const { data, error } = await sb.from('edit_requests').select('id,teacher_id,new_values,photos,teachers!inner(name,local_id,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending');
+    // 🧭 مهمة 2 — المرحلة 3: الموقع + مكان السنتر + المواعيد + الصورة الشخصية بيتحفظوا لوحدهم من غير موافقة،
+    // وبيتسجّلوا في الجرس «📍 اتغيّر لوحده» بزرارين ✓ موافق (يتشال) / ✗ إلغاء (يرجع القديم). (ph = أول صورة بس عشان مانزّلش الصور كلها)
+    const { data, error } = await sb.from('edit_requests').select('id,teacher_id,new_values,ph:photos->0->id,teachers!inner(name,local_id,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending');
     if (error) return 0;
     for (const r of data || []) {
       const ks = Object.keys(r.new_values || {});
-      if (!ks.length || ks.some(k => k !== 'loc' && k !== 'days') || (r.photos || []).length) continue;
+      if (!ks.length || ks.some(k => !AUTO_KEYS.includes(k)) || r.ph) continue;
+      const lid = (r.teachers || {}).local_id, old = gSnap(lid, ks, r.new_values);
       const { error: e } = await sb.rpc('review_edit', { p_id: r.id, p_action: 'approve', p_final: null, p_reason: null });
       if (e) continue;
-      gApply((r.teachers || {}).local_id, r.new_values); n++;
+      gApply(lid, r.new_values); abAdd({ id: r.id, lid, tid: r.teacher_id, name: (r.teachers || {}).name || '', at: new Date().toISOString(), ks, nv: abNv(r.new_values), old }); n++;
     }
-    if (n) toast(`📍 ${n} مدرس بعتوا الموقع والمواعيد — اتكتبوا في البرنامج ✅`, 4000);
+    if (n) toast(`📍 ${n} تعديل (مكان/مواعيد/صورة) اتحفظوا لوحدهم — راجعهم في 🔔 «اتغيّر لوحده»`, 4500);
   } catch (e) { console.warn('autoLoc', e); } finally { autoLocRun = false; }
   return n;
 }
@@ -416,7 +467,10 @@ async function quotaCheck() {
   $('#qbar').innerHTML = `<div style="background:#fff;border-radius:12px;padding:6px 10px;margin-top:6px;box-shadow:0 1px 3px #0001">
     <div class="small" style="display:flex;justify-content:space-between;gap:6px"><b>📦 مساحة الرسائل</b><span>${mb.toFixed(1)} من ${q} ميجا (${pct.toFixed(0)}%)</span></div>
     <div style="height:8px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${col}"></div></div>
-    ${pct >= 85 ? '<div class="small" style="color:#dc2626;font-weight:700;margin-top:4px">⚠️ مساحتك قربت تخلص — امسح رسايل قديمة</div>' : ''}</div>`;
+    ${pct >= 85 ? '<div class="small" style="color:#dc2626;font-weight:700;margin-top:4px">⚠️ مساحتك قربت تخلص — امسح رسايل قديمة</div>' : ''}
+    ${data.eg != null ? (() => { const em = data.eg / 1048576, eq = +data.eg_quota_mb || 170, ep = Math.min(100, em / eq * 100), ec = ep >= 85 ? '#dc2626' : ep >= 60 ? '#f59e0b' : '#16a34a';
+      return `<div class="small" style="display:flex;justify-content:space-between;gap:6px;margin-top:8px"><b>📶 الباقة (الشهر ده — تقريبًا)</b><span>${em.toFixed(1)} من ${eq} ميجا (${ep.toFixed(0)}%)</span></div>
+      <div style="height:8px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${ep.toFixed(1)}%;background:${ec}"></div></div>`; })() : ''}</div>`;
   LS.set('selah-trial-quota', { pct, mb, q, at: Date.now() });   // البرنامج الأخضر بيقراه
   if (pct >= 85) {
     const last = +(LS.get('selah-trial-qalert') || 0);
@@ -430,20 +484,22 @@ async function quotaCheck() {
 async function loadAll() {
   await autoLoc();
   quotaCheck().catch(() => { });
+  // 🧭 مهمة 2 (توفير الباقة): الفلترة بقت في القاعدة نفسها (مدرسيني أنا بس) بدل ما ننزّل مدرسين كل المناديب ونرمي الباقي هنا
+  const ownQ = (tb, cols) => sb.from(tb).select(cols + ',teachers!inner(rep_id)').eq('teachers.rep_id', me.id);
   let [t, n, p, s, u] = await Promise.all([
-    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').order('name')),
-    fetchAll(() => sb.from('teacher_notes').select('teacher_id,body')),
-    fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'pending')),
+    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').eq('rep_id', me.id).order('name')),
+    fetchAll(() => ownQ('teacher_notes', 'teacher_id,body')),
+    fetchAll(() => ownQ('edit_requests', 'teacher_id').eq('status', 'pending')),
     isAdmin() ? fetchAll(() => sb.from('staff').select('id,name,role,active').order('created_at')) : Promise.resolve([me]),
-    fetchAll(() => sb.from('messages').select('id,teacher_id,body,created_at').eq('from_teacher', true).is('read_at', null).order('id')),
-    fetchAll(() => sb.from('orders').select('teacher_id').eq('status', 'pending')),
-    fetchAll(() => sb.from('edit_requests').select('teacher_id').eq('status', 'approved')),
-    fetchAll(() => sb.from('update_requests').select('teacher_id').eq('status', 'open')),
+    fetchAll(() => ownQ('messages', 'id,teacher_id,body,created_at').eq('from_teacher', true).is('read_at', null).order('id')),
+    fetchAll(() => ownQ('orders', 'teacher_id').eq('status', 'pending')),
+    fetchAll(() => ownQ('edit_requests', 'teacher_id').eq('status', 'approved')),
+    fetchAll(() => ownQ('update_requests', 'teacher_id').eq('status', 'open')),
     // متابعة 10 (السرعة): ملخص من القاعدة بدل كل الرسايل
     sb.rpc('msg_summary').then(({ data, error }) => { if (error) throw error; return data || []; }),
-    fetchAll(() => sb.from('returns').select('teacher_id').in('status', ['pending', 'approved'])),
+    fetchAll(() => ownQ('returns', 'teacher_id').in('status', ['pending', 'approved'])),
     // متابعة 15: المدرسين اللي عندهم رسالة «🔔 مطلوب رد» لسه مستنية
-    fetchAll(() => sb.from('messages').select('teacher_id').eq('need_reply', true).is('reply_closed_at', null).order('id'))
+    fetchAll(() => ownQ('messages', 'teacher_id').eq('need_reply', true).is('reply_closed_at', null).order('id'))
   ]).then(r => { needSet = new Set(r[10].map(x => x.teacher_id)); ordersBy = {}; r[5].forEach(x => ordersBy[x.teacher_id] = (ordersBy[x.teacher_id] || 0) + 1);
     retsBy = {}; r[9].forEach(x => retsBy[x.teacher_id] = (retsBy[x.teacher_id] || 0) + 1);
     apprSet = new Set(r[6].map(x => x.teacher_id)); openUpd = new Set(r[7].map(x => x.teacher_id)); mSt = mStates(r[8]); return r; });
@@ -469,6 +525,7 @@ function route() {
   if (h.startsWith('/ru/')) { const id = decodeURIComponent(h.slice(4)); history.replaceState(null, '', '#/t/' + encodeURIComponent(id)); setTab('list'); return viewTeacher(id).then(() => { if (T.some(x => x.id === id)) reqUpdateDlg([id]); }); }
   if (h === '/rets') { setTab('list'); return viewRets(); }
   if (h === '/upd') { setTab('list'); return viewUpd(); }
+  if (h === '/bc') { setTab('list'); return viewBc(); }
   waTabFor(h.startsWith('/c/') ? decodeURIComponent(h.slice(3)) : '');
   if (h.startsWith('/c/')) { setTab('chat'); LS.set('selah-trial-lastchat', decodeURIComponent(h.slice(3))); return viewChat(decodeURIComponent(h.slice(3))); }
   if (h === '/bell') { setTab(''); return viewBell(); }
@@ -556,6 +613,13 @@ async function syncLedger(db) {
   const old = await fetchAll(() => sb.from('ledger').select('id,teacher_id,ref').in('teacher_id', Object.values(mine)));
   const gone = old.filter(r => !r.ref.startsWith('rq:') && !keep.has(r.teacher_id + '|' + r.ref)).map(r => r.id);
   for (let i = 0; i < gone.length; i += 100) await sb.from('ledger').delete().in('id', gone.slice(i, i + 100));
+  // 🧭 مهمة 2 — المرحلة 6: لينك صورة آخر فاتورة على درايف المندوب ← المدرس بيفتحها من «🧾 فواتيري» (اللينك بس في القاعدة)
+  try {
+    const sent = LS.get('selah-trial-invimg-sent') || {}, L = db.invLinks || {};
+    for (const lid in L) { const id = mine[lid], u = L[lid] && L[lid].url; if (!id || !u || sent[lid] === u) continue;
+      const { error } = await sb.from('teachers').update({ inv_img: u }).eq('id', id); if (!error) sent[lid] = u; }
+    LS.set('selah-trial-invimg-sent', sent);
+  } catch (e) { console.warn('invimg', e); }
 }
 // حساب المرتجع بنفس طريقة البرنامج الأخضر: من أحدث بيع الأول، وبسعر البيع نفسه
 function gRetCalc(db, localId, items) { return window.SilahRet ? SilahRet.calc(db, localId, items) : { ok: false, value: 0, items: [] }; }   // الحساب نفسه في ret.js (مشترك مع البرنامج الأخضر)
@@ -813,7 +877,7 @@ function viewList() {
   setHeader(`المدرسين — ${me.name}`, false);
   app.innerHTML = `${T.length ? '' : '<div class="note"><b>⏳ بننقل مدرسينك من البرنامج…</b><div class="small">بيتنقلوا لوحدهم ببياناتهم وكتبهم. لو مفيش مدرسين في البرنامج على الموبايل ده، ضيفهم هناك الأول.</div></div>'}
   ${isAdmin() ? ownerSum() : ''}
-  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button><a class="btn sm owe" href="#/rets" title="المرتجعات">↩️${Object.keys(retsBy).length ? ' ' + Object.keys(retsBy).length : ''}</a><a class="btn sm" href="#/upd" title="حدّث البيانات لمدرسين كتير" style="background:#e0f2fe">🔄</a></div>
+  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button><a class="btn sm owe" href="#/rets" title="المرتجعات">↩️${Object.keys(retsBy).length ? ' ' + Object.keys(retsBy).length : ''}</a><a class="btn sm" href="#/upd" title="حدّث البيانات لمدرسين كتير" style="background:#e0f2fe">🔄</a><a class="btn sm" href="#/bc" title="ابعت رسالة لمدرسين كتير مرة واحدة" style="background:#dcfce7">📢</a></div>
   <div class="selrow"><button class="btn sm" id="selAll">☑️ الكل</button><button class="btn sm ghost" id="selNone">✕ مسح التحديد</button><span class="cnt" id="selN"></span><span style="flex:1"></span><button class="btn sm danger" id="delSel">🗑️ مسح الرسايل</button></div>
   <div class="tlist" id="tl"></div>
   <div id="moreRow"></div>
@@ -1009,6 +1073,67 @@ function viewUpd() {
   };
   draw();
 }
+// 🧭 مهمة 2 — المرحلة 2: 📢 رسالة واحدة لمدرسين كتير (الكل / يوم من خط السير / بحث بالقرية أو المادة / اختيار).
+// المدرس بيشوفها في «💬 الرسائل» عنده، ولو حب يرد بيكتب ويدوس إرسال ← يتفتح الواتساب على رقمك.
+const bcUi = { sel: new Set(), q: '', day: '' };
+function viewBc() {
+  setHeader('📢 ابعت رسالة لمدرسين كتير', false);
+  const G = gdb() || {}, days = (G.days || []).filter(d => (d.t || []).length);
+  app.innerHTML = `${!me.phone ? `<div class="alert" style="margin-bottom:10px">⚠️ لسه ما سجّلتش رقم الواتساب بتاعك — المدرسين مش هيعرفوا يردّوا عليك. <button class="btn sm pri" id="bcPh">📞 سجّل رقمك</button></div>` : ''}
+  <div class="card"><h3>1) اكتب الرسالة</h3>
+    <textarea id="bcT" rows="4" placeholder="مثلًا: أنا جاي أسلّم بكرة الساعة 5 في السنتر إن شاء الله"></textarea>
+    <div class="small muted" style="margin-top:4px">المدرس هيشوفها في «💬 الرسائل» ويجيله إشعار. لو حب يرد ← الواتساب بيتفتح على رقمك.</div></div>
+  <div class="card"><h3>2) اختار المدرسين (<span id="bcN">${bcUi.sel.size}</span> متحدد)</h3>
+    ${days.length ? `<div class="field"><label>📅 يوم من خط السير</label><select id="bcD"><option value="">— اختار يوم —</option>${days.map(d => `<option value="${esc(d.id)}" ${bcUi.day === d.id ? 'selected' : ''}>${esc(d.n || 'يوم')} (${d.t.length})</option>`).join('')}</select></div>` : ''}
+    <div class="search"><input id="bcQ" type="search" placeholder="🔍 اسم، رقم، قرية، مادة…" value="${esc(bcUi.q)}" autocomplete="off"></div>
+    <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="bcAll">☑️ الكل</button><button class="btn sm ghost" id="bcNone">✕ مسح التحديد</button>
+      <button class="btn sm ok" id="bcGo" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">📢 ابعت (${bcUi.sel.size})</button></div>
+    <div id="bcL"></div></div>`;
+  const byLocal = {}; T.forEach(t => { if (t.local_id) byLocal[t.local_id] = t; });
+  const shown = () => {
+    let l = T;
+    if (bcUi.day) { const d = days.find(x => x.id === bcUi.day); const s = new Set(((d && d.t) || []).map(id => (byLocal[id] || {}).id).filter(Boolean)); l = l.filter(t => s.has(t.id)); }
+    const ws = stWords(nq(bcUi.q).split(/\s+/).filter(Boolean));
+    return l.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t))));
+  };
+  const cnt = () => { $('#bcN').textContent = bcUi.sel.size; $('#bcGo').textContent = `📢 ابعت (${bcUi.sel.size})`; };
+  const draw = () => {
+    const l = shown(); $('#bcAll').textContent = `☑️ الكل (${l.length})`;
+    $('#bcL').innerHTML = l.slice(0, 400).map(t => `<label class="kv irow"><input type="checkbox" value="${t.id}" ${bcUi.sel.has(t.id) ? 'checked' : ''} style="width:20px;height:20px">${avHtml(t)}
+      <span class="grow"><b>${esc(t.name)}</b> ${instPill(t)}<br><span class="small muted">${esc([t.phone || 'مفيش رقم', (t.profile || {}).area].filter(Boolean).join(' · '))}</span></span></label>`).join('')
+      + (l.length > 400 ? `<div class="small muted">ظاهر 400 من ${l.length} — ☑️ الكل بيحدد الـ ${l.length} كلهم</div>` : '') || '<div class="small muted">مفيش نتايج</div>';
+    cnt();
+  };
+  const ph = $('#bcPh'); ph && (ph.onclick = () => askPhone().then(() => viewBc()));
+  const dd = $('#bcD'); dd && (dd.onchange = () => { bcUi.day = dd.value; bcUi.sel.clear(); shown().forEach(t => bcUi.sel.add(t.id)); draw(); });
+  $('#bcQ').oninput = () => { bcUi.q = $('#bcQ').value; draw(); };
+  $('#bcAll').onclick = () => { shown().forEach(t => bcUi.sel.add(t.id)); draw(); };
+  $('#bcNone').onclick = () => { bcUi.sel.clear(); draw(); };
+  $('#bcL').onchange = e => { const c = e.target; if (c.type !== 'checkbox') return; c.checked ? bcUi.sel.add(c.value) : bcUi.sel.delete(c.value); cnt(); };
+  $('#bcGo').onclick = async () => {
+    const body = $('#bcT').value.trim(), ids = T.filter(t => bcUi.sel.has(t.id)).map(t => t.id);
+    if (!body) return toast('اكتب الرسالة الأول (خطوة 1)'); if (!ids.length) return toast('اختار مدرس واحد على الأقل');
+    if (!confirm(`تبعت الرسالة دي لـ ${ids.length} مدرس؟`)) return;
+    const b = $('#bcGo'); b.disabled = true;
+    for (let i = 0; i < ids.length; i += 200) {
+      const { error } = await sb.from('messages').insert(ids.slice(i, i + 200).map(id => ({ teacher_id: id, from_teacher: false, kind: 'text', body, sender: me.name })));
+      if (error) { b.disabled = false; return toast(errMsg(error), 5000); }
+    }
+    if (window.pushRingTeachers) window.pushRingTeachers(ids, '💬 الأستاذ ' + me.name + ': ' + body.slice(0, 80), 'teacher.html#v=msgs').catch(() => { });
+    toast(`✅ اتبعتت لـ ${ids.length} مدرس`, 4000); bcUi.sel.clear(); $('#bcT').value = ''; b.disabled = false; draw();
+  };
+  draw();
+}
+// 📞 رقم واتساب المندوب (المدرسين بيردّوا عليه من التطبيق ← الواتساب)
+async function askPhone() {
+  const v = prompt('📞 اكتب رقم الواتساب بتاعك (المدرسين هيردّوا عليك عليه)', me.phone || '');
+  if (v == null) return;
+  const d = String(v).replace(/[٠-٩]/g, c => c.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, c => c.charCodeAt(0) - 0x6F0).replace(/\D/g, '');
+  if (d.length < 10) { toast('الرقم ناقص — اكتبه تاني', 4000); return; }
+  const { error } = await sb.rpc('set_my_phone', { p_phone: d });
+  if (error) { toast(errMsg(error), 5000); return; }
+  me.phone = d; toast('✅ رقمك اتسجّل');
+}
 function waBulk(list, tpl, mk, ttl) {
   const inviteMsg = mk || window.inviteMsg;   // mk = رسالة مخصوصة (زي 📍 لينك الموقع)
   modal(`<h3>🟢 ${ttl ? ttl + ' — ' : ''}ابعت على واتساب (${list.length})</h3><div class="hint small muted" style="margin-bottom:8px">اضغط «ابعت» لكل مدرس، هيفتح الواتساب برسالته ورابطه هو جاهزين.</div>
@@ -1151,7 +1276,7 @@ async function viewChat(id) {
       };
     });
   };
-  await pull(true); pollT = setInterval(() => pull(false), 8000);
+  await pull(true); pollT = setInterval(() => { if (!document.hidden) pull(false); }, 20000);   // مهمة 2: كان كل 8 ثواني
 }
 
 /* ---------- صفحة المدرس ---------- */
@@ -1348,10 +1473,10 @@ function bindReviews(root) {
 
 /* ---------- الجرس ---------- */
 // متابعة 10: اتشالت تبويبات «قريبًا» (🧾 طلباتي، 📋 الملاحظات، 🗑️ مسح الرسايل)
-const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['edits', '📝 تعديل الملفات'], ['inst', '📲 ثبّتوا التطبيق']];
+const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['edits', '📝 تعديل الملفات (مستني موافقتك)'], ['auto', '📍 اتغيّر لوحده (مكان/مواعيد/صورة)'], ['inst', '📲 ثبّتوا التطبيق']];
 async function viewBell() {
   setHeader('🔔 الإشعارات', false);
-  const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets, inst: BC.inst };
+  const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets, inst: BC.inst, auto: AB().length };
   if (!BELL.some(([k]) => k === ui.bellTab)) ui.bellTab = 'msgs';
   app.innerHTML = `${BC.reps ? `<a class="alert" href="#/settings" style="display:block;text-decoration:none">👤 ${BC.reps} مندوب مستني موافقتك ←</a>` : ''}<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">${BELL.map(([k, l]) => `<button class="chip ${ui.bellTab === k ? 'on' : ''}" data-b="${k}" style="width:100%;justify-content:space-between;display:flex;font-size:16px;padding:10px 14px">${l}${cnt[k] ? `<span class="n">${cnt[k]}</span>` : '<span class="small muted">—</span>'}</button>`).join('')}</div><div id="bb"></div>`;   // 2026-11-15: القايمة تحت بعض (مش بالعرض) عشان يبان كل اللي جه
   $$('[data-b]').forEach(b => b.onclick = () => { ui.bellTab = b.dataset.b; viewBell(); });
@@ -1363,6 +1488,23 @@ async function viewBell() {
     bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<div class="titem" data-go="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
       <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
     bb.onclick = e => { if (e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
+    return;
+  }
+  // 🧭 مهمة 2 — المرحلة 3: «📍 اتغيّر لوحده» — ✓ موافق (يتشال) / ✗ إلغاء (يرجع القديم ويتشال)
+  if (ui.bellTab === 'auto') {
+    const l = AB().slice().reverse();
+    const tx = (k, v) => k === 'avKey' ? '' : `<div class="small"><b>${esc(FIELD_LABEL[k] || k)}:</b> ${esc(valText(k, v))}</div>`;
+    bb.innerHTML = l.length ? l.map(it => { const t = T.find(x => x.id === it.tid) || { id: it.tid, name: it.name };
+      return `<div class="card" data-ab="${esc(it.id)}"><div style="display:flex;gap:8px;align-items:center">${avHtml(t)}<div class="grow"><b>${esc(t.name || it.name)}</b><div class="small muted">${fmtDate(it.at)}</div></div></div>
+        <div style="margin-top:6px">${Object.keys(it.nv || {}).map(k => tx(k, it.nv[k])).join('')}${it.nv && it.nv.avKey ? '<div class="small"><b>📷 الصورة الشخصية:</b> اتغيرت</div>' : ''}</div>
+        <div class="acts"><button class="btn sm ok" data-a="ok">✓ موافق</button><button class="btn sm danger" data-a="undo">✗ إلغاء (رجّع القديم)</button></div></div>`; }).join('')
+      : '<div class="card empty">مفيش تعديلات جديدة ✅</div>';
+    bb.onclick = async e => {
+      const b = e.target.closest('[data-a]'), c = e.target.closest('[data-ab]'); if (!b || !c) return;
+      const it = AB().find(x => x.id === c.dataset.ab); if (!it) return;
+      if (b.dataset.a === 'undo') { if (!confirm('ترجّع البيانات القديمة؟')) return; await gRevert(it); toast('↩️ رجع القديم'); }
+      abSave(AB().filter(x => x.id !== it.id)); counts().catch(() => { }); viewBell();
+    };
     return;
   }
   // متابعة 12: المدرسين اللي ثبّتوا التطبيق (الأحدث فوق، والجديد من آخر مرة متعلّم 🆕)
@@ -1457,6 +1599,13 @@ async function loadInstCard(staff) {
       ${l.length ? l.map(t => `<div class="kv" data-go="#/t/${t.id}" style="cursor:pointer"><span>${esc(t.name)}<br><span class="small muted" dir="ltr">${esc(t.phone || '')}</span></span><span class="small muted">${fmtDate(t.app_at)}</span></div>`).join('') : '<div class="small muted">لسه ولا مدرس ثبّت عنده</div>'}</details>`).join('') : '<div class="small muted">لسه ولا مدرس ثبّت التطبيق</div>'}`;
   box.onclick = e => { const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
 }
+// 🧭 مهمة 2 — المرحلة 7: 📞 / 💬 جنب شريط كل مندوب (عشان تحذّره لو استهلاكه عالي) — من رقمه المسجّل
+function warnBtns(s, why) {
+  if (s.role === 'admin' || !s.phone) return '';
+  let d = String(s.phone).replace(/\D/g, ''); if (d.startsWith('0')) d = '2' + d;
+  const msg = `السلام عليكم يا ${s.name || ''} 👋\n⚠️ ${why}.\nخلّي بالك من الاستهلاك 🙏`;
+  return `<span style="display:flex;gap:4px;flex:none"><a class="btn sm" href="tel:${esc(s.phone)}" onclick="event.stopPropagation()">📞</a><a class="btn sm ok" href="https://wa.me/${esc(d)}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬</a></span>`;
+}
 async function viewSettings() {
   setHeader('⚙️ إعدادات المالك', false); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
   const { data, error } = await sb.rpc('usage_stats');
@@ -1469,7 +1618,11 @@ async function viewSettings() {
   // 2026-11-16 (طلب شريف): دوسة على «مساحة القاعدة» ← كل مندوب (وانت) استخدم قد إيه من نصيبه
   const qOf = s => +s.quota_mb || quota;
   app.innerHTML = `<details class="card"><summary style="cursor:pointer;list-style:none"><h3 style="margin:0">${dot(dbPct)} مساحة القاعدة <span class="small muted">(دوس تشوف المناديب)</span></h3>${(data.db_bytes / MB).toFixed(1)} من ${lim} ميجا (${dbPct.toFixed(1)}%)${meter(dbPct)}</summary>
-    <div style="margin-top:8px">${data.staff.filter(s => s.role === 'admin' || s.active).map(s => { const mb = s.bytes / MB, p = mb / qOf(s) * 100; return `<div class="kv" style="display:block;padding:6px 0"><div style="display:flex;justify-content:space-between;gap:6px"><b>${dot(p)} ${esc(s.name || 'مندوب')}${s.role === 'admin' ? ' 👑' : ''}</b><span class="small">${mb.toFixed(1)} من ${qOf(s)} ميجا (${p.toFixed(0)}%)</span></div>${meter(p)}</div>`; }).join('')}</div></details>
+    <div style="margin-top:8px">${data.staff.filter(s => s.role === 'admin' || s.active).map(s => { const mb = s.bytes / MB, p = mb / qOf(s) * 100; return `<div class="kv" style="display:block;padding:6px 0"><div style="display:flex;justify-content:space-between;gap:6px;align-items:center"><b>${dot(p)} ${esc(s.name || 'مندوب')}${s.role === 'admin' ? ' 👑' : ''}</b><span class="small">${mb.toFixed(1)} من ${qOf(s)} ميجا (${p.toFixed(0)}%)</span>${warnBtns(s, `مساحتك في البرنامج وصلت ${p.toFixed(0)}% من نصيبك`)}</div>${meter(p)}</div>`; }).join('')}</div></details>
+  ${data.eg_total != null ? (() => { const egL = +(data.settings.eg_limit_mb || 5000), egP = data.eg_total / (egL * MB) * 100;
+    // 🧭 مهمة 2 — المرحلة 7: الباقة (تقديري من موبايلات المناديب والمدرسين) — الدوسة بتفتح كل مندوب + 📞 💬 للتحذير
+    return `<details class="card"><summary style="cursor:pointer;list-style:none"><h3 style="margin:0">${dot(egP)} الباقة الشهر ده <span class="small muted">(تقريبًا — دوس تشوف المناديب)</span></h3>${(data.eg_total / MB).toFixed(0)} من ${egL} ميجا (${egP.toFixed(1)}%)${meter(egP)}</summary>
+    <div style="margin-top:8px">${data.staff.filter(s => s.role === 'admin' || s.active).sort((a, b) => b.eg / b.eg_mb - a.eg / a.eg_mb).map(s => { const mb = s.eg / MB, p = mb / (+s.eg_mb || 170) * 100; return `<div class="kv" style="display:block;padding:6px 0"><div style="display:flex;justify-content:space-between;gap:6px;align-items:center"><b>${dot(p)} ${esc(s.name || 'مندوب')}${s.role === 'admin' ? ' 👑' : ''}</b><span class="small">${mb.toFixed(1)} من ${+s.eg_mb || 170} ميجا (${p.toFixed(0)}%)</span>${warnBtns(s, `استهلاكك من باقة البرنامج الشهر ده وصل ${p.toFixed(0)}% من نصيبك`)}</div>${meter(p)}</div>`; }).join('')}</div></details>`; })() : ''}
   <div class="card"><h3>💲 قايمة الأسعار عند المدرسين</h3><div class="small muted">${pr && pr.items ? `${pr.items.length} كتاب — آخر تحديث ${fmtDate(pr.at)}` : 'لسه ما اترفعتش'}</div>
     <button class="btn sm" id="upPr" style="margin-top:8px">⬆️ ارفع الأسعار من البرنامج</button></div>
   ${waitReps.length ? `<div class="card" style="border:2px solid #f59e0b"><h3>👤 مناديب مستنيين موافقتك (${waitReps.length})</h3>

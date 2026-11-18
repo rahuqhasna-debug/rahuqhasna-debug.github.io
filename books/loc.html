@@ -54,7 +54,9 @@ async function start() {
     if (!out.loc) return toast('دوس الأول على زرار «📍» وإنت في مكان الدرس', 4000);
     if (!out.days) return toast('علّم على الأيام اللي بتكون موجود فيها ومن الساعة كام لكام', 4000);
     const b = $('#lsend'); b.disabled = true; b.textContent = '⏳ بنبعت…';
-    const { error } = await sb.rpc('t_submit', { p_code: code, p_values: out, p_photos: [], p_reply: null });
+    // مهمة 2 — المرحلة 3: الموقع والمواعيد بيتحفظوا من غير موافقة (t_submit_now)، ولو لسه مش في القاعدة ← t_submit زي الأول
+    let { error } = await sb.rpc('t_submit_now', { p_code: code, p_values: out });
+    if (error) ({ error } = await sb.rpc('t_submit', { p_code: code, p_values: out, p_photos: [], p_reply: null }));
     if (error) { b.disabled = false; b.textContent = '✅ ابعت'; return toast(errMsg(error), 5000); }
     done(D.name);
   };
