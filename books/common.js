@@ -42,7 +42,8 @@ function cfgReady(c) { return c.url && !/PASTE/.test(c.url) && c.key && !/PASTE/
 function makeClient(persist, cfgKey = CFG_KEY) {
   const c = getCfg(cfgKey);
   if (!cfgReady(c) || !window.supabase) return null;
-  return supabase.createClient(c.url, c.key, { auth: { persistSession: persist, autoRefreshToken: persist, storageKey: 'selah-trial-auth' }, global: { fetch: egFetch } });
+  // lock: من غير قفل المتصفح — القفل ممكن يعلّق طلبات القاعدة لما البرنامج يرجع من الخلفية
+  return supabase.createClient(c.url, c.key, { auth: { persistSession: persist, autoRefreshToken: persist, storageKey: 'selah-trial-auth', lock: (name, wait, fn) => fn() }, global: { fetch: egFetch } });
 }
 function deviceId() {
   let d = LS.get('selah-trial-device');

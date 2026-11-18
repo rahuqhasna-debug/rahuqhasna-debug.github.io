@@ -11,8 +11,9 @@ try {
   };
 } catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v55';
+const CACHE = 'books-v56';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
+const FRESH = new Map(), FRESH_MS = 10 * 60000, NET_WAIT = 2500;
 const FILES = ['./', './index.html', './ret.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -38,10 +39,19 @@ self.addEventListener('fetch', e => {
   }
   if (url.origin !== location.origin) return;
   if (/\.(mp4|webm|apk)$/i.test(url.pathname)) return;   // الفيديو والتطبيق ماينفعش يعدّوا من الـ SW (طلبات Range)
-  // النت الأول (علشان التحديثات توصل)، ولو مفيش نت يفتح النسخة المحفوظة
-  e.respondWith(
-    fetch(e.request.url, {cache: 'no-store'})
-      .then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return r; })
-      .catch(() => caches.match(e.request, {ignoreSearch: true}).then(r => r || caches.match('./index.html')))
-  );
+  // 2026-11-19: البرنامج مايعلّقش لو النت بطيء أو الموبايل لسه صاحي من النوم:
+  // • الملف اتحدّث من النت في آخر 10 دقايق ← يفتح من المحفوظ على طول (الرجوع من المراسلات بيبقى فوري)
+  // • غير كده: النت الأول (علشان التحديثات توصل)، ولو ما ردّش في ثانيتين ونص يفتح المحفوظ ويتحدّث في الخلفية
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE), key = url.pathname;
+    const hit = await caches.match(e.request, {ignoreSearch: true});
+    if (hit && Date.now() - (FRESH.get(key) || 0) < FRESH_MS) return hit;
+    const net = fetch(e.request.url, {cache: 'no-store'}).then(r => {
+      if (r.ok) { FRESH.set(key, Date.now()); const copy = r.clone(); c.put(e.request, copy).catch(() => {}); }
+      return r;
+    });
+    if (!hit) return net.catch(() => caches.match('./index.html').then(r => r || new Response('', {status: 504})));
+    e.waitUntil(net.catch(() => {}));
+    return Promise.race([net.then(r => r.ok ? r : hit).catch(() => hit), new Promise(ok => setTimeout(() => ok(hit), NET_WAIT))]);
+  })());
 });

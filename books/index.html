@@ -544,6 +544,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 </head>
 <body>
 <div class="splash" id="splash"><img src="icon-512.png" alt="" onerror="this.remove()"><div class="nm">سلاح التلميذ البحيرة</div><div class="sg">تصميم وتنفيذ: شريف حشيش</div></div>
+<script>/* شاشة البداية أول فتحة بس — مش كل ما يرجع من المراسلات */ try{ if(sessionStorage.getItem('selah-in')) document.getElementById('splash').remove(); sessionStorage.setItem('selah-in','1'); }catch(e){}</script>
 <header class="top"><div class="in"><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bellBtn" data-act="bell" title="طلبات المدرسين" style="position:relative">🔔<b id="bellN" hidden style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:10px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></b></button><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
 <div class="backrow" id="backRow" hidden><button class="backbtn" id="backBtn" aria-label="رجوع">→ رجوع</button></div>
 <main class="wrap" id="app"></main>
@@ -1023,7 +1024,7 @@ function todayCard(){
 function quickFind(raw){
   raw=raw.trim(); if(!raw) return [];
   const isNum=/^[\d٠-٩۰-۹\s+\-]+$/.test(raw), qd=normPhone(raw).replace(/^0/,''), Q=isNum?null:parseQuery(raw);
-  return db.teachers.filter(t=> isNum ? (!!qd && (t.phone||'').includes(qd)) : matchTeacher(t, Q)).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+  return db.teachers.filter(t=> isNum ? phMatch(t,qd) : matchTeacher(t, Q)).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
 }
 function renderHome(){
   setHeader(APP_NAME, false);
@@ -1391,7 +1392,7 @@ function renderList(){
   let list=db.teachers.filter(t=>{
     if(!hfOk(t, idx, today, visitedToday)) return false;   // متابعة 10: الفلاتر المتعددة
     if(!raw) return true;
-    if(isNum) return !!qd && (t.phone||'').includes(qd);
+    if(isNum) return phMatch(t,qd);
     return matchTeacher(t, Q, owedBy[t.id]||[]);
   });
   const rk=(HF.area.size || HF.vis.has('plan')) ? recvRankFn() : null;   // شغال على قرية/خط سير: اللي استلم ينزل تحت واللي لسه فوق
@@ -2071,10 +2072,10 @@ function teacherForm(t, preset={}){
   let newLoc=null;
   m.querySelector('#f_loc').onclick=()=>{ const b=m.querySelector('#f_loc'), s=m.querySelector('#f_locst'); s.textContent='⏳ بنجيب الموقع…';
     getGPS().then(p=>{ newLoc=p; b.classList.replace('owe','pri'); s.textContent=`✅ اتجاب (دقة ${p.acc} متر) — دوس حفظ`; }).catch(er=>{ s.textContent=t.loc?'الموقع موجود سابقًا':'الموقع ناقص'; alert(er.message); }); };
-  m.querySelector('#f_save').onclick=()=>{
+  m.querySelector('#f_save').onclick=async()=>{
     const name=m.querySelector('#f_name').value.trim(); if(!name){ alert('اكتب اسم المدرس'); return; }
     const phone=normPhone(m.querySelector('#f_phone').value);
-    const dup = phone && db.teachers.find(x=>x.phone===phone && x.id!==t.id);
+    const dup = phoneTaken(phone, t.id);
     if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تفتح حسابه؟`)){ close(); location.hash='#/t/'+encodeURIComponent(dup.id); } return; }
     const subjects=[...m.querySelectorAll('#f_subjs input:checked')].map(x=>x.value);
     const stage=m.querySelector('#f_stage').value, so=specOpts(stage);
@@ -2090,6 +2091,9 @@ function teacherForm(t, preset={}){
     data.tDays=dayS; if(newLoc) data.loc=newLoc;
     if(isNew && (!data.grades.length || !data.where) && !confirm('الصفوف أو «دروس / مدارس» لسه ما اتحددوش — دول بيتكتبوا في شيت الإضافات.\nتحفظ كده؟')) return;
     data.newArea=isNewArea(data.area);   // قرية مش في القايمة → تظهر في الإكسل عشان شريف يضيفها
+    // الرقم متسجل على السيرفر (عندي على موبايل تاني أو عند زميل)؟ ← مايتضافش
+    if(phone && (isNew || phK(phone)!==phK(t.phone))){ const sv=m.querySelector('#f_save'); sv.disabled=true; const g=await addGuard(phone, isNew?null:t.id); sv.disabled=false;
+      if(!g.ok){ if(g.back){ const nb=addBack(g.back); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nb.id); } return; } }
     if(isNew){ const nt={id:uid(), ...data, isNew:true, plan:'', notes:'', created:new Date().toISOString()}; db.teachers.push(nt); logT(nt.id, 'اتسجّل مدرس جديد', 'إضافة'); save(); sbPushTeacher(nt); close(); homeQuery=''; location.hash='#/t/'+encodeURIComponent(nt.id); }
     else { const before={...t}; Object.assign(t,data); notePhoneChange(t, before.phone); const d=teacherDiff(before, t); if(d.length) logT(t.id, d.join(' • '));
       save(); if(before.phone!==t.phone || before.name!==t.name) sbPushTeacher(t); close(); render(); toast('اتحفظ ✅'); }
@@ -2099,8 +2103,8 @@ function teacherForm(t, preset={}){
     const n=db.entries.filter(e=>e.t===t.id).length;
     if(!confirm(`متأكد إنك عايز تمسح «${t.name}»${n?` و ${n} تعامل بتوعه`:''}؟`)) return;
     close(); const snap=JSON.stringify(db);
-    delTeacherData(t.id); save();
-    location.hash='#/'; toast('اتمسح', ()=>{ db=JSON.parse(snap); save(); render(); });
+    delTeacherData(t.id); save(); sbSetOn(t.id, false);
+    location.hash='#/'; toast('اتمسح', ()=>{ db=JSON.parse(snap); save(); sbSetOn(t.id, true); render(); });
   };
 }
 
@@ -3673,7 +3677,7 @@ function saleForm(tid, editId, mode='sell'){
   const drawRes=raw=>{
     const res=m.querySelector('#sf_res'); raw=raw.trim();
     const isNum=/^[\d٠-٩۰-۹\s+\-]+$/.test(raw), qd=normPhone(raw).replace(/^0/,''), Q=isNum?null:parseQuery(raw);
-    const hits=!raw ? [] : db.teachers.filter(t=> isNum ? (!!qd && (t.phone||'').includes(qd)) : matchTeacher(t, Q)).slice(0,8);
+    const hits=!raw ? [] : db.teachers.filter(t=> isNum ? phMatch(t,qd) : matchTeacher(t, Q)).slice(0,8);
     res.innerHTML=(raw && !hits.length?'<div class="hint" style="margin:0 0 6px">مش لاقيه.</div>':'') +
       hits.map(t=>`<button class="pick-row ${tStC(t)}" style="${tUpdSt(t)}" data-sf="pick" data-id="${esc(t.id)}">${tAv(t)} <b>${esc(t.name)}</b>${nameTags(t)} ${tRecv(t)} <span class="small muted">${esc([t.phone,t.area,t.subjectText].filter(Boolean).join(' • '))}</span></button>`).join('') +
       (raw ? `<div class="addnew"><b class="small">➕ ضيفه (لو مش موجود)</b><div class="row2"><input id="sf_nn" placeholder="الاسم" value="${esc(isNum?'':raw)}"><input id="sf_np" inputmode="tel" dir="ltr" placeholder="التليفون" value="${esc(isNum?raw:'')}"></div>
@@ -3749,11 +3753,16 @@ function saleForm(tid, editId, mode='sell'){
     else if(a==='addt'){
       const name=m.querySelector('#sf_nn').value.trim(), phone=normPhone(m.querySelector('#sf_np').value);
       if(!name){ alert('اكتب اسم المدرس'); return; }
-      const dup=phone && db.teachers.find(x=>x.phone===phone);
+      const dup=phoneTaken(phone);
       if(dup){ if(confirm(`الرقم ده متسجّل لـ «${dup.name}». تختاره؟`)){ st.tid=dup.id; drawT(); drawB(); } return; }
       const area=(m.querySelector('#sf_na')?.value||'').trim();
-      const nt={id:uid(), name, phone, isNew:true, area, newArea:isNewArea(area), stage:'', subjectText:'', subjects:[], school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
-      db.teachers.push(nt); save(); sbPushTeacher(nt); st.tid=nt.id; keep(); drawT(); drawB(); toast(`➕ اتضاف ${name}`);
+      if(window._addT) return; window._addT=1;   // مايتضافش مرتين لو داس تاني وهو مستني الرد
+      (async()=>{ try{
+        const g=phone ? await addGuard(phone) : {ok:true};
+        if(!g.ok){ if(g.back){ const nb=addBack(g.back); st.tid=nb.id; keep(); drawT(); drawB(); } return; }
+        const nt={id:uid(), name, phone, isNew:true, area, newArea:isNewArea(area), stage:'', subjectText:'', subjects:[], school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
+        db.teachers.push(nt); save(); sbPushTeacher(nt); st.tid=nt.id; keep(); drawT(); drawB(); toast(`➕ اتضاف ${name}`);
+      }finally{ window._addT=0; } })();
     }
     else if(a==='order') save1(false);
     else if(a==='sell') save1(true);
@@ -4355,7 +4364,9 @@ function syncStats(){
 }
 async function cloudSync(manual){
   if(!CLOUD_URL || !db.mail || syncBusy || !navigator.onLine) return;
-  if(db.lastSync && (db.lastChange||'') <= db.lastSync){ flushInv(); if(manual) toast('☁️ كل حاجة متبعتة'); return; }
+  // مرة واحدة بعد التحديث: كل مندوب يبعت تسليماته القديمة لسجل الزمايل حتى لو مفيش شغل جديد عنده
+  const dlvDone=(()=>{ try{ return localStorage.getItem(KEY+'-dlv1')==='1'; }catch(e){ return true; } })();
+  if(dlvDone && db.lastSync && (db.lastChange||'') <= db.lastSync){ flushInv(); if(manual) toast('☁️ كل حاجة متبعتة'); return; }
   syncBusy=true; const at=new Date().toISOString();
   try{
     const {sales, pays, dels}=syncRows();
@@ -4364,8 +4375,11 @@ async function cloudSync(manual){
     const dl=db.entries.filter(e=>e.s==='d' && tmp[e.t] && tmp[e.t].phone).map(e=>[tmp[e.t].phone, e.b, e.q, dk(e.dd)]);
     await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels, dl,
       data:{app:'selah-books', ...db, teachers:db.teachers.map(({photos, thumb, ...x})=>x), savedAt:at}});   // صور المدرسين مش بتتبعت في المزامنة اليومية
-    db.lastSync=at; save(false); if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
-  }catch(e){ if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده'); }
+    db.lastSync=at; save(false); try{ localStorage.setItem(KEY+'-dlv1','1'); }catch(e){} if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
+  }catch(e){
+    if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده');
+    else try{ const k=KEY+'-serr', o=+localStorage.getItem(k)||0; if(Date.now()-o>6*3600000){ localStorage.setItem(k, String(Date.now())); toast('⚠️ شغلك لسه ما اتبعتش — البرنامج هيحاول تاني لوحده'); } }catch(_){}
+  }
   finally{ syncBusy=false; }
   flushInv();
 }
@@ -4453,7 +4467,7 @@ async function sbSetPhone(){ try{ if(!sbHas() || !db.repPhone || !navigator.onLi
   await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/set_my_phone',{method:'POST',headers:{...S.h,'Content-Type':'application/json'},body:JSON.stringify({p_phone:db.repPhone})}); }catch(e){} }
 // مندوب قديم من غير رقم ← نسأله مرة في اليوم
 function askRepPhoneOnce(){
-  if(!db.mail || db.repPhone || document.getElementById('firstRun')) return;
+  if(!db.mail || db.repPhone || document.hidden || document.getElementById('firstRun')) return;   // السؤال وهو في الخلفية بيعلّق البرنامج
   const k=KEY+'-phask', d=new Date().toDateString(); try{ if(localStorage.getItem(k)===d) return; localStorage.setItem(k,d); }catch(e){}
   const v=prompt('📞 اكتب رقم موبايلك (واتساب)\nزمايلك والمدرسين هيكلّموك عليه', ''); const ph=phDigits(v||'');
   if(ph.length>=11){ db.repPhone=ph; save(false); repPing(true); sbSetPhone(); toast('✅ رقمك اتسجّل'); }
@@ -4504,12 +4518,15 @@ function colGroup(rl, rn, rows){
   for(const r of rows||[]){ const m=rl[r[0]]; if(!m || m===me) continue; (g[m] ||= {mail:m, name:rn[r[0]]||m, books:[]}).books.push([r[1], r[2], r[3]]); }
   return Object.values(g);
 }
+let colSlow=false, colBusy=false;   // colSlow: السؤال ما اتردش عليه في الوقت ← نرجع نسأل تاني بعد شوية
 async function colCheck(t){
+  colSlow=false;
   try{
     const p=ph10(t.phone); if(p.length<10 || !db.mail) return [];
     if(navigator.onLine && CLOUD_URL){
-      const j=await Promise.race([cloudPost({k:'who', mail:db.mail, p}).catch(()=>null), new Promise(r=>setTimeout(()=>r(null), 3000))]);
+      const j=await Promise.race([cloudPost({k:'who', mail:db.mail, p}).catch(()=>null), new Promise(r=>setTimeout(()=>r(null), 12000))]);
       if(j && j.ok) return colGroup(j.rl, j.rn, j.r);
+      colSlow=true; pullDlv(true);
     }
     const x=dlvIdx(); return x ? colGroup(x.rl, x.rn, x.p[p]) : [];
   }catch(e){ return []; }
@@ -4660,7 +4677,13 @@ function sellRest(s, sp){
 // التسليم (من مخزن الشركة): الكتاب الناقص يتقال عليه ويتساب، والباقي يتسلّم. لو مفيش استلام من المخزن متسجّل خالص → مفيش فحص
 function doDeliver(t, map, after, again, colOk){
   // 🧭 مهمة 2 — المرحلة 4: ⚠️ المدرس ده استلم من زميل؟ (من سجل التسليمات الموحّد على جوجل) — قبل أي حاجة
-  if(!colOk && !again){ colCheck(t).then(l=>{ if(l.length) colModal(t, l, ()=>doDeliver(t, map, after, again, true)); else doDeliver(t, map, after, again, true); }); return; }
+  if(!colOk && !again){
+    if(colBusy) return; colBusy=true;   // مايتسجلش مرتين لو داس تاني وهو مستني الرد
+    if(navigator.onLine) toast('⏳ بنتأكد من الزمايل…');
+    colCheck(t).then(l=>{ colBusy=false;
+      if(colSlow && !l.length){ colQueue(t); setTimeout(colFlush, 90000); }   // الرد اتأخر ← نسلّم ونرجع نتأكد بعد دقيقة ونص
+      if(l.length) colModal(t, l, ()=>doDeliver(t, map, after, again, true)); else doDeliver(t, map, after, again, true); });
+    return; }
   if(!navigator.onLine) colQueue(t);   // من غير نت ← أول ما النت يرجع نتأكد ونبلّغه
   // بند 5: المدرس استلم النهارده قبل كده → اسأل: تعدّل زيارة النهارده ولا تضيف عليها ولا تلغي
   const today=dayKey(), prev=again?[]:db.entries.filter(e=>e.s==='d' && e.t===t.id && e.dd && dk(e.dd)===today);
@@ -5615,6 +5638,32 @@ async function sbLinks(list){
   try{ localStorage.setItem('selah-trial-ids', JSON.stringify(sbIds)); }catch(e){}
   const out={}; for(const t of list) if(codes[t.id]) out[t.id]=base+'#c='+codes[t.id]; return out;
 }
+// 2026-11-19 (طلب شريف): رقم واحد = مدرس واحد. المقارنة بآخر 10 أرقام مهما كان شكل الرقم المتسجل
+function phK(v){ return phDigits(v).slice(-10); }
+function phMatch(t, qd){ return !!qd && [t.phone, ...(t.oldPhones||[]).map(o=>o&&o.p)].some(p=>phDigits(p).includes(qd)); }
+function phoneTaken(phone, exceptId){ const k=phK(phone); if(k.length<10) return null; return db.teachers.find(x=>x.id!==exceptId && phK(x.phone)===k)||null; }
+async function sbPhoneWho(phone){
+  try{
+    if(!sbHas() || !navigator.onLine) return null; const S=await sbSession(); if(!S) return null;
+    const r=await Promise.race([fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/phone_who',{method:'POST',headers:S.h,body:JSON.stringify({p_phone:phone})}).then(x=>x.ok?x.json():null), new Promise(ok=>setTimeout(()=>ok(null),6000))]);
+    return r && r.name ? r : null;
+  }catch(e){ return null; }
+}
+// {ok:true} = الرقم فاضي · {ok:false} = ممنوع · {ok:false, back} = موجود عندي على السيرفر ← يرجع لقايمة الموبايل ده
+async function addGuard(phone, selfId){
+  const w=await sbPhoneWho(phone); if(!w) return {ok:true};
+  if(selfId && w.mine && w.local===selfId) return {ok:true};   // ده نفس المدرس اللي بعدّله
+  if(!w.mine){ alert(`⛔ الرقم ده متسجّل عند زميلك ${w.rep||''} باسم «${w.name}».\nمش هينفع تضيفه عندك.`); return {ok:false}; }
+  if(!selfId && w.local && confirm(`الرقم ده متسجّل عندك قبل كده باسم «${w.name}»، بس مش موجود في القايمة على الموبايل ده.\nأرجّعه للقايمة؟`)) return {ok:false, back:{id:w.local, name:w.name, phone:normPhone(w.phone)}};
+  alert(`⛔ الرقم ده متسجّل عندك باسم «${w.name}».\nمش هينفع تسجّله مرتين.`); return {ok:false};
+}
+function addBack(b){
+  const old=db.teachers.find(x=>x.id===b.id); if(old) return old;
+  const nt={id:b.id, name:b.name, phone:b.phone, stage:'', subjectText:'', subjects:[], area:'', school:'', cls:'', students:'', plan:'', notes:'', created:new Date().toISOString()};
+  db.teachers.push(nt); save(); toast('✅ رجع للقايمة'); return nt;
+}
+function sbSetOn(localId, on){ (async()=>{ try{ if(!sbHas() || !navigator.onLine) return; const S=await sbSession(); if(!S) return;
+  await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/set_my_teacher_on',{method:'POST',headers:S.h,body:JSON.stringify({p_local:localId, p_on:on})}); }catch(e){} })(); }
 // 2026-11-17 (طلب شريف): أول ما المندوب يسجّل مدرس أو يعدّل رقمه ← يتبعت للقاعدة على طول، عشان المدرس يقدر يدخل من لينك المجموعة فورًا
 async function sbPushTeacher(t){
   try{
