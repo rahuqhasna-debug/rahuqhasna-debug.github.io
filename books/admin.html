@@ -721,8 +721,10 @@ function stWords(ws) {
   }
   return o;
 }
+// اللي الكلمة في اسمه يظهر الأول، وبعده اللي الكلمة في بياناته التانية
+function nameFirst(l, ws) { if (!ws.length) return l; const hit = t => { const n = nq(t.name); return ws.every(w => n.includes(w)); }; return [...l.filter(hit), ...l.filter(t => !hit(t))]; }
 function tHay(t) {
-  const pr = t.profile || {}, g = gInfo()[t.local_id], s = g && g.s, out = [t.name, t.phone, valText('subjects', pr.subjects), valText('stage', pr.stage), STG_T[pr.stage] || '', UPD_C[updState(t)][1], repName(t.rep_id), ...(notesBy[t.id] || [])];
+  const pr = t.profile || {}, g = gInfo()[t.local_id], s = g && g.s, out = [t.name, t.phone, valText('subjects', pr.subjects), valText('stage', pr.stage), STG_T[pr.stage] || '', UPD_C[updState(t)][1], ...(notesBy[t.id] || [])];   // اسم المندوب اتشال من البحث: كل المدرسين هنا مدرسيني، فالبحث باسمي كان بيجيبهم كلهم
   hayVals(pr, out, 0); (t.books || []).forEach(b => out.push(b.l || bookLabel(b.b)));
   if (lastMsg[t.id]) out.push(lastMsg[t.id].b);
   if (s) out.push(ST_W[s.st] || '', s.c || '', s.lv || '', s.w ? 'عليه فلوس' : '');
@@ -1011,7 +1013,7 @@ function viewInvite() {
     <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="iall">☑️ الكل</button><button class="btn sm owe" id="iapp">🌐 اللي مش مثبّتين</button><button class="btn sm ghost" id="inone">✕ مسح التحديد</button><button class="btn sm ok" id="isend" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">🟢 ابعت (${ui.invSel.size})</button></div>
     <div id="il"></div></div>`;
   const saveTpl = () => LS.set(lk, $('#itpl').value);
-  const shown = () => { const ws = stWords(nq(ui.invQ).split(/\s+/).filter(Boolean)); return T.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))); };
+  const shown = () => { const ws = stWords(nq(ui.invQ).split(/\s+/).filter(Boolean)); return nameFirst(T.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))), ws); };
   const cnt = () => { $('#iselN').textContent = ui.invSel.size; $('#isend').textContent = `🟢 ابعت (${ui.invSel.size})`; };
   const draw = () => {
     const l = shown(), notIn = l.filter(t => !t.app_at).length;
@@ -1046,7 +1048,7 @@ function viewUpd() {
     <div class="acts" style="margin:0 0 8px"><button class="btn sm" id="uall">☑️ الكل</button><button class="btn sm ghost" id="unone">✕ مسح التحديد</button>
       <button class="btn sm ok" id="usend" style="margin-inline-start:auto;font-size:16px;padding:8px 16px">🟢 ابعت طلب التحديث (${updUi.sel.size})</button></div>
     <div id="ul"></div></div>`;
-  const shown = () => { const ws = stWords(nq(updUi.q).split(/\s+/).filter(Boolean)); return T.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))); };
+  const shown = () => { const ws = stWords(nq(updUi.q).split(/\s+/).filter(Boolean)); return nameFirst(T.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))), ws); };
   const cnt = () => { $('#uN').textContent = updUi.sel.size; $('#usend').textContent = `🟢 ابعت طلب التحديث (${updUi.sel.size})`; };
   const draw = () => {
     const l = shown(); $('#uall').textContent = `☑️ الكل (${l.length})`;
@@ -1096,7 +1098,7 @@ function viewBc() {
     let l = T;
     if (bcUi.day) { const d = days.find(x => x.id === bcUi.day); const s = new Set(((d && d.t) || []).map(id => (byLocal[id] || {}).id).filter(Boolean)); l = l.filter(t => s.has(t.id)); }
     const ws = stWords(nq(bcUi.q).split(/\s+/).filter(Boolean));
-    return l.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t))));
+    return nameFirst(l.filter(t => !ws.length || (h => ws.every(w => h.includes(w)))(nq(tHay(t)))), ws);
   };
   const cnt = () => { $('#bcN').textContent = bcUi.sel.size; $('#bcGo').textContent = `📢 ابعت (${bcUi.sel.size})`; };
   const draw = () => {
