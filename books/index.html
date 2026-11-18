@@ -1131,6 +1131,7 @@ function parseQuery(raw){
     else if(subjOf(w)) q.subjs.push(subjOf(w));
     else if(/^(ال)?ابتدا/.test(w)) q.stages.push('p');
     else if(/^(ال)?اعدا/.test(w)) q.stages.push('m');
+    else if(/^§cls[abc]$/.test(w)) q.letter=w.slice(-1).toUpperCase();
     else if(/^[abc]$/.test(w)) q.letter=w.toUpperCase();
     else q.rest.push(w);
   }
@@ -1154,6 +1155,12 @@ function stTok(ws){ const o=[];
     else if(/^(است?لمش|مستلمش|مستلمتش)$/.test(w)) o.push('§stnone');
     else if(/^است?لم$/.test(w) && /^(جزء|جزؤ|حته|نص|بعض)$/.test(nx)){ o.push('§stpart'); i++; }
     else if(/^است?لم$/.test(w)) o.push('§stdone');
+    // 2026-11-18 (طلب شريف): «مثبت» / «مش مثبت» (التطبيق) و«فعال» / «مش فعال» — علامات خاصة عشان «مثبت» ماتطلعش «مش مثبت» كمان
+    else if(/^(مش|مو|غير|مب)$/.test(w) && /^(مثبت|متثبت|مثبته|منزل)$/.test(nx)){ o.push('§noapp'); i++; }
+    else if(/^(مثبت|متثبت|مثبته)$/.test(w)) o.push('§app');
+    else if(/^(مش|مو|غير)$/.test(w) && /^(فعال|فعاله)$/.test(nx)){ o.push('§noact'); i++; }
+    else if(/^(فعال|فعاله)$/.test(w)) o.push('§act');
+    else if(/^[abc]$/i.test(w)) o.push('§cls'+w.toLowerCase());   // التصنيف A / B / C
     else o.push(w); }
   return o; }
 function teacherHay(t){ const x=hIdx()[t.id], st=!x?.d?'none':x.o?'part':'done', ex=[];
@@ -1443,7 +1450,8 @@ function renderTeacher(id){
       <div class="grow"><h2>${esc(t.name)}${nameTags(t)}</h2>${LV[t.id]?`<div class="lastv">🕘 آخر زيارة: ${visitLabel(LV[t.id])} — ${LV[t.id].k}</div>`:'<div class="lastv muted">لسه ما اتزارش</div>'}</div></div>
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}${phone&&sbHas()&&sbCodes[t.id]?`<a class="rbtn" style="background:#dcfce7" href="https://wa.me/2${esc(normPhone(phone))}?text=${encodeURIComponent(appInviteMsg(t))}" target="_blank" rel="noopener" title="ابعت كارت دعوة">📲</a>`:''}${sbHas()&&sbIds[t.id]?`<a class="rbtn" href="admin.html#/ru/${encodeURIComponent(sbIds[t.id])}" title="حدّث بيانات المدرس">🔄</a>`:''}
-      <button class="rbtn" data-act="show-cls-change" title="التخصص">🎯</button><button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button><button class="rbtn" data-act="team-share" data-id="${esc(t.id)}" title="ابعت للتيم (Promotion Team)" style="background:#dbeafe">📤</button></div>
+      <button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button></div>
+    <button class="btn" data-act="team-share" data-id="${esc(t.id)}" style="width:100%;margin-top:8px;background:#dbeafe;color:#1e3a8a;font-weight:800">📤 ابعت بيانات المدرس للتيم (Promotion Team)</button>
     <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:(instTxt(t)?`<span class="small" style="align-self:center">${instTxt(t)}</span>`:'')}</div>${t.loc?`<a class="btn ok" data-act="noop" href="${gmapsDir(t.loc)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;text-align:center;text-decoration:none">🗺️ افتح الطريق في خرائط جوجل</a>`:''}</div>
     ${recvBox(t)}
     <div class="bigbuy"><button class="btn gold" data-act="sell-t" data-mode="order">📝 طلب بيع</button><button class="btn owe" data-act="sell-t" data-mode="sell">🛒 بيع دلوقتي</button></div>`;
@@ -4583,8 +4591,15 @@ if(CLOUD_URL){
 var PQ={}, NAV=null, MAP=null, mapCat='', mapRouteOnly=false, PIN_OK=false, VOICE=true, WL=null, LF=null;
 
 /* ---------- ١) البحث: كل كارت عليه data-hay = كل بيانات المدرس/التاجر متطبّعة ---------- */
+// 🔍 البحث الموحّد (طلب شريف 2026-11-18): كل شريط بحث في البرنامج بيدوّر في «الكومة» دي — أي كلمة تخص المدرس
 function hayT(t){ const ms=teacherMerch(t.id).map(([n])=>n).filter(n=>n!==MNONE);
-  return teacherHay(t)+' '+normText([...ms, t.active===true?'فعال':t.active===false?'مش فعال':'', t.loc?'ليه موقع':'الموقع ناقص', tCatName(t)].join(' ')); }
+  const gr=fGradesOf(t).map(g=>F_GR[g-1]).filter(Boolean), dys=Object.keys(t.tDays||{}).map(k=>(F_DAYS.find(d=>d[0]===k)||[])[1]).filter(Boolean);
+  const inDays=(db.days||[]).filter(d=>(d.t||[]).includes(t.id)).map(d=>d.n), a=(typeof ACC!=='undefined' && ACC) ? ACC[t.id] : null;
+  let place=''; try{ place=tPlace(t); }catch(e){}
+  const extra=[...ms, clsLetter(t)?'§cls'+clsLetter(t).toLowerCase()+' تصنيف':'', t.active===true?'فعال §act':t.active===false?'مش فعال §noact':'', t.loc?'ليه موقع':'الموقع ناقص', tCatName(t),
+    sbHas() ? (sbApp[t.id] ? '§app مثبت التطبيق' : '§noapp مش مثبت') : '', t.isNew?'جديد مدرس جديد':'', ...gr, t.tAddress||'', place, ...dys, ...inDays,
+    (sbUpd||{})[t.id] ? UPD_TXT[sbUpd[t.id]] : '', oldPh(t).length?'رقم قديم':'', a&&a.owe>0?'عليه فلوس':'', t.where||'', t.students?t.students+' طالب':''];
+  return teacherHay(t)+' '+normText(extra.join(' ')); }
 const qWords = raw => stTok(normText(raw).split(' ').filter(Boolean));
 function searchBar(id, ph){ return `<div class="search"><input id="${id}" type="search" placeholder="${esc(ph||'🔎 دوّر: اسم، تليفون، قرية، تصنيف، تخصص، مادة، تاجر…')}" value="${esc(PQ[id]||'')}" autocomplete="off" enterkeyhint="search"></div>`; }
 function bindSearch(id, box, empty){
@@ -5074,7 +5089,7 @@ function visitGroups(){
 const bkChips = ents => `<div class="vbk">${ents.map(e=>`<span style="color:var(--c-${bookParts(e.b).sb});font-weight:700">${esc(bookLabel(e.b))}${e.q>1?` × ${e.q}`:''}</span>`).join('')}</div>`;
 function visitRow(v, reg){
   const t=tById(v.t), dates=[...new Set(v.ents.map(e=>dk(db.reg[e.id])).filter(Boolean))].sort();
-  return `<div class="vrow ${tStC(t)}" style="${tUpdSt(t)}" data-hay="${esc(teacherHay(t))}"><div class="tc-top" style="gap:8px">${tAv(t)}<div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}
+  return `<div class="vrow ${tStC(t)}" style="${tUpdSt(t)}" data-hay="${esc(hayT(t))}"><div class="tc-top" style="gap:8px">${tAv(t)}<div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}
       <div class="small muted">${esc([t.area, t.phone].filter(Boolean).join(' • '))}${reg?` • زيارة ${dayName(v.day)} ${fmtDay(v.day)}`:''}</div>
       ${oldPh(t).length?`<div class="small" style="color:#b91c1c;font-weight:700;background:#fff7ed;border-radius:8px;padding:4px 6px;margin-top:4px">⚠️ رقمه اتغيّر — على برنامج الشركة بالرقم القديم: ${oldPh(t).map(x=>`<span dir="ltr">${esc(x.p)}</span>`).join(' أو ')}</div>`:''}</div><div class="icos">${phoneBtns(t)}</div></div>
     ${bkChips(reg ? v.ents : v.left)}${recvBox(t)}
