@@ -4457,9 +4457,24 @@ async function repPing(force){
     const inst = matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
     let sid=''; try{ sid=(JSON.parse(localStorage.getItem('selah-trial-me')||'null')||{}).id||''; }catch(e){}
     const j=await cloudPost({k:'rping', mail:db.mail, name:db.rep||'', inst, code:sbHas(), owner:isOwnerApp(), phone:db.repPhone||'', idara:db.idara||'', sid});
-    setLockedApp(!!j.locked);
+    setLockedApp(!!j.locked); setGateApp(!!j.gate);
   }catch(e){}
 }
+// الرقم السري على باب البرنامج: لما المالك يشغّله، اللي مش داخل برقمه مايقدرش يفتح البرنامج (بياناته محفوظة زي ما هي)
+var GATE_KEY=KEY+'-gate';
+function applyGate(){
+  let on=false; try{ on=localStorage.getItem(GATE_KEY)==='1' && !sbHas() && !isOwnerApp(); }catch(e){}
+  let ov=document.getElementById('gateov');
+  if(!on){ if(ov) ov.remove(); return; }
+  if(ov) return;
+  ov=document.createElement('div'); ov.id='gateov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99998;background:#fff;color:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;font-family:inherit';
+  ov.innerHTML=`<div style="font-size:64px">🔒</div><div style="font-size:24px;font-weight:800">ادخل الرقم السري بتاعك</div><div style="font-size:16px;color:#444;max-width:320px;line-height:1.7">الرقم بيوصلك من الأستاذ شريف حشيش، وبتكتبه مرة واحدة بس.<br>بياناتك كلها محفوظة ومش هتتمسح.</div><button id="gateGo" class="btn pri" style="font-size:18px;padding:12px 28px">🔑 اكتب الرقم السري</button>`;
+  document.body.appendChild(ov);
+  document.getElementById('gateGo').onclick=()=>{ try{ localStorage.setItem('selah-gate-back','1'); }catch(e){} location.href='admin.html'; };
+}
+function setGateApp(v){ try{ localStorage.setItem(GATE_KEY, v?'1':'0'); }catch(e){} applyGate(); }
+setTimeout(applyGate, 0);
 /* ================= 🧭 مهمة 2 — المرحلة 4 (كله على جوجل — مالوش دعوة بقاعدة المراسلات) =================
    • رقم المندوب (db.repPhone) أول دخول + في الإعدادات ← rping ← «👥 تواصل مع زمايلك» (#/team)
    • سجل التسليمات الموحّد: كل مزامنة بتبعت تسليماتي (dl)؛ الموبايل بينزّل نسخة مرة كل 6 ساعات (لو اتغيرت) + سؤال سريع وقت التسليم لو فيه نت

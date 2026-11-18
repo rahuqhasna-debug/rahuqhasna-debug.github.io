@@ -312,6 +312,8 @@ async function loadMe() {
     importGreen().then(ch => { if (ch) refresh(); }).catch(() => { });
     syncPrices().catch(() => { }); loadAvatars().catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
+    // دخل برقمه من باب البرنامج ← يرجع للبرنامج الأخضر (بعد ما يتربط بالإشعارات)
+    if (LS.get('selah-gate-back')) { LS.del('selah-gate-back'); toast('✅ اتفتح البرنامج — بنرجّعك…', 5000); setTimeout(() => location.replace('index.html'), 6000); }
     // 🧭 مهمة 2 (توفير الباقة): الجرس كان بيسأل كل 30 ثانية ← دلوقتي كل 5 دقايق والصفحة قدام + لما ترجع لها (لو عدّى دقيقة) + لما يوصل إشعار
     // 🧭 مهمة 2 — المرحلة 7: «المندوب فتح البرنامج» ← التذكيرات بتقف لحد ما ييجي جديد
     const seen = () => { try { const u = (window.SILAH_CONFIG || {}).CLOUD_URL; if (u && !document.hidden) fetch(u, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ k: 'rseen', sid: me.id }) }).catch(() => { }); } catch (e) { } };
@@ -1485,8 +1487,13 @@ async function viewBell() {
   if (ui.bellTab === 'msgs') {
     const ids = Object.keys(unreadBy).filter(id => (T.find(t => t.id === id) || {}).rep_id === me.id);
     ids.sort((a, b) => (lastMsg[b]?.id || 0) - (lastMsg[a]?.id || 0));
-    bb.innerHTML = ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<div class="titem" data-go="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
-      <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>';
+    // «مطلوب رد»: خلصت الـ3 تنبيهات والمدرس لسه ما ردش
+    let noRep = '';
+    try { const { data: nr } = await sb.from('messages').select('teacher_id').eq('need_reply', true).eq('nr_done', true).eq('from_teacher', false).is('reply_closed_at', null).limit(200);
+      const l = [...new Set((nr || []).map(x => x.teacher_id))].map(id => T.find(t => t.id === id && t.rep_id === me.id)).filter(Boolean);
+      if (l.length) noRep = `<div class="card" style="border:2px solid #dc2626"><b style="color:#dc2626">📵 ما ردوش بعد 3 تنبيهات (${l.length})</b>${l.map(t => `<div class="kv" data-go="#/c/${t.id}" style="cursor:pointer"><span>${esc(t.name)}</span><span class="small muted" dir="ltr">${esc(t.phone || '')}</span></div>`).join('')}</div>`; } catch (e) { }
+    bb.innerHTML = noRep + (ids.length ? `<div class="tlist" style="display:flex">${ids.map(id => T.find(t => t.id === id)).filter(Boolean).map(t => `<div class="titem" data-go="#/c/${t.id}">${avHtml(t)}<div class="grow"><div class="nm">${esc(t.name)} ${tB(t.id)}</div>
+      <div class="sub" style="color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 ${esc((lastMsg[t.id]?.b || '').slice(0, 80))}</div><div class="sub">${fmtDate(lastMsg[t.id]?.at)}</div><div style="margin-top:6px">${icos4(t)}</div></div></div>`).join('')}</div>` : '<div class="card empty">مفيش رسايل جديدة ✅</div>');
     bb.onclick = e => { if (e.target.closest('[data-ic]')) return; const it = e.target.closest('[data-go]'); if (it) location.hash = it.dataset.go; };
     return;
   }
@@ -1557,12 +1564,15 @@ async function repsCall(body) {
 }
 async function loadRepsCard() {
   const box = $('#repsCard'); if (!box) return;
-  let reps;
-  try { reps = (await repsCall({ k: 'rlist' })).reps || []; }
+  let reps, gateOn = false;
+  try { const rl = await repsCall({ k: 'rlist' }); reps = rl.reps || []; gateOn = !!rl.gate; }
   catch (e) { box.innerHTML = `<h3 style="margin:0 0 6px">📲 المناديب والبرنامج الأخضر</h3><div class="small" style="color:#dc2626">⚠️ ${esc(e.message)} — اتأكد إن السيرفر اتحدّث (نسخة جديدة من Apps Script)</div>`; return; }
   reps.sort((a, b) => (b.last || '').localeCompare(a.last || ''));
   const nIn = reps.filter(r => r.inst).length, nCode = reps.filter(r => r.code).length;
   box.innerHTML = `<h3 style="margin:0 0 6px">📲 المناديب والبرنامج الأخضر</h3>
+    <div style="padding:10px;margin-bottom:10px;border-radius:12px;border:2px solid ${gateOn ? '#16a34a' : '#f59e0b'}"><b>🔒 الرقم السري على باب البرنامج: ${gateOn ? '<span style="color:#16a34a">شغّال</span>' : '<span style="color:#b45309">مش شغّال</span>'}</b>
+      <div class="small muted" style="margin:4px 0 8px">${gateOn ? 'أي مندوب مش داخل برقمه مش هيقدر يفتح البرنامج.' : 'جهّز رقم لكل مندوب من «المناديب» وابعتهوله الأول، وبعدها شغّل القفل.'}</div>
+      <button class="btn sm ${gateOn ? 'danger' : 'ok'}" id="gateBtn" style="width:100%">${gateOn ? '🔓 وقّف القفل' : '🔒 شغّل القفل دلوقتي'}</button></div>
     <div class="small muted" style="margin-bottom:8px">${reps.length} جيميل دخل البرنامج · <b>${nIn}</b> مثبّت البرنامج · <b style="color:#7c3aed">${nCode}</b> 🔑 معاهم الرقم السري للمراسلات</div>
     ${reps.map(r => `<div class="kv" data-m="${esc(r.mail)}" style="display:block;padding:10px;margin-bottom:6px;border-radius:12px;${r.code ? 'background:#f5f3ff;border:2px solid #7c3aed' : 'border:1px solid var(--line)'}">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="grow" style="min-width:150px"><b>${esc(r.name || 'من غير اسم')}</b> ${r.code ? '<span class="pill" style="background:#7c3aed;color:#fff">🔑 معاه الرقم السري</span>' : ''}${r.owner ? ' <span class="pill ok">👑 إنت</span>' : ''}
@@ -1571,6 +1581,11 @@ async function loadRepsCard() {
       <div class="small" style="margin-top:4px">${r.old ? '<span class="pill new">لسه ما فتحش بعد التحديث</span>' : (r.inst ? '<span class="pill ok">📲 مثبّت البرنامج</span>' : '<span class="pill new">🌐 من المتصفح</span>')}${r.locked ? ' <span class="pill bad">⛔ موقوف</span>' : ''}
         <span class="muted"> · آخر فتح ${r.last ? fmtDate(r.last) : '—'}</span></div></div>`).join('') || '<div class="small muted">لسه مفيش حد فتح البرنامج بعد التحديث</div>'}
     <div class="small muted">القفل بيوقّف البرنامج عند المندوب من غير ما يمسح أي بيانات، وبيشتغل أول ما يكون معاه نت.</div>`;
+  $('#gateBtn').onclick = async () => {
+    const on = !gateOn;
+    if (!confirm(on ? 'تشغّل القفل دلوقتي؟\nأي مندوب مش معاه رقمه السري هيقف عن الشغل لحد ما تبعتهوله. بياناته مش هتتمسح.' : 'توقّف القفل؟ البرنامج هيفتح لأي حد من غير رقم.')) return;
+    try { await repsCall({ k: 'gate', on }); toast(on ? '🔒 القفل اشتغل' : '🔓 القفل وقف'); loadRepsCard(); } catch (er) { toast(er.message, 4000); }
+  };
   box.onclick = async e => {
     const b = e.target.closest('[data-lk]'); if (!b) return;
     const row = b.closest('[data-m]'), r = reps.find(x => x.mail === row.dataset.m), lock = b.dataset.lk === '1';
@@ -1646,7 +1661,7 @@ async function viewSettings() {
     <button class="btn pri" id="saveLim" style="width:100%;margin-top:8px">💾 حفظ</button></details>`;
   loadRepsCard(); loadInstCard(data.staff);
   const appUrl = location.href.split('#')[0].replace(/admin\.html.*$/, '');
-  const repMsg = s => `رقمك السري في «المراسلات» في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}\nوادخل «⚙️ الإعدادات» ← «💬 فعّل المراسلات» واكتب الرقم زي ما هو بالظبط. (بيشتغل على موبايل واحد بس)`;
+  const repMsg = s => `رقمك السري في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}admin.html\nواكتب الرقم زي ما هو بالظبط ودوس «دخول». بتكتبه مرة واحدة بس، وبيشتغل على موبايل واحد.`;
   $('#upPr').onclick = async () => {
     const db = gdb(); if (!db || !db.prices) return toast('مفيش أسعار في البرنامج على الموبايل ده');
     const items = Object.entries(db.prices).filter(([k, p]) => p && (p.post || p.pre)).map(([b, p]) => ({ b, l: bookLabel(b), pre: p.pre ?? null, post: p.post ?? (p.pre != null ? autoPost(b, p.pre) : null) }));
