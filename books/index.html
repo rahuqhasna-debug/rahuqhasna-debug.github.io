@@ -2399,7 +2399,8 @@ $('#fileXlsx').addEventListener('change', async e=>{
 //   من غير رقم ← يتشال · رقم من غير اسم ← يتشال · الرقم موجود في البرنامج بنفس الاسم ← يكمّل الخانات الفاضية بس ·
 //   الرقم موجود باسم تاني ← مايتضافش ومايتاخدش منه حاجة (اللي في البرنامج هو الصح) · رقم جديد ← يتضاف
 const nmKey=s=>normText(s||'').replace(/^(ا\s*\/\s*|ا\.\s*|الاستاذه?\s+|استاذه?\s+|مستر\s+|مس\s+|د\s*\/\s*)/,'').replace(/\s+/g,' ').trim();
-function importRows(rows, src, after){
+// newOnly (الشيت الرئيسي): الرقم الموجود عند المندوب ما يتلمسش خالص — بيتضاف الأرقام الجديدة بس
+async function importRows(rows, src, after, newOnly){
   const H=detectHeader(rows);
   if(!H){ alert('مش لاقي عمود «اسم المدرس» في الشيت.'); return; }
   const data=rows.slice(H.row+1).filter(r=>r && (r[H.name] || (H.phone>=0 && r[H.phone])));
@@ -2429,13 +2430,18 @@ function importRows(rows, src, after){
     if(seen.has(pk)){ const p=seen.get(pk).rec; for(const k of Object.keys(rec)) if(empty(p[k])) p[k]=rec[k]; twice++; continue; }
     const item={rec}; seen.set(pk, item);
     const ex=byPh.get(pk);
+    if(ex && newOnly){ same++; continue; }
     if(ex && nmKey(ex.name)!==nmKey(name)){ diff.push({sheet:name, app:ex.name, phone}); continue; }   // رقم موجود باسم تاني ← اللي في البرنامج هو الصح
     if(ex){ const ks=Object.keys(rec).filter(k=>k!=='name' && k!=='phone' && !empty(rec[k]) && empty(ex[k])); if(!ks.length){ same++; continue; } item.ex=ex; plan.push(item); fill++; }
     else { plan.push(item); add++; }
   }
+  // الرقم متسجل عند زميل أو اتمسح من عندك قبل كده ← مايتضافش
+  let other=0;
+  if(newOnly && plan.length){ const tk=await sbPhonesTaken(plan.map(it=>ph10(it.rec.phone)));
+    if(tk && tk.size){ for(let i=plan.length-1;i>=0;i--) if(tk.has(ph10(plan[i].rec.phone))){ plan.splice(i,1); add--; other++; } } }
   const dup=same+diff.length;
-  const sum=`لقيت في ${src}:\n• ${add} مدرس جديد هيتضاف\n• ${fill} موجودين عندك (هيتكمّل الخانات الفاضية بس)\n• ${dup} متكرر عندك ومش هيتضاف${diff.length?` (منهم ${diff.length} الرقم بتاعهم عندك باسم تاني)`:''}`
-    +(twice?`\n• ${twice} سطر رقمه متكرر في الشيت نفسه`:'')+(noPh?`\n• ${noPh} من غير رقم تليفون (اتشالوا)`:'')+(noNm?`\n• ${noNm} رقم من غير اسم (اتشالوا)`:'');
+  const sum=`لقيت في ${src}:\n• ${add} مدرس جديد هيتضاف\n`+(newOnly?'':`• ${fill} موجودين عندك (هيتكمّل الخانات الفاضية بس)\n`)+`• ${dup} ${newOnly?'موجودين عندك ومش هيتغيّروا':'متكرر عندك ومش هيتضاف'}${diff.length?` (منهم ${diff.length} الرقم بتاعهم عندك باسم تاني)`:''}`
+    +(other?`\n• ${other} متسجلين عند زميل أو اتمسحوا قبل كده (مش هيتضافوا)`:'')+(twice?`\n• ${twice} سطر رقمه متكرر في الشيت نفسه`:'')+(noPh?`\n• ${noPh} من غير رقم تليفون (اتشالوا)`:'')+(noNm?`\n• ${noNm} رقم من غير اسم (اتشالوا)`:'');
   if(!plan.length){ alert(sum+'\n\nمفيش حاجة جديدة تتضاف.'); if(diff.length) dupList(diff); return; }
   if(!confirm(sum+'\n\nأكمّل؟')) return;
   for(const it of plan){
@@ -2465,7 +2471,7 @@ async function masterOffer(force){
     const b=e.target.closest('[data-n]'); if(!b) return; m.remove();
     db.masterRep=b.dataset.n; save(false); toast('⏳ بنزّل مدرسينك…', 3000);
     try{ const r=await cloudPost({k:'mrows', mail:db.mail, idara:db.idara, rep:db.masterRep});
-      importRows(r.rows||[], 'الشيت الرئيسي'); try{ localStorage.setItem(KEY+'-mdone', db.idara); }catch(_){} }
+      importRows(r.rows||[], 'الشيت الرئيسي', null, true); try{ localStorage.setItem(KEY+'-mdone', db.idara); }catch(_){} }
     catch(er){ alert('⚠️ مش قادر أنزّل المدرسين دلوقتي — جرّب تاني من الإعدادات'); }
   });
 }
@@ -5647,6 +5653,14 @@ async function sbPhoneWho(phone){
     if(!sbHas() || !navigator.onLine) return null; const S=await sbSession(); if(!S) return null;
     const r=await Promise.race([fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/phone_who',{method:'POST',headers:S.h,body:JSON.stringify({p_phone:phone})}).then(x=>x.ok?x.json():null), new Promise(ok=>setTimeout(()=>ok(null),6000))]);
     return r && r.name ? r : null;
+  }catch(e){ return null; }
+}
+async function sbPhonesTaken(list){
+  try{
+    if(!sbHas() || !navigator.onLine) return null; const S=await sbSession(); if(!S) return null;
+    const out=new Set();
+    for(let i=0;i<list.length;i+=500){ const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/phones_taken',{method:'POST',headers:S.h,body:JSON.stringify({p_phones:list.slice(i,i+500)})}); if(!r.ok) return null; (await r.json()||[]).forEach(p=>out.add(p)); }
+    return out;
   }catch(e){ return null; }
 }
 // {ok:true} = الرقم فاضي · {ok:false} = ممنوع · {ok:false, back} = موجود عندي على السيرفر ← يرجع لقايمة الموبايل ده
