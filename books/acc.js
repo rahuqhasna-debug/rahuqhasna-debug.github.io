@@ -11,7 +11,12 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function full(iso) { if (!iso) return ''; var d = new Date(iso); if (isNaN(d)) return ''; var h = d.getHours(), ap = h < 12 ? 'ص' : 'م'; h = h % 12 || 12; return DAYS[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear() + ' الساعة ' + h + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap; }
   function shortTxt(items) { return (items || []).map(function (i) { return i.l + ' × ' + i.q; }).join('، '); }
-  function L(me) { return me ? { q: 'خدت', r: 'رجّعت', paid: 'اللي دفعته', due: 'الباقي عليك' } : { q: 'خد', r: 'رجّع', paid: 'المدفوع', due: 'الباقي عليه' }; }
+  function L(me) { return me ? { q: 'خدت', r: 'رجّعت', paid: 'اللي دفعته', due: 'الباقي عليك', bal: 'عليك بعدها', was: 'كان عليك قبلها', now: 'بقى عليك' } : { q: 'خد', r: 'رجّع', paid: 'المدفوع', due: 'الباقي عليه', bal: 'عليه بعدها', was: 'كان عليه قبلها', now: 'بقى عليه' }; }
+  // مهمة 4: «عليه بعدها» زي كشف حساب البنك — الحركات مترتبة من الأقدم: الفاتورة بتزوّد، والمرتجع والدفعة بيقلّلوا
+  function delta(x) { var v = +x.v || 0; return x.k === 'inv' ? v : (x.k === 'ret' || x.k === 'pay') ? -v : 0; }
+  function balances(moves) { var b = 0; return (moves || []).map(function (x) { b = Math.round((b + delta(x)) * 100) / 100; return b; }); }
+  function dayOf(iso) { var d = new Date(iso); if (isNaN(d)) return ''; return DAYS[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear(); }
+  function timeOf(iso) { var d = new Date(iso); if (isNaN(d)) return ''; var h = d.getHours(), ap = h < 12 ? 'ص' : 'م'; h = h % 12 || 12; return h + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap; }
 
   var CSS = '.xinv{background:#fff;color:#111;max-width:640px;margin:0 auto;border:2px solid #6d28d9;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15);font-size:14px}'
     + '.xinv .xh{background:#6d28d9;color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}.xinv .xh .xb{flex:1;font-weight:800;font-size:20px}.xinv .xh .xt{font-weight:800;font-size:17px}'
@@ -24,6 +29,8 @@
     + '.xg.xtot tr.due th,.xg.xtot tr.due td{background:#b91c1c;color:#fff;font-size:18px;font-weight:800;border-color:#991b1b}'
     + '.xg.xmv tr.mvr td{font-weight:800;cursor:pointer}.xg.xmv tr.mvs td{font-size:12.5px;color:#374151;text-align:right;cursor:pointer}.xg.xmv tr.mvs .hint{color:#6d28d9;font-weight:700;white-space:nowrap}'
     + '.xg.xmv tr.mvd>td{background:#faf5ff;padding:6px}.xg.xmv tr.mvd .xg{margin:0 0 6px}.xg.xmv .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}'
+    + '.xg.xmv tr.mvday td{background:#ede9fe;color:#4c1d95;font-weight:800;text-align:right;padding:5px 8px}.xg.xmv .xinfo2{text-align:right;font-size:13px;line-height:1.7;margin:0 0 6px;color:#111}.xg.xmv .xbal{display:flex;justify-content:space-between;gap:8px;background:#fff;border:1px solid #c4b5fd;border-radius:8px;padding:5px 8px;margin:0 0 6px;font-size:13px}'
+    + '.xg.xmv td.bl{font-weight:800}.xg.xmv tr.mvr .arr{color:#6d28d9;font-size:11px}'
     + '.xinv h4{margin:12px 0 6px;color:#6d28d9;font-size:16px}.xinv .xfoot{text-align:center;color:#6b7280;font-size:12px;padding:6px 0 2px;border-top:1px dashed #d1d5db}.xinv .xnp{color:#b45309;font-weight:700;text-align:center;margin:0 0 8px}'
     + '@media (max-width:420px){.xinv{font-size:13px}.xinv .xbody{padding:6px}.xg th,.xg td{padding:5px 3px}.xg thead th{font-size:11px}.xg .pp{font-size:11px}.xg.xtot tr.due th,.xg.xtot tr.due td{font-size:16px}}';
   function css() { if (document.getElementById('xinv-css')) return; var s = document.createElement('style'); s.id = 'xinv-css'; s.textContent = CSS; document.head.appendChild(s); }
@@ -37,25 +44,34 @@
       return '<tr' + z + '><td colspan="2" class="bn" style="color:' + color(r.b) + '">' + esc(r.l) + '</td><td rowspan="2">' + r.q + '</td><td rowspan="2" class="rr">' + (r.r || '') + '</td><td rowspan="2"><b>' + f + '</b></td><td rowspan="2">' + (pp != null ? '<s style="color:#888">' + nf(f * pp) + '</s>' : '—') + '</td><td rowspan="2"><b>' + (r.post != null ? nf(f * r.post) : '—') + '</b></td></tr>'
         + '<tr' + z + '><td class="pp">قبل<br>' + (r.pre != null ? '<s>' + nf(r.pre) + '</s>' : '—') + '</td><td class="pp">بعد<br><b>' + (r.post != null ? nf(r.post) : '—') + '</b></td></tr>';
     }).join('');
+    var BAL = balances(M.moves), lastDay = '';
     var mv = M.moves.map(function (x, i) {
       var c = KC[x.k] || '#111', val = x.v == null ? '—' : (x.k === 'ret' ? '− ' : '') + money(x.v), has = (x.items || []).length;
       var det = has ? '<table class="xg"><thead><tr><th>الكتاب</th><th>العدد</th><th>السعر قبل</th><th>السعر بعد</th><th>الإجمالي</th></tr></thead><tbody>' + x.items.map(function (it) {
-        return '<tr><td class="bn" style="color:' + color(it.b) + '">' + esc(it.l) + '</td><td>' + it.q + '</td><td>' + (it.pre != null ? '<s style="color:#888">' + nf(it.pre) + '</s>' : '—') + '</td><td>' + (it.post != null ? nf(it.post) : '—') + '</td><td><b>' + (it.post != null ? nf(it.q * it.post) : '—') + '</b></td></tr>';
+        return '<tr><td class="bn" style="color:' + color(it.b) + '">' + esc(it.l) + (it.o != null ? '<div style="color:#b45309;font-size:12px">' + (o.me ? 'طلبت ' : 'طلب ') + it.o + ' ← ' + (o.me ? 'استلمت ' : 'اتسلّم ') + it.q + '</div>' : '') + '</td><td>' + it.q + '</td><td>' + (it.pre != null ? '<s style="color:#888">' + nf(it.pre) + '</s>' : '—') + '</td><td>' + (it.post != null ? nf(it.post) : '—') + '</td><td><b>' + (it.post != null ? nf(it.q * it.post) : '—') + '</b></td></tr>';
       }).join('') + '</tbody></table>' : '';
+      var info = (x.info || []).filter(Boolean), dl = delta(x);
+      var inf = (info.length ? '<div class="xinfo2">' + info.map(esc).join('<br>') + '</div>' : '')
+        + (dl ? '<div class="xbal"><span>' + T.was + ': <b>' + money(BAL[i] - dl) + '</b></span><span>' + T.now + ': <b style="color:' + (BAL[i] > 0 ? '#b91c1c' : '#15803d') + '">' + money(BAL[i]) + '</b></span></div>' : '');
       var ed = '';
       if (o.edit) ed = x.k === 'inv' ? '<button class="btn sm ghost" data-inv="e-inv" data-id="' + esc(x.id) + '">✏️ عدّل الفاتورة والمرتجع بتاعها</button>'
         : x.k === 'ret' ? (x.sale ? '<button class="btn sm ghost" data-inv="e-inv" data-id="' + esc(x.sale) + '">✏️ عدّل المرتجع</button>' : '') + '<button class="btn sm danger" data-inv="d-ret" data-k="' + esc(x.key) + '">🗑️ امسح المرتجع</button>'
-        : x.k === 'pay' ? '<button class="btn sm ghost" data-inv="e-pay" data-id="' + esc(x.id) + '">✏️ عدّل المبلغ</button><button class="btn sm danger" data-inv="d-pay" data-id="' + esc(x.id) + '">🗑️ امسح الدفعة</button>' : '';
-      var open = (det || ed) ? '<tr class="mvd" data-mvd="' + i + '"' + (o.edit ? '' : ' hidden') + '><td colspan="3">' + det + (ed ? '<div class="acts">' + ed + '</div>' : '') + '</td></tr>' : '';
-      return '<tr class="mvr" data-mvt="' + i + '"><td style="color:' + c + '">' + esc(x.t) + '</td><td>' + esc(full(x.d)) + '</td><td style="color:' + c + '">' + val + '</td></tr>'
-        + (has ? '<tr class="mvs" data-mvt="' + i + '"><td colspan="3">' + esc(shortTxt(x.items)) + (open ? ' <span class="hint">— دوس تشوف التفاصيل</span>' : '') + '</td></tr>' : '') + open;
+        : x.k === 'pay' ? '<button class="btn sm ghost" data-inv="e-pay" data-id="' + esc(x.id) + '">✏️ عدّل الدفعة (المبلغ والتاريخ والطريقة)</button><button class="btn sm danger" data-inv="d-pay" data-id="' + esc(x.id) + '">🗑️ امسح الدفعة</button>' : '';
+      else if (o.tools && x.k !== 'free') ed = '<button class="btn sm ghost" data-inv="mv-img" data-i="' + i + '">📤 صورة للحركة دي بس</button>'
+        + (x.k === 'inv' ? '<button class="btn sm ghost" data-inv="r-inv" data-id="' + esc(x.id) + '">↩️ مرتجع من الفاتورة دي</button>' : '')
+        + '<button class="btn sm ghost" data-inv="edit">✏️ تعديل</button>';
+      var open = (inf || det || ed) ? '<tr class="mvd" data-mvd="' + i + '"' + (o.edit || o.focus === i ? '' : ' hidden') + '><td colspan="4">' + inf + det + (ed ? '<div class="acts">' + ed + '</div>' : '') + '</td></tr>' : '';
+      var day = dayOf(x.d), hd = '';
+      if (day && day !== lastDay) { hd = '<tr class="mvday"><td colspan="4">📅 ' + esc(day) + '</td></tr>'; lastDay = day; }
+      return hd + '<tr class="mvr" data-mvt="' + i + '"><td style="color:' + c + '">' + esc(x.t) + (!has && open ? ' <span class="arr">▾</span>' : '') + '</td><td>' + esc(timeOf(x.d) || full(x.d)) + '</td><td style="color:' + c + '">' + val + '</td><td class="bl" style="color:' + (BAL[i] > 0 ? '#b91c1c' : '#15803d') + '">' + money(BAL[i]) + '</td></tr>'
+        + (has ? '<tr class="mvs" data-mvt="' + i + '"><td colspan="4">' + esc(shortTxt(x.items)) + (open ? ' <span class="hint">— دوس تشوف التفاصيل</span>' : '') + '</td></tr>' : '') + open;
     }).join('');
     return '<div class="xinv"><div class="xh"><div class="xb">سلاح التلميذ</div><div class="xt">حساب المدرس</div></div><div class="xbody">'
       + '<table class="xg xinfo"><tr><th>المدرس</th><td>' + esc(M.name) + '</td></tr>' + (M.rep ? '<tr><th>مسؤول الدعاية</th><td style="color:#6d28d9">أ/ ' + esc(M.rep) + '</td></tr>' : '') + '<tr><th>آخر تحديث</th><td>' + esc(full(M.last) || '—') + '</td></tr></table>'
       + (M.rows.length ? '<div class="xscroll"><table class="xg"><thead><tr><th colspan="2">الكتاب</th><th>' + T.q + '</th><th>' + T.r + '</th><th>الصافي</th><th>الإجمالي قبل الخصم</th><th>الإجمالي بعد الخصم</th></tr></thead><tbody>' + books + '</tbody></table></div>' : '<table class="xg"><tr><td>لسه مفيش فواتير بيع.</td></tr></table>')
       + (M.noPrice ? '<div class="xnp">فيه كتب السعر بتاعها لسه ما اتحددش</div>' : '')
       + '<table class="xg xtot"><tr><th>الإجمالي قبل الخصم</th><td><s>' + money(M.pre) + '</s></td></tr><tr><th>الإجمالي بعد الخصم</th><td>' + money(M.post) + '</td></tr><tr><th>' + T.paid + '</th><td style="color:#15803d">' + money(M.paid) + '</td></tr><tr class="due"><th>' + T.due + '</th><td>' + money(M.owe) + '</td></tr></table>'
-      + (M.moves.length ? '<h4>📜 الحركات بالترتيب</h4><table class="xg xmv"><thead><tr><th>الحركة</th><th>اليوم والتاريخ والساعة</th><th>المبلغ</th></tr></thead><tbody>' + mv + '</tbody></table>' : '')
+      + (M.moves.length ? '<h4>📜 الحركات بالترتيب</h4><table class="xg xmv"><thead><tr><th>الحركة</th><th>الساعة</th><th>المبلغ</th><th>' + T.bal + '</th></tr></thead><tbody>' + mv + '</tbody></table>' : '')
       + '<div class="xfoot">سلاح التلميذ البحيرة</div></div></div>';
   }
   // الدوسة على الحركة بتفتح/تقفل تفاصيلها (وسهم الرجوع بيقفلها)
@@ -129,18 +145,63 @@
     // الحركات
     if (M.moves.length) {
       y += 14; text('📜 الحركات بالترتيب', W - P, y + 17, 17, true, '#6d28d9', 'right'); y += 34;
-      var mc = colsOf([150, IW - 300, 150]);
-      ['الحركة', 'اليوم والتاريخ والساعة', 'المبلغ'].forEach(function (h, i) { cell(mc[i][0], y, mc[i][1], BH, '#6d28d9'); text(h, mc[i][0] + mc[i][1] / 2, y + BH / 2, 14, true, '#fff'); }); y += BH;
-      M.moves.forEach(function (m) {
+      var mc = colsOf([130, IW - 390, 130, 130]), BALc = balances(M.moves);
+      ['الحركة', 'اليوم والتاريخ والساعة', 'المبلغ', T.bal].forEach(function (h, i) { cell(mc[i][0], y, mc[i][1], BH, '#6d28d9'); text(h, mc[i][0] + mc[i][1] / 2, y + BH / 2, 14, true, '#fff'); }); y += BH;
+      M.moves.forEach(function (m, mi) {
         var c = KC[m.k] || '#111';
-        cell(mc[0][0], y, mc[0][1], MR); cell(mc[1][0], y, mc[1][1], MR); cell(mc[2][0], y, mc[2][1], MR);
-        text(fit(m.t, 140, 15, true), mc[0][0] + mc[0][1] / 2, y + MR / 2, 15, true, c);
-        text(fit(full(m.d), mc[1][1] - 12, 14), mc[1][0] + mc[1][1] / 2, y + MR / 2, 14, false, '#111');
-        text(m.v == null ? '—' : (m.k === 'ret' ? '− ' : '') + money(m.v), mc[2][0] + mc[2][1] / 2, y + MR / 2, 15, true, c); y += MR;
+        cell(mc[0][0], y, mc[0][1], MR); cell(mc[1][0], y, mc[1][1], MR); cell(mc[2][0], y, mc[2][1], MR); cell(mc[3][0], y, mc[3][1], MR);
+        text(fit(m.t, 122, 15, true), mc[0][0] + mc[0][1] / 2, y + MR / 2, 15, true, c);
+        text(fit(full(m.d), mc[1][1] - 12, 13.5), mc[1][0] + mc[1][1] / 2, y + MR / 2, 13.5, false, '#111');
+        text(fit(m.v == null ? '—' : (m.k === 'ret' ? '− ' : '') + money(m.v), 124, 15, true), mc[2][0] + mc[2][1] / 2, y + MR / 2, 15, true, c);
+        text(fit(money(BALc[mi]), 124, 15, true), mc[3][0] + mc[3][1] / 2, y + MR / 2, 15, true, BALc[mi] > 0 ? '#b91c1c' : '#15803d'); y += MR;
         if ((m.items || []).length) { cell(P, y, IW, MS, '#fafafa'); text(fit(shortTxt(m.items), IW - 20, 13), W - P - 10, y + MS / 2, 13, false, '#374151', 'right'); y += MS; }
       });
     }
     text('سلاح التلميذ البحيرة', W / 2, H - 22, 13, false, '#6b7280');
+    return cv;
+  }
+  // مهمة 4: صورة جدول عامة (📅 الحركة، 💰 الفلوس، صورة حركة واحدة) بنفس شكل الحساب
+  // sp = {title, sub, lines:[نص], tables:[{title, head:[], w:[نسب العرض], rows:[[خلية]], foot:[[خلية]]}]} — الخلية نص أو {t, c}
+  function grid(sp) {
+    var W = 720, S = 2, P = 20, IW = W - 2 * P, FF = '"Cairo","Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif', HR = 34, RH = 32;
+    var tabs = sp.tables || [], lines = sp.lines || [];
+    var H = 70 + 14 + 30 + (sp.sub ? 24 : 0) + lines.length * 24 + 8;
+    tabs.forEach(function (t) { H += (t.title ? 30 : 0) + HR + Math.max(1, (t.rows || []).length) * RH + (t.foot || []).length * RH + 14; });
+    H += 40;
+    var cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+    var x = cv.getContext('2d'); x.scale(S, S); x.direction = 'rtl'; x.textBaseline = 'middle';
+    function font(sz, b) { x.font = (b ? 'bold ' : '') + sz + 'px ' + FF; }
+    function fit(s, maxW, sz, b) { s = String(s == null ? '' : s); font(sz, b); if (x.measureText(s).width <= maxW) return s; while (s.length > 1 && x.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
+    function text(s, px, py, sz, b, c, al) { font(sz, b); x.fillStyle = c || '#111'; x.textAlign = al || 'center'; x.fillText(String(s), px, py); }
+    function cell(cx0, cy0, w, h, fill) { if (fill) { x.fillStyle = fill; x.fillRect(cx0, cy0, w, h); } x.strokeStyle = '#9ca3af'; x.lineWidth = 1; x.strokeRect(cx0 + .5, cy0 + .5, w, h); }
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+    x.strokeStyle = '#6d28d9'; x.lineWidth = 3; x.strokeRect(1.5, 1.5, W - 3, H - 3);
+    x.fillStyle = '#6d28d9'; x.fillRect(0, 0, W, 70);
+    text('سلاح التلميذ', W - P, 30, 24, true, '#fff', 'right'); text('البحيرة', W - P, 56, 13, false, '#ede9fe', 'right');
+    var y = 70 + 14;
+    text(fit(sp.title || '', IW, 19, true), W - P, y + 14, 19, true, '#4c1d95', 'right'); y += 30;
+    if (sp.sub) { text(fit(sp.sub, IW, 14), W - P, y + 10, 14, false, '#555', 'right'); y += 24; }
+    lines.forEach(function (l) { text(fit(l, IW, 14.5, true), W - P, y + 11, 14.5, true, '#111', 'right'); y += 24; });
+    y += 8;
+    tabs.forEach(function (t) {
+      if (t.title) { text(t.title, W - P, y + 14, 16, true, '#6d28d9', 'right'); y += 30; }
+      var w = t.w || t.head.map(function () { return 1; }), sum = w.reduce(function (a, b) { return a + b; }, 0), cols = [], r = W - P;
+      w.forEach(function (v) { var cw = IW * v / sum; cols.push([r - cw, cw]); r -= cw; });
+      t.head.forEach(function (h, i) { if (!cols[i]) return; cell(cols[i][0], y, cols[i][1], HR, '#6d28d9'); text(fit(h, cols[i][1] - 6, 13, true), cols[i][0] + cols[i][1] / 2, y + HR / 2, 13, true, '#fff'); }); y += HR;
+      function row(rr, fill, bold) {
+        rr.forEach(function (v, i) {
+          if (!cols[i]) return; var o = (v && typeof v === 'object') ? v : { t: v }, first = i === 0, b = !!(bold || first || o.b);
+          cell(cols[i][0], y, cols[i][1], RH, fill);
+          text(fit(o.t, cols[i][1] - 8, 13.5, b), first ? cols[i][0] + cols[i][1] - 5 : cols[i][0] + cols[i][1] / 2, y + RH / 2, 13.5, b, o.c || (bold ? '#4c1d95' : '#111'), first ? 'right' : 'center');
+        }); y += RH;
+      }
+      var rows = t.rows || [];
+      if (!rows.length) { cell(P, y, IW, RH); text('مفيش', W / 2, y + RH / 2, 14, false, '#555'); y += RH; }
+      rows.forEach(function (rr, k) { row(rr, k % 2 ? '#f3f4f6' : null, false); });
+      (t.foot || []).forEach(function (rr) { row(rr, '#ede9fe', true); });
+      y += 14;
+    });
+    text('سلاح التلميذ البحيرة', W / 2, H - 20, 13, false, '#6b7280');
     return cv;
   }
   async function share(cv, name, title) {
@@ -191,5 +252,5 @@
   // قبل ما الحساب يترسم من جديد: التفاصيل المفتوحة بتتقفل وخطوتها بتتشال من الرجوع
   function release(root) { Array.prototype.forEach.call((root || document).querySelectorAll('[data-mvd]'), function (d) { if (d.__ov) { d.__ov = 0; backPop(); } }); }
 
-  window.SilahAcc = { html: html, bind: bind, release: release, canvas: canvas, share: share, full: full, money: money, nf: nf, color: color, shortTxt: shortTxt };
+  window.SilahAcc = { html: html, bind: bind, release: release, canvas: canvas, share: share, full: full, money: money, nf: nf, color: color, shortTxt: shortTxt, grid: grid, balances: balances, delta: delta };
 })();

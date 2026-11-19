@@ -35,22 +35,30 @@
   //      ledger(row) → نص الخطأ أو ''  (فواتير المدرس)
   //      notify(teacherId, text)     (إشعار للمدرس)
   // بيرجّع {ok, value, warn} أو {cancel:true} أو {err:'…'}
-  async function receive(db, r, api) {
-    var t = r.teachers || {}, items = r.items || [];
+  // opt = {items: الكتب اللي اتستلمت فعلاً (مهمة 4: ممكن تبقى أقل أو أكتر من اللي المدرس طلبه), noConfirm: الشاشة اتأكدت قبل كده}
+  async function receive(db, r, api, opt) {
+    opt = opt || {};
+    var t = r.teachers || {}, asked = r.items || [], items = opt.items || asked;
+    items = items.filter(function (i) { return (+i.q || 0) > 0; });
+    if (!items.length) return { err: 'مفيش كتب اتستلمت' };
     if (!db || !t.local_id || !(db.teachers || []).some(function (x) { return x.id === t.local_id; }))
       return { err: 'المدرس مش في البرنامج على الموبايل ده — «استلمت» من موبايل المندوب بتاعه' };
     var c = calc(db, t.local_id, items);
     if (!c.ok) return { err: 'الكمية أكتر من اللي مسجّل في البيع عندك — راجع البيع الأول' };
-    if (!confirm('استلمت الكتب دي من ' + (t.name || 'المدرس') + '؟\n' + items.map(function (i) { return (i.l || label(i.b)) + ': ' + i.q; }).join('\n') + '\n\nقيمتها ' + money(c.value) + ' — هتتسجّل مرتجع وتتخصم من حسابه.')) return { cancel: true };
+    if (!opt.noConfirm && !confirm('استلمت الكتب دي من ' + (t.name || 'المدرس') + '؟\n' + items.map(function (i) { return (i.l || label(i.b)) + ': ' + i.q; }).join('\n') + '\n\nقيمتها ' + money(c.value) + ' — هتتسجّل مرتجع وتتخصم من حسابه.')) return { cancel: true };
+    var sum = function (a) { return a.reduce(function (s, i) { return s + (+i.q || 0); }, 0); };
+    var na = sum(asked), ng = sum(items), changed = JSON.stringify(asked.map(function (i) { return [i.b, +i.q]; })) !== JSON.stringify(items.map(function (i) { return [i.b, +i.q]; }));
     var now = new Date().toISOString();
-    var m = await api.mark(r.id, { status: 'received', value: c.value, received_at: now });
+    var body = { status: 'received', value: c.value, received_at: now };
+    if (changed) body.items = items.map(function (i) { return { b: i.b, l: i.l || label(i.b), q: +i.q }; });
+    var m = await api.mark(r.id, body);
     if (!m || !m.ok) return { err: (m && m.err) || 'المرتجع ده اتغيّر — اعمل تحديث' };
-    (db.tret = db.tret || []).push({ id: r.id, t: t.local_id, items: items.map(function (i) { return { b: i.b, q: i.q }; }), at: now });
-    (db.tlog = db.tlog || []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.local_id, at: now, k: 'مرتجع', txt: 'مرتجع من المدرس (استلمته): ' + items.map(function (i) { return label(i.b) + ' ' + i.q; }).join('، ') });
+    (db.tret = db.tret || []).push({ id: r.id, t: t.local_id, items: items.map(function (i) { return { b: i.b, q: +i.q }; }), at: now, ra: r.created_at || '' });
+    (db.tlog = db.tlog || []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: t.local_id, at: now, k: 'مرتجع', txt: 'مرتجع من المدرس (استلمته): ' + items.map(function (i) { return label(i.b) + ' ' + i.q; }).join('، ') + (changed ? ' — كان طالب ' + na : '') });
     api.save(db);
     var warn = '';
     try { warn = (await api.ledger({ teacher_id: r.teacher_id, ref: 'rq:' + r.id, kind: 'ret', at: now, items: c.items, total: c.value })) || ''; } catch (e) { warn = 'ledger'; }
-    try { api.notify(r.teacher_id, '✅ استلمنا المرتجع بتاعك — اتسجّل في فواتيرك'); } catch (e) { }
+    try { api.notify(r.teacher_id, changed ? '✅ استلمنا منك ' + ng + ' كتاب من ' + na + ' — اتسجّلوا في فواتيرك' : '✅ استلمنا المرتجع بتاعك — اتسجّل في فواتيرك'); } catch (e) { }
     return { ok: true, value: c.value, warn: warn };
   }
 
@@ -61,13 +69,14 @@
     (db.sales || []).forEach(function (s) { S[s.id] = s; });
     (db.sales || []).forEach(function (s) {
       if (s.st !== 'sold' || !mine[s.t]) return;
-      var its = (s.items || []).filter(function (i) { return i.q > 0; }).map(function (i) { return { b: i.b, l: label(i.b), q: +i.q, pre: i.pre == null ? null : i.pre, post: i.post == null ? null : i.post }; });
+      // مهمة 4: ord = الفاتورة كانت طلب، o = الكمية اللي اتطلبت لو اختلفت عن اللي اتسلّم
+      var its = (s.items || []).filter(function (i) { return i.q > 0; }).map(function (i) { var x = { b: i.b, l: label(i.b), q: +i.q, pre: i.pre == null ? null : i.pre, post: i.post == null ? null : i.post }; if (s.ord) x.ord = 1; if (s.ow && s.ow[i.b] != null && +s.ow[i.b] !== +i.q) x.o = +s.ow[i.b]; return x; });
       if (its.length) rows.push({ teacher_id: mine[s.t], ref: 's:' + s.id, kind: 'sale', at: s.sd || s.d || new Date().toISOString(), items: its, total: r2(its.reduce(function (a, i) { return a + (i.post != null ? i.q * i.post : 0); }, 0)) });
     });
     var rg = {};
     (db.payments || []).forEach(function (p) {
       if (!mine[p.t]) return;
-      if (p.k === 'pay') { rows.push({ teacher_id: mine[p.t], ref: 'p:' + p.id, kind: 'pay', at: p.d || new Date().toISOString(), items: [], total: r2(p.amt) }); return; }
+      if (p.k === 'pay') { rows.push({ teacher_id: mine[p.t], ref: 'p:' + p.id, kind: 'pay', at: p.d || new Date().toISOString(), items: p.m ? [{ m: p.m }] : [], total: r2(p.amt) }); return; }
       if (p.k !== 'ret' || p.rid) return;
       var v = 0, pv = 0, hasPre = true;
       (p.parts || []).forEach(function (pt) { var it = S[pt.sale] && S[pt.sale].items[pt.i]; if (it && it.post != null) v += pt.q * it.post; if (it && it.pre != null) pv += pt.q * it.pre; else hasPre = false; });

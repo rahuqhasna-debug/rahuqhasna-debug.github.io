@@ -1063,13 +1063,16 @@ async function renderInv() {
   const rows = [...(L.rows || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)));
   const m = {}; let pre = 0, post = 0, paid = 0, last = '', ni = 0, nr = 0;
   const B = i => m[i.b] ||= { b: i.b, l: i.l || bookLabel(i.b), q: 0, r: 0, pre: null, post: null };
-  const it = i => ({ b: i.b, l: i.l || bookLabel(i.b), q: +i.q || 0, pre: i.pre ?? null, post: i.post ?? null });
+  // مهمة 4: o = الكمية اللي طلبتها لو اختلفت عن اللي استلمتها • ord = الفاتورة كانت طلبك • طريقة الدفع في items[0].m
+  const it = i => ({ b: i.b, l: i.l || bookLabel(i.b), q: +i.q || 0, pre: i.pre ?? null, post: i.post ?? null, o: i.o });
+  const PMT = { cash: '💵 كاش', insta: '📱 إنستاباي', voda: '🔴 فودافون كاش' };
+  let np = 0;
   const moves = rows.map(r => {
     if (String(r.at) > last) last = String(r.at);
-    const its = r.items || [];
-    if (r.kind === 'sale') { for (const i of its) { const x = B(i); x.q += +i.q || 0; if (i.post != null) x.post = i.post; if (i.pre != null) x.pre = i.pre; post += (+i.q || 0) * (i.post || 0); pre += (+i.q || 0) * (i.pre != null ? i.pre : (i.post || 0)); } return { k: 'inv', t: '🧾 فاتورة ' + (++ni), d: r.at, v: +r.total || 0, items: its.map(it) }; }
+    const its = (r.items || []).filter(i => i && i.b);
+    if (r.kind === 'sale') { for (const i of its) { const x = B(i); x.q += +i.q || 0; if (i.post != null) x.post = i.post; if (i.pre != null) x.pre = i.pre; post += (+i.q || 0) * (i.post || 0); pre += (+i.q || 0) * (i.pre != null ? i.pre : (i.post || 0)); } return { k: 'inv', t: '🧾 فاتورة ' + (++ni), d: r.at, v: +r.total || 0, items: its.map(it), info: its.some(i => i.ord) ? ['📲 الفاتورة دي كانت طلبك'] : [] }; }
     if (r.kind === 'ret') { for (const i of its) { B(i).r += +i.q || 0; pre -= (+i.q || 0) * (i.pre != null ? i.pre : (i.post || 0)); } post -= +r.total || 0; return { k: 'ret', t: '↩️ مرتجع ' + (++nr), d: r.at, v: +r.total || 0, items: its.map(it) }; }
-    if (r.kind === 'pay') { paid += +r.total || 0; return { k: 'pay', t: '💵 دفعة', d: r.at, v: +r.total || 0, items: [] }; }
+    if (r.kind === 'pay') { paid += +r.total || 0; const pm = ((r.items || [])[0] || {}).m; return { k: 'pay', t: '💵 دفعة', d: r.at, v: +r.total || 0, items: [], info: [(PMT[pm] ? '💳 الطريقة: ' + PMT[pm] : ''), '🔢 الدفعة رقم ' + (++np)].filter(Boolean) }; }
     return { k: 'free', t: '🎁 تسليم مجاني', d: r.at, v: null, items: its.map(it) };
   });
   const M = { name: D.name || '', rep: L.rep || '', last, rows: Object.values(m), pre, post, paid, owe: post - paid, noPrice: false, moves };
