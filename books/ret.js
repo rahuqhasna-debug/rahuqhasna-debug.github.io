@@ -54,5 +54,35 @@
     return { ok: true, value: c.value, warn: warn };
   }
 
-  window.SilahRet = { calc: calc, receive: receive, label: label, money: money };
+  // مهمة 3: حركات المدرس اللي بتتنسخ عنده (جدول ledger) — نفس الحساب في البرنامج الأخضر والمراسلات.
+  // sale فاتورة بيع · ret مرتجع (متجمّع بـ g) · pay دفعة · free تسليم مجاني. mine = {id المدرس في البرنامج: id المدرس في المراسلات}
+  function ledgerRows(db, mine) {
+    var S = {}, rows = [];
+    (db.sales || []).forEach(function (s) { S[s.id] = s; });
+    (db.sales || []).forEach(function (s) {
+      if (s.st !== 'sold' || !mine[s.t]) return;
+      var its = (s.items || []).filter(function (i) { return i.q > 0; }).map(function (i) { return { b: i.b, l: label(i.b), q: +i.q, pre: i.pre == null ? null : i.pre, post: i.post == null ? null : i.post }; });
+      if (its.length) rows.push({ teacher_id: mine[s.t], ref: 's:' + s.id, kind: 'sale', at: s.sd || s.d || new Date().toISOString(), items: its, total: r2(its.reduce(function (a, i) { return a + (i.post != null ? i.q * i.post : 0); }, 0)) });
+    });
+    var rg = {};
+    (db.payments || []).forEach(function (p) {
+      if (!mine[p.t]) return;
+      if (p.k === 'pay') { rows.push({ teacher_id: mine[p.t], ref: 'p:' + p.id, kind: 'pay', at: p.d || new Date().toISOString(), items: [], total: r2(p.amt) }); return; }
+      if (p.k !== 'ret' || p.rid) return;
+      var v = 0, pv = 0, hasPre = true;
+      (p.parts || []).forEach(function (pt) { var it = S[pt.sale] && S[pt.sale].items[pt.i]; if (it && it.post != null) v += pt.q * it.post; if (it && it.pre != null) pv += pt.q * it.pre; else hasPre = false; });
+      var g = rg[p.g || p.id] = rg[p.g || p.id] || { t: p.t, at: p.d, items: [], total: 0 };
+      g.items.push({ b: p.b, l: label(p.b), q: +p.q, pre: hasPre && p.q ? r2(pv / p.q) : null, post: p.q ? r2(v / p.q) : null }); g.total = r2(g.total + v);
+    });
+    Object.keys(rg).forEach(function (k) { rows.push({ teacher_id: mine[rg[k].t], ref: 'r:' + k, kind: 'ret', at: rg[k].at || new Date().toISOString(), items: rg[k].items, total: rg[k].total }); });
+    var fg = {};
+    (db.entries || []).forEach(function (e) {
+      if (e.s !== 'd' || !mine[e.t] || !e.dd) return;
+      var g = fg[e.t + ':' + e.dd] = fg[e.t + ':' + e.dd] || { t: e.t, at: e.dd, m: {} }; g.m[e.b] = (g.m[e.b] || 0) + (+e.q || 0);
+    });
+    Object.keys(fg).forEach(function (k) { var g = fg[k]; rows.push({ teacher_id: mine[g.t], ref: 'f:' + k, kind: 'free', at: g.at.length <= 10 ? g.at + 'T12:00:00Z' : g.at, items: Object.keys(g.m).filter(function (b) { return g.m[b] > 0; }).map(function (b) { return { b: b, l: label(b), q: g.m[b] }; }), total: null }); });
+    return rows;
+  }
+
+  window.SilahRet = { calc: calc, receive: receive, label: label, money: money, ledgerRows: ledgerRows };
 })();

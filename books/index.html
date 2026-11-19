@@ -268,7 +268,13 @@ details.others>summary{cursor:pointer;font-weight:700;padding:10px 2px;color:var
 .inv-np{text-align:center;color:#b45309;font-weight:700;margin:6px 0}
 .inv-due{margin-top:10px;background:#b91c1c;color:#fff;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;font-size:20px;font-weight:800}
 .inv-acts{max-width:560px;margin:12px auto 0;display:flex;flex-wrap:wrap;gap:8px}
-.inv-acts .btn{flex:1 1 40%;text-align:center;text-decoration:none}
+.inv-acts .btn{flex:1 1 28%;text-align:center;text-decoration:none}
+.inv .mv{display:block;border:1px solid #e5e7eb;border-inline-start:5px solid #1d4ed8;border-radius:10px;padding:8px 10px;margin-bottom:8px;background:#fff}
+.inv .mv summary{list-style:none;cursor:pointer}.inv .mv summary::-webkit-details-marker{display:none}
+.inv .mv-h{display:flex;justify-content:space-between;gap:8px;font-size:15.5px}
+.inv .mv .tbl{margin:8px 0 4px}
+.inv .mv .acts{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+body:has(.inv-wrap) .modal{z-index:60}
 /* اللوجو والتوقيع */
 header.top .logo{width:30px;height:30px;border-radius:7px;background:#fff;object-fit:contain;flex:none}
 .splash{position:fixed;inset:0;z-index:100;background:#fff;color:#6d28d9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s}
@@ -679,7 +685,7 @@ function fixDays(){
 const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbxvUtxpYVOskaw95PzGRTwj6bgNeDbt_cwXjys4U_7IiH2FKr_wjeayGTV8ncwkrc3A/exec';
 function save(changed=true){
   if(changed){ db.lastChange = new Date().toISOString(); db.chgN = (db.chgN||0) + 1; }   // chgN = عدد التعديلات من آخر نسخة على الدرايف
-  try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; if(changed) scheduleSync(); }
+  try { localStorage.setItem(KEY, JSON.stringify(db)); storageOk = true; if(changed){ scheduleSync(); try{ ledgerSoon(); }catch(e){} } }
   catch(e){ storageOk = false; alert('⚠️ مش قادر أحفظ البيانات على الجهاز ده. اعمل نسخة احتياطية حالاً من الإعدادات.'); }
 }
 load();
@@ -3337,17 +3343,17 @@ function stockModal(){
 }
 function renderSales(sub, focus){
   setHeader('💰 البيع', false);
-  if(['orders','acc','merch','rets'].includes(sub)) salesTab=sub;
+  if(['orders','inv','acc','merch','rets'].includes(sub)) salesTab=sub;
   const sbOn=sbHas(); if(salesTab==='rets' && !sbOn) salesTab='orders';
   if(sbOn) sbRetsPull();   // ↩️ المرتجعات اللي وافقت عليها ولسه ما استلمتهاش (من المراسلات)
   const orders=db.sales.filter(s=>s.st==='order').sort((a,b)=>b.d.localeCompare(a.d));
   const tab=(k,txt)=>`<button class="chip ${salesTab===k?'on':''}" data-act="sales-tab" data-k="${k}">${txt}</button>`;
   let html=`<button class="btn pri" data-act="new-sale" style="width:100%;font-size:18px;padding:14px;margin-bottom:8px">➕ بيع / طلب جديد</button>
     <button class="btn ok" data-act="my-stock" style="width:100%;margin-bottom:12px;font-size:17px">📦 الكتب المتاحة معايا — اختار الكتب وشوف الفاضل من كل تاجر</button>
-    <div class="stickbar"><div class="chips">${tab('orders',`🛒 طلبات (${orders.length})`)}${sbOn?tab('rets',`↩️ مرتجع (${myRets().length})`):''}${tab('acc','🧾 حسابات المدرسين')}${tab('merch','🏪 التجار')}</div>`;
+    <div class="stickbar"><div class="chips">${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('inv','🧾 الفواتير')}${sbOn?tab('rets',`↩️ مرتجع (${myRets().length})`):''}${tab('acc','🧾 حسابات المدرسين')}${tab('merch','🏪 التجار')}</div>`;
   const sid='sq_'+salesTab;
   html += searchBar(sid, salesTab==='merch'?'🔎 دوّر باسم التاجر (أو اسم مدرس خد من بضاعته)':undefined) + '</div><div id="slist">' +
-    (salesTab==='orders' ? ordersHtml(orders) : salesTab==='rets' ? retsHtml() : salesTab==='acc' ? accHtml() : merchHtml()) + '</div>';
+    (salesTab==='orders' ? ordersHtml(orders) : salesTab==='inv' ? invListHtml() : salesTab==='rets' ? retsHtml() : salesTab==='acc' ? accHtml() : merchHtml()) + '</div>';
   app.innerHTML=html;
   bindSearch(sid, '#slist', salesTab==='merch'?'مفيش تاجر بالاسم ده في الصفحة دي':undefined);
   if(focus) setTimeout(()=>{ const el=document.getElementById('acc-'+focus); if(!el) return;
@@ -3360,6 +3366,30 @@ function renderSales(sub, focus){
 var sbRets=(()=>{ try{ const j=JSON.parse(localStorage.getItem('selah-trial-rets')||'[]'); return Array.isArray(j)?j:[]; }catch(e){ return []; } })(), sbRetsAt=0;
 const myRets = () => sbHas() ? sbRets.filter(r=>r && r.teachers && tById(r.teachers.local_id)) : [];
 const sbRetsKeep = () => { try{ localStorage.setItem('selah-trial-rets', JSON.stringify(sbRets)); }catch(e){} };
+/* مهمة 3: فواتير المدرس ومرتجعاته ودفعاته بتوصل لتطبيقه على طول بعد أي تغيير (من غير ما تفتح 💬 المراسلات).
+   بيبعت بس اللي اتغيّر (selah-led-sent) وبيمسح اللي اتشال. نفس الحسبة اللي في المراسلات (ret.js ← SilahRet.ledgerRows). */
+var ledT=0, ledBusy=false;
+function ledgerSoon(ms){ if(!sbHas()) return; clearTimeout(ledT); ledT=setTimeout(ledgerPush, ms||4000); }
+async function ledgerPush(){
+  if(ledBusy || !sbHas() || !navigator.onLine || !window.SilahRet || !SilahRet.ledgerRows) return; ledBusy=true;
+  try{
+    const S=await sbSession(); if(!S) return;
+    const mine={}; for(const t of db.teachers) if(sbIds[t.id]) mine[t.id]=sbIds[t.id];
+    if(!Object.keys(mine).length) return;
+    const rows=SilahRet.ledgerRows(db, mine), U=S.c.SUPABASE_URL+'/rest/v1/ledger';
+    let sent={}; try{ sent=JSON.parse(localStorage.getItem('selah-led-sent')||'{}')||{}; }catch(e){}
+    const now={}, up=[];
+    for(const r of rows){ const k=r.teacher_id+'|'+r.ref, h=JSON.stringify([r.kind, r.at, r.items, r.total]); now[k]=h; if(sent[k]!==h) up.push(r); }
+    for(let i=0;i<up.length;i+=200){ const part=up.slice(i,i+200);
+      const q=await fetch(U+'?on_conflict=teacher_id,ref',{method:'POST',headers:{...S.h, Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(part)});
+      if(!q.ok) return; for(const r of part){ const k=r.teacher_id+'|'+r.ref; sent[k]=now[k]; } }
+    for(const k of Object.keys(sent)){ if(now[k]) continue; const i=k.indexOf('|');
+      const q=await fetch(U+'?teacher_id=eq.'+encodeURIComponent(k.slice(0,i))+'&ref=eq.'+encodeURIComponent(k.slice(i+1)),{method:'DELETE',headers:S.h}); if(q.ok) delete sent[k]; }
+    try{ localStorage.setItem('selah-led-sent', JSON.stringify(sent)); }catch(e){}
+  }catch(e){} finally{ ledBusy=false; }
+}
+window.addEventListener('online', ()=>ledgerSoon(3000));
+setTimeout(()=>ledgerSoon(1000), 9000);
 async function sbRetsPull(force){
   try{
     if(!sbHas() || !navigator.onLine) return;
@@ -3456,6 +3486,18 @@ function ordersHtml(orders){
         <button class="btn sm ok" data-act="sell-order" data-id="${s.id}">✅ اتأكد واتباع</button>
         <button class="btn sm danger" data-act="cancel-order" data-id="${s.id}">❌ لغى</button></div></div>`; }).join('');
 }
+// مهمة 3: كل الفواتير والمرتجعات والدفعات لكل المدرسين بالتاريخ والساعة (الأحدث فوق)
+function invListHtml(){
+  const ids=new Set([...db.sales.filter(s=>s.st==='sold').map(s=>s.t), ...db.payments.map(p=>p.t)]), all=[];
+  for(const id of ids){ const t=tById(id); if(!t) continue; for(const x of accData(id).moves) all.push({t, x}); }
+  all.sort((A,B)=>(B.x.d||'').localeCompare(A.x.d||''));
+  if(!all.length) return '<div class="card empty">لسه مفيش فواتير.</div>';
+  return `<div class="sumline">${all.length} حركة • الأحدث فوق</div>` + all.slice(0,400).map(({t,x})=>`<div class="card scard ${tStC(t)}" style="${tUpdSt(t)};border-inline-start:6px solid ${MV_C[x.k]}" data-hay="${esc(hayT(t)+' '+normText(MV_T(x)+' '+(x.items?shortTxt(x.items):'')))}">
+    <div class="hd"><span class="thd">${tAv(t)}<a href="#/sale-t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${nameTags(t)}</span><span class="icos">${phoneBtns(t)}</span></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:4px"><b style="color:${MV_C[x.k]}">${MV_T(x)}</b><b style="color:${MV_C[x.k]}">${x.k==='ret'?'− ':''}${fmtM(x.v)}</b></div>
+    <div class="small muted">${fmtFull(x.d)}</div>${x.items?`<div class="small">${esc(shortTxt(x.items))}</div>`:''}
+    <div class="acts"><button class="btn sm pri" data-act="invoice" data-id="${esc(t.id)}">🧾 الحساب الكامل</button></div></div>`).join('') + (all.length>400?'<div class="small muted">ظاهر آخر 400 حركة — دوّر باسم المدرس عشان تلاقي الأقدم</div>':'');
+}
 function accHtml(){
   const list=Object.entries(ACC).filter(([id,a])=>(a.sold||a.paid) && tById(id)).map(([id,a])=>({t:tById(id), a}));
   if(!list.length) return '<div class="card empty">لسه ما بعتش لحد.</div>';
@@ -3535,9 +3577,9 @@ function invCardHtml(x, L, tid){
     const mer=[...new Set((it.src||[]).map(z=>lotName(L,z.lot)).filter(n=>n!==MNONE))].join(' + ');
     return `<tr><td><b style="color:var(--c-${bookParts(it.b).sb})">${esc(bookLabel(it.b))}</b>${mer?`<div class="small muted">🏪 ${esc(mer)}</div>`:''}</td><td>${it.q}</td><td style="color:var(--owe);font-weight:700">${r||''}</td><td><b>${f}</b></td><td>${it.post!=null?fmtN(it.post):'—'}</td><td>${v!=null?fmtN(v):'—'}</td></tr>`; }).join('');
   const rb=[...x.rets.values()].map(g=>{ const v=g.lines.reduce((s,l)=>s+l.v,0);
-    return `<div class="rblock"><div class="hd"><span class="grow">↩️ رجّع بتاريخ ${fmtDay(dk(g.d))}</span><b>${fmtM(v)}</b><button class="btn sm danger" data-act="del-retg" data-t="${esc(tid)}" data-k="${esc(g.key)}" title="امسح المرتجع كله">🗑️</button></div>
+    return `<div class="rblock"><div class="hd"><span class="grow">↩️ رجّع ${fmtFull(g.d)}</span><b>${fmtM(v)}</b><button class="btn sm danger" data-act="del-retg" data-t="${esc(tid)}" data-k="${esc(g.key)}" title="امسح المرتجع كله">🗑️</button></div>
       ${g.lines.map(l=>`<div><span style="color:var(--c-${bookParts(l.b).sb})">${esc(bookLabel(l.b))}</span> × ${l.q}${l.v?` = ${fmtM(l.v)}`:''}${l.m?` <span class="small muted">← رجع لـ ${esc(l.m)}</span>`:''}</div>`).join('')}</div>`; }).join('');
-  return `<div class="card icard"><h4><span>🧾 فاتورة ${x.no}</span><span class="small">${fmtDay(dk(x.s.sd||x.s.d))}</span></h4>
+  return `<div class="card icard"><h4><span>🧾 فاتورة ${x.no}</span><span class="small">${fmtFull(x.s.sd||x.s.d)}</span></h4>
     <div class="tscroll" style="margin-top:4px"><table class="tbl"><thead><tr><th>الكتاب</th><th>خد</th><th>رجّع</th><th>فضل</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${rb}<div class="net">صافي الفاتورة: ${fmtM(net)}</div><button class="btn sm ghost" style="width:100%;margin-top:8px" data-act="inv-edit" data-id="${esc(x.s.id)}">✏️ تعديل الفاتورة</button></div>`;
 }
@@ -3550,14 +3592,14 @@ function tSaleHtml(t){
     return `<div class="hrow"><div class="grow">${itemsLine(s.items)}<div class="small muted">اتطلب ${fmtDT(s.d)}${s.due?` • 🚚 التوصيل ${fmtDay(s.due)}`:''} • ${o.miss?'السعر —':fmtM(o.tot)}</div></div>
       <button class="btn sm ok" data-act="sell-order" data-id="${s.id}">✅ حوّله لبيع</button><button class="btn sm danger" data-act="cancel-order" data-id="${s.id}" title="الغي الطلب">🗑️</button></div>`; }).join('')}</div>`;
   h += D.inv.length ? D.inv.map(x=>invCardHtml(x, D.L, t.id)).join('') : '<div class="card empty">لسه ما اشتراش حاجة.</div>';
-  if(D.pays.length) h+=`<div class="card pcard"><h4><span>💵 الدفعات</span><span>${fmtM(a.paid)}</span></h4>${D.pays.map(p=>`<div class="hrow"><div class="grow">دفع بتاريخ ${fmtDay(dk(p.d))}</div><b>${fmtM(p.amt)}</b><button class="btn sm danger" data-act="del-pay" data-id="${p.id}" title="امسح">🗑️</button></div>`).join('')}</div>`;
+  if(D.pays.length) h+=`<div class="card pcard"><h4><span>💵 الدفعات</span><span>${fmtM(a.paid)}</span></h4>${D.pays.map(p=>`<div class="hrow"><div class="grow">دفع ${fmtFull(p.d)}</div><b>${fmtM(p.amt)}</b><button class="btn sm danger" data-act="del-pay" data-id="${p.id}" title="امسح">🗑️</button></div>`).join('')}</div>`;
   if(a.sold || a.paid) h+=`<div class="card"><h3 class="sec-t">📊 الإجمالي</h3>
     <div class="kv"><span>خد</span><b>${a.n} كتاب</b></div><div class="kv"><span>رجّع</span><b style="color:var(--owe)">${a.rn} كتاب</b></div><div class="kv"><span>فضل معاه</span><b>${a.n-a.rn} كتاب</b></div>
     <div class="kv"><span>اشترى بـ</span><b>${fmtM(a.bought)}</b></div><div class="kv"><span>رجّع بـ</span><b style="color:var(--owe)">${fmtM(a.ret)}</b></div><div class="kv"><span>دفع</span><b style="color:var(--ok)">${fmtM(a.paid)}</b></div>
     <div class="kv"><span><b>الباقي عليه</b></span><b style="color:${a.owe>0?'var(--bad)':'var(--ok)'};font-size:18px">${fmtM(a.owe)}</b></div>
     ${a.noPrice?'<div class="small muted">⚠️ فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}<div class="mlinks" style="margin-top:6px">${merchLines(t.id)}</div></div>`;
   h+=`<div class="acts4"><button class="btn owe" data-act="sell-t" data-id="${id}" data-mode="sell">🛒 بيع جديد</button><button class="btn ghost" data-act="ret" data-id="${id}">↩️ مرتجع</button>
-    <button class="btn ok" data-act="pay" data-id="${id}">💵 دفع</button><button class="btn pri" data-act="invoice" data-id="${id}">🧾 الفاتورة الكاملة</button></div>`;
+    <button class="btn ok" data-act="pay" data-id="${id}">💵 دفع</button><button class="btn pri" data-act="invoice" data-id="${id}">🧾 الحساب الكامل</button></div>`;
   return h;
 }
 
@@ -3830,47 +3872,86 @@ function saleForm(tid, editId, mode='sell'){
 }
 
 /* --- الفاتورة --- */
-function showInvoice(tid, fresh){
-  const t=tById(tid); if(!t) return;
-  const a=accMap()[tid] || {bought:0, paid:0, ret:0, owe:0, noPrice:false};
-  // كل سطر: خد • رجّع • فضل معاه (المرتجع بيتطرح من العدد) — بند ق
+/* مهمة 3 (طلب شريف): حساب المدرس = راس (المدرس • مسؤول الدعاية • آخر تحديث) + جدول مجمّع (خد/رجّع/الصافي/قبل/بعد الخصم)
+   + الإجمالي قبل وبعد الخصم + المدفوع + الباقي، وتحته الحركات بالتاريخ والساعة (فاتورة/مرتجع/دفعة) — الدوسة بتفتح التفاصيل.
+   زرارين: 📤 إرسال (صورة بقايمة المشاركة ← واتساب) و✏️ تعديل. نفس الحساب بيوصل لتطبيق المدرس (ledgerPush). */
+const AR_DAYS=['الأحد','الاتنين','التلات','الأربع','الخميس','الجمعة','السبت'];
+function fmtFull(iso){ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return ''; return `${AR_DAYS[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()} الساعة ${timeStr(d)}`; }
+const shortTxt = items => [...items].sort(byRank).map(i=>`${bookLabel(i.b)} × ${i.q}`).join('، ');
+function accData(tid){
+  const t=tById(tid), a=accMap()[tid] || {bought:0, paid:0, ret:0, owe:0, noPrice:false, n:0, rn:0};
   const R={}; for(const p of db.payments) if(p.k==='ret' && p.t===tid) for(const pt of p.parts||[]) R[pt.sale+':'+pt.i]=(R[pt.sale+':'+pt.i]||0)+pt.q;
   const rows=new Map();
   for(const s of db.sales) if(s.st==='sold' && s.t===tid) s.items.forEach((it,i)=>{
     const key=it.b+'|'+it.pre+'|'+it.post; if(!rows.has(key)) rows.set(key,{b:it.b, pre:it.pre, post:it.post, q:0, r:0});
     const x=rows.get(key); x.q+=it.q; x.r+=R[s.id+':'+i]||0; });
   const list=[...rows.values()].sort(byRank);
-  const day=fmtDay(dayKey()), log=invLog(tid);
-  const msg=`🧾 فاتورة بيع — سلاح التلميذ\nالتاريخ: ${day}\nالمندوب: ${db.rep}\nالمدرس: ${t.name}\n\n` +
-    list.map(r=>`• ${bookLabel(r.b)}: خد ${r.q}${r.r?` • رجّع ${r.r}`:''} • فضل معاه ${r.q-r.r}`+(r.post!=null?` × ${fmtN(r.post)} = ${fmtM((r.q-r.r)*r.post)}`:' (السعر لسه ما اتحددش)')).join('\n') +
-    `\n\nإجمالي اللي خده: ${fmtM(a.bought)}${a.noPrice?' (فيه كتب السعر لسه ما اتحددش)':''}\nالمرتجع: ${fmtM(a.ret)}\nالمدفوع: ${fmtM(a.paid)}\nالباقي عليك: ${fmtM(a.owe)}` +
-    (log.length?`\n\n📜 سجل المعاملات:\n`+log.map(l=>`• ${l.t} بتاريخ ${l.day} — ${fmtM(l.v)}`).join('\n'):'');
-  const C=k=>'#'+SUBJ_COLOR[bookParts(k).sb];
-  const m=document.createElement('div'); m.className='inv-wrap';
-  m.innerHTML=`<div class="inv"><div class="inv-h"><div class="brand">سلاح التلميذ</div><div style="text-align:left"><h2>فاتورة بيع</h2><div class="d">${day}</div></div></div>
-    <div class="inv-b"><div class="inv-who"><div><span>المندوب: </span><b>${esc(db.rep)}</b></div><div><span>المدرس: </span><b>${esc(t.name)}</b></div></div>
-    <div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>خد</th><th>رجّع</th><th>فضل معاه</th><th>السعر قبل</th><th>السعر بعد</th><th>الإجمالي</th></tr></thead><tbody>
-    ${list.map(r=>`<tr><td><b style="color:${C(r.b)}">${esc(bookLabel(r.b))}</b></td><td>${r.q}</td><td><b style="color:#ea580c">${r.r||''}</b></td><td><b>${r.q-r.r}</b></td><td>${r.pre!=null?`<s>${fmtN(r.pre)}</s>`:'—'}</td><td>${r.post!=null?fmtN(r.post):'—'}</td><td><b>${r.post!=null?fmtN((r.q-r.r)*r.post):'—'}</b></td></tr>`).join('') || '<tr><td colspan="7">مفيش بيع.</td></tr>'}</tbody></table></div>
-    ${a.noPrice?'<div class="inv-np">السعر لسه ما اتحددش</div>':''}
-    <div class="kv"><span>إجمالي اللي خده</span><b>${fmtM(a.bought)}</b></div><div class="kv"><span>المرتجع</span><b style="color:#ea580c">${fmtM(a.ret)}</b></div>
+  let pre=0, post=0; for(const r of list){ const f=r.q-r.r; if(r.post!=null) post+=f*r.post; const pp=r.pre!=null?r.pre:r.post; if(pp!=null) pre+=f*pp; }
+  const D=tSaleData(tid), S=saleIdx(), moves=[];
+  for(const x of D.inv){ let v=0, pv=0; for(const it of x.s.items){ if(it.post!=null) v+=it.q*it.post; const pp=it.pre!=null?it.pre:it.post; if(pp!=null) pv+=it.q*pp; }
+    moves.push({k:'inv', no:x.no, d:x.s.sd||x.s.d, id:x.s.id, items:x.s.items.map(it=>({b:it.b, q:it.q, pre:it.pre, post:it.post})), v, pv}); }
+  const g=new Map(); let rn=0;
+  for(const p of D.rets){ const key=p.g||p.d; if(!g.has(key)) g.set(key,{key, d:p.d, items:[], v:0, sale:''});
+    const z=g.get(key), v=retVal(p,S); z.v+=v; z.items.push({b:p.b, q:p.q, post:p.q?v/p.q:null}); if(!z.sale && p.parts && p.parts[0]) z.sale=p.parts[0].sale; }
+  for(const z of [...g.values()].sort((a,b)=>a.d.localeCompare(b.d))) moves.push({k:'ret', no:++rn, d:z.d, key:z.key, items:z.items, v:z.v, sale:z.sale});
+  for(const p of D.pays) moves.push({k:'pay', d:p.d, id:p.id, v:p.amt});
+  moves.sort((a,b)=>(a.d||'').localeCompare(b.d||''));
+  let last=moves.reduce((m,x)=>(x.d||'')>m?x.d:m,'');
+  for(const e of db.editLog||[]) if(e.t===tid && (e.at||'')>last) last=e.at;
+  return {t, a, list, pre, post, moves, last};
+}
+const MV_T = x => x.k==='inv' ? `🧾 فاتورة ${x.no}` : x.k==='ret' ? `↩️ مرتجع ${x.no}` : '💵 دفعة';
+const MV_C = {inv:'#1d4ed8', ret:'#ea580c', pay:'#15803d'};
+function mvDetail(x){
+  if(x.k==='pay') return '';
+  const rows=[...x.items].sort(byRank).map(it=>{ const v=it.post!=null?it.q*it.post:null;
+    return `<tr><td><b style="color:#${SUBJ_COLOR[bookParts(it.b).sb]}">${esc(bookLabel(it.b))}</b></td><td>${it.q}</td><td>${it.pre!=null?`<s>${fmtN(it.pre)}</s>`:'—'}</td><td>${it.post!=null?fmtN(it.post):'—'}</td><td><b>${v!=null?fmtN(v):'—'}</b></td></tr>`; }).join('');
+  return `<div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>العدد</th><th>قبل الخصم</th><th>بعد الخصم</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="kv"><span>${x.k==='ret'?'إجمالي المرتجع':'صافي الفاتورة'}</span><b style="color:${MV_C[x.k]}">${fmtM(x.v)}</b></div>`;
+}
+function accFullHtml(A, edit){
+  const {t, a, list}=A, C=k=>'#'+SUBJ_COLOR[bookParts(k).sb];
+  const tbl=list.map(r=>{ const f=r.q-r.r, pp=r.pre!=null?r.pre:r.post;
+    return `<tr><td><b style="color:${C(r.b)}">${esc(bookLabel(r.b))}</b><div class="small">${r.pre!=null?`<s>${fmtN(r.pre)}</s> ← `:''}<b>${r.post!=null?fmtN(r.post):'—'}</b></div></td><td>${r.q}</td><td><b style="color:#ea580c">${r.r||''}</b></td><td><b>${f}</b></td><td>${pp!=null?fmtN(f*pp):'—'}</td><td><b>${r.post!=null?fmtN(f*r.post):'—'}</b></td></tr>`; }).join('');
+  const mv=A.moves.map(x=>{ const ed = !edit ? '' : x.k==='inv' ? `<button class="btn sm ghost" data-inv="e-inv" data-id="${esc(x.id)}">✏️ عدّل الفاتورة والمرتجع بتاعها</button>`
+      : x.k==='ret' ? `${x.sale?`<button class="btn sm ghost" data-inv="e-inv" data-id="${esc(x.sale)}">✏️ عدّل المرتجع</button>`:''}<button class="btn sm danger" data-inv="d-ret" data-k="${esc(x.key)}">🗑️ امسح المرتجع</button>`
+      : `<button class="btn sm ghost" data-inv="e-pay" data-id="${esc(x.id)}">✏️ عدّل المبلغ</button><button class="btn sm danger" data-inv="d-pay" data-id="${esc(x.id)}">🗑️ امسح الدفعة</button>`;
+    const head=`<div class="mv-h"><b style="color:${MV_C[x.k]}">${MV_T(x)}</b><b style="color:${MV_C[x.k]}">${x.k==='ret'?'− ':''}${fmtM(x.v)}</b></div><div class="small muted">${fmtFull(x.d)}</div>${x.k!=='pay'?`<div class="small">${esc(shortTxt(x.items))}</div>`:''}`;
+    return x.k==='pay' ? `<div class="mv" style="border-inline-start-color:${MV_C.pay}">${head}${ed?`<div class="acts">${ed}</div>`:''}</div>`
+      : `<details class="mv" style="border-inline-start-color:${MV_C[x.k]}"${edit?' open':''}><summary>${head}<div class="small" style="color:var(--brand)">دوس تشوف التفاصيل</div></summary>${mvDetail(x)}${ed?`<div class="acts">${ed}</div>`:''}</details>`; }).join('');
+  return `<div class="inv"><div class="inv-h"><div class="brand">سلاح التلميذ</div><div style="text-align:left"><h2>حساب المدرس</h2><div class="d">آخر تحديث: ${esc(fmtFull(A.last)||'—')}</div></div></div>
+    <div class="inv-b"><div class="inv-who"><div><span>المدرس: </span><b>${esc(t.name)}</b></div><div><span>مسؤول الدعاية: </span><b>أ/ ${esc(db.rep)}</b></div></div>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>خد</th><th>رجّع</th><th>الصافي</th><th>قبل الخصم</th><th>بعد الخصم</th></tr></thead><tbody>
+    ${tbl || '<tr><td colspan="6">لسه ما اشتراش حاجة.</td></tr>'}</tbody></table></div>
+    ${a.noPrice?'<div class="inv-np">فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}
+    <div class="kv"><span>الإجمالي قبل الخصم</span><b><s style="color:#888">${fmtM(A.pre)}</s></b></div><div class="kv"><span>الإجمالي بعد الخصم</span><b>${fmtM(A.post)}</b></div>
     <div class="kv"><span>المدفوع</span><b style="color:#15803d">${fmtM(a.paid)}</b></div>
     <div class="inv-due"><span>الباقي عليه</span><span>${fmtM(a.owe)}</span></div>
-    ${log.length?`<h3 style="margin:16px 0 6px;font-size:16px;color:#6d28d9">📜 سجل المعاملات</h3>${log.map(l=>`<div class="kv"><span>${l.k==='inv'?'🧾':l.k==='ret'?'↩️':'💵'} ${esc(l.t)} بتاريخ ${l.day}</span><b style="color:${l.c}">${fmtM(l.v)}</b></div>`).join('')}`:''}</div></div>
-    <div class="inv-acts"><button class="btn pri" data-inv="img">📷 ابعت صورة</button><button class="btn pri" data-inv="pdf">📄 ابعت PDF</button>
-      <a class="btn ok" href="${esc(waLink(t.phone, msg))}" target="_blank" rel="noopener">💬 واتساب (كلام)</a><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
-  document.body.appendChild(m);
-  m.querySelector('[data-inv="close"]').onclick=()=>m.remove();
-  const data={t, a, list, day, log}, base=`فاتورة-${t.name}-${dayKey()}`.replace(/[\\/:*?"<>|]/g,'');
-  if(fresh) queueInvoice(data, base);   // بيع جديد → صورة الفاتورة تتحفظ في فولدر المندوب على الدرايف
-  m.querySelector('[data-inv="img"]').onclick=async()=>{
-    const cv=invoiceCanvas(data); const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92));
-    shareFile(blob, base+'.jpg', 'image/jpeg', `فاتورة ${t.name}`);
-  };
-  m.querySelector('[data-inv="pdf"]').onclick=async()=>{
-    const cv=invoiceCanvas(data); const jb=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92));
-    const pdf=pdfFromJpeg(new Uint8Array(await jb.arrayBuffer()), cv.width, cv.height);
-    shareFile(pdf, base+'.pdf', 'application/pdf', `فاتورة ${t.name}`);
-  };
+    ${A.moves.length?`<h3 style="margin:16px 0 6px;font-size:16px;color:#6d28d9">📜 الحركات بالترتيب</h3>${mv}`:''}</div></div>
+    <div class="inv-acts"><button class="btn pri" data-inv="img">📤 إرسال</button><button class="btn ${edit?'ok':'ghost'}" data-inv="edit" style="${edit?'':'background:#fff;color:#111'}">${edit?'✅ خلّصت التعديل':'✏️ تعديل'}</button><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
+}
+function showInvoice(tid, fresh){
+  const t=tById(tid); if(!t) return;
+  document.querySelectorAll('.inv-wrap').forEach(x=>x.remove());
+  const m=document.createElement('div'); m.className='inv-wrap'; document.body.appendChild(m);
+  let edit=false;
+  const paint=()=>{ if(!tById(tid)){ m.remove(); return; } const y=m.scrollTop; m.innerHTML=accFullHtml(accData(tid), edit); m.scrollTop=y; };
+  const after=()=>{ if(document.body.contains(m)) paint(); };
+  const base=()=>`حساب-${t.name}-${dayKey()}`.replace(/[\\/:*?"<>|]/g,'');
+  paint();
+  if(fresh) queueInvoice(accData(tid), base());   // بيع جديد → صورة الحساب تتحفظ في فولدر المندوب على الدرايف
+  m.addEventListener('click', async e=>{
+    const b=e.target.closest('[data-inv]'); if(!b) return; const k=b.dataset.inv;
+    if(k==='close') m.remove();
+    else if(k==='edit'){ edit=!edit; paint(); }
+    else if(k==='img'){ const cv=invoiceCanvas(accData(tid)); const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.92)); shareFile(blob, base()+'.jpg', 'image/jpeg', `حساب ${t.name}`); }
+    else if(k==='e-inv') editInvoice(b.dataset.id, after);
+    else if(k==='d-ret'){ const key=b.dataset.k; if(confirm('تمسح المرتجع ده كله؟ الكتب هترجع على حساب المدرس.')){ withUndo('اتمسح المرتجع 🗑️', ()=>{ db.payments=db.payments.filter(p=>!(p.k==='ret' && p.t===tid && (p.g||p.d)===key)); logEdit('invoice', tid, [{f:'مرتجع', o:'موجود', n:'اتمسح'}], {}); }); after(); } }
+    else if(k==='d-pay'){ const id=b.dataset.id, p=db.payments.find(x=>x.id===id); if(p && confirm(`تمسح الدفعة (${fmtM(p.amt)})؟`)){ withUndo('اتمسحت الدفعة 🗑️', ()=>{ db.payments=db.payments.filter(x=>x.id!==id); logEdit('invoice', tid, [{f:'دفعة', o:fmtM(p.amt), n:'اتمسحت'}], {}); }); after(); } }
+    else if(k==='e-pay'){ const p=db.payments.find(x=>x.id===b.dataset.id); if(!p) return; const v=prompt('المبلغ الجديد للدفعة:', String(p.amt)); if(v==null) return;
+      const n=parseNum(v); if(!(n>0)){ alert('اكتب مبلغ صح'); return; } if(n===p.amt) return;
+      withUndo('✏️ الدفعة اتعدّلت', ()=>{ const q=db.payments.find(x=>x.id===p.id); logEdit('invoice', tid, [{f:'دفعة', o:fmtM(q.amt), n:fmtM(n)}], {}); q.amt=n; }); after(); }
+  });
 }
 // المشاركة (واتساب وغيره) من قايمة المشاركة، ولو مش متاحة ينزّل الملف
 async function shareFile(blob, name, type, title){
@@ -3889,64 +3970,72 @@ function invLog(tid){
   for(const p of D.pays) out.push({d:p.d, k:'pay', t:'دفع', v:p.amt, c:'#15803d'});
   return out.sort((a,b)=>a.d.localeCompare(b.d)).map(l=>({...l, day:fmtDay(dk(l.d))}));
 }
-// رسم الفاتورة على canvas (من غير مكتبات، عربي من اليمين للشمال)
-function invoiceCanvas({t, a, list, day, log=[]}){
+// صورة حساب المدرس على canvas (من غير مكتبات، عربي من اليمين للشمال) — نفس اللي على الشاشة + الحركات بالمختصر
+function invoiceCanvas(A){
+  const {t, a, list, moves}=A;
   const W=720, S=2, P=24, FF='"Cairo","Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",Arial,sans-serif';
-  const RH=40, rowsN=Math.max(1,list.length), LH=32;
-  const H = 96 + 16 + 56 + 16 + 40 + rowsN*RH + 16 + (a.noPrice?32:0) + 3*38 + 70 + (log.length?50+log.length*LH:0) + P;
+  const RH=54, rowsN=Math.max(1,list.length), MH=58;
+  const H = 100 + 16 + 72 + 16 + 40 + rowsN*RH + 16 + (a.noPrice?32:0) + 3*38 + 70 + (moves.length?50+moves.length*MH:0) + P;
   const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
   const x=cv.getContext('2d'); x.scale(S,S); x.direction='rtl'; x.textBaseline='middle';
   const font=(sz,b)=>x.font=`${b?'bold ':''}${sz}px ${FF}`;
   const text=(s,px,py,{sz=16,b=false,c='#111',al='right'}={})=>{ font(sz,b); x.fillStyle=c; x.textAlign=al; x.fillText(s,px,py); return x.measureText(s).width; };
+  const fit=(s,maxW,sz,b)=>{ font(sz,b); if(x.measureText(s).width<=maxW) return s; let t2=s; while(t2.length>1 && x.measureText(t2+'…').width>maxW) t2=t2.slice(0,-1); return t2+'…'; };
+  const strike=(px,py,w)=>{ x.strokeStyle='#888'; x.lineWidth=1.5; x.beginPath(); x.moveTo(px,py); x.lineTo(px+w,py); x.stroke(); };
   const rr=(px,py,w,h,r,c)=>{ x.fillStyle=c; x.beginPath(); x.moveTo(px+r,py); x.arcTo(px+w,py,px+w,py+h,r); x.arcTo(px+w,py+h,px,py+h,r); x.arcTo(px,py+h,px,py,r); x.arcTo(px,py,px+w,py,r); x.closePath(); x.fill(); };
   x.fillStyle='#fff'; x.fillRect(0,0,W,H);
-  // الشريط اللي فوق
-  x.fillStyle='#6d28d9'; x.fillRect(0,0,W,96);
+  // الراس
+  x.fillStyle='#6d28d9'; x.fillRect(0,0,W,100);
   text('سلاح التلميذ', W-P, 40, {sz:30, b:true, c:'#fff'});
-  text('البحيرة', W-P, 74, {sz:15, c:'#d1fae5'});
-  text('فاتورة بيع', P, 38, {sz:24, b:true, c:'#fff', al:'left'});
-  text(day, P, 72, {sz:16, c:'#d1fae5', al:'left'});
-  let y=96+16;
-  // المندوب والمدرس
-  rr(P,y,W-2*P,56,10,'#ede9fe');
-  let w=text('المندوب: ', W-P-14, y+28, {sz:16, c:'#555'}); text(db.rep, W-P-14-w, y+28, {sz:17, b:true});
-  w=text('المدرس: ', W/2-6, y+28, {sz:16, c:'#555'}); text(t.name, W/2-6-w, y+28, {sz:17, b:true});
-  y+=56+16;
-  // الجدول: الكتاب | خد | رجّع | فضل معاه | قبل | بعد | الإجمالي (من اليمين)
-  const cols=[['الكتاب',196],['خد',52],['رجّع',52],['فضل معاه',74],['قبل',84],['بعد',84],['الإجمالي',W-2*P-542]];
+  text('البحيرة', W-P, 76, {sz:15, c:'#ede9fe'});
+  text('حساب المدرس', P, 38, {sz:24, b:true, c:'#fff', al:'left'});
+  text(fit('آخر تحديث: '+(fmtFull(A.last)||'—'), 360, 14), P, 74, {sz:14, c:'#ede9fe', al:'left'});
+  let y=100+16;
+  rr(P,y,W-2*P,72,10,'#ede9fe');
+  let w=text('المدرس: ', W-P-14, y+22, {sz:16, c:'#555'}); text(fit(t.name, W-2*P-120, 18, true), W-P-14-w, y+22, {sz:18, b:true});
+  w=text('مسؤول الدعاية: ', W-P-14, y+52, {sz:16, c:'#555'}); text(fit('أ/ '+db.rep, W-2*P-160, 17, true), W-P-14-w, y+52, {sz:17, b:true, c:'#6d28d9'});
+  y+=72+16;
+  // الجدول: الكتاب | خد | رجّع | الصافي | قبل الخصم | بعد الخصم (من اليمين)
+  const cols=[['الكتاب',196],['خد',56],['رجّع',56],['الصافي',64],['قبل الخصم',150],['بعد الخصم',W-2*P-522]];
   const cx=[]; let cr=W-P; for(const [,cw] of cols){ cx.push([cr, cr-cw]); cr-=cw; }
   const mid=i=>(cx[i][0]+cx[i][1])/2;
   x.fillStyle='#6d28d9'; x.fillRect(P,y,W-2*P,40);
   cols.forEach(([h],i)=>text(h, i===0?cx[0][0]-10:mid(i), y+20, {sz:14, b:true, c:'#fff', al:i===0?'right':'center'}));
   y+=40;
-  if(!list.length){ text('مفيش بيع.', W/2, y+RH/2, {al:'center', c:'#555'}); y+=RH; }
+  if(!list.length){ text('لسه ما اشتراش حاجة.', W/2, y+RH/2, {al:'center', c:'#555'}); y+=RH; }
   list.forEach((r,i)=>{
     x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,RH);
-    const cy=y+RH/2, f=r.q-(r.r||0);
-    text(bookLabel(r.b), cx[0][0]-8, cy, {sz:15, b:true, c:'#'+SUBJ_COLOR[bookParts(r.b).sb]});
+    const cy=y+RH/2, f=r.q-(r.r||0), pp=r.pre!=null?r.pre:r.post;
+    text(fit(bookLabel(r.b), 184, 15, true), cx[0][0]-8, cy-10, {sz:15, b:true, c:'#'+SUBJ_COLOR[bookParts(r.b).sb]});
+    // تحت اسم الكتاب: السعر قبل الخصم مشطوب ← بعد الخصم
+    let px=cx[0][0]-8;
+    if(r.pre!=null){ const s1=fmtN(r.pre), w1=text(s1, px, cy+13, {sz:13, c:'#888'}); strike(px-w1, cy+13, w1); px-=w1+4; px-=text(' ← ', px, cy+13, {sz:13, c:'#888'}); }
+    text(r.post!=null?fmtN(r.post)+' ج':'السعر —', px, cy+13, {sz:13, b:true});
     text(String(r.q), mid(1), cy, {sz:16, al:'center'});
     text(r.r?String(r.r):'', mid(2), cy, {sz:16, b:true, c:'#ea580c', al:'center'});
     text(String(f), mid(3), cy, {sz:16, b:true, al:'center'});
-    if(r.pre!=null){ const s=fmtN(r.pre), pw=text(s, mid(4), cy, {sz:15, c:'#888', al:'center'}); x.strokeStyle='#888'; x.lineWidth=1.5; x.beginPath(); x.moveTo(mid(4)-pw/2-2,cy); x.lineTo(mid(4)+pw/2+2,cy); x.stroke(); }
-    else text('—', mid(4), cy, {al:'center', c:'#888'});
-    text(r.post!=null?fmtN(r.post):'—', mid(5), cy, {sz:16, al:'center'});
-    text(r.post!=null?fmtN(f*r.post):'—', mid(6), cy, {sz:16, b:true, al:'center'});
+    if(pp!=null){ const s2=fmtN(f*pp), w2=text(s2, mid(4), cy, {sz:15, c:'#888', al:'center'}); strike(mid(4)-w2/2-2, cy, w2+4); } else text('—', mid(4), cy, {al:'center', c:'#888'});
+    text(r.post!=null?fmtN(f*r.post):'—', mid(5), cy, {sz:16, b:true, al:'center'});
     y+=RH;
   });
   y+=16;
-  if(a.noPrice){ text('السعر لسه ما اتحددش', W/2, y+12, {sz:16, b:true, c:'#b45309', al:'center'}); y+=32; }
-  for(const [l,v,c] of [['إجمالي اللي خده',a.bought,'#111'],['المرتجع',a.ret,'#ea580c'],['المدفوع',a.paid,'#15803d']]){
-    text(l, W-P-6, y+19, {sz:17, c:'#333'}); text(fmtM(v), P+6, y+19, {sz:18, b:true, c, al:'left'});
+  if(a.noPrice){ text('فيه كتب السعر بتاعها لسه ما اتحددش', W/2, y+12, {sz:16, b:true, c:'#b45309', al:'center'}); y+=32; }
+  for(const [l,v,c,st] of [['الإجمالي قبل الخصم',A.pre,'#888',true],['الإجمالي بعد الخصم',A.post,'#111'],['المدفوع',a.paid,'#15803d']]){
+    text(l, W-P-6, y+19, {sz:17, c:'#333'}); const s3=fmtM(v), w3=text(s3, P+6, y+19, {sz:18, b:true, c, al:'left'}); if(st) strike(P+4, y+19, w3+4);
     x.fillStyle='#e5e7eb'; x.fillRect(P,y+37,W-2*P,1); y+=38;
   }
   y+=10;
   rr(P,y,W-2*P,56,10,'#b91c1c');
   text('الباقي عليه', W-P-16, y+28, {sz:22, b:true, c:'#fff'}); text(fmtM(a.owe), P+16, y+28, {sz:24, b:true, c:'#fff', al:'left'});
   y+=56;
-  if(log.length){
-    y+=14; text('📜 سجل المعاملات', W-P-6, y+18, {sz:18, b:true, c:'#6d28d9'}); y+=36;
-    log.forEach((l,i)=>{ x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,LH);
-      text(`${l.t} بتاريخ ${l.day}`, W-P-10, y+LH/2, {sz:15, c:'#333'}); text(fmtM(l.v), P+10, y+LH/2, {sz:16, b:true, c:l.c, al:'left'}); y+=LH; });
+  if(moves.length){
+    y+=14; text('📜 الحركات بالترتيب', W-P-6, y+18, {sz:18, b:true, c:'#6d28d9'}); y+=36;
+    moves.forEach((m,i)=>{ x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,MH); x.fillStyle=MV_C[m.k]; x.fillRect(W-P-4,y,4,MH);
+      const val=(m.k==='ret'?'− ':'')+fmtM(m.v), vw=(font(16,true), x.measureText(val).width);
+      text(fit(MV_T(m)+' — '+fmtFull(m.d), W-2*P-vw-40, 15, true), W-P-14, y+18, {sz:15, b:true, c:MV_C[m.k]});
+      text(val, P+10, y+18, {sz:16, b:true, c:MV_C[m.k], al:'left'});
+      if(m.k!=='pay') text(fit(shortTxt(m.items), W-2*P-28, 13), W-P-14, y+42, {sz:13, c:'#444'});
+      y+=MH; });
   }
   return cv;
 }
@@ -5328,7 +5417,7 @@ function cutRetParts(tid, sid, i, n){
     else db.payments=db.payments.filter(x=>x!==p);
   }
 }
-function editInvoice(sid){
+function editInvoice(sid, after){
   const s=db.sales.find(x=>x.id===sid && x.st==='sold'); if(!s) return; const t=tById(s.t); if(!t) return;
   const doneOf=i=>{ let n=0; for(const p of db.payments) if(p.k==='ret' && p.t===s.t) for(const pt of p.parts||[]) if(pt.sale===s.id && pt.i===i) n+=pt.q; return n; };
   const anyRet=s.items.some((_,i)=>doneOf(i)>0), left=lotLeft();
@@ -5383,6 +5472,7 @@ function editInvoice(sid){
       if(!s.items.length) db.sales=db.sales.filter(x=>x!==s);
       logEdit('invoice', s.t, ch, {inv});
     });
+    if(after) after();
   };
   paintList();
 }function editLogCard(tid){   // من غير tid = السجل كله (الإعدادات)، ومعاه tid = تعديلات المدرس ده (صفحته ← السجل)

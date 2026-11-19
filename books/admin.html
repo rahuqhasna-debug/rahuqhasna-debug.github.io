@@ -641,26 +641,8 @@ async function importGreen() {
    مرتجع المدرس اللي اتوافق عليه ليه صف 'rq:<id>' (بيتكتب وقت الموافقة) والمرتجع اللي في البرنامج بعد تنفيذه (فيه rid) بيتخطّى عشان مايتكررش. */
 async function syncLedger(db) {
   const mine = {}; (await fetchAll(() => sb.from('teachers').select('id,local_id').eq('rep_id', me.id))).forEach(x => { if (x.local_id) mine[x.local_id] = x.id; });
-  const S = Object.fromEntries((db.sales || []).map(s => [s.id, s])), rows = [];
-  for (const s of db.sales || []) {
-    if (s.st !== 'sold' || !mine[s.t]) continue;
-    const its = (s.items || []).filter(i => i.q > 0).map(i => ({ b: i.b, l: bookLabel(i.b), q: +i.q, pre: i.pre ?? null, post: i.post ?? null }));
-    if (its.length) rows.push({ teacher_id: mine[s.t], ref: 's:' + s.id, kind: 'sale', at: s.sd || s.d || new Date().toISOString(), items: its, total: its.reduce((a, i) => a + (i.post != null ? i.q * i.post : 0), 0) });
-  }
-  const rg = {};
-  for (const p of db.payments || []) {
-    if (p.k !== 'ret' || !mine[p.t] || p.rid) continue;
-    let v = 0; for (const pt of p.parts || []) { const it = S[pt.sale] && S[pt.sale].items[pt.i]; if (it && it.post != null) v += pt.q * it.post; }
-    const g = rg[p.g || p.id] ||= { t: p.t, at: p.d, items: [], total: 0 };
-    g.items.push({ b: p.b, l: bookLabel(p.b), q: +p.q, post: p.q ? v / p.q : null }); g.total += v;
-  }
-  for (const k in rg) rows.push({ teacher_id: mine[rg[k].t], ref: 'r:' + k, kind: 'ret', at: rg[k].at || new Date().toISOString(), items: rg[k].items, total: rg[k].total });
-  const fg = {};
-  for (const e of db.entries || []) {
-    if (e.s !== 'd' || !mine[e.t] || !e.dd) continue;
-    const g = fg[e.t + ':' + e.dd] ||= { t: e.t, at: e.dd, m: {} }; g.m[e.b] = (g.m[e.b] || 0) + (+e.q || 0);
-  }
-  for (const k in fg) { const g = fg[k]; rows.push({ teacher_id: mine[g.t], ref: 'f:' + k, kind: 'free', at: g.at.length <= 10 ? g.at + 'T12:00:00Z' : g.at, items: Object.entries(g.m).filter(([, q]) => q > 0).map(([b, q]) => ({ b, l: bookLabel(b), q })), total: null }); }
+  // مهمة 3: نفس الحركات اللي البرنامج الأخضر بيبعتها لوحده (ret.js ← SilahRet.ledgerRows) — فيها الدفعات كمان
+  const rows = window.SilahRet.ledgerRows(db, mine);
   const keep = new Set(rows.map(r => r.teacher_id + '|' + r.ref));
   for (let i = 0; i < rows.length; i += 200) { const { error } = await sb.from('ledger').upsert(rows.slice(i, i + 200), { onConflict: 'teacher_id,ref' }); if (error) throw error; }
   const old = await fetchAll(() => sb.from('ledger').select('id,teacher_id,ref').in('teacher_id', Object.values(mine)));

@@ -1051,20 +1051,42 @@ function ledSums(rows) {
 const INVBAR = () => `<div class="invbar"><button class="ib ib-i" data-v="inv"><b>🧾</b> فواتيري</button><button class="ib ib-r" data-v="ret"><b>↩️</b> مرتجعات</button></div>`;
 const bindInvBar = () => $$('.ib').forEach(b => b.onclick = () => go(b.dataset.v));
 const itemsTxt = its => (its || []).map(i => `${esc(i.l || bookLabel(i.b))} × ${i.q}`).join('، ');
+/* مهمة 3 (طلب شريف): «فواتيري» = نفس حساب المدرس اللي عند المندوب: الراس + الجدول المجمّع (قبل/بعد الخصم) + المدفوع + الباقي،
+   وتحته الحركات بالترتيب بالتاريخ والساعة (فاتورة / مرتجع / دفعة / تسليم مجاني) — الدوسة بتفتح التفاصيل */
+const T_DAYS = ['الأحد', 'الاتنين', 'التلات', 'الأربع', 'الخميس', 'الجمعة', 'السبت'];
+function fmtFullT(s) { if (!s) return ''; const d = new Date(s); if (isNaN(d)) return ''; let h = d.getHours(); const ap = h < 12 ? 'ص' : 'م'; h = h % 12 || 12; return `${T_DAYS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} الساعة ${h}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`; }
+const nf = n => (Math.round((+n || 0) * 100) / 100).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
 async function renderInv() {
-  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#0ea5e9,#6d28d9)">🧾 فواتيري<div class="small">كل اللي اشتريته ورجّعته وخدته مننا</div></div><div class="loading">جاري التحميل…</div>`;
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#0ea5e9,#6d28d9)">🧾 فواتيري<div class="small">كل اللي اشتريته ورجّعته ودفعته</div></div><div class="loading">جاري التحميل…</div>`;
   const L = await loadLedger(); if (view !== 'inv') return;
-  const { m, A, R } = ledSums(L.rows), ks = Object.keys(m);
-  const kinds = { sale: ['🧾 فاتورة بيع', '#2563eb'], ret: ['↩️ مرتجع', '#ea580c'], free: ['🎁 تسليم مجاني', '#16a34a'] };
+  const rows = [...(L.rows || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)));
+  const m = {}; let pre = 0, post = 0, paid = 0, last = '';
+  const B = (i) => m[i.b] ||= { l: i.l || bookLabel(i.b), n: 0, r: 0, pre: null, post: null };
+  let ni = 0, nr = 0;
+  const moves = rows.map(r => {
+    if (String(r.at) > last) last = String(r.at);
+    const its = r.items || [];
+    if (r.kind === 'sale') { for (const i of its) { const x = B(i); x.n += +i.q || 0; if (i.post != null) x.post = i.post; if (i.pre != null) x.pre = i.pre; post += (+i.q || 0) * (i.post || 0); pre += (+i.q || 0) * (i.pre != null ? i.pre : (i.post || 0)); } return { r, t: '🧾 فاتورة ' + (++ni), c: '#2563eb', v: +r.total || 0 }; }
+    if (r.kind === 'ret') { for (const i of its) { B(i).r += +i.q || 0; pre -= (+i.q || 0) * (i.pre != null ? i.pre : (i.post || 0)); } post -= +r.total || 0; return { r, t: '↩️ مرتجع ' + (++nr), c: '#ea580c', v: +r.total || 0, minus: true }; }
+    if (r.kind === 'pay') { paid += +r.total || 0; return { r, t: '💵 دفعة', c: '#15803d', v: +r.total || 0 }; }
+    return { r, t: '🎁 تسليم مجاني', c: '#16a34a', v: null };
+  });
+  const ks = Object.keys(m);
+  const det = x => { if (!(x.r.items || []).length) return '';
+    return `<div class="tbw"><table class="tb"><thead><tr><th>الكتاب</th><th>العدد</th>${x.v != null ? '<th>قبل الخصم</th><th>بعد الخصم</th><th>الإجمالي</th>' : ''}</tr></thead><tbody>${(x.r.items || []).map(i => `<tr><td>${esc(i.l || bookLabel(i.b))}</td><td>${i.q}</td>${x.v != null ? `<td>${i.pre != null ? `<s style="color:#888">${nf(i.pre)}</s>` : '—'}</td><td>${i.post != null ? nf(i.post) : '—'}</td><td><b>${i.post != null ? nf(i.q * i.post) : '—'}</b></td>` : ''}</tr>`).join('')}</tbody></table></div>`; };
+  const mv = moves.map(x => { const head = `<div style="display:flex;justify-content:space-between;gap:8px"><b style="color:${x.c}">${x.t}</b>${x.v != null ? `<b style="color:${x.c}">${x.minus ? '− ' : ''}${money(x.v)}</b>` : ''}</div><div class="small muted">${fmtFullT(x.r.at)}</div>${(x.r.items || []).length ? `<div class="small" style="margin-top:2px">${itemsTxt(x.r.items)}</div>` : ''}`;
+    return (x.r.items || []).length ? `<details class="card lrow" style="border-inline-start:6px solid ${x.c}"><summary style="list-style:none;cursor:pointer">${head}<div class="small" style="color:#6d28d9">دوس تشوف التفاصيل</div></summary>${det(x)}</details>`
+      : `<div class="card lrow" style="border-inline-start:6px solid ${x.c}">${head}</div>`; }).join('');
   app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#0ea5e9,#6d28d9)">🧾 فواتيري</div>
     ${L.img && /^https:\/\/drive\.google\.com\//.test(L.img) ? `<a class="btn pri" href="${esc(L.img)}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-bottom:10px;font-size:16px">🖼️ افتح صورة آخر فاتورة</a>` : ''}
-    <div class="card"><h3 style="margin:0 0 8px">📑 الفاتورة المجمّعة</h3>
-    ${ks.length ? `<div class="tbw"><table class="tb"><thead><tr><th>الكتاب</th><th>اشتريت</th><th>رجّعت</th><th>الصافي</th></tr></thead><tbody>${ks.map(k => `<tr><td>${esc(m[k].l)}</td><td>${m[k].n}</td><td>${m[k].r || ''}</td><td><b>${m[k].n - m[k].r}</b></td></tr>`).join('')}</tbody></table></div>
-      <div class="kv"><span>إجمالي المشتريات</span><b>${money(A)}</b></div><div class="kv"><span>إجمالي المرتجعات</span><b style="color:#ea580c">${money(R)}</b></div>
-      <div class="kv" style="font-size:17px"><span>الصافي</span><b style="color:#16a34a">${money(A - R)}</b></div>` : '<div class="muted">لسه مفيش فواتير بيع عندك.</div>'}</div>
-    <div class="vid-t" style="margin:14px 0 8px">🕘 السجل (${L.rows.length})</div>
-    ${L.rows.map(r => `<div class="card lrow" style="border-inline-start:6px solid ${kinds[r.kind][1]}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${kinds[r.kind][0]}</b><span class="small muted">${fmtDate(r.at)}</span></div>
-      <div class="small" style="margin-top:4px">${itemsTxt(r.items)}</div>${r.total != null && r.kind !== 'free' ? `<div style="margin-top:4px"><b>${r.kind === 'ret' ? '− ' : ''}${money(r.total)}</b></div>` : ''}</div>`).join('') || '<div class="card empty">لسه مفيش حركات.</div>'}
+    <div class="card"><div style="background:#ede9fe;border-radius:10px;padding:8px 12px;margin-bottom:8px"><div><span class="muted">المدرس: </span><b>${esc(D.name || '')}</b></div>${L.rep ? `<div><span class="muted">مسؤول الدعاية: </span><b style="color:#6d28d9">أ/ ${esc(L.rep)}</b></div>` : ''}<div class="small muted">آخر تحديث: ${esc(fmtFullT(last) || '—')}</div></div>
+    ${ks.length ? `<div class="tbw"><table class="tb"><thead><tr><th>الكتاب</th><th>خدت</th><th>رجّعت</th><th>الصافي</th><th>قبل الخصم</th><th>بعد الخصم</th></tr></thead><tbody>${ks.map(k => { const x = m[k], f = x.n - x.r, pp = x.pre != null ? x.pre : x.post;
+        return `<tr><td>${esc(x.l)}<div class="small">${x.pre != null ? `<s style="color:#888">${nf(x.pre)}</s> ← ` : ''}<b>${x.post != null ? nf(x.post) : '—'}</b></div></td><td>${x.n}</td><td>${x.r || ''}</td><td><b>${f}</b></td><td>${pp != null ? `<s style="color:#888">${nf(f * pp)}</s>` : '—'}</td><td><b>${x.post != null ? nf(f * x.post) : '—'}</b></td></tr>`; }).join('')}</tbody></table></div>
+      <div class="kv"><span>الإجمالي قبل الخصم</span><b><s style="color:#888">${money(pre)}</s></b></div><div class="kv"><span>الإجمالي بعد الخصم</span><b>${money(post)}</b></div>
+      <div class="kv"><span>اللي دفعته</span><b style="color:#16a34a">${money(paid)}</b></div>
+      <div class="kv" style="font-size:18px;background:#b91c1c;color:#fff;border-radius:10px;padding:10px 12px;margin-top:6px"><span style="color:#fff;font-weight:800">الباقي عليك</span><b style="color:#fff">${money(post - paid)}</b></div>` : '<div class="muted">لسه مفيش فواتير بيع عندك.</div>'}</div>
+    <div class="vid-t" style="margin:14px 0 8px">📜 الحركات بالترتيب (${moves.length})</div>
+    ${mv || '<div class="card empty">لسه مفيش حركات.</div>'}
     <button class="gobtn" id="toRet" style="margin-top:10px">↩️ عايز أرجّع كتب</button>`;
   $('#toRet').onclick = () => go('ret');
 }
