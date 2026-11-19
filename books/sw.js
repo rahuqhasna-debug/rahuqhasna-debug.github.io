@@ -11,10 +11,10 @@ try {
   };
 } catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v66';
+const CACHE = 'books-v67';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
 const FRESH = new Map(), FRESH_MS = 10 * 60000, NET_WAIT = 2500;
-const FILES = ['./', './index.html', './ret.js', './manifest.json', './icon-192.png', './icon-512.png'];
+const FILES = ['./', './index.html', './ret.js', './acc.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   // كل ملف لوحده: لو ملف ناقص ما يوقفش الباقي

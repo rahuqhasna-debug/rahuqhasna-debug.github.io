@@ -581,6 +581,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 <input type="file" id="fileLoc" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <script src="config.js"></script>
 <script src="ret.js"></script>
+<script src="acc.js"></script>
 <script>
 "use strict";
 /* ================= الكتب ================= */
@@ -3892,7 +3893,7 @@ function accData(tid){
     moves.push({k:'inv', no:x.no, d:x.s.sd||x.s.d, id:x.s.id, items:x.s.items.map(it=>({b:it.b, q:it.q, pre:it.pre, post:it.post})), v, pv}); }
   const g=new Map(); let rn=0;
   for(const p of D.rets){ const key=p.g||p.d; if(!g.has(key)) g.set(key,{key, d:p.d, items:[], v:0, sale:''});
-    const z=g.get(key), v=retVal(p,S); z.v+=v; z.items.push({b:p.b, q:p.q, post:p.q?v/p.q:null}); if(!z.sale && p.parts && p.parts[0]) z.sale=p.parts[0].sale; }
+    const z=g.get(key), v=retVal(p,S); z.v+=v; let pv=0, hp=true; for(const pt of p.parts||[]){ const it=S[pt.sale]?.items[pt.i]; if(it && it.pre!=null) pv+=pt.q*it.pre; else hp=false; } z.items.push({b:p.b, q:p.q, pre:hp&&p.q?pv/p.q:null, post:p.q?v/p.q:null}); if(!z.sale && p.parts && p.parts[0]) z.sale=p.parts[0].sale; }
   for(const z of [...g.values()].sort((a,b)=>a.d.localeCompare(b.d))) moves.push({k:'ret', no:++rn, d:z.d, key:z.key, items:z.items, v:z.v, sale:z.sale});
   for(const p of D.pays) moves.push({k:'pay', d:p.d, id:p.id, v:p.amt});
   moves.sort((a,b)=>(a.d||'').localeCompare(b.d||''));
@@ -3909,33 +3910,20 @@ function mvDetail(x){
   return `<div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>العدد</th><th>قبل الخصم</th><th>بعد الخصم</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="kv"><span>${x.k==='ret'?'إجمالي المرتجع':'صافي الفاتورة'}</span><b style="color:${MV_C[x.k]}">${fmtM(x.v)}</b></div>`;
 }
+// مهمة 3: الحساب بشكل جدول الإكسل — نفس الرسم عند المدرس وفي الصورة (acc.js ← SilahAcc)
+function accModel(A){ const it=i=>({b:i.b, l:bookLabel(i.b), q:i.q, pre:i.pre??null, post:i.post??null});
+  return {name:A.t.name, rep:db.rep, last:A.last, rows:A.list.map(r=>({b:r.b, l:bookLabel(r.b), pre:r.pre??null, post:r.post??null, q:r.q, r:r.r})), pre:A.pre, post:A.post, paid:A.a.paid, owe:A.a.owe, noPrice:A.a.noPrice,
+    moves:A.moves.map(x=>({k:x.k, t:MV_T(x), d:x.d, v:x.v, id:x.id, key:x.key, sale:x.sale, items:[...(x.items||[])].sort(byRank).map(it)}))}; }
 function accFullHtml(A, edit){
-  const {t, a, list}=A, C=k=>'#'+SUBJ_COLOR[bookParts(k).sb];
-  const tbl=list.map(r=>{ const f=r.q-r.r, pp=r.pre!=null?r.pre:r.post;
-    return `<tr><td><b style="color:${C(r.b)}">${esc(bookLabel(r.b))}</b><div class="small">${r.pre!=null?`<s>${fmtN(r.pre)}</s> ← `:''}<b>${r.post!=null?fmtN(r.post):'—'}</b></div></td><td>${r.q}</td><td><b style="color:#ea580c">${r.r||''}</b></td><td><b>${f}</b></td><td>${pp!=null?fmtN(f*pp):'—'}</td><td><b>${r.post!=null?fmtN(f*r.post):'—'}</b></td></tr>`; }).join('');
-  const mv=A.moves.map(x=>{ const ed = !edit ? '' : x.k==='inv' ? `<button class="btn sm ghost" data-inv="e-inv" data-id="${esc(x.id)}">✏️ عدّل الفاتورة والمرتجع بتاعها</button>`
-      : x.k==='ret' ? `${x.sale?`<button class="btn sm ghost" data-inv="e-inv" data-id="${esc(x.sale)}">✏️ عدّل المرتجع</button>`:''}<button class="btn sm danger" data-inv="d-ret" data-k="${esc(x.key)}">🗑️ امسح المرتجع</button>`
-      : `<button class="btn sm ghost" data-inv="e-pay" data-id="${esc(x.id)}">✏️ عدّل المبلغ</button><button class="btn sm danger" data-inv="d-pay" data-id="${esc(x.id)}">🗑️ امسح الدفعة</button>`;
-    const head=`<div class="mv-h"><b style="color:${MV_C[x.k]}">${MV_T(x)}</b><b style="color:${MV_C[x.k]}">${x.k==='ret'?'− ':''}${fmtM(x.v)}</b></div><div class="small muted">${fmtFull(x.d)}</div>${x.k!=='pay'?`<div class="small">${esc(shortTxt(x.items))}</div>`:''}`;
-    return x.k==='pay' ? `<div class="mv" style="border-inline-start-color:${MV_C.pay}">${head}${ed?`<div class="acts">${ed}</div>`:''}</div>`
-      : `<details class="mv" style="border-inline-start-color:${MV_C[x.k]}"${edit?' open':''}><summary>${head}<div class="small" style="color:var(--brand)">دوس تشوف التفاصيل</div></summary>${mvDetail(x)}${ed?`<div class="acts">${ed}</div>`:''}</details>`; }).join('');
-  return `<div class="inv"><div class="inv-h"><div class="brand">سلاح التلميذ</div><div style="text-align:left"><h2>حساب المدرس</h2><div class="d">آخر تحديث: ${esc(fmtFull(A.last)||'—')}</div></div></div>
-    <div class="inv-b"><div class="inv-who"><div><span>المدرس: </span><b>${esc(t.name)}</b></div><div><span>مسؤول الدعاية: </span><b>أ/ ${esc(db.rep)}</b></div></div>
-    <div class="tscroll"><table class="tbl"><thead><tr><th>الكتاب</th><th>خد</th><th>رجّع</th><th>الصافي</th><th>قبل الخصم</th><th>بعد الخصم</th></tr></thead><tbody>
-    ${tbl || '<tr><td colspan="6">لسه ما اشتراش حاجة.</td></tr>'}</tbody></table></div>
-    ${a.noPrice?'<div class="inv-np">فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}
-    <div class="kv"><span>الإجمالي قبل الخصم</span><b><s style="color:#888">${fmtM(A.pre)}</s></b></div><div class="kv"><span>الإجمالي بعد الخصم</span><b>${fmtM(A.post)}</b></div>
-    <div class="kv"><span>المدفوع</span><b style="color:#15803d">${fmtM(a.paid)}</b></div>
-    <div class="inv-due"><span>الباقي عليه</span><span>${fmtM(a.owe)}</span></div>
-    ${A.moves.length?`<h3 style="margin:16px 0 6px;font-size:16px;color:#6d28d9">📜 الحركات بالترتيب</h3>${mv}`:''}</div></div>
-    <div class="inv-acts"><button class="btn pri" data-inv="img">📤 إرسال</button><button class="btn ${edit?'ok':'ghost'}" data-inv="edit" style="${edit?'':'background:#fff;color:#111'}">${edit?'✅ خلّصت التعديل':'✏️ تعديل'}</button><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
+  return SilahAcc.html(accModel(A), {edit}) + `<div class="inv-acts"><button class="btn pri" data-inv="img">📤 إرسال</button><button class="btn ${edit?'ok':'ghost'}" data-inv="edit" style="${edit?'':'background:#fff;color:#111'}">${edit?'✅ خلّصت التعديل':'✏️ تعديل'}</button><button class="btn ghost" style="background:#fff;color:#111" data-inv="close">✕ اقفل</button></div>`;
 }
 function showInvoice(tid, fresh){
   const t=tById(tid); if(!t) return;
   document.querySelectorAll('.inv-wrap').forEach(x=>x.remove());
   const m=document.createElement('div'); m.className='inv-wrap'; document.body.appendChild(m);
   let edit=false;
-  const paint=()=>{ if(!tById(tid)){ m.remove(); return; } const y=m.scrollTop; m.innerHTML=accFullHtml(accData(tid), edit); m.scrollTop=y; };
+  const paint=()=>{ if(!tById(tid)){ m.remove(); return; } const y=m.scrollTop; SilahAcc.release(m); m.innerHTML=accFullHtml(accData(tid), edit); m.scrollTop=y; };
+  SilahAcc.bind(m);
   const after=()=>{ if(document.body.contains(m)) paint(); };
   const base=()=>`حساب-${t.name}-${dayKey()}`.replace(/[\\/:*?"<>|]/g,'');
   paint();
@@ -3970,75 +3958,8 @@ function invLog(tid){
   for(const p of D.pays) out.push({d:p.d, k:'pay', t:'دفع', v:p.amt, c:'#15803d'});
   return out.sort((a,b)=>a.d.localeCompare(b.d)).map(l=>({...l, day:fmtDay(dk(l.d))}));
 }
-// صورة حساب المدرس على canvas (من غير مكتبات، عربي من اليمين للشمال) — نفس اللي على الشاشة + الحركات بالمختصر
-function invoiceCanvas(A){
-  const {t, a, list, moves}=A;
-  const W=720, S=2, P=24, FF='"Cairo","Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",Arial,sans-serif';
-  const RH=54, rowsN=Math.max(1,list.length), MH=58;
-  const H = 100 + 16 + 72 + 16 + 40 + rowsN*RH + 16 + (a.noPrice?32:0) + 3*38 + 70 + (moves.length?50+moves.length*MH:0) + P;
-  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
-  const x=cv.getContext('2d'); x.scale(S,S); x.direction='rtl'; x.textBaseline='middle';
-  const font=(sz,b)=>x.font=`${b?'bold ':''}${sz}px ${FF}`;
-  const text=(s,px,py,{sz=16,b=false,c='#111',al='right'}={})=>{ font(sz,b); x.fillStyle=c; x.textAlign=al; x.fillText(s,px,py); return x.measureText(s).width; };
-  const fit=(s,maxW,sz,b)=>{ font(sz,b); if(x.measureText(s).width<=maxW) return s; let t2=s; while(t2.length>1 && x.measureText(t2+'…').width>maxW) t2=t2.slice(0,-1); return t2+'…'; };
-  const strike=(px,py,w)=>{ x.strokeStyle='#888'; x.lineWidth=1.5; x.beginPath(); x.moveTo(px,py); x.lineTo(px+w,py); x.stroke(); };
-  const rr=(px,py,w,h,r,c)=>{ x.fillStyle=c; x.beginPath(); x.moveTo(px+r,py); x.arcTo(px+w,py,px+w,py+h,r); x.arcTo(px+w,py+h,px,py+h,r); x.arcTo(px,py+h,px,py,r); x.arcTo(px,py,px+w,py,r); x.closePath(); x.fill(); };
-  x.fillStyle='#fff'; x.fillRect(0,0,W,H);
-  // الراس
-  x.fillStyle='#6d28d9'; x.fillRect(0,0,W,100);
-  text('سلاح التلميذ', W-P, 40, {sz:30, b:true, c:'#fff'});
-  text('البحيرة', W-P, 76, {sz:15, c:'#ede9fe'});
-  text('حساب المدرس', P, 38, {sz:24, b:true, c:'#fff', al:'left'});
-  text(fit('آخر تحديث: '+(fmtFull(A.last)||'—'), 360, 14), P, 74, {sz:14, c:'#ede9fe', al:'left'});
-  let y=100+16;
-  rr(P,y,W-2*P,72,10,'#ede9fe');
-  let w=text('المدرس: ', W-P-14, y+22, {sz:16, c:'#555'}); text(fit(t.name, W-2*P-120, 18, true), W-P-14-w, y+22, {sz:18, b:true});
-  w=text('مسؤول الدعاية: ', W-P-14, y+52, {sz:16, c:'#555'}); text(fit('أ/ '+db.rep, W-2*P-160, 17, true), W-P-14-w, y+52, {sz:17, b:true, c:'#6d28d9'});
-  y+=72+16;
-  // الجدول: الكتاب | خد | رجّع | الصافي | قبل الخصم | بعد الخصم (من اليمين)
-  const cols=[['الكتاب',196],['خد',56],['رجّع',56],['الصافي',64],['قبل الخصم',150],['بعد الخصم',W-2*P-522]];
-  const cx=[]; let cr=W-P; for(const [,cw] of cols){ cx.push([cr, cr-cw]); cr-=cw; }
-  const mid=i=>(cx[i][0]+cx[i][1])/2;
-  x.fillStyle='#6d28d9'; x.fillRect(P,y,W-2*P,40);
-  cols.forEach(([h],i)=>text(h, i===0?cx[0][0]-10:mid(i), y+20, {sz:14, b:true, c:'#fff', al:i===0?'right':'center'}));
-  y+=40;
-  if(!list.length){ text('لسه ما اشتراش حاجة.', W/2, y+RH/2, {al:'center', c:'#555'}); y+=RH; }
-  list.forEach((r,i)=>{
-    x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,RH);
-    const cy=y+RH/2, f=r.q-(r.r||0), pp=r.pre!=null?r.pre:r.post;
-    text(fit(bookLabel(r.b), 184, 15, true), cx[0][0]-8, cy-10, {sz:15, b:true, c:'#'+SUBJ_COLOR[bookParts(r.b).sb]});
-    // تحت اسم الكتاب: السعر قبل الخصم مشطوب ← بعد الخصم
-    let px=cx[0][0]-8;
-    if(r.pre!=null){ const s1=fmtN(r.pre), w1=text(s1, px, cy+13, {sz:13, c:'#888'}); strike(px-w1, cy+13, w1); px-=w1+4; px-=text(' ← ', px, cy+13, {sz:13, c:'#888'}); }
-    text(r.post!=null?fmtN(r.post)+' ج':'السعر —', px, cy+13, {sz:13, b:true});
-    text(String(r.q), mid(1), cy, {sz:16, al:'center'});
-    text(r.r?String(r.r):'', mid(2), cy, {sz:16, b:true, c:'#ea580c', al:'center'});
-    text(String(f), mid(3), cy, {sz:16, b:true, al:'center'});
-    if(pp!=null){ const s2=fmtN(f*pp), w2=text(s2, mid(4), cy, {sz:15, c:'#888', al:'center'}); strike(mid(4)-w2/2-2, cy, w2+4); } else text('—', mid(4), cy, {al:'center', c:'#888'});
-    text(r.post!=null?fmtN(f*r.post):'—', mid(5), cy, {sz:16, b:true, al:'center'});
-    y+=RH;
-  });
-  y+=16;
-  if(a.noPrice){ text('فيه كتب السعر بتاعها لسه ما اتحددش', W/2, y+12, {sz:16, b:true, c:'#b45309', al:'center'}); y+=32; }
-  for(const [l,v,c,st] of [['الإجمالي قبل الخصم',A.pre,'#888',true],['الإجمالي بعد الخصم',A.post,'#111'],['المدفوع',a.paid,'#15803d']]){
-    text(l, W-P-6, y+19, {sz:17, c:'#333'}); const s3=fmtM(v), w3=text(s3, P+6, y+19, {sz:18, b:true, c, al:'left'}); if(st) strike(P+4, y+19, w3+4);
-    x.fillStyle='#e5e7eb'; x.fillRect(P,y+37,W-2*P,1); y+=38;
-  }
-  y+=10;
-  rr(P,y,W-2*P,56,10,'#b91c1c');
-  text('الباقي عليه', W-P-16, y+28, {sz:22, b:true, c:'#fff'}); text(fmtM(a.owe), P+16, y+28, {sz:24, b:true, c:'#fff', al:'left'});
-  y+=56;
-  if(moves.length){
-    y+=14; text('📜 الحركات بالترتيب', W-P-6, y+18, {sz:18, b:true, c:'#6d28d9'}); y+=36;
-    moves.forEach((m,i)=>{ x.fillStyle=i%2?'#f3f4f6':'#fff'; x.fillRect(P,y,W-2*P,MH); x.fillStyle=MV_C[m.k]; x.fillRect(W-P-4,y,4,MH);
-      const val=(m.k==='ret'?'− ':'')+fmtM(m.v), vw=(font(16,true), x.measureText(val).width);
-      text(fit(MV_T(m)+' — '+fmtFull(m.d), W-2*P-vw-40, 15, true), W-P-14, y+18, {sz:15, b:true, c:MV_C[m.k]});
-      text(val, P+10, y+18, {sz:16, b:true, c:MV_C[m.k], al:'left'});
-      if(m.k!=='pay') text(fit(shortTxt(m.items), W-2*P-28, 13), W-P-14, y+42, {sz:13, c:'#444'});
-      y+=MH; });
-  }
-  return cv;
-}
+// صورة حساب المدرس = نفس جداول الإكسل اللي على الشاشة (acc.js)
+function invoiceCanvas(A){ return SilahAcc.canvas(accModel(A)); }
 // PDF بسيط فيه صورة JPEG واحدة (مكتوب يدوي من غير مكتبة)
 function pdfFromJpeg(jpg, iw, ih){
   const enc=new TextEncoder(), parts=[], offs=[]; let len=0;
