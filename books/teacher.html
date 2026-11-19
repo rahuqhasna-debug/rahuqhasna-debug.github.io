@@ -1345,6 +1345,9 @@ function renderNews() {
 }
 
 /* ---------- ملفي ---------- */
+const MUST_ME = [['name', 'الاسم'], ['phone', 'رقم التليفون'], ['subjects', 'المادة'], ['area', 'المنطقة / القرية']];
+// أرقام أي لغة (٠١٢ عربي، ۰۱۲ فارسي…) ← إنجليزي
+const toEnNum = s => String(s || '').replace(/\p{Nd}/gu, ch => { const cp = ch.codePointAt(0); let z = cp; while (z > 0 && /\p{Nd}/u.test(String.fromCodePoint(z - 1))) z--; return String((cp - z) % 10); });
 function renderMe() {
   const req = new Set(D.updates.flatMap(u => u.fields || []));
   const pend = D.pending ? D.pending.new_values : null;
@@ -1368,6 +1371,10 @@ function renderMe() {
       ${D.pending && D.pending.photos ? `<div class="pend">⏳ ${D.pending.photos} صورة في انتظار المراجعة</div>` : ''}</div></section>
     <div class="savebar"><button class="gobtn" id="save">✅ تم — ابعت</button></div></form>`;
   const f = $('#pf'); bindProfileForm(f, st, { remind: true }); drawPhotos();
+  // مهمة 5 (طلب شريف): الاسم والتليفون والمادة والقرية إجباريين — مايتبعتش من غيرهم
+  for (const [k] of MUST_ME) { const lb = $(`.field[data-f="${k}"]>label`, f); if (lb) lb.insertAdjacentHTML('beforeend', ' <span class="pill bad" style="font-size:12px">إجباري</span>'); }
+  f.addEventListener('input', e => { const x = e.target.closest('.field.must'); x && x.classList.remove('must', 'req'); });
+  f.addEventListener('change', e => { const x = e.target.closest('.field.must'); x && x.classList.remove('must', 'req'); });
   $$('.pgrid input:checked', f).forEach(i => i.parentNode.classList.add('on'));
   $$('[data-go]', f).forEach(b => b.onclick = () => { const x = $(`.field[data-f="${b.dataset.go}"]`, f); x && x.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $$('.phIn').forEach(inp => inp.onchange = async e => {
@@ -1379,6 +1386,15 @@ function renderMe() {
     const nv = readProfileForm(f, st), filled = {};
     for (const k in nv) { const v = nv[k]; if (v === '' || v == null || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length)) continue; filled[k] = v; }
     if (!filled.stage) { delete filled.spec; delete filled.grades; }
+    // الإجباري: الاسم + رقم تليفون صح (11 رقم يبدأ بـ 01) + المادة + القرية
+    if (filled.phone) filled.phone = toEnNum(filled.phone).replace(/\D/g, '');
+    const bad = MUST_ME.filter(([k]) => k === 'phone' ? !/^01\d{9}$/.test(filled.phone || '') : !filled[k]);
+    if (bad.length) {
+      $$('.field.must', f).forEach(x => x.classList.remove('must'));
+      for (const [k] of bad) { const x = $(`.field[data-f="${k}"]`, f); x && x.classList.add('must', 'req'); }
+      const x0 = $(`.field[data-f="${bad[0][0]}"]`, f); x0 && x0.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return toast('⚠️ لازم تكتب: ' + bad.map(([k, l]) => k === 'phone' && filled.phone ? 'رقم تليفون صح (11 رقم)' : l).join('، '), 5000);
+    }
     const ch = changedOnly(vals(), filled);
     if (!Object.keys(ch).length && !newPhotos.length) return toast('اكتب بياناتك الأول');
     const b = $('#save'); b.disabled = true; b.textContent = 'جاري الإرسال…';

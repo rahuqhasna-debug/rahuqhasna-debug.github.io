@@ -93,6 +93,14 @@ function gProfile(t) {
     area: t.area || '', school: t.school || '', grades: (t.tGrades && t.tGrades.length ? t.tGrades : (t.grades || []).filter(g => g >= 1 && g <= 6)), where: t.where || '', students: t.students || '',
     ...(t.tAddress ? { address: t.tAddress } : {}), ...(t.tLoc ? { loc: t.tLoc } : {}), ...(t.tDays ? { days: t.tDays } : {}) };
 }
+// مهمة 5: اسم القرية اللي المدرس كتبه يتوحّد على الشكل اللي مكتوب بيه عند باقي المدرسين (من غير همزة / ة و ه / ى و ي / «ال» / مسافات)
+function gAreaKey(a) { return String(a || '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ْـ]/g, '').replace(/^\s*ال/, '').replace(/\s+/g, '').toLowerCase(); }
+function gArea(db, a) {
+  a = String(a || '').trim().replace(/\s+/g, ' '); if (!a) return '';
+  const k = gAreaKey(a), cnt = {};
+  for (const t of db.teachers || []) if (t.area && gAreaKey(t.area) === k) cnt[t.area] = (cnt[t.area] || 0) + 1;
+  const best = Object.entries(cnt).sort((x, y) => y[1] - x[1])[0]; return best ? best[0] : a;
+}
 function gApply(localId, fin) {   // الموافقة تتكتب في البرنامج الأخضر كمان
   const db = gdb(); if (!db || !localId) return false;
   const t = (db.teachers || []).find(x => x.id === localId); if (!t) return false;
@@ -105,6 +113,7 @@ function gApply(localId, fin) {   // الموافقة تتكتب في البرن
     if (k === 'avatar') { if (typeof fin.avatar === 'string' && fin.avatar.startsWith('data:image/')) { gPhoto(t.id, fin.avatar); lines.push('📷 الصورة الشخصية اتحدّثت'); } continue; }
     if (k === 'subjects') { const keep = (t.subjects || []).includes('kash') ? ['kash'] : []; t.subjects = [...new Set([...fin.subjects, ...keep])]; t.subjectText = ''; }
     else if (k === 'grades') { t.grades = (fin.grades || []).filter(g => g <= 6); t.tGrades = fin.grades; }
+    else if (k === 'area') t.area = gArea(db, fin.area);
     else if (map[k]) t[map[k]] = fin[k];
     // متابعة 10: موقع المدرس الجديد يظهر على خريطة البرنامج على طول
     if (k === 'loc' && fin.loc && fin.loc.lat && fin.loc.lng) t.loc = { lat: +fin.loc.lat, lng: +fin.loc.lng };

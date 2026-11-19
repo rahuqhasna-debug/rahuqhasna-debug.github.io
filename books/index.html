@@ -654,7 +654,17 @@ const IDARAT = {
 };
 const IDARA_LIST = Object.keys(IDARAT);
 const villages = () => IDARAT[db?.idara] || [];
-const isNewArea = a => !!String(a||'').trim() && villages().length>0 && !villages().some(v=>normText(v)===normText(a));
+const isNewArea = a => !!String(a||'').trim() && villages().length>0 && !villages().some(v=>areaKey(v)===areaKey(a));
+/* مهمة 5 (طلب شريف): توحيد أسامي القرى — «أسمانية/اسمانيه» و«الزناجلة/الزناجله» = نفس القرية.
+   المفتاح: من غير همزات (أ إ آ ← ا)، ة ← ه، ى ← ي، من غير «ال» في الأول، ومن غير مسافات.
+   canonArea = الاسم الموحّد: اللي في قايمة قرى الإدارة لو موجود، وإلا الشكل الأكتر استخدامًا عند المدرسين. */
+function areaKey(a){ return normText(String(a||'')).replace(/^ال/,'').replace(/\s+/g,''); }
+function canonArea(a){
+  a=String(a||'').trim().replace(/\s+/g,' '); if(!a) return '';
+  const k=areaKey(a), off=villages().find(v=>areaKey(v)===k); if(off) return off;
+  const cnt={}; for(const t of (db.teachers||[])) if(t.area && areaKey(t.area)===k) cnt[t.area]=(cnt[t.area]||0)+1;
+  const best=Object.entries(cnt).sort((x,y)=>y[1]-x[1])[0]; return best ? best[0] : a;
+}
 const vlist = id => `<datalist id="${id}">${villages().map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
 const idaraSelect = (id, cur) => `<select id="${id}"><option value="">— اختار الإدارة —</option>${IDARA_LIST.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
 function load(){
@@ -1123,13 +1133,16 @@ function openHomeFilters(){
       ['ret','↩️ المرتجع',[['r',`↩️ عنده مرتجع (${n(t=>sbCnt[t.id]?.r)})`]]]]:[])
   ];
   const m=document.createElement('div'); m.className='modal';
+  const nAG=areaGroups().length;
   m.innerHTML=`<div class="box"><h3>🔎 فلاتر المدرسين</h3><div class="small muted">علّم على أي عدد. جوه نفس القسم = أي واحدة منهم، وبين الأقسام = لازم يتحقق كله.</div>
+    ${nAG?`<a class="btn owe sm" href="#/settings" data-hf="x" style="display:block;text-align:center;margin-top:8px">🏘️ فيه ${nAG} قرية متكتبة بأكتر من شكل — وحّدها من الإعدادات ←</a>`:''}
     ${G.filter(g=>g[2].length).map(([k,ttl,opts])=>`<div class="small" style="margin:12px 0 4px;font-weight:800">${ttl}</div><div class="chips" style="flex-wrap:wrap">${opts.map(([v,l])=>`<button type="button" class="chip ${HF[k].has(v)?'on':''}" data-hk="${k}" data-hv="${esc(v)}">${esc(l)}</button>`).join('')}</div>`).join('')}
     <div class="row2" style="margin-top:14px"><button class="btn ghost" id="hfClr">امسح الفلاتر</button><button class="btn pri" id="hfOk">تم (<span id="hfN"></span> مدرس)</button></div></div>`;
   document.body.appendChild(m);
   const upd=()=>{ renderList(); const b=$('#hfBtn'); if(b) b.textContent='🔎 فلاتر'+(hfCount()?` (${hfCount()})`:''); const c=$('#hfN',m); if(c) c.textContent=hfList().length; };
   m.addEventListener('click', e=>{
     if(e.target===m || e.target.id==='hfOk'){ m.remove(); return; }
+    if(e.target.closest('[data-hf="x"]')){ e.preventDefault(); m.remove(); location.hash='#/settings'; setTimeout(()=>document.getElementById('areas')?.scrollIntoView({block:'start'}), 120); return; }
     if(e.target.id==='hfClr'){ hfReset(); m.querySelectorAll('[data-hk]').forEach(b=>b.classList.remove('on')); upd(); return; }
     const b=e.target.closest('[data-hk]'); if(!b) return;
     const s=HF[b.dataset.hk], v=b.dataset.hv; s.has(v)?s.delete(v):s.add(v); b.classList.toggle('on', s.has(v)); upd();
@@ -1979,6 +1992,7 @@ function renderSettings(){
       <button class="btn pri" style="width:100%" data-act="import-xlsx">اختار شيت الإكسل</button>
       <p class="hint">بيقرا أعمدة: اسم المدرس، رقم الهاتف، المرحلة، المادة، المنطقة، التصنيف (A/B/C)، عدد الطلاب، التاريخ. لو المدرس موجود (نفس رقم التليفون) بيحدّث بياناته بس ومش بيمسح تسليماته، ونفس الرقم مرتين في الشيت بيتضاف مرة واحدة.</p></div>
     ${dupsCard()}
+    ${areasCard()}
     ${noStockCard()}
     ${stockCard()}
     ${locCard()}
@@ -2004,6 +2018,42 @@ function grpLink(how){
   const txt='السلام عليكم ورحمة الله وبركاته\n‼️ هام وعاجل 📢 @الكل\n‼️ هام وعاجل 📢 @الكل\n🚨 عاجل جدًا 📢 @الكل\n\nيا أساتذة، عشان توصلكم رسايل «سلاح التلميذ» ومواعيد استلام النسخ، ادخلوا على الرابط ده واكتبوا رقم تليفونكم وثبّتوا البرنامج:\n'+url;
   if(how==='wa'){ window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); return; }
   try{ navigator.clipboard.writeText(txt).then(()=>toast('اتنسخ ✅ الصقه في الجروب'),()=>prompt('انسخ:',txt)); }catch(e){ prompt('انسخ:',txt); }
+}
+/* مهمة 5: كارت «🏘️ قرى متكتبة بأكتر من شكل» — كل مجموعة بنفس المفتاح (areaKey) ← تختار الشكل الصح وتدوس «وحّد».
+   الشكل المقترح: اللي في قايمة قرى الإدارة (✔️)، وإلا الأكتر استخدامًا. مكان القرية على الخريطة (vloc) بيتنقل للاسم الموحّد. */
+var AREA_PICK={};
+function areaGroups(){
+  const m=new Map();
+  for(const t of db.teachers){ const a=String(t.area||'').trim(); if(!a) continue; const k=areaKey(a); if(!m.has(k)) m.set(k,new Map()); const g=m.get(k); g.set(a,(g.get(a)||0)+1); }
+  const out=[];
+  for(const [k,g] of m){ const off=villages().find(v=>areaKey(v)===k), vs=[...g].sort((x,y)=>y[1]-x[1]);
+    if(g.size<2 && !(off && vs[0][0]!==off)) continue;
+    const opts=off && !g.has(off) ? [[off,0], ...vs] : vs;
+    const pick=AREA_PICK[k] && opts.some(([a])=>a===AREA_PICK[k]) ? AREA_PICK[k] : (off || vs[0][0]);
+    out.push({k, vs:opts, to:pick, off}); }
+  return out.sort((a,b)=>a.to.localeCompare(b.to,'ar'));
+}
+function areasCard(){
+  const gs=areaGroups();
+  if(!gs.length) return `<div class="card" id="areas"><h3 class="sec-t">🏘️ أسامي القرى</h3><div style="color:var(--ok);font-weight:700">✅ كل قرية مكتوبة بشكل واحد</div></div>`;
+  return `<div class="card" id="areas"><h3 class="sec-t">🏘️ قرى متكتبة بأكتر من شكل (${gs.length})</h3>
+    <p class="hint" style="margin-top:0">نفس القرية مكتوبة بأكتر من شكل (همزة، تاء مربوطة أو هاء…) فبتظهر في الفلتر كذا مرة. الشكل الصح متعلّم عليه — دوس على شكل تاني لو عايز تغيّره، وبعدين «وحّد».</p>
+    <button class="btn ok" style="width:100%;margin-bottom:8px" data-act="area-merge-all">✅ وحّد الكل (${gs.length})</button>
+    ${gs.map(g=>`<div class="dupg"><div class="chips" style="flex-wrap:wrap;margin:0 0 6px">${g.vs.map(([a,n])=>`<button type="button" class="chip ${a===g.to?'on':''}" data-act="area-pick" data-k="${esc(g.k)}" data-a="${esc(a)}">${esc(a)}${n?` (${n})`:''}${g.off===a?' ✔️':''}</button>`).join('')}</div>
+      <div class="hrow"><div class="grow small">هيبقوا كلهم: <b>${esc(g.to)}</b></div><button class="btn sm ok" data-act="area-merge" data-k="${esc(g.k)}">وحّد</button></div></div>`).join('')}
+    <div class="small muted" style="margin-top:6px">✔️ = الاسم المكتوب في قايمة قرى الإدارة. من دلوقتي أي حد يكتب شكل تاني لقرية موجودة بيتصلّح لوحده.</div></div>`;
+}
+function areaMerge(keys){
+  const gs=areaGroups().filter(g=>keys.includes(g.k)); if(!gs.length) return;
+  let n=0; for(const g of gs) for(const t of db.teachers) if(t.area && t.area!==g.to && areaKey(t.area)===g.k) n++;
+  withUndo(`🏘️ اتوحّد ${gs.length===1?'اسم القرية':gs.length+' قرية'} (${n} مدرس)`, ()=>{
+    db.vloc ||= {};
+    for(const g of gs){
+      for(const t of db.teachers) if(t.area && t.area!==g.to && areaKey(t.area)===g.k){ t.area=g.to; t.newArea=isNewArea(g.to); }
+      for(const [a] of g.vs) if(a!==g.to && db.vloc[a]){ if(!db.vloc[g.to]) db.vloc[g.to]=db.vloc[a]; delete db.vloc[a]; }
+      delete AREA_PICK[g.k];
+    }
+  });
 }
 function dupsCard(){
   const gs=dupGroups(), srv=srvDupsPart();
@@ -2159,7 +2209,7 @@ function teacherForm(t, preset={}){
     if(so.length>1 && !spec && !confirm('التخصص لسه ما اتحددش (فصل / صفوف عليا / …) — من غيره الكتب المستحقة ممكن متتحسبش صح.\nتحفظ كده؟')) return;
     const subjectText = subjects.length ? subjLabel(subjects) : ((t.subjects||[]).length ? '' : (t.subjectText||''));
     const data={name, phone, stage, subjectText, subjects,
-      area:m.querySelector('#f_area').value.trim(), school:m.querySelector('#f_school').value.trim(),
+      area:canonArea(m.querySelector('#f_area').value), school:m.querySelector('#f_school').value.trim(),
       cls:m.querySelector('#f_cls').value, spec, students:m.querySelector('#f_students').value.trim(),
       grades:[...m.querySelectorAll('#f_grades input:checked')].map(x=>+x.value), where:m.querySelector('#f_where').value};
     data.tGrades=data.grades.slice().sort((a,b)=>a-b); data.grades=data.tGrades.filter(g=>g<=6);
@@ -2227,6 +2277,9 @@ document.addEventListener('click', e=>{
     case 'edafat': exportAdditions(); break;
     case 'compsale': exportCompanySales(); break;
     /* البيع */
+    case 'area-pick': { AREA_PICK[el.dataset.k]=el.dataset.a; const y=scrollY; render(); scrollTo(0,y); break; }
+    case 'area-merge': { const y=scrollY; areaMerge([el.dataset.k]); scrollTo(0,y); break; }
+    case 'area-merge-all': { const gs=areaGroups(); if(gs.length && confirm(`هتوحّد ${gs.length} قرية — كل قرية على الشكل المتعلّم عليه. أكمّل؟`)){ const y=scrollY; areaMerge(gs.map(g=>g.k)); scrollTo(0,y); } break; }
     case 'sales-tab': salesTab=el.dataset.k; if(location.hash!=='#/sales') location.hash='#/sales'; else render(); break;
     case 'new-sale': saleForm(''); break;
     case 'sell-t': { const tid=el.dataset.id||curTeacher; if(!dupBlock(tById(tid))) saleForm(tid, null, el.dataset.mode||'sell'); break; }
@@ -2498,7 +2551,7 @@ async function importRows(rows, src, after, newOnly){
     if(!name){ noNm++; continue; }               // رقم من غير اسم ← مالوش لازمة
     const subjectText=get(r,H.subject), stageText=get(r,H.stage);
     const rec={name, phone, stage:parseStage(stageText), stageText, subjectText, subjects:[...parseSubjects(subjectText), ...(/كشكول/.test(normText(subjectText))?['kash']:[])],
-      area:get(r,H.area), school:get(r,H.school), cls:get(r,H.cls), students:get(r,H.students), plan:parseDate(r[H.date])};
+      area:canonArea(get(r,H.area)), school:get(r,H.school), cls:get(r,H.cls), students:get(r,H.students), plan:parseDate(r[H.date])};
     // نفس الرقم مرتين في نفس الشيت → يتضاف مرة واحدة (السطر التاني يكمّل الخانات الفاضية بس)
     if(seen.has(pk)){ const p=seen.get(pk).rec; for(const k of Object.keys(rec)) if(empty(p[k])) p[k]=rec[k]; twice++; continue; }
     const item={rec}; seen.set(pk, item);
@@ -3847,7 +3900,9 @@ function renderMerchPage(name){
       <div class="tscroll" style="margin-top:4px"><table class="tbl"><thead><tr><th>الكتاب</th><th>خدت</th><th>السعر</th><th>الإجمالي</th><th>بعت منه</th><th>فاضل</th></tr></thead><tbody>${rows}</tbody></table></div>
       ${rr}<div class="net">إجمالي الاستلام: ${fmtM(tot)}</div></div>`; }).join('');
   const pays=[...x.pays].sort((a,b)=>a.d.localeCompare(b.d));
-  h += `<div class="card pcard"><h4><span>💵 دفعتله</span><span>${fmtM(x.paid)}</span></h4>${pays.length?pays.map(p=>`<div class="hrow"><div class="grow">دفعت بتاريخ ${fmtDay(dk(p.d))}</div><b>${fmtM(p.amt)}</b><button class="btn sm danger" data-act="del-mpay" data-id="${p.id}" title="امسح">🗑️</button></div>`).join(''):'<div class="muted small">لسه ما دفعتلوش.</div>'}</div>`;
+  h += `<div class="card pcard"><h4><span>💵 دفعتله</span><span>${fmtM(x.paid)}</span></h4>${pays.length?pays.map(p=>`<div class="hrow"><div class="grow">دفعت بتاريخ ${fmtDay(dk(p.d))} <span class="tagr">${PAYM[pmOfM(p)]}</span></div><b>${fmtM(p.amt)}</b><button class="btn sm danger" data-act="del-mpay" data-id="${p.id}" title="امسح">🗑️</button></div>`).join(''):'<div class="muted small">لسه ما دفعتلوش.</div>'}</div>`;
+  // مهمة 4: حركات الحساب بالترتيب بالتاريخ + عليك له بعدها، زي حساب المدرس بالظبط
+  h += merchLedgerHtml(name, recs, x);
   const mt=merchTeachers(name);
   h += `<div class="card"><h3 class="sec-t">👨‍🏫 المدرسين اللي خدوا من بضاعته (${mt.length})</h3>${mt.length?`<div class="tscroll"><table class="tbl"><thead><tr><th>المدرس</th><th>خد</th><th>رجّع</th><th>فضل معاه</th></tr></thead><tbody>
     ${mt.map(z=>`<tr><td><a href="#/sale-t/${encodeURIComponent(z.t.id)}"><b>${esc(z.t.name)}</b></a></td><td>${z.n}</td><td>${z.r||''}</td><td><b>${z.n-z.r}</b></td></tr>`).join('')}</tbody></table></div>`:'<div class="muted small">لسه محدش خد من بضاعته.</div>'}</div>`;
@@ -3857,6 +3912,21 @@ function renderMerchPage(name){
     <div class="kv"><span><b>${x.owe<0?'ليك عنده':'عليك له'}</b></span><b style="color:${x.owe>0?'var(--bad)':'var(--ok)'};font-size:18px">${fmtM(Math.abs(x.owe))}</b></div>${x.noPrice?'<div class="small muted">⚠️ فيه كتب من غير سعر</div>':''}</div>
     <div class="acts4"><button class="btn pri" data-act="merch-xlsx" style="grid-column:1/-1">⬆️ ارفع بضاعة جديدة</button><button class="btn ghost" data-act="mret" data-m="${esc(name)}">↩️ رجّعتله</button><button class="btn ok" data-act="mpay" data-m="${esc(name)}">💵 دفعتله</button></div>`;
   app.innerHTML=h;
+}
+// مهمة 4: جدول حركات التاجر بالترتيب بالتاريخ + «عليك له بعدها»، بنفس شكل حساب المدرس
+function merchLedgerHtml(name, recs, x){
+  const moves=[];
+  for(const r of recs){ let v=0; for(const l of r.lots) if(l.p!=null) v+=l.q*l.p; moves.push({k:'buy', d:r.d, v, lbl:'📦 استلام بضاعة'}); }
+  for(const m of db.merchRets.filter(m=>m.m===name)) moves.push({k:'ret', d:m.d, v:mretVal(m), lbl:'↩️ رجّعتله'});
+  for(const p of x.pays) moves.push({k:'pay', d:p.d, v:p.amt, lbl:'💵 دفعتله — '+PAYM[pmOfM(p)]});
+  moves.sort((a,b)=>(a.d||'').localeCompare(b.d||''));
+  if(!moves.length) return '';
+  let bal=0, lastDay='';
+  const rows=moves.map(m=>{ bal=r2(bal+(m.k==='buy'?m.v:-m.v));
+    const day=fmtDay(dk(m.d)), hd = day!==lastDay ? (lastDay=day, `<tr><td colspan="3" style="background:var(--bg-neutral);color:var(--muted);font-weight:700;text-align:right;padding:5px 8px">📅 ${esc(day)}</td></tr>`) : '';
+    const c = m.k==='buy'?'#1d4ed8':m.k==='ret'?'#ea580c':'#15803d';
+    return hd+`<tr><td style="color:${c};text-align:right">${esc(m.lbl)}</td><td style="color:${c}"><b>${m.k==='buy'?'':'− '}${fmtN(m.v)}</b></td><td style="color:${bal>0?'var(--bad)':'var(--ok)'}"><b>${fmtN(bal)}</b></td></tr>`; }).join('');
+  return `<div class="card"><h3 class="sec-t">📜 حركات الحساب بالترتيب</h3><div class="tscroll"><table class="gtab"><thead><tr><th>الحركة</th><th>المبلغ</th><th>عليك له بعدها</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
 /* ================= بند ث: خطة زيارة بكرة ================= */
@@ -5889,7 +5959,7 @@ async function rreqAct(id, ok){
     const c=r.changes||{}, log=[];
     if(c.name && c.name!==t.name){ log.push(`الاسم: ${t.name||''} ← ${c.name}`); t.name=c.name; }
     if(c.phone && last10(c.phone)!==last10(t.phone)){ log.push(`التليفون: ${t.phone||''} ← ${c.phone}`); t.phone=c.phone; }
-    if(c.area!=null && c.area!==t.area){ log.push(`القرية: ${t.area||''} ← ${c.area}`); t.area=c.area; }
+    if(c.area!=null){ const na=canonArea(c.area); if(na!==t.area){ log.push(`القرية: ${t.area||''} ← ${na}`); t.area=na; } }
     if(Array.isArray(c.subjects) && c.subjects.join()!==(t.subjects||[]).join()){ log.push(`المواد: ${subjLabel(t.subjects||[])} ← ${subjLabel(c.subjects)}`); t.subjects=c.subjects; t.subjectText=subjLabel(c.subjects); }
     logT(t.id, 'من حسابه: ' + (log.join(' • ') || 'مفيش تغيير'), 'تحديث من المدرس');
     save();
