@@ -42,7 +42,9 @@ header.top .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;alig
 header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-btn{flex:none;border:0;border-radius:10px;padding:5px 10px;background:rgba(255,255,255,.18);color:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
 .bk-btn.due{background:var(--owe);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
-.backrow{max-width:860px;margin:0 auto;padding:0 16px 8px}
+.backrow{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:32}
+body:has(nav.tabs:not([hidden])) .backrow{bottom:calc(72px + env(safe-area-inset-bottom))}
+body:has(.actbar.show) .backrow{bottom:calc(150px + env(safe-area-inset-bottom))}
 .backrow[hidden]{display:none}
 /* 2026-11-12: شاشة تعديل المدرس كروت ملونة زي «ملفي» عند المدرس */
 .ebox{background:var(--bg)}
@@ -52,7 +54,7 @@ header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;
 .esec .field label{font-weight:700}
 .esec .pgrid label:has(input:checked){background:color-mix(in srgb,var(--sc) 14%,var(--card));border-color:var(--sc)}
 .esave{position:sticky;bottom:-16px;background:var(--bg);padding:10px 0;z-index:2}
-.backbtn{display:inline-flex;align-items:center;gap:4px;width:auto;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:22px;padding:7px 20px;font:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(219,39,119,.3)}
+.backbtn{display:inline-flex;align-items:center;gap:4px;width:auto;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:22px;padding:9px 18px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.28);white-space:nowrap}
 .backbtn:active{transform:scale(.98)}
 header.top .back{background:rgba(255,255,255,.22);border:0;color:inherit;font-size:18px;font-weight:800;padding:8px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;flex:none}
 .areabar{position:sticky;top:var(--hh,50px);z-index:12;background:var(--bg);padding:6px 0 4px}
@@ -546,7 +548,7 @@ nav.hbar a{max-width:none;font-weight:700;font-size:14px}
 <div class="splash" id="splash"><img src="icon-512.png" alt="" onerror="this.remove()"><div class="nm">سلاح التلميذ البحيرة</div><div class="sg">تصميم وتنفيذ: شريف حشيش</div></div>
 <script>/* شاشة البداية أول فتحة بس — مش كل ما يرجع من المراسلات */ try{ if(sessionStorage.getItem('selah-in')) document.getElementById('splash').remove(); sessionStorage.setItem('selah-in','1'); }catch(e){}</script>
 <header class="top"><div class="in"><img class="logo" src="icon-192.png" alt="" onerror="this.remove()"><h1 id="title">سلاح التلميذ البحيرة</h1><button class="bk-btn" id="bellBtn" data-act="bell" title="طلبات المدرسين" style="position:relative">🔔<b id="bellN" hidden style="position:absolute;top:-4px;left:-4px;background:#dc2626;color:#fff;border-radius:10px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px"></b></button><button class="bk-btn" id="bkBtn" data-act="backup" title="نسخة احتياطية">💾</button></div></header>
-<div class="backrow" id="backRow" hidden><button class="backbtn" id="backBtn" aria-label="رجوع">→ رجوع</button></div>
+<div class="backrow" id="backRow" hidden><button class="backbtn" id="backBtn" aria-label="رجوع">رجوع ←</button></div>
 <main class="wrap" id="app"></main>
 <div class="actbar" id="actbar"><div class="in">
   <button class="btn ok" data-act="commit-d" style="flex:2">✅ سلّمت <span class="n"></span></button>
@@ -892,7 +894,6 @@ function setHeader(title, back){
   $('#title').textContent = title;
   const home = !location.hash || location.hash==='#/' || location.hash==='#';
   const r=$('#backRow'), hd=document.querySelector('header.top');
-  if(r && hd && r.parentNode!==hd) hd.appendChild(r);   // زرار الرجوع جوه الشريط اللي فوق — ثابت معاه (الجرس والنسخة الاحتياطية)
   if(r) r.hidden = home;
   const b=$('#backBtn'); if(b) b.onclick = ()=>{ history.length>1 ? history.back() : (location.hash='#/'); };
   requestAnimationFrame(()=>{ if(hd) document.documentElement.style.setProperty('--hh', hd.offsetHeight+'px'); });

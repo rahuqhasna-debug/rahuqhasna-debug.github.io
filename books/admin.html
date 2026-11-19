@@ -29,6 +29,11 @@
 header.top h1{font-size:17px}
 header.top .in{gap:4px;padding-inline:10px}
 .chatbar{bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+/* زرار الرجوع تحت على الشمال في كل الصفحات، و«إرسال» على اليمين */
+.backfab{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:32;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:22px;padding:9px 18px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.28);white-space:nowrap}
+.backfab[hidden],body:has(.selbar) .backfab{display:none}
+.chatbar .in{padding-inline-end:100px}
+.chatbar #ms{order:-1;padding-inline:10px}
 .selbar{bottom:calc(10px + env(safe-area-inset-bottom))}
 .chat{padding-bottom:130px}
 .search.big input{font-size:18px;padding:14px}
@@ -45,7 +50,7 @@ header.top .in{gap:4px;padding-inline:10px}
 .chead .who small{display:block;font-size:12.5px;color:var(--muted)}
 .chead .icos2{display:flex;justify-content:space-around;gap:6px;margin-top:8px}
 .chead .icos2 .tic{width:44px;height:44px;font-size:21px;cursor:pointer}
-.chead #chMore{font-size:22px;font-weight:800;cursor:pointer}
+.chead .r1 .tic{cursor:pointer;width:42px;height:42px;font-size:20px}
 #nrbar{background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:12px;padding:8px 10px;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -55,7 +60,6 @@ header.top .in{gap:4px;padding-inline:10px}
 </head>
 <body>
 <header class="top"><div class="in">
-  <button class="hb backpill" id="backBtn" aria-label="رجوع">→ رجوع</button>
   <h1 id="title">المراسلات</h1>
   <a class="hb" id="bellBtn" href="#/bell" hidden aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></a>
   <a class="hb" id="setBtn" href="#/settings" hidden aria-label="الإعدادات">⚙️<span class="cnt" id="setCnt" hidden></span></a>
@@ -63,6 +67,7 @@ header.top .in{gap:4px;padding-inline:10px}
 </div></header>
 <main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
 <div id="cbar"></div>
+<button class="backfab" id="backBtn" aria-label="رجوع">رجوع ←</button>
 <script>
 "use strict";
 let RECOV = /type=recovery/.test(location.hash + location.search);   // راجع من رابط «نسيت الباسورد»
@@ -1009,7 +1014,7 @@ function drawSelbar() {
   b.innerHTML = `<div class="selbar"><div class="in"><b>${n} متحدد</b>
     ${notIn.length ? `<button class="btn sm ok" id="sInv">📲 ابعت كارت دعوة (${notIn.length})</button>` : ''}
     <button class="btn sm" id="sLoc" style="background:#ede9fe">📍 ابعت لينك الموقع (${n})</button>
-    <button class="btn sm danger" id="sRing">🔔 ابعت تنبيه (${n})</button>
+    <button class="btn sm danger" id="sRing">📳 ابعت تنبيه (${n})</button>
     <button class="btn sm owe" id="sUpd">🔄 اطلب تحديث (${n})</button>
     <button class="btn sm" id="sRv">📦 ${allOpen ? 'قفل' : 'فعّل'} «استلمت إيه» (${n})</button>
     <button class="btn sm ghost" id="sX">✕ شيل التحديد</button></div></div>`;
@@ -1252,19 +1257,19 @@ const DRAFT_K = 'selah-msg-draft:'; var chatId = '';
 function chatDraft() { const a = document.getElementById('mt'); if (!a || !chatId) return; const v = a.value; v.trim() ? LS.set(DRAFT_K + chatId, v) : LS.del(DRAFT_K + chatId); }
 // الخمس زراير المثبتة فوق في الشات
 function chatIcos(t) {
-  return `${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<button type="button" class="tic" id="ring" title="نبّه المدرس"><span id="ringI" style="display:inline-block">🔔</span></button>${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت كارت دعوة" style="background:#dcfce7">📲</a>` : ''}<button type="button" class="tic" data-ru="${t.id}" title="حدّث بيانات المدرس ده">🔄</button>`;
+  return `${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<button type="button" class="tic" id="ring" title="نبّه المدرس"><span id="ringI" style="display:inline-block">📳</span></button>${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت كارت دعوة" style="background:#dcfce7">📲</a>` : ''}<button type="button" class="tic" data-ru="${t.id}" title="حدّث بيانات المدرس ده">🔄</button>`;
 }
 async function viewChat(id) {
   const t = T.find(x => x.id === id); if (!t) { if (bootFast) { app.innerHTML = '<div class="loading">جاري التحميل…</div>'; return; } location.hash = '#/'; return; }
   setHeader('المحادثة', true);
   chatSel = null; chatId = t.id;
   app.innerHTML = `<style>@keyframes ringy{0%,100%{transform:rotate(0)}20%{transform:rotate(-25deg)}40%{transform:rotate(25deg)}60%{transform:rotate(-15deg)}80%{transform:rotate(15deg)}}.ringing{animation:ringy .5s 3}</style>
-    <div class="chead"><div class="r1"><button type="button" class="who" id="chWho" title="صفحة المدرس">${avHtml(t)}<span class="tx"><b>${esc(t.name)}</b><small>${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</small></span></button><button type="button" class="tic" id="chMore" aria-label="المزيد">⋮</button></div>
+    <div class="chead"><div class="r1"><button type="button" class="who" id="chWho" title="صفحة المدرس">${avHtml(t)}<span class="tx"><b>${esc(t.name)}</b><small>${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</small></span></button><button type="button" class="tic" id="chDel" title="مسح رسايل" aria-label="مسح رسايل">🗑️</button><button type="button" class="tic" id="chInfo" title="بيانات المراسلات" aria-label="بيانات المراسلات">📋</button></div>
       <div class="icos2">${chatIcos(t)}</div>
-      <div id="nrbar" hidden style="display:none"><b style="flex:1;min-width:150px">🔔 التذكير شغال — مستني رد المدرس</b><button class="btn sm" id="nrstop">⏹️ وقّف التذكير</button></div></div>
+      <div id="nrbar" hidden style="display:none"><b style="flex:1;min-width:150px">⏰ التذكير شغال — مستني رد المدرس</b><button class="btn sm" id="nrstop">⏹️ وقّف التذكير</button></div></div>
     <div id="delbar" hidden class="alert" style="padding:8px"><b>دوس على الرسايل اللي عايز تمسحها</b><div class="acts"><button class="btn sm danger" id="delgo">🗑️ امسح المحدد (0)</button><button class="btn sm ghost" id="delx">إلغاء</button></div></div>
     <div class="chat" id="chat"><div class="loading">…</div></div>`;
-  $('#cbar').innerHTML = `<div class="chatbar"><div style="max-width:836px;margin:0 auto 6px;display:flex;justify-content:flex-end"><label id="nrl" style="display:inline-flex;gap:6px;align-items:center;font-weight:700;font-size:14px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:999px;padding:4px 12px;cursor:pointer"><input type="checkbox" id="nr" style="width:18px;height:18px"> 🔔 مطلوب رد</label></div><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
+  $('#cbar').innerHTML = `<div class="chatbar"><div style="max-width:836px;margin:0 auto 6px;display:flex;justify-content:flex-end"><label id="nrl" style="display:inline-flex;gap:6px;align-items:center;font-weight:700;font-size:14px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:999px;padding:4px 12px;cursor:pointer"><input type="checkbox" id="nr" style="width:18px;height:18px"> ❗ مطلوب رد</label></div><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
   $('#mt').value = LS.get(DRAFT_K + t.id) || ''; $('#mt').addEventListener('input', chatDraft);
   chatMsgs = []; chatLast = 0;
   // متابعة 15: الشريط الأصفر بيظهر بس لو فيه رسالة «مطلوب رد» لسه مفتوحة
@@ -1304,10 +1309,8 @@ async function viewChat(id) {
   const redraw = () => { $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>'; if (chatSel) $('#delgo').textContent = `🗑️ امسح المحدد (${chatSel.size})`; };
   // 🗑️ (بند 43): يسأل «امسح المحدد» ولا «امسح كل الرسايل مع المدرس ده»
   $('#chWho').onclick = () => openFull(t);
-  $('#chMore').onclick = () => modal(`<h3>${esc(t.name)}</h3><div class="acts" style="flex-direction:column;align-items:stretch"><button class="btn" id="mInfo">📋 بيانات المراسلات</button><button class="btn danger" id="mDel">🗑️ مسح رسايل</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
-    $('#mInfo', box).onclick = () => { close(); location.hash = '#/t/' + encodeURIComponent(t.id); };
-    $('#mDel', box).onclick = () => { close(); delDlg(); };
-  });
+  $('#chInfo').onclick = () => { location.hash = '#/t/' + encodeURIComponent(t.id); };
+  $('#chDel').onclick = () => delDlg();
   const delDlg = () => modal(`<h3>🗑️ مسح رسايل ${esc(t.name)}</h3><div class="acts" style="flex-direction:column;align-items:stretch">
       <button class="btn" id="dSel">☑️ امسح رسايل أختارها</button><button class="btn danger" id="dAll">🗑️ امسح كل الرسايل مع المدرس ده</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
     $('#dSel', box).onclick = () => { close(); chatSel = new Set(); $('#delbar').hidden = false; redraw(); };

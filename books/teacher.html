@@ -193,7 +193,6 @@ main.wrap.ordv{height:calc(100dvh - 104px);padding:8px 12px 6px;display:flex;fle
 .savebar.sb2 .gobtn{flex:1;width:auto;font-size:16px;padding:10px}
 .savebar.sb2 .sbk{flex:none;border:2px solid #cbd5e1;background:#fff;color:#334155;border-radius:14px;padding:9px 16px;font:800 15px inherit;font-family:inherit;cursor:pointer}
 body:has(.savebar.sb2) .back2{display:none}
-.back2{display:none!important}   /* 2026-11-18 (طلب شريف): «رجوع» اللي تحت اتشال — كفاية «رجوع» اللي فوق والتابات */
 .rvg:has(.rvq){grid-template-columns:repeat(2,1fr)}
 /* 2026-11-18: كارت «اطلب كتبك بسعر مميز من سلاح التلميذ» — 3 زراير جوه إطار مدوّر */
 .ordcard{grid-column:1/-1;display:flex;flex-direction:column;justify-content:center;gap:8px;border-radius:24px;padding:10px 10px 12px;background:linear-gradient(135deg,#fdf2f8,#fce7f3 50%,#fef3c7);border:2.5px solid #f472b6;box-shadow:0 8px 20px -10px rgba(219,39,119,.6)}
@@ -203,7 +202,11 @@ body:has(.savebar.sb2) .back2{display:none}
 .ordcard .oc b{font-size:24px;line-height:1}
 .hm .ttiles.five:has(.ordcard){grid-template-rows:auto 100px 100px}
 .ordcard .oc-o{background:linear-gradient(140deg,#f472b6,#db2777)}.ordcard .oc-i{background:linear-gradient(140deg,#38bdf8,#2563eb)}.ordcard .oc-r{background:linear-gradient(140deg,#fb923c,#dc2626)}
-.back2{position:fixed;left:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:31;border:0;border-radius:20px;padding:6px 14px;font:800 13.5px inherit;font-family:inherit;color:#fff;background:linear-gradient(135deg,#ec4899,#db2777);box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer}
+.back2{position:fixed;left:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:31;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:22px;padding:9px 18px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.28);white-space:nowrap}
+body:has(#tabs[hidden]) .back2{bottom:calc(14px + env(safe-area-inset-bottom))}
+.chatbar .in{padding-inline-end:104px}
+.chatbar .in>.btn{order:-1}
+body:has(.chatbar) .back2{bottom:calc(80px + env(safe-area-inset-bottom))}
 .back2[hidden]{display:none}
 body:has(.savebar) .back2,body:has(main:not(.ordv) .totbar) .back2{bottom:calc(140px + env(safe-area-inset-bottom))}
 body:has(.ordv) .back2{bottom:calc(122px + env(safe-area-inset-bottom))}
@@ -230,7 +233,7 @@ body:has(.ordv) .back2{bottom:calc(122px + env(safe-area-inset-bottom))}
 <header class="top"><div class="in"><button class="hb backpill" id="back" hidden aria-label="رجوع">رجوع ➜</button><h1 id="title">سلاح التلميذ</h1><button class="hb" id="bell" aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></button><button class="hb" id="reload" aria-label="تحديث">🔄</button></div></header>
 <main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
 <div id="cbar"></div>
-<button class="back2" id="back2" hidden aria-label="رجوع">➜ رجوع</button>
+<button class="back2" id="back2" hidden aria-label="رجوع">رجوع ←</button>
 <nav class="tabs" id="tabs" hidden>
   <a data-v="home"><span class="i">🏠</span>الرئيسية<span class="cnt" id="homeCnt" hidden></span></a>
   <a data-v="msgs"><span class="i">💬</span>الرسائل<span class="cnt" id="msgCnt" hidden></span></a>
@@ -1204,7 +1207,7 @@ function renderRecv() {
     ${RV.recv && RV.recv.at ? `<div class="good small">✅ بعتّ قبل كده ${fmtDate(RV.recv.at)} — تقدر تعدّل وتبعت تاني</div>` : ''}
     <div class="rvl" id="rvl">${RECV_ALL.map(([st, nm, subs]) => `<div class="rvst">${st === 'm' ? '📗' : '📘'} ${nm}</div>${subs.map(s => `<div class="rvsb" style="color:${SUBJ_COL[s] || '#6d28d9'}"><span class="bk-dot" style="background:${SUBJ_COL[s] || '#6d28d9'}"></span>${B_SUBJ[s]} ${nm}</div><div class="rvg">${all.filter(k => k.startsWith(st + '-' + s + '-')).map(k => box(k)).join('')}</div>`).join('')}`).join('')}
       ${extra.length ? `<div class="rvst">📚 كتب تانية علّمتها قبل كده</div><div class="rvg">${extra.map(k => box(k, bookLabel(k))).join('')}</div>` : ''}</div>
-    <div class="savebar sb2"><button class="sbk" id="rvb">➜ رجوع</button><button class="gobtn" id="rvs">📤 ابعت</button></div>`;
+    <div class="savebar sb2"><button class="sbk" id="rvb">رجوع ←</button><button class="gobtn" id="rvs">📤 ابعت</button></div>`;
   $('#rvl').onclick = e => { const b = e.target.closest('[data-d]'), r = e.target.closest('.rvq'); if (!b || !r) return;
     const k = r.dataset.k; Q[k] = Math.max(0, Math.min(99, (Q[k] || 0) + +b.dataset.d)); if (!Q[k]) delete Q[k];
     $('b', r).textContent = Q[k] || 0; r.classList.toggle('on', !!Q[k]); };
@@ -1387,7 +1390,7 @@ function drawPhotos() {
 
 $$('#tabs a').forEach(a => a.onclick = () => go(a.dataset.v));
 $('#reload').onclick = () => load();
-function updBell() { const n = D ? msgBadge() + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && !$('#tabs').hidden); }
+function updBell() { const n = D ? msgBadge() + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = true; const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && (isApp || !$('#tabs').hidden)); }
 $('#bell').onclick = () => {
   if (!D) return;
   // شريط الجرس: كل الإشعارات سطر تحت سطر، واللي فيه جديد جنبه رقمه
