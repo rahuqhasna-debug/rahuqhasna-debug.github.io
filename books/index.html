@@ -46,6 +46,9 @@ header.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;
 body:has(nav.tabs:not([hidden])) .backrow{bottom:calc(72px + env(safe-area-inset-bottom))}
 body:has(.actbar.show) .backrow{bottom:calc(150px + env(safe-area-inset-bottom))}
 .backrow[hidden]{display:none}
+.whobox{border:2px solid #dc2626;background:#fef2f2;color:#111;border-radius:12px;padding:10px 12px;margin:6px 0 10px;font-size:14.5px}
+.whobox .wt{color:#b91c1c;font-size:16px}.whobox .wcol{border-top:1px dashed #fca5a5;margin-top:8px;padding-top:8px}
+.whobox.wq{border-color:#d1d5db;background:#f9fafb;color:#555;font-size:13px}.whobox.wok{border-color:#86efac;background:#f0fdf4;color:#166534;font-size:13.5px;font-weight:700}
 /* 2026-11-12: شاشة تعديل المدرس كروت ملونة زي «ملفي» عند المدرس */
 .ebox{background:var(--bg)}
 .ehead{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#3b82f6);color:#fff;border-radius:18px;padding:12px;text-align:center;font-weight:800;font-size:19px;margin-bottom:12px;box-shadow:0 6px 16px -8px rgba(109,40,217,.6)}
@@ -1076,16 +1079,17 @@ function renderTeachers(){
   app.innerHTML = topBanners() + `
     <div class="stickbar">
     <div class="search">
-      <input id="q" type="search" placeholder="🔎 أي حاجة: اسم، تليفون، قرية، «عربي إعدادي A»، «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
+      <input id="q" type="search" data-who="whoBox" placeholder="🔎 أي حاجة: اسم، تليفون، قرية، «عربي إعدادي A»، «مستحق عربي»" value="${esc(homeQuery)}" autocomplete="off" enterkeyhint="search">
       <button class="btn" id="hfBtn" style="white-space:nowrap">🔎 فلاتر${hfCount()?` (${hfCount()})`:''}</button>
       <button class="btn pri" data-act="new-teacher" title="مدرس جديد">➕</button>
     </div></div>
-    <div id="hfOn"></div>
+    <div id="hfOn"></div><div id="whoBox"></div>
     <div class="tlist" id="tlist"></div>`;
   const q=$('#q');
   q.addEventListener('input',()=>{homeQuery=q.value; renderList();});
   q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const f=document.querySelector('#tlist .titem'); if(f) location.hash='#/t/'+encodeURIComponent(f.dataset.id); }});
   $('#hfBtn').onclick=openHomeFilters;
+  if(q.value) whoRun(q);
   if(matchMedia('(min-width:700px)').matches) q.focus();
   renderList();
 }
@@ -2066,7 +2070,7 @@ function teacherForm(t, preset={}){
   m.innerHTML=`<div class="box ebox"><div class="ehead">${isNew?'➕ مدرس جديد':'✏️ تعديل بيانات المدرس'}${isNew?'':`<div class="small" style="font-weight:600;opacity:.95">${esc(t.name)}</div>`}</div>
     <div class="esec" style="--sc:#2563eb"><h4>👤 بياناته</h4>
     <div class="field"><label>الاسم *</label><input id="f_name" value="${esc(t.name)}"></div>
-    <div class="field"><label>رقم التليفون</label><input id="f_phone" inputmode="tel" dir="ltr" value="${esc(t.phone)}"></div></div>
+    <div class="field"><label>رقم التليفون</label><input id="f_phone" data-who="f_who" inputmode="tel" dir="ltr" value="${esc(t.phone)}"><div id="f_who"></div></div></div>
     <div class="esec" style="--sc:#7c3aed"><h4>📚 شغله</h4>
     <div class="row2"><div class="field"><label>المرحلة</label><select id="f_stage">
       ${[['','—'],['p','ابتدائي'],['m','إعدادي'],['pm','ابتدائي وإعدادي']].map(([v,l])=>`<option value="${v}" ${t.stage===v?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -3789,7 +3793,7 @@ function saleForm(tid, editId, mode='sell'){
   const drawT=()=>{
     const box=m.querySelector('#sf_t'), t=tById(st.tid);
     if(t){ box.innerHTML=`<div class="pick"><div class="grow"><b>${esc(t.name)}</b><div class="small muted">${esc([t.subjectText, STAGE_TXT[t.stage]||'', t.phone].filter(Boolean).join(' • '))}</div></div>${ed?'':'<button class="btn sm ghost" data-sf="chg">تغيير</button>'}</div>`; return; }
-    box.innerHTML=`<div class="search" style="margin:0 0 6px"><input id="sf_q" type="search" placeholder="🔎 اسم المدرس أو التليفون" autocomplete="off"></div><div id="sf_res"></div>`;
+    box.innerHTML=`<div class="search" style="margin:0 0 6px"><input id="sf_q" type="search" data-who="sf_who" placeholder="🔎 اسم المدرس أو التليفون" autocomplete="off"></div><div id="sf_who"></div><div id="sf_res"></div>`;
     const q=box.querySelector('#sf_q'); q.addEventListener('input',()=>drawRes(q.value)); drawRes(''); setTimeout(()=>q.focus(),50);
   };
   const drawB=()=>{
@@ -4434,7 +4438,7 @@ function syncStats(){
 async function cloudSync(manual){
   if(!CLOUD_URL || !db.mail || syncBusy || !navigator.onLine) return;
   // مرة واحدة بعد التحديث: كل مندوب يبعت تسليماته القديمة لسجل الزمايل حتى لو مفيش شغل جديد عنده
-  const dlvDone=(()=>{ try{ return localStorage.getItem(KEY+'-dlv1')==='1'; }catch(e){ return true; } })();
+  const dlvDone=(()=>{ try{ return localStorage.getItem(KEY+'-dlv1')==='1' && localStorage.getItem(KEY+'-tl1')==='1'; }catch(e){ return true; } })();
   if(dlvDone && db.lastSync && (db.lastChange||'') <= db.lastSync){ flushInv(); if(manual) toast('☁️ كل حاجة متبعتة'); return; }
   syncBusy=true; const at=new Date().toISOString();
   try{
@@ -4443,8 +4447,9 @@ async function cloudSync(manual){
     const tmp={}; db.teachers.forEach(x=>tmp[x.id]=x);
     const dl=db.entries.filter(e=>e.s==='d' && tmp[e.t] && tmp[e.t].phone).map(e=>[tmp[e.t].phone, e.b, e.q, dk(e.dd)]);
     await cloudPost({k:'sync', mail:db.mail, rep:db.rep, idara:db.idara||'', day:dayKey(), at, stats:syncStats(), sales, pays, dels, dl,
+      tl:db.teachers.filter(x=>x.phone).map(x=>[x.phone, x.name||'']),   // مهمة 3: «سجل المدرسين الموحّد» ← كارت «متسجل عند زميلك»
       data:{app:'selah-books', ...db, teachers:db.teachers.map(({photos, thumb, ...x})=>x), savedAt:at}});   // صور المدرسين مش بتتبعت في المزامنة اليومية
-    db.lastSync=at; save(false); try{ localStorage.setItem(KEY+'-dlv1','1'); }catch(e){} if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
+    db.lastSync=at; save(false); try{ localStorage.setItem(KEY+'-dlv1','1'); localStorage.setItem(KEY+'-tl1','1'); }catch(e){} if(manual){ toast('☁️ اتبعت ✅'); if(location.hash==='#/settings') render(); }
   }catch(e){
     if(manual) toast('⚠️ ما اتبعتش — هيحاول تاني لوحده');
     else try{ const k=KEY+'-serr', o=+localStorage.getItem(k)||0; if(Date.now()-o>6*3600000){ localStorage.setItem(k, String(Date.now())); toast('⚠️ شغلك لسه ما اتبعتش — البرنامج هيحاول تاني لوحده'); } }catch(_){}
@@ -4614,6 +4619,44 @@ async function colCheck(t){
     }
     const x=dlvIdx(); return x ? colGroup(x.rl, x.rn, x.p[p]) : [];
   }catch(e){ return []; }
+}
+/* مهمة 3 (طلب شريف): أي خانة عليها data-who — أول ما يتكتب رقم تليفون كامل (11 رقم) بنسأل السيرفر:
+   الرقم ده متسجل عند زميل؟ (سجل المدرسين الموحّد + سجل التسليمات + الشيت الرئيسي) ← كارت باسم الزميل وإدارته واستلم إيه أو لسه */
+const phone11 = raw => { const d=normPhone(String(raw||'')); return /^01\d{9}$/.test(d) ? d : ''; };
+function whoRun(inp){
+  const box=document.getElementById(inp.dataset.who); if(!box) return;
+  const p=phone11(inp.value);
+  if(!p){ clearTimeout(box._t); box.dataset.p=''; box.innerHTML=''; return; }
+  if(box.dataset.p===p) return;
+  box.dataset.p=p; clearTimeout(box._t); box._t=setTimeout(()=>whoShow(p, box), 500);
+}
+document.addEventListener('input', e=>{ const i=e.target; if(i && i.dataset && i.dataset.who) whoRun(i); });
+async function whoShow(p, box){
+  if(!CLOUD_URL || !db.mail){ box.innerHTML=''; return; }
+  if(!navigator.onLine){ box.innerHTML='<div class="whobox wq">📡 محتاج نت عشان أعرف لو الرقم ده متسجل عند زميل</div>'; return; }
+  box.innerHTML='<div class="whobox wq">⏳ بدوّر لو الرقم ده متسجل عند زميل…</div>';
+  let j=null; try{ j=await Promise.race([cloudPost({k:'who', mail:db.mail, p, full:true}), new Promise(r=>setTimeout(()=>r(null), 15000))]); }catch(e){}
+  if(box.dataset.p!==p || !document.body.contains(box)) return;
+  if(!j){ box.innerHTML='<div class="whobox wq">⚠️ ما قدرتش أسأل السيرفر دلوقتي — جرّب تاني بعد شوية</div>'; return; }
+  const me=(db.mail||'').toLowerCase(), G={};
+  const g=(mail,name)=>G[mail] ||= {mail, name, idara:'', tn:new Set(), books:[]};
+  if(j.g) for(const r of j.g.r||[]){ const m=j.g.rl[r[0]]; if(!m || m===me) continue; const x=g(m, j.g.rn[r[0]]||m); x.idara=j.g.ri[r[0]]||x.idara; if(r[1]) x.tn.add(r[1]); }
+  for(const r of j.r||[]){ const m=j.rl[r[0]]; if(!m || m===me) continue; g(m, j.rn[r[0]]||m).books.push([r[1], r[2], r[3]]); }
+  const list=Object.values(G), seen=new Set(list.map(x=>normText(x.name)));
+  const ms=(j.ms||[]).filter(x=>x.rep && normText(x.rep)!==normText(db.rep||'') && !seen.has(normText(x.rep)));
+  const mine=db.teachers.filter(t=>phK(t.phone)===p.slice(-10));
+  if(!list.length && !ms.length){ box.innerHTML='<div class="whobox wok">✅ الرقم ده مش متسجل عند أي زميل</div>'; return; }
+  const bl=b=>b.map(([k,q,d])=>`${esc(bookLabel(k))} × ${q}${d?` <span class="muted">(${esc(fmtDay(d))})</span>`:''}`).join('<br>');
+  const msg=(c,tn)=>`السلام عليكم يا أستاذ ${c} 👋\nالمدرس ${tn||''} (${p}) متسجل عندك. أتعامل معاه أنا ولا هو معاك؟\n— ${db.rep||''}`;
+  const one=c=>{ const pp=colPerson(c.mail), tn=[...c.tn].join(' / ') || (mine[0]&&mine[0].name) || '';
+    return `<div class="wcol"><div>👤 <b>أ/ ${esc(c.name)}</b>${(c.idara||(pp&&pp.id))?` — إدارة <b>${esc(c.idara||pp.id)}</b>`:''}</div>
+      ${tn?`<div class="small">المدرس عنده: <b>${esc(tn)}</b></div>`:''}
+      <div class="small" style="margin-top:4px">${c.books.length?`<b>استلم منه:</b><br>${bl(c.books)}`:'<b>لسه ما استلمش منه حاجة</b>'}</div>
+      ${pp&&pp.ph?`<div class="acts" style="margin:6px 0 0"><a class="btn sm" href="tel:${esc(pp.ph)}">📞 اتصل بيه</a><a class="btn sm ok" target="_blank" rel="noopener" href="https://wa.me/${esc(waOf(pp.ph))}?text=${encodeURIComponent(msg(c.name, tn))}">💬 واتساب</a></div>`:''}</div>`; };
+  box.innerHTML=`<div class="whobox"><b class="wt">⚠️ الرقم ده متسجل عند زميلك</b>
+    ${list.map(one).join('')}
+    ${ms.map(x=>`<div class="wcol"><div>👤 <b>أ/ ${esc(x.rep)}</b>${x.id?` — إدارة <b>${esc(x.id)}</b>`:''} <span class="small muted">(من الشيت الرئيسي)</span></div>${x.n?`<div class="small">المدرس عنده: <b>${esc(x.n)}</b></div>`:''}</div>`).join('')}
+    ${mine.length?`<div class="small" style="margin-top:6px">📌 وهو متسجل عندك كمان باسم <b>${esc(mine.map(t=>t.name).join(' / '))}</b></div>`:''}</div>`;
 }
 function colPerson(mail){ return teamCache().list.find(x=>x.m===mail) || null; }
 function tPlace(t){
