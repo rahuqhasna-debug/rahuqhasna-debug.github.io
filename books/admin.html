@@ -773,7 +773,15 @@ function stWords(ws) {
   return o;
 }
 // اللي الكلمة في اسمه يظهر الأول، وبعده اللي الكلمة في بياناته التانية
-function nameFirst(l, ws) { if (!ws.length) return l; const hit = t => { const n = nq(t.name); return ws.every(w => n.includes(w)); }; return [...l.filter(hit), ...l.filter(t => !hit(t))]; }
+// مهمة 3 (طلب شريف): البحث بأول اسم — «شريف» ← شريف محمد الأول، بعدين أحمد شريف، وفي الآخر أماني الشريف واللي الكلمة في بياناته التانية
+function nameRank(t, ws) {
+  const w = ws[0] || ''; if (!w || w[0] === '§') return 3;
+  const n = nq(t.name || '').trim(), parts = n.split(/\s+/);
+  if (parts[0] && parts[0].startsWith(w)) return ws.length > 1 && !ws.every((x, i) => (parts[i] || '').startsWith(x)) ? 1 : 0;
+  if (parts.some(p => p.startsWith(w))) return 2;
+  return n.includes(w) ? 3 : 4;
+}
+function nameFirst(l, ws) { if (!ws.length) return l; return l.map((t, i) => [t, nameRank(t, ws), i]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(x => x[0]); }
 function tHay(t) {
   const pr = t.profile || {}, g = gInfo()[t.local_id], s = g && g.s, out = [t.name, t.phone, valText('subjects', pr.subjects), valText('stage', pr.stage), STG_T[pr.stage] || '', UPD_C[updState(t)][1], ...(notesBy[t.id] || [])];   // اسم المندوب اتشال من البحث: كل المدرسين هنا مدرسيني، فالبحث باسمي كان بيجيبهم كلهم
   hayVals(pr, out, 0); (t.books || []).forEach(b => out.push(b.l || bookLabel(b.b)));
@@ -1014,7 +1022,7 @@ function drawSelbar() {
   b.innerHTML = `<div class="selbar"><div class="in"><b>${n} متحدد</b>
     ${notIn.length ? `<button class="btn sm ok" id="sInv">📲 ابعت كارت دعوة (${notIn.length})</button>` : ''}
     <button class="btn sm" id="sLoc" style="background:#ede9fe">📍 ابعت لينك الموقع (${n})</button>
-    <button class="btn sm danger" id="sRing">📳 ابعت تنبيه (${n})</button>
+    <button class="btn sm danger" id="sRing">🚨 ابعت تنبيه (${n})</button>
     <button class="btn sm owe" id="sUpd">🔄 اطلب تحديث (${n})</button>
     <button class="btn sm" id="sRv">📦 ${allOpen ? 'قفل' : 'فعّل'} «استلمت إيه» (${n})</button>
     <button class="btn sm ghost" id="sX">✕ شيل التحديد</button></div></div>`;
@@ -1257,7 +1265,7 @@ const DRAFT_K = 'selah-msg-draft:'; var chatId = '';
 function chatDraft() { const a = document.getElementById('mt'); if (!a || !chatId) return; const v = a.value; v.trim() ? LS.set(DRAFT_K + chatId, v) : LS.del(DRAFT_K + chatId); }
 // الخمس زراير المثبتة فوق في الشات
 function chatIcos(t) {
-  return `${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<button type="button" class="tic" id="ring" title="نبّه المدرس"><span id="ringI" style="display:inline-block">📳</span></button>${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت كارت دعوة" style="background:#dcfce7">📲</a>` : ''}<button type="button" class="tic" data-ru="${t.id}" title="حدّث بيانات المدرس ده">🔄</button>`;
+  return `${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<button type="button" class="tic" id="ring" title="نبّه المدرس"><span id="ringI" style="display:inline-block">🚨</span></button>${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت كارت دعوة" style="background:#dcfce7">📲</a>` : ''}<button type="button" class="tic" data-ru="${t.id}" title="حدّث بيانات المدرس ده">🔄</button>`;
 }
 async function viewChat(id) {
   const t = T.find(x => x.id === id); if (!t) { if (bootFast) { app.innerHTML = '<div class="loading">جاري التحميل…</div>'; return; } location.hash = '#/'; return; }

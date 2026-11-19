@@ -1453,7 +1453,6 @@ function renderTeacher(id){
     ${chipsArr.length?`<div class="tc-chips">${chipsArr.map(c=>`<span>${c}</span>`).join('')}</div>`:''}
     <div class="rbtns">${phone?`<a class="rbtn" href="tel:${esc(phone)}" title="اتصال">📞</a><a class="rbtn" href="${wa}" target="_blank" rel="noopener" title="واتساب">${WA_ICON}</a>`:''}${sbHas()?`<a class="rbtn" href="admin.html${sbIds[t.id]?'#/c/'+encodeURIComponent(sbIds[t.id]):''}" title="رسايل تطبيق سلاح التلميذ">📨</a>`:''}${phone&&sbHas()&&sbCodes[t.id]?`<a class="rbtn" style="background:#dcfce7" href="https://wa.me/2${esc(normPhone(phone))}?text=${encodeURIComponent(appInviteMsg(t))}" target="_blank" rel="noopener" title="ابعت كارت دعوة">📲</a>`:''}${sbHas()&&sbIds[t.id]?`<a class="rbtn" href="admin.html#/ru/${encodeURIComponent(sbIds[t.id])}" title="حدّث بيانات المدرس">🔄</a>`:''}
       <button class="rbtn" data-act="edit-teacher" title="تعديل">✏️</button></div>
-    <button class="btn" data-act="team-share" data-id="${esc(t.id)}" style="width:100%;margin-top:8px;background:#dbeafe;color:#1e3a8a;font-weight:800">📤 ابعت بيانات المدرس للتيم (Promotion Team)</button>
     <div class="row2" style="margin-top:10px"><button class="btn ${t.loc?'ghost':'owe'}" data-act="loc-up">📍 ${t.loc?'عدّل الموقع':'ارفع الموقع'}</button>${t.loc?`<button class="btn pri" data-act="nav-go" data-id="${esc(t.id)}">🚗 ابدأ الطريق</button>`:(instTxt(t)?`<span class="small" style="align-self:center">${instTxt(t)}</span>`:'')}</div>${t.loc?`<a class="btn ok" data-act="noop" href="${gmapsDir(t.loc)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;text-align:center;text-decoration:none">🗺️ افتح الطريق في خرائط جوجل</a>`:''}</div>
     ${recvBox(t)}
     <div class="bigbuy"><button class="btn gold" data-act="sell-t" data-mode="order">📝 طلب بيع</button><button class="btn owe" data-act="sell-t" data-mode="sell">🛒 بيع دلوقتي</button></div>`;
@@ -4699,11 +4698,25 @@ function bindSearch(id, box, empty){
   const run=()=>{ PQ[id]=inp.value; filterHay(typeof box==='string'?document.querySelector(box):box, inp.value, empty); };
   inp.addEventListener('input', run); if(inp.value) run();
 }
+// مهمة 3 (طلب شريف): البحث بأول اسم — الكومة بتبدأ باسم المدرس، فاللي اسمه بيبدأ بالكلمة يطلع الأول،
+// بعدين اللي فيه كلمة بتبدأ بيها (أحمد شريف)، وبعدين اللي الكلمة جوه كلمة (الشريف)، وفي الآخر الباقي. المسح بيرجّع الترتيب الأصلي.
+function hayRank(h, ws){ const w=ws[0]||''; if(!w || w[0]==='§') return 4; if(h.startsWith(w)) return ws.length>1 && !h.startsWith(ws.join(' ')) ? 1 : 0;
+  const d=h.search(/\d/), head=' '+h.slice(0, d>0 ? d : 60); if(head.includes(' '+w)) return 2; return head.includes(w) ? 3 : 4; }
+function hayOrder(box, ws){
+  const ps=new Set(); let i=0;
+  box.querySelectorAll('[data-hay]').forEach(el=>{ if(el.dataset.ord==null) el.dataset.ord=i; i++; ps.add(el.parentNode); });
+  ps.forEach(p=>{ const kids=[...p.children].filter(c=>c.hasAttribute('data-hay')); if(kids.length<2) return;
+    const key=el=>(ws.length ? hayRank(el.dataset.hay||'', ws)*1e6 : 0) + (+el.dataset.ord||0);
+    const sorted=[...kids].sort((a,b)=>key(a)-key(b)); if(sorted.every((x,k)=>x===kids[k])) return;
+    const slots=kids.map(k=>{ const c=document.createComment(''); p.replaceChild(c,k); return c; });
+    slots.forEach((c,k)=>p.replaceChild(sorted[k], c)); });
+}
 function filterHay(box, raw, empty){
   if(!box) return; const ws=qWords(raw); let shown=0;
   box.querySelectorAll('[data-hay]').forEach(el=>{ unmark(el);
     const h=el.dataset.hay||'', ok=!ws.length || ws.every(w=>h.includes(w) || (/^0\d{2,}$/.test(w) && h.includes(w.slice(1))));
     el.hidden=!ok; if(ok){ shown++; if(ws.length) markWords(el, ws); } });
+  hayOrder(box, ws);
   // الأقسام اللي كل اللي جواها اتخفى تتخفى، واللي فيها نتيجة تتفتح
   box.querySelectorAll('[data-hgrp]').forEach(g=>{ const any=!!g.querySelector('[data-hay]:not([hidden])'); g.hidden = !!ws.length && !any; if(ws.length && any && g.tagName==='DETAILS') g.open=true; });
   let msg=box.querySelector('.nores');
