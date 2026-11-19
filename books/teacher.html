@@ -1390,13 +1390,14 @@ $('#reload').onclick = () => load();
 function updBell() { const n = D ? msgBadge() + D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0) + newsTotal() : 0, c = $('#bellCnt'); if (c) { c.hidden = !n; c.textContent = n; } const bk = $('#back'); if (bk) bk.hidden = !(isApp && view !== 'home'); const b2 = $('#back2'); if (b2) b2.hidden = !(view !== 'home' && !$('#tabs').hidden); }
 $('#bell').onclick = () => {
   if (!D) return;
-  const rows = [];
-  if (msgBadge()) rows.push(['msgs', '💬 عندك رسايل جديدة']);
-  if (D.updates.length || (D.pending && D.pending.status === 'question')) rows.push(['home', '📝 مطلوب منك تحدّث بياناتك']);
-  if (newsTotal()) rows.push(['news', '🆕 اعرف الجديد: ' + newsBrief()]);
-  if (!rows.length) return toast('مفيش جديد دلوقتي 👌', 1800);
-  modal(`<h3 style="margin-top:0">🔔 الإشعارات</h3>${rows.map(r => `<button class="btn" data-bgo="${r[0]}" style="width:100%;margin-bottom:8px;text-align:start;white-space:normal">${esc(r[1])}</button>`).join('')}<button class="btn ghost" data-close style="width:100%">قفل</button>`,
-    (box, close) => { $$('[data-bgo]', box).forEach(b => b.onclick = () => { close(); go(b.dataset.bgo); }); });
+  // شريط الجرس: كل الإشعارات سطر تحت سطر، واللي فيه جديد جنبه رقمه
+  const old = document.getElementById('bellDrop'); if (old) { old.remove(); return; }
+  const upd = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0), nb = newsBrief();
+  const rows = [['msgs', '💬 الرسايل', msgBadge()], ['me', '📝 مطلوب تحدّث بياناتك', upd], ['news', '🆕 اعرف الجديد' + (nb ? ': ' + nb : ''), newsTotal()]];
+  const w = document.createElement('div'); w.id = 'bellDrop'; w.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.25)';
+  w.innerHTML = `<div style="position:absolute;top:58px;left:8px;right:8px;max-width:460px;margin:0 auto;background:#fff;color:#111;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:6px;max-height:75vh;overflow:auto">${rows.map(r => `<button type="button" data-bgo="${r[0]}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 12px;border:0;border-bottom:1px solid #eee;background:${r[2] ? '#f0fdfa' : 'transparent'};color:#111;font:inherit;font-size:16px;font-weight:${r[2] ? 800 : 500};text-align:start;cursor:pointer;opacity:${r[2] ? 1 : .55}"><span>${esc(r[1])}</span>${r[2] ? `<b style="background:#dc2626;color:#fff;border-radius:12px;min-width:24px;padding:1px 8px;text-align:center">${r[2]}</b>` : ''}</button>`).join('')}</div>`;
+  document.body.appendChild(w);
+  w.onclick = e => { const b = e.target.closest('[data-bgo]'); if (b) { w.remove(); go(b.dataset.bgo); } else if (e.target === w) w.remove(); };
 };
 $('#back').onclick = () => { if (newsSub) { newsSub = null; render(); } else go(view === 'inv' || view === 'ret' ? 'order' : 'home'); };
 $('#back2').onclick = () => $('#back').onclick();

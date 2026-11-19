@@ -22,13 +22,31 @@
 .bdg.r{background:#e11d48}
 .selrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 10px}
 .selrow .cnt{font-weight:700;font-size:14px}
-.osum{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-.osum button{border:1.5px solid var(--line);background:var(--card);color:inherit;border-radius:12px;padding:8px 2px;font-family:inherit;cursor:pointer;text-align:center;font-size:12px;line-height:1.3}
-.osum b{display:block;font-size:20px}
 .irow{display:flex!important;align-items:center;gap:8px;cursor:pointer;flex-wrap:wrap}
 .irow .grow{flex:1;min-width:150px}
 .rgrp .rq{border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
-@media (max-width:420px){.osum{grid-template-columns:repeat(2,1fr)}}
+/* مهمة 3: القايمة والشات شبه الواتساب */
+header.top h1{font-size:17px}
+header.top .in{gap:4px;padding-inline:10px}
+.chatbar{bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.selbar{bottom:calc(10px + env(safe-area-inset-bottom))}
+.chat{padding-bottom:130px}
+.search.big input{font-size:18px;padding:14px}
+.search.big .btn{flex:none;padding-inline:14px}
+.lacts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 10px}
+.lacts .btn{padding:9px 2px;font-size:13.5px;text-align:center;white-space:nowrap}
+#tl.selm{padding-bottom:130px}
+.avb{display:inline-flex;flex:none;cursor:pointer;border-radius:50%}
+.chead{position:sticky;top:var(--hh,56px);z-index:15;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.chead .r1{display:flex;align-items:center;gap:8px}
+.chead .who{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;color:inherit;font-family:inherit;text-align:start;cursor:pointer}
+.chead .who span.tx{flex:1;min-width:0}
+.chead .who b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chead .who small{display:block;font-size:12.5px;color:var(--muted)}
+.chead .icos2{display:flex;justify-content:space-around;gap:6px;margin-top:8px}
+.chead .icos2 .tic{width:44px;height:44px;font-size:21px;cursor:pointer}
+.chead #chMore{font-size:22px;font-weight:800;cursor:pointer}
+#nrbar{background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:12px;padding:8px 10px;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -40,19 +58,11 @@
   <button class="hb backpill" id="backBtn" aria-label="رجوع">→ رجوع</button>
   <h1 id="title">المراسلات</h1>
   <a class="hb" id="bellBtn" href="#/bell" hidden aria-label="الإشعارات">🔔<span class="cnt" id="bellCnt" hidden></span></a>
+  <a class="hb" id="setBtn" href="#/settings" hidden aria-label="الإعدادات">⚙️<span class="cnt" id="setCnt" hidden></span></a>
   <button class="hb" id="outBtn" hidden aria-label="خروج">🚪</button>
 </div></header>
-<div class="wrap" id="qbar" style="padding-bottom:0"></div>
 <main class="wrap" id="app"><div class="loading">جاري التحميل…</div></main>
 <div id="cbar"></div>
-<nav class="tabs" id="tabs" hidden>
-  <a href="index.html"><span class="i">🏠</span>البرنامج</a>
-  <a href="index.html#/msgs" id="waTab"><span class="i wai"></span>واتساب</a>
-  <a href="#/" data-tab="list"><span class="i">👥</span>المدرسين</a>
-  <a href="#/invite" data-tab="invite"><span class="i">✉️</span>رسالة الدعوة</a>
-  <a href="#" data-tab="chat" id="chatTab"><span class="i">💬</span>المحادثة</a>
-  <a href="#/settings" data-tab="settings" id="setTab" hidden><span class="i">⚙️</span>الإعدادات</a>
-</nav>
 <script>
 "use strict";
 let RECOV = /type=recovery/.test(location.hash + location.search);   // راجع من رابط «نسيت الباسورد»
@@ -189,8 +199,7 @@ function ask(title, { ph = '', val = '', multi = true, okTxt = 'تمام' } = {}
 }
 function norm(s) { return String(s || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ْ]/g, ''); }
 // زرار الرجوع ظاهر في كل صفحة (في قايمة المدرسين بيرجّع للبرنامج)
-function setHeader(t, back) { $('#title').textContent = t; $('#backBtn').hidden = false; }
-function setTab(t) { $$('#tabs a').forEach(a => a.classList.toggle('on', a.dataset.tab === t)); }
+function setHeader(t, back) { $('#title').textContent = t; $('#backBtn').hidden = false; requestAnimationFrame(() => { const h = document.querySelector('header.top'); if (h) document.documentElement.style.setProperty('--hh', h.offsetHeight + 'px'); }); }
 function repName(id) { const s = staffList.find(x => x.id === id); return s ? s.name : '—'; }
 function inviteLink(t) {
   const c = getCfg(), base = location.href.split('#')[0].replace(/admin\.html.*$/, '');
@@ -249,7 +258,7 @@ async function loadAvatars() {
   AVC = keep; try { LS.set('selah-trial-av', keep); } catch (e) { }
   // المدرس اللي ملوش صورة في البرنامج الأخضر ياخد صورته من المراسلات (للدايرة)
   try { const db = gdb(); let n = 0; if (db) for (const x of T) { const a = keep[x.id], gt = a && x.local_id && (db.teachers || []).find(y => y.id === x.local_id); if (gt && !gt.thumb && !gt.noAv) { gt.thumb = a.th; n++; } } if (n) gsave(db); } catch (e) { }
-  if (ch && me) route();
+  if (ch && me) softRoute();
 }
 function avHtml(t, cls = '') {
   const src = t.avatar || (AVC[t.id] && AVC[t.id].th) || (t.id && T.find(x => x.id === t.id) && ((gInfo()[(T.find(x => x.id === t.id) || {}).local_id] || {}).th));
@@ -287,8 +296,50 @@ function ding() {
   } catch (e) { }
 }
 
+/* ---------- الفتح السريع (مهمة 3) ----------
+   آخر بيانات اتحمّلت بتتحفظ على الموبايل، فالصفحة بتظهر فورًا وبعدين تتحدّث من النت لوحدها */
+const SNAP = {
+  db: null,
+  open() { return this.db ||= new Promise((ok, no) => { const r = indexedDB.open('selah-msg-snap', 1); r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async get() { try { const d = await this.open(); return await Promise.race([new Promise(ok => { const r = d.transaction('s').objectStore('s').get('snap'); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(null); }), new Promise(ok => setTimeout(() => ok(null), 900))]); } catch (e) { return null; } },
+  async put(v) { try { const d = await this.open(); d.transaction('s', 'readwrite').objectStore('s').put(v, 'snap'); } catch (e) { } },
+  async del() { try { const d = await this.open(); d.transaction('s', 'readwrite').objectStore('s').delete('snap'); } catch (e) { } }
+};
+let snapUid = '', bootFast = false;
+function snapSave() {
+  if (!snapUid || !me) return;
+  SNAP.put({ uid: snapUid, at: Date.now(), me, T, notesBy, staffList, BC, unreadBy, lastMsg, ordersBy, retsBy, mSt, mTot, myLast, pend: [...pendSet], need: [...needSet], appr: [...apprSet], open: [...openUpd] });
+}
+async function snapShow() {
+  const s = await SNAP.get();
+  if (!s || s.uid !== snapUid || !s.me || !(s.T || []).length) return false;
+  me = s.me; T = s.T; notesBy = s.notesBy || {}; staffList = s.staffList || []; BC = s.BC || BC; unreadBy = s.unreadBy || {}; lastMsg = s.lastMsg || {}; ordersBy = s.ordersBy || {}; retsBy = s.retsBy || {};
+  mSt = s.mSt || {}; mTot = s.mTot || {}; myLast = s.myLast || {}; pendSet = new Set(s.pend || []); needSet = new Set(s.need || []); apprSet = new Set(s.appr || []); openUpd = new Set(s.open || []);
+  showChrome(); bootFast = true; route(); return true;
+}
+function showChrome() { $('#bellBtn').hidden = false; $('#outBtn').hidden = false; $('#setBtn').hidden = false; }
+// بعد ما البيانات الجديدة توصل: القايمة تتحدّث مكانها، والشات والفورمات يفضلوا زي ما هم
+function softRoute() {
+  if (bootFast) { bootFast = false; const h = location.hash.slice(1); if (h.startsWith('/c/') && !$('#chat')) return route(); }
+  if ($('#tl')) { const y = scrollY; refreshList(); scrollTo(0, y); }
+}
+/* ---------- مكانك في القايمة: البحث والفلاتر والنزول بيفضلوا لما ترجع ---------- */
+const LIST_K = 'selah-msg-list'; let listY = 0;
+function listSave() { try { sessionStorage.setItem(LIST_K, JSON.stringify({ q: ui.q, rep: ui.rep, shown: ui.shown, y: listY, fl: Object.fromEntries(Object.entries(FL()).map(([k, v]) => [k, [...v]])) })); } catch (e) { } }
+function listLoad() { try { const j = JSON.parse(sessionStorage.getItem(LIST_K) || 'null'); if (!j) return; ui.q = j.q || ''; ui.rep = j.rep || ''; ui.shown = Math.max(200, +j.shown || 200); listY = +j.y || 0; const f = FL(); for (const k in f) (j.fl && j.fl[k] || []).forEach(v => f[k].add(v)); } catch (e) { } }
+window.addEventListener('scroll', () => { if ($('#tl')) listY = scrollY; }, { passive: true });
+window.addEventListener('pagehide', () => { listSave(); chatDraft(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { listSave(); chatDraft(); } });
+// الدايرة / اسم المدرس جوه الشات: صفحته الكاملة في البرنامج، ولو مش على الموبايل ده ← بياناته في المراسلات
+function openFull(t) {
+  listSave(); chatDraft();
+  const g = gdb();
+  if (t.local_id && g && (g.teachers || []).some(x => x.id === t.local_id)) location.href = 'index.html#/t/' + encodeURIComponent(t.local_id);
+  else location.hash = '#/t/' + encodeURIComponent(t.id);
+}
 /* ---------- الدخول ---------- */
 async function boot() {
+  listLoad();
   if (!sb) { app.innerHTML = '<div class="alert"><h3>القاعدة لسه مش متظبطة</h3>config.js فاضي.</div>'; return; }
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return renderLogin(RECOV ? 'الرابط خلص أو اتفتح قبل كده — اطلب رابط جديد من «نسيت الباسورد؟»' : '');
@@ -296,7 +347,10 @@ async function boot() {
   await loadMe();
 }
 async function loadMe() {
+  let fast = false;
   try {
+    try { const { data: { session } } = await sb.auth.getSession(); snapUid = (session && session.user && session.user.id) || ''; } catch (e) { }
+    if (!me && snapUid) fast = await snapShow();
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return renderLogin();
     let { data, error } = await sb.from('staff').select('*').eq('user_id', user.id).maybeSingle();
@@ -306,10 +360,10 @@ async function loadMe() {
     if (!data || !data.active) return renderLogin(user.is_anonymous ? (data && !data.active ? 'الرقم ده اتقفل — كلّم المالك' : 'ادخل الرقم السري تاني') : 'الحساب ده مش مسموح له');
     me = data;
     LS.set('selah-trial-me', { id: me.id, name: me.name });   // البرنامج الأخضر بيعمل منه «🔗 لينك المجموعة»
-    $('#bellBtn').hidden = false; $('#outBtn').hidden = false; $('#tabs').hidden = false; $('#setTab').hidden = !isAdmin();
-    await loadAll(); route();
+    showChrome();
+    await loadAll(); fast ? softRoute() : route();
     try { const mg = gMergeAll(); if (mg) toast(`🧾 ${mg} مدرس كان عنده أكتر من طلب — بقى طلب واحد (الأحدث)`, 4500); } catch (e) { }
-    importGreen().then(ch => { if (ch) refresh(); }).catch(() => { });
+    importGreen().then(ch => { if (ch) (T.length ? loadAll().then(softRoute) : refresh()); }).catch(() => { });
     syncPrices().catch(() => { }); loadAvatars().catch(() => { });
     if (window.pushInitStaff) window.pushInitStaff(me).catch(() => { });
     // دخل برقمه من باب البرنامج ← يرجع للبرنامج الأخضر (بعد ما يتربط بالإشعارات)
@@ -326,7 +380,10 @@ async function loadMe() {
     nudgeWeekly();
     // 🧭 مهمة 2: رقم الواتساب لو لسه مش متسجّل (بعد ما schema13 يتشغّل — العمود phone يبقى موجود) — نسأل مرة في اليوم بالكتير
     if ('phone' in me && !me.phone) { const k = 'selah-trial-ph-ask', d = new Date().toDateString(); if (LS.get(k) !== d) { LS.set(k, d); setTimeout(() => askPhone().catch(() => { }), 1500); } }
-  } catch (e) { app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="boot()">حاول تاني</button>`; }
+  } catch (e) {
+    if (fast) { bootFast = false; toast('📡 النت ضعيف — دي آخر نسخة محفوظة على الموبايل', 4000); return; }
+    app.innerHTML = `<div class="alert">${esc(errMsg(e))}</div><button class="btn" onclick="boot()">حاول تاني</button>`;
+  }
 }
 // متابعة 10: تذكير للمدرس اللي مثبّت التطبيق وما فتحهوش بقاله أسبوع (مرة في اليوم من الموبايل ده، والقاعدة بتمنع التكرار لنفس المدرس قبل أسبوع)
 function nudgeWeekly() {
@@ -339,14 +396,14 @@ function nudgeWeekly() {
   }).catch(() => { });
 }
 function renderWait(s) {
-  me = null; $('#tabs').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('💬 المراسلات', false);
+  me = null; SNAP.del(); $('#setBtn').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('💬 المراسلات', false);
   app.innerHTML = `<div class="card" style="text-align:center;padding:24px"><div style="font-size:46px">⏳</div><h3>أهلًا ${esc(s.name || '')}</h3>
     <div>طلبك وصل للمالك — مستني الموافقة.</div><div class="small muted" style="margin:6px 0 14px">أول ما يوافق، دوس «جرّب تاني» وهيفتح معاك.</div>
     <button class="btn pri" id="wAgain" style="width:100%">🔄 جرّب تاني</button></div><a class="btn ghost" href="index.html">→ رجوع للبرنامج</a>`;
   $('#wAgain').onclick = () => loadMe();
 }
 function renderLogin(msg) {
-  me = null; $('#tabs').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('💬 المراسلات 🔒', false);
+  me = null; SNAP.del(); $('#setBtn').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('💬 المراسلات 🔒', false);
   app.innerHTML = `${msg ? `<div class="alert">${esc(msg)}</div>` : ''}
   <div class="chips"><button class="chip on" data-lt="rep">🔑 مندوب</button><button class="chip" data-lt="admin">👑 المالك</button></div>
   <div class="card" id="lrep"><h3>ادخل الرقم السري بتاعك</h3>
@@ -395,7 +452,7 @@ function renderLogin(msg) {
 }
 // لما يرجع من رابط «نسيت الباسورد»
 function renderNewPw() {
-  me = null; $('#tabs').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('🔑 باسورد جديد', false);
+  me = null; SNAP.del(); $('#setBtn').hidden = true; $('#bellBtn').hidden = true; $('#outBtn').hidden = true; setHeader('🔑 باسورد جديد', false);
   app.innerHTML = `<div class="card"><h3>اكتب الباسورد الجديد</h3>
     <div class="field"><label>الباسورد الجديد</label><input id="np1" type="password" autocomplete="new-password" dir="ltr"></div>
     <div class="field"><label>اكتبه تاني</label><input id="np2" type="password" autocomplete="new-password" dir="ltr"></div>
@@ -412,6 +469,7 @@ function renderNewPw() {
   };
 }
 $('#outBtn').onclick = async () => {
+  SNAP.del();
   if (!confirm(me && me.role === 'rep' ? 'تخرج؟ هتحتاج الرقم السري تاني (على نفس الموبايل).' : 'تسجيل خروج؟')) return;
   await sb.auth.signOut(); me = null; renderLogin();
 };
@@ -432,9 +490,11 @@ async function counts() {
   const ir = await sb.from('teachers').select('id', { count: 'exact', head: true }).eq('rep_id', me.id).gt('app_at', seen);
   data.inst = ir.error ? 0 : (ir.count || 0);
   data.auto = AB().length;   // مهمة 2: «📍 اتغيّر لوحده»
+  // «مطلوب رد»: خلصت التنبيهات التلاتة ولسه ما ردش (بيظهر في شريط الجرس)
+  data.nr = (await mine('messages', q => q.eq('need_reply', true).eq('nr_done', true).eq('from_teacher', false).is('reply_closed_at', null))) || 0;
   const was = BC.msgs + BC.orders + BC.edits + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0) + (BC.auto || 0); BC = data;
   const n = BC.edits + BC.orders + BC.msgs + (BC.reps || 0) + (BC.rets || 0) + (BC.inst || 0) + (BC.auto || 0); $('#bellCnt').hidden = !n; $('#bellCnt').textContent = n;
-  const stt = $('#setTab'); if (stt) stt.innerHTML = `<span class="i">⚙️</span>الإعدادات${BC.reps ? `<span class="cnt">${BC.reps}</span>` : ''}`;
+  const stc = $('#setCnt'); if (stc) { stc.hidden = !BC.reps; stc.textContent = BC.reps || ''; }
   if (n > was) ding();
   LS.set('selah-trial-bell', { n, at: Date.now() });   // البرنامج الأخضر بيقراه للجرس
 }
@@ -460,19 +520,21 @@ async function autoLoc() {
   return n;
 }
 // 📦 2026-11-15 (طلب شريف): شريط «مساحة الرسائل» (استهلاك المندوب من نصيبه) + عند 85% تنبيه بصوت وإشعار كل 8 ساعات
-let qAt = 0;
+let qAt = 0, usageHtml = '';
+function drawUsage() { const b = $('#usageBox'); if (!b) return; if (usageHtml) b.innerHTML = usageHtml; else { qAt = 0; quotaCheck().catch(() => { }); } }
 async function quotaCheck() {
   if (!me || Date.now() - qAt < 10 * 60000) return; qAt = Date.now();
   const { data, error } = await sb.rpc('my_usage'); if (error || !data) return;
   const mb = data.bytes / 1048576, q = +data.quota_mb || 100, pct = Math.min(100, mb / q * 100);
   const col = pct >= 85 ? '#dc2626' : pct >= 60 ? '#f59e0b' : '#16a34a';
-  $('#qbar').innerHTML = `<div style="background:#fff;border-radius:12px;padding:6px 10px;margin-top:6px;box-shadow:0 1px 3px #0001">
+  usageHtml = `<div>
     <div class="small" style="display:flex;justify-content:space-between;gap:6px"><b>📦 مساحة الرسائل</b><span>${mb.toFixed(1)} من ${q} ميجا (${pct.toFixed(0)}%)</span></div>
     <div style="height:8px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${col}"></div></div>
     ${pct >= 85 ? '<div class="small" style="color:#dc2626;font-weight:700;margin-top:4px">⚠️ مساحتك قربت تخلص — امسح رسايل قديمة</div>' : ''}
     ${data.eg != null ? (() => { const em = data.eg / 1048576, eq = +data.eg_quota_mb || 170, ep = Math.min(100, em / eq * 100), ec = ep >= 85 ? '#dc2626' : ep >= 60 ? '#f59e0b' : '#16a34a';
       return `<div class="small" style="display:flex;justify-content:space-between;gap:6px;margin-top:8px"><b>📶 الباقة (الشهر ده — تقريبًا)</b><span>${em.toFixed(1)} من ${eq} ميجا (${ep.toFixed(0)}%)</span></div>
       <div style="height:8px;background:#e5e7eb;border-radius:6px;overflow:hidden;margin-top:4px"><div style="height:100%;width:${ep.toFixed(1)}%;background:${ec}"></div></div>`; })() : ''}</div>`;
+  drawUsage();
   LS.set('selah-trial-quota', { pct, mb, q, at: Date.now() });   // البرنامج الأخضر بيقراه
   if (pct >= 85) {
     const last = +(LS.get('selah-trial-qalert') || 0);
@@ -514,45 +576,29 @@ async function loadAll() {
   u = u.filter(own);
   u.forEach(x => { unreadBy[x.teacher_id] = (unreadBy[x.teacher_id] || 0) + 1; lastMsg[x.teacher_id] = { b: x.body, id: x.id, at: x.created_at }; });
   await counts();
+  snapSave();
 }
 async function refresh() { try { await loadAll(); route(); } catch (e) { toast(errMsg(e)); } }
 
 /* ---------- التوجيه ---------- */
 function route() {
   if (!me) return;
+  chatDraft();
   clearInterval(pollT); $('#cbar').innerHTML = '';
   const h = location.hash.slice(1) || '/';
-  if (h.startsWith('/t/')) { setTab('list'); return viewTeacher(decodeURIComponent(h.slice(3))); }
+  if (h.startsWith('/t/')) return viewTeacher(decodeURIComponent(h.slice(3)));
   // 🔄 من البرنامج الأخضر: يفتح صفحة المدرس وطلب التحديث على طول
-  if (h.startsWith('/ru/')) { const id = decodeURIComponent(h.slice(4)); history.replaceState(null, '', '#/t/' + encodeURIComponent(id)); setTab('list'); return viewTeacher(id).then(() => { if (T.some(x => x.id === id)) reqUpdateDlg([id]); }); }
-  if (h === '/rets') { setTab('list'); return viewRets(); }
-  if (h === '/upd') { setTab('list'); return viewUpd(); }
-  if (h === '/bc') { setTab('list'); return viewBc(); }
-  waTabFor(h.startsWith('/c/') ? decodeURIComponent(h.slice(3)) : '');
-  if (h.startsWith('/c/')) { setTab('chat'); LS.set('selah-trial-lastchat', decodeURIComponent(h.slice(3))); return viewChat(decodeURIComponent(h.slice(3))); }
-  if (h === '/bell') { setTab(''); return viewBell(); }
-  if (h === '/invite') { setTab('invite'); return viewInvite(); }
-  if (h === '/settings' && isAdmin()) { setTab('settings'); return viewSettings(); }
-  setTab('list'); viewList();
+  if (h.startsWith('/ru/')) { const id = decodeURIComponent(h.slice(4)); history.replaceState(null, '', '#/t/' + encodeURIComponent(id)); return viewTeacher(id).then(() => { if (T.some(x => x.id === id)) reqUpdateDlg([id]); }); }
+  if (h === '/rets') return viewRets();
+  if (h === '/upd') return viewUpd();
+  if (h === '/bc') return viewBc();
+  if (h.startsWith('/c/')) { LS.set('selah-trial-lastchat', decodeURIComponent(h.slice(3))); return viewChat(decodeURIComponent(h.slice(3))); }
+  if (h === '/bell' || h.startsWith('/bell/')) { const bk = h.split('/')[2]; if (bk) ui.bellTab = bk; return viewBell(); }
+  if (h === '/invite') return viewInvite();
+  if (h === '/settings') return isAdmin() ? viewSettings() : viewRepSettings();
+  viewList(); const y = listY; requestAnimationFrame(() => scrollTo(0, y));
 }
 window.addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
-// متابعة 12: «💬 المحادثة» اللي تحت: لو فاتح ملف مدرس ← المحادثة معاه، غير كده ← آخر محادثة كنت فيها
-$('#chatTab').onclick = e => {
-  e.preventDefault();
-  const h = location.hash.slice(1);
-  const id = h.startsWith('/t/') ? decodeURIComponent(h.slice(3)) : h.startsWith('/c/') ? '' : LS.get('selah-trial-lastchat');
-  if (h.startsWith('/c/')) return;
-  if (id && T.some(x => x.id === id)) { location.hash = '#/c/' + encodeURIComponent(id); return; }
-  toast('افتح ملف مدرس الأول، أو اختار مدرس من القايمة', 3000); if (h !== '/' && h !== '') location.hash = '#/';
-};
-
-// أيقونة الواتساب اللي تحت: جوه شات مدرس بتفتح شات الواتساب معاه على طول، وفي أي مكان تاني صفحة الواتساب في البرنامج
-function waTabFor(tid) {
-  const a = $('#waTab'); if (!a) return; const i = $('.wai', a); if (i && !i.innerHTML) i.innerHTML = WA_ICON;
-  const t = tid && T.find(x => x.id === tid);
-  if (t && t.phone) { a.href = 'https://wa.me/' + waPhone(t.phone); a.target = '_blank'; a.rel = 'noopener'; a.title = 'كمّل مع ' + t.name + ' على الواتساب'; }
-  else { a.href = 'index.html#/msgs'; a.removeAttribute('target'); a.title = 'واتساب'; }
-}
 /* ---------- استيراد من البرنامج الأخضر ---------- */
 // بيحصل لوحده مع كل فتح (لو البرنامج اتغيّر من آخر مرة) — من غير زرار
 async function importGreen() {
@@ -790,9 +836,10 @@ var needSet = new Set();   // متابعة 15: مدرسين عندهم «🔔 م
 let mSt = {};   // آخر رسالة ليك عند كل مدرس: u = ما قراش · r = قرأ ومارددش · y = قرأ ورد
 // من msg_summary: my_id/my_read = آخر رسالة ليك واتقرت ولا لأ · their_id = آخر رسالة من المدرس
 let mTot = {};   // متابعة 12: عدد كل الرسايل في صندوق كل مدرس (📦)
+let myLast = {};   // مهمة 3: رقم آخر رسالة مع كل مدرس (الأحدث فوق)
 function mStates(rows) {
-  const out = {}; mTot = {};
-  for (const s of rows || []) { if (s.total) mTot[s.teacher_id] = +s.total; if (s.my_id) out[s.teacher_id] = (s.their_id || 0) > s.my_id ? 'y' : (s.my_read ? 'r' : 'u'); }
+  const out = {}; mTot = {}; myLast = {};
+  for (const s of rows || []) { const L = Math.max(+s.my_id || 0, +s.their_id || 0); if (L) myLast[s.teacher_id] = L; if (s.total) mTot[s.teacher_id] = +s.total; if (s.my_id) out[s.teacher_id] = (s.their_id || 0) > s.my_id ? 'y' : (s.my_read ? 'r' : 'u'); }
   return out;
 }
 const FL_OPT = {
@@ -827,18 +874,19 @@ function flOk(t) {
   if (f.new.size && !((f.new.has('unread') && unreadBy[t.id]) || (f.new.has('pend') && pendSet.has(t.id)))) return false;
   return true;
 }
+const AR_SORT = new Intl.Collator('ar');
 function filtered() {
   const words = stWords(nq(ui.q).split(/\s+/).filter(Boolean));
-  // اللي عندهم رسايل أو طلبات جديدة فوق
-  // فلتر الصندوق شغال ← الأكتر رسايل فوق
-  const rank = FL().box.size ? (t => mTot[t.id] || 0) : (t => (lastMsg[t.id] || ordersBy[t.id] ? 1e12 : 0) + (lastMsg[t.id] ? lastMsg[t.id].id : 0) + (ordersBy[t.id] || 0));
-  return T.filter(t => {
+  // مهمة 3: آخر مدرس اتراسلت معاه فوق، والباقي بالترتيب الأبجدي (فلتر الصندوق شغال ← الأكتر رسايل فوق)
+  const rank = FL().box.size ? (t => mTot[t.id] || 0) : (t => myLast[t.id] || 0);
+  return nameFirst(T.filter(t => {
     if (!flOk(t)) return false;
     if (!words.length) return true;
     const h = nq(tHay(t));
     return words.every(w => h.includes(w));
-  }).sort((a, b) => rank(b) - rank(a));
+  }).sort((a, b) => rank(b) - rank(a) || AR_SORT.compare(a.name || '', b.name || '')), words);
 }
+let listIO = null;
 // يعيد رسم القايمة بس (من غير ما يقفل خانة البحث)
 function refreshList() {
   if (!$('#tl')) return;
@@ -847,6 +895,8 @@ function refreshList() {
   $('#flBtn').textContent = '🔎 فلاتر' + (nF ? ` (${nF})` : '');
   // صف التحديد الثابت: ☑️ الكل (اللي ظاهرين) · ✕ مسح التحديد · العداد · 🗑️ مسح الرسايل (المحددين)
   const ns = ui.sel.size;
+  $('#selRow').style.display = ui.selMode ? 'flex' : 'none'; $('#tl').classList.toggle('selm', ui.selMode);
+  $('#selTog').textContent = ui.selMode ? '✕ إلغاء' : '☑️ تحديد';
   $('#selAll').textContent = `☑️ الكل (${list.length})`; $('#selAll').disabled = !list.length;
   $('#selN').textContent = `☑️ متحدد: ${ns} مدرس`;
   $('#selNone').disabled = !ns;
@@ -854,6 +904,8 @@ function refreshList() {
   $('#selAll').onclick = () => { list.forEach(t => ui.sel.add(t.id)); refreshList(); };
   $('#moreRow').innerHTML = list.length > ui.shown ? `<button class="btn ghost" id="more" style="width:100%;margin-top:10px">اعرض أكتر (${list.length - ui.shown})</button>` : '';
   const mo = $('#more'); if (mo) mo.onclick = () => { ui.shown += 300; refreshList(); };
+  // الباقي بيتحمّل لوحده وإنت نازل
+  if (listIO) { listIO.disconnect(); if (mo) listIO.observe($('#moreRow')); }
   drawSelbar();
 }
 // 🔎 فلاتر: قايمة مفتوحة، كل اختيار بيتطبق على طول
@@ -878,17 +930,19 @@ function openFilters() {
   });
 }
 function viewList() {
-  setHeader(`المدرسين — ${me.name}`, false);
+  setHeader('المراسلات', false);
   app.innerHTML = `${T.length ? '' : '<div class="note"><b>⏳ بننقل مدرسينك من البرنامج…</b><div class="small">بيتنقلوا لوحدهم ببياناتهم وكتبهم. لو مفيش مدرسين في البرنامج على الموبايل ده، ضيفهم هناك الأول.</div></div>'}
-  ${isAdmin() ? ownerSum() : ''}
-  <div class="search"><input id="q" type="search" placeholder="🔍 دوّر بأي حاجة: اسم، رقم، قرية، مادة، «استلم»…" value="${esc(ui.q)}"><button class="btn sm" id="flBtn">🔎 فلاتر</button><a class="btn sm owe" href="#/rets" title="المرتجعات">↩️${Object.keys(retsBy).length ? ' ' + Object.keys(retsBy).length : ''}</a><a class="btn sm" href="#/upd" title="حدّث البيانات لمدرسين كتير" style="background:#e0f2fe">🔄</a><a class="btn sm" href="#/bc" title="ابعت رسالة لمدرسين كتير مرة واحدة" style="background:#dcfce7">📢</a></div>
-  <div class="selrow"><button class="btn sm" id="selAll">☑️ الكل</button><button class="btn sm ghost" id="selNone">✕ مسح التحديد</button><span class="cnt" id="selN"></span><span style="flex:1"></span><button class="btn sm danger" id="delSel">🗑️ مسح الرسايل</button></div>
+  <div class="search big"><button class="btn sm" id="flBtn">🔎 فلاتر</button><input id="q" type="search" placeholder="🔍 دوّر باسم أو رقم أو قرية أو مادة…" value="${esc(ui.q)}"></div>
+  <div class="lacts"><button class="btn sm ghost" id="selTog">☑️ تحديد</button><a class="btn sm" href="#/upd" style="background:#e0f2fe">🔄 تحديث</a><a class="btn sm" href="#/bc" style="background:#dcfce7">📢 رسالة</a><a class="btn sm" href="#/invite" style="background:#ede9fe">✉️ دعوة</a></div>
+  <div class="selrow" id="selRow" style="display:none"><button class="btn sm" id="selAll">☑️ الكل</button><button class="btn sm ghost" id="selNone">✕ مسح التحديد</button><span class="cnt" id="selN"></span><span style="flex:1"></span><button class="btn sm danger" id="delSel">🗑️ مسح الرسايل</button></div>
   <div class="tlist" id="tl"></div>
   <div id="moreRow"></div>
   <div id="selbar"></div>`;
   const qi = $('#q');
   qi.oninput = () => { ui.q = qi.value; ui.shown = 200; refreshList(); };
   $('#flBtn').onclick = openFilters;
+  $('#selTog').onclick = () => { ui.selMode = !ui.selMode; if (!ui.selMode) ui.sel.clear(); refreshList(); };
+  listIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { ui.shown += 200; refreshList(); } }, { rootMargin: '500px' }) : null;
   $('#selNone').onclick = () => { ui.sel.clear(); refreshList(); };
   // 🗑️ مسح رسايل المدرسين المحددين بس (📌 السجل بيفضل)
   $('#delSel').onclick = async () => {
@@ -899,22 +953,19 @@ function viewList() {
       const { error } = await sb.from('messages').delete().in('teacher_id', ids.slice(i, i + 150));
       if (error) { $('#delSel').disabled = false; return toast(errMsg(error)); }
     }
-    ids.forEach(id => { delete unreadBy[id]; delete lastMsg[id]; delete mSt[id]; delete mTot[id]; });
+    ids.forEach(id => { delete unreadBy[id]; delete lastMsg[id]; delete mSt[id]; delete mTot[id]; delete myLast[id]; });
     ui.sel.clear(); $('#delSel').disabled = false; toast(`🗑️ اتمسحت رسايل ${ids.length} مدرس ✅`); counts(); refreshList();
   };
-  $$('[data-os]').forEach(b => b.onclick = () => { const f = FL(), k = b.dataset.os;
-    if (k === 'rets') { location.hash = '#/rets'; return; }
-    Object.values(f).forEach(s => s.clear()); ui.rep = '';
-    if (k === 'in' || k === 'out') f.app.add(k); else if (k === 'unread') f.new.add('unread');
-    refreshList(); });
   $('#tl').onclick = e => {
     const it = e.target.closest('.titem'); if (!it) return;
-    const ck = e.target.closest('.tck');   // مربع التحديد عند كل مدرس
-    if (ck) { ck.checked ? ui.sel.add(it.dataset.id) : ui.sel.delete(it.dataset.id); refreshList(); return; }
-    if (e.target.closest('[data-ic]')) return;
-    location.hash = '#/t/' + it.dataset.id;
+    if (e.target.closest('[data-ic]') || e.target.closest('[data-ru]')) return;
+    if (ui.selMode) { const id = it.dataset.id; ui.sel.has(id) ? ui.sel.delete(id) : ui.sel.add(id); refreshList(); return; }
+    const t = T.find(x => x.id === it.dataset.id); if (!t) return;
+    listSave();
+    if (e.target.closest('.avb')) return openFull(t);   // الدايرة ← صفحته الكاملة
+    location.hash = '#/c/' + encodeURIComponent(t.id);   // الاسم ← الشات
   };
-  refreshList(); if (ui.q) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
+  refreshList();
 }
 /* بيانات المدرس من البرنامج الأخضر (بالـ local_id): الصورة الصغيرة + ملخص «selah-green-sum» اللي البرنامج بيكتبه
    (st = none/part/done الاستلام، d/o = استلم/باقيله، lv = آخر زيارة، c = التصنيف، w = عليه فلوس) */
@@ -942,17 +993,11 @@ function tItem(t) {
   const subs = (Array.isArray(pr.subjects) ? pr.subjects : []).map(k => valText('subjects', [k])).filter(x => x && x !== '—');
   const tags = [...subs.map(tg), stg ? tg(stg) : '', pr.area ? tg('📍 ' + pr.area) : ''].join('');
   return `<div class="titem tcard ${stc} ${ui.sel.has(t.id) ? 'sel' : ''}" data-id="${t.id}" style="border-inline-start:4px solid ${uc}" title="${UPD_C[updState(t)][1]}">
-    <div class="tc-h"><input type="checkbox" class="tck" ${ui.sel.has(t.id) ? 'checked' : ''}>${av}<div class="tc-n">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${tB(t.id)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div></div>
+    <div class="tc-h">${ui.selMode ? `<input type="checkbox" class="tck" ${ui.sel.has(t.id) ? 'checked' : ''}>` : ''}<span class="avb">${av}</span><div class="tc-n">${esc(t.name)}${s && s.c ? ` <span class="pill abc">${s.c}</span>` : ''} ${badgesHtml(unreadBy[t.id] || 0, pendSet.has(t.id) ? 1 : 0, ordersBy[t.id] || 0)}${s && s.w ? ` <span class="pill bad">💰 عليه ${esc(s.w)}</span>` : ''}</div></div>
     ${lm ? `<div class="tc-l">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
-    <div class="tc-tags">${tags}${instPill(t)}${mTot[t.id] ? ` <span class="pill ${mTot[t.id] > 20 ? 'bad' : mTot[t.id] > 10 ? 'owe' : 'new'}" title="عدد الرسايل في صندوقه">📦 ${mTot[t.id]} رسالة</span>` : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}${needSet.has(t.id) ? ' <span class="pill owe" title="بعتّله رسالة مطلوب ردها ولسه ما ردش">🔔 مستني رد</span>' : ''}</div>
+    <div class="tc-tags">${tags}${instPill(t)}${mTot[t.id] ? ` <span class="pill ${mTot[t.id] > 20 ? 'bad' : mTot[t.id] > 10 ? 'owe' : 'new'}" title="عدد الرسايل في صندوقه">📦 ${mTot[t.id]} رسالة</span>` : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}</div>
     ${t.phone || (s && s.lv) ? `<div class="tc-i">${t.phone ? `<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>` : ''}${s && s.lv ? `<span>🕘 آخر زيارة: ${esc(s.lv)}</span>` : ''}</div>` : ''}
     <div class="tc-f">${icos4(t)}${recv ? `<span>${recv}</span>` : ''}</div></div>`;
-}
-// متابعة 10 (بند 12): ملخص صغير للمالك فوق القايمة — كل مربع بيفلتر على طول
-function ownerSum() {
-  const inN = T.filter(t => t.app_at).length, msgN = Object.keys(unreadBy).length, retN = Object.keys(retsBy).length;
-  return `<div class="osum"><button data-os="in"><b>${inN}</b>📲 مثبّتين</button><button data-os="out"><b>${T.length - inN}</b>🌐 مش مثبّتين</button>
-    <button data-os="unread"><b>${msgN}</b>💬 مستنيين ردك</button><button data-os="rets"><b>${retN}</b>↩️ عندهم مرتجع</button></div>`;
 }
 // شريط المحددين: يظهر لما تحدد مدرس. 📦 بيتغيّر اسمه: كله مفتوح ← «قفل»، غير كده (أو خليط) ← «فعّل» (والخليط بيفعّل المقفولين بس)
 function drawSelbar() {
@@ -1202,17 +1247,25 @@ function bubbleS(m, t) {
   const mine = !m.from_teacher, sel = chatSel && chatSel.has(m.id);
   return `<div class="bub ${mine ? 'me' : 'them'}" data-mid="${m.id}" style="${chatSel ? 'cursor:pointer;' : ''}${sel ? 'outline:3px solid #dc2626;' : ''}">${chatSel ? (sel ? '☑️ ' : '⬜ ') : ''}${esc(m.body)}<span class="tm">${fmtDate(m.created_at)}${mine ? (m.read_at ? ' <b style="color:#2563eb">✓✓</b>' : ' ✓') : ''}</span></div>`;
 }
+// مهمة 3: الرسالة اللي لسه ما اتبعتتش بتفضل مكانها
+const DRAFT_K = 'selah-msg-draft:'; var chatId = '';
+function chatDraft() { const a = document.getElementById('mt'); if (!a || !chatId) return; const v = a.value; v.trim() ? LS.set(DRAFT_K + chatId, v) : LS.del(DRAFT_K + chatId); }
+// الخمس زراير المثبتة فوق في الشات
+function chatIcos(t) {
+  return `${t.phone ? `<a class="tic" data-ic href="tel:${esc(t.phone)}" title="اتصال">📞</a><a class="tic" data-ic target="_blank" rel="noopener" href="https://wa.me/${waPhone(t.phone)}" title="واتساب">${WA_ICON}</a>` : ''}<button type="button" class="tic" id="ring" title="نبّه المدرس"><span id="ringI" style="display:inline-block">🔔</span></button>${t.phone && t.invite_code ? `<a class="tic" data-ic target="_blank" rel="noopener" href="${waLink(t.phone, inviteMsg(t, LS.get(INV_KEYS.app[0]) || INV_APP))}" title="ابعت كارت دعوة" style="background:#dcfce7">📲</a>` : ''}<button type="button" class="tic" data-ru="${t.id}" title="حدّث بيانات المدرس ده">🔄</button>`;
+}
 async function viewChat(id) {
-  const t = T.find(x => x.id === id); if (!t) { location.hash = '#/'; return; }
-  setHeader('💬 ' + t.name, true);
-  chatSel = null;
+  const t = T.find(x => x.id === id); if (!t) { if (bootFast) { app.innerHTML = '<div class="loading">جاري التحميل…</div>'; return; } location.hash = '#/'; return; }
+  setHeader('المحادثة', true);
+  chatSel = null; chatId = t.id;
   app.innerHTML = `<style>@keyframes ringy{0%,100%{transform:rotate(0)}20%{transform:rotate(-25deg)}40%{transform:rotate(25deg)}60%{transform:rotate(-15deg)}80%{transform:rotate(15deg)}}.ringing{animation:ringy .5s 3}</style>
-    <div class="acts" style="margin:0 0 6px"><button class="btn sm owe" id="ring"><span id="ringI" style="display:inline-block">🔔</span> نبّه المدرس</button><a class="btn sm ghost" href="#/t/${t.id}">👤 ملفه</a>
-    <button class="btn sm ghost" id="keep">📌 احفظ رسالة في سجله</button><button class="btn sm danger" id="delm">🗑️ مسح رسايل</button></div>
+    <div class="chead"><div class="r1"><button type="button" class="who" id="chWho" title="صفحة المدرس">${avHtml(t)}<span class="tx"><b>${esc(t.name)}</b><small>${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</small></span></button><button type="button" class="tic" id="chMore" aria-label="المزيد">⋮</button></div>
+      <div class="icos2">${chatIcos(t)}</div>
+      <div id="nrbar" hidden style="display:none"><b style="flex:1;min-width:150px">🔔 التذكير شغال — مستني رد المدرس</b><button class="btn sm" id="nrstop">⏹️ وقّف التذكير</button></div></div>
     <div id="delbar" hidden class="alert" style="padding:8px"><b>دوس على الرسايل اللي عايز تمسحها</b><div class="acts"><button class="btn sm danger" id="delgo">🗑️ امسح المحدد (0)</button><button class="btn sm ghost" id="delx">إلغاء</button></div></div>
-    <div id="nrbar" hidden style="position:sticky;top:var(--hh,56px);z-index:5;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:12px;padding:8px 10px;margin-bottom:6px;display:none;gap:8px;align-items:center;flex-wrap:wrap"><b style="flex:1;min-width:150px">🔔 التذكير شغال — مستني رد المدرس</b><button class="btn sm" id="nrstop">⏹️ وقّف التذكير</button></div>
-    <div class="small muted" style="text-align:center">${t.last_seen ? 'آخر دخول ' + fmtDate(t.last_seen) : 'لسه ما فتحش البرنامج'}</div><div class="chat" id="chat"><div class="loading">…</div></div>`;
+    <div class="chat" id="chat"><div class="loading">…</div></div>`;
   $('#cbar').innerHTML = `<div class="chatbar"><div style="max-width:836px;margin:0 auto 6px;display:flex;justify-content:flex-end"><label id="nrl" style="display:inline-flex;gap:6px;align-items:center;font-weight:700;font-size:14px;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;border-radius:999px;padding:4px 12px;cursor:pointer"><input type="checkbox" id="nr" style="width:18px;height:18px"> 🔔 مطلوب رد</label></div><div class="in"><textarea id="mt" placeholder="اكتب رسالتك…"></textarea><button class="btn pri" id="ms">إرسال</button></div></div>`; bindEmoji($('#mt'));
+  $('#mt').value = LS.get(DRAFT_K + t.id) || ''; $('#mt').addEventListener('input', chatDraft);
   chatMsgs = []; chatLast = 0;
   // متابعة 15: الشريط الأصفر بيظهر بس لو فيه رسالة «مطلوب رد» لسه مفتوحة
   const nrOpen = () => chatMsgs.some(m => m.need_reply && !m.reply_closed_at && !m.from_teacher);
@@ -1233,10 +1286,10 @@ async function viewChat(id) {
   const send = async (kind, body, need) => {
     const { error } = await sb.from('messages').insert({ teacher_id: t.id, from_teacher: false, kind, body, sender: me.name, ...(need ? { need_reply: true } : {}) });
     if (error) return toast(errMsg(error));
-    pull(false);
+    await pull(false); if (kind === 'text' && chatLast) myLast[t.id] = chatLast;
     if (window.pushToTeacher) window.pushToTeacher(t, kind === 'ring' ? `🔔 رُدّ على الأستاذ ${me.name}` : `💬 الأستاذ ${me.name}: ${body.slice(0, 80)}`, kind === 'ring').catch(() => { });
   };
-  $('#ms').onclick = async () => { const v = $('#mt').value.trim(); if (!v) return; const need = $('#nr').checked; $('#mt').value = ''; $('#nr').checked = false; await send('text', v, need); };
+  $('#ms').onclick = async () => { const v = $('#mt').value.trim(); if (!v) return; const need = $('#nr').checked; $('#mt').value = ''; LS.del(DRAFT_K + t.id); $('#nr').checked = false; await send('text', v, need); };
   $('#nrstop').onclick = async () => {
     if (!confirm('توقّف التذكير ومطلوب الرد على الرسالة دي؟')) return;
     const { error } = await sb.from('messages').update({ reply_closed_at: new Date().toISOString() }).eq('teacher_id', t.id).eq('need_reply', true).is('reply_closed_at', null);
@@ -1250,13 +1303,18 @@ async function viewChat(id) {
   };
   const redraw = () => { $('#chat').innerHTML = chatMsgs.map(m => bubbleS(m, t)).join('') || '<div class="empty small">ابدأ المحادثة 👋</div>'; if (chatSel) $('#delgo').textContent = `🗑️ امسح المحدد (${chatSel.size})`; };
   // 🗑️ (بند 43): يسأل «امسح المحدد» ولا «امسح كل الرسايل مع المدرس ده»
-  $('#delm').onclick = () => modal(`<h3>🗑️ مسح رسايل ${esc(t.name)}</h3><div class="acts" style="flex-direction:column;align-items:stretch">
+  $('#chWho').onclick = () => openFull(t);
+  $('#chMore').onclick = () => modal(`<h3>${esc(t.name)}</h3><div class="acts" style="flex-direction:column;align-items:stretch"><button class="btn" id="mInfo">📋 بيانات المراسلات</button><button class="btn danger" id="mDel">🗑️ مسح رسايل</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
+    $('#mInfo', box).onclick = () => { close(); location.hash = '#/t/' + encodeURIComponent(t.id); };
+    $('#mDel', box).onclick = () => { close(); delDlg(); };
+  });
+  const delDlg = () => modal(`<h3>🗑️ مسح رسايل ${esc(t.name)}</h3><div class="acts" style="flex-direction:column;align-items:stretch">
       <button class="btn" id="dSel">☑️ امسح رسايل أختارها</button><button class="btn danger" id="dAll">🗑️ امسح كل الرسايل مع المدرس ده</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
     $('#dSel', box).onclick = () => { close(); chatSel = new Set(); $('#delbar').hidden = false; redraw(); };
     $('#dAll', box).onclick = async () => {
       if (!confirm(`هتتمسح كل الرسايل مع ${t.name} من عندك وعنده، ومش هترجع. متأكد؟`)) return;
       const { error } = await sb.from('messages').delete().eq('teacher_id', t.id); if (error) return toast(errMsg(error));
-      close(); chatMsgs = []; delete unreadBy[t.id]; delete lastMsg[t.id]; redraw(); toast('اتمسحت كل الرسايل ✅');
+      close(); chatMsgs = []; delete unreadBy[t.id]; delete lastMsg[t.id]; delete myLast[t.id]; redraw(); toast('اتمسحت كل الرسايل ✅');
     };
   });
   $('#delx').onclick = () => { chatSel = null; $('#delbar').hidden = true; redraw(); };
@@ -1266,19 +1324,6 @@ async function viewChat(id) {
     if (!confirm(`هيتمسح ${chatSel.size} رسالة من عندك وعند المدرس. متأكد؟`)) return;
     const ids = [...chatSel]; const { error } = await sb.from('messages').delete().in('id', ids); if (error) return toast(errMsg(error));
     chatMsgs = chatMsgs.filter(m => !ids.includes(m.id)); chatSel = null; $('#delbar').hidden = true; redraw(); toast('اتمسحت ✅');
-  };
-  $('#keep').onclick = () => {
-    const ms = chatMsgs.filter(m => m.kind === 'text').slice(-30);
-    if (!ms.length) return toast('مفيش رسايل');
-    modal(`<h3>📌 اختار الرسايل اللي تتحفظ في سجل المدرس</h3><div id="kl">${ms.map(m => `<label class="kv" style="justify-content:flex-start;gap:8px"><input type="checkbox" value="${m.id}"><span style="flex:1">${m.from_teacher ? '👨‍🏫' : '🧑‍💼'} ${esc(m.body)}<br><span class="small muted">${fmtDate(m.created_at)}</span></span></label>`).join('')}</div>
-      <div class="acts"><button class="btn pri" id="ks">حفظ</button><button class="btn ghost" data-close>إلغاء</button></div>`, (box, close) => {
-      $('#ks', box).onclick = async () => {
-        const ids = $$('input:checked', box).map(i => +i.value); if (!ids.length) return close();
-        const rows = ms.filter(m => ids.includes(m.id)).map(m => ({ teacher_id: t.id, kind: 'msg', body: m.body, sender: m.from_teacher ? t.name : me.name, msg_at: m.created_at }));
-        const { error } = await sb.from('teacher_notes').insert(rows); if (error) return toast(errMsg(error));
-        rows.forEach(r => (notesBy[t.id] ||= []).push(r.body)); close(); toast('📌 اتحفظت في سجله');
-      };
-    });
   };
   await pull(true); pollT = setInterval(() => { if (!document.hidden) pull(false); }, 20000);   // مهمة 2: كان كل 8 ثواني
 }
@@ -1478,6 +1523,23 @@ function bindReviews(root) {
 /* ---------- الجرس ---------- */
 // متابعة 10: اتشالت تبويبات «قريبًا» (🧾 طلباتي، 📋 الملاحظات، 🗑️ مسح الرسايل)
 const BELL = [['msgs', '💬 رسايل جديدة'], ['orders', '🛒 طلبات المدرسين'], ['rets', '↩️ مرتجعات'], ['edits', '📝 تعديل الملفات (مستني موافقتك)'], ['auto', '📍 اتغيّر لوحده (مكان/مواعيد/صورة)'], ['inst', '📲 ثبّتوا التطبيق']];
+// شريط الجرس: كل الإشعارات سطر تحت سطر، واللي فيه جديد جنبه رقمه
+function bellDrop(rows) {
+  const old = document.getElementById('bellDrop'); if (old) { old.remove(); return; }
+  const w = document.createElement('div'); w.id = 'bellDrop'; w.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.25)';
+  w.innerHTML = `<div style="position:absolute;top:58px;left:8px;right:8px;max-width:460px;margin:0 auto;background:#fff;color:#111;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:6px;max-height:75vh;overflow:auto">${rows.map((r, i) => `<button type="button" data-bd="${i}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 12px;border:0;border-bottom:1px solid #eee;background:${r.n ? '#f0fdfa' : 'transparent'};color:#111;font:inherit;font-size:16px;font-weight:${r.n ? 800 : 500};text-align:start;cursor:pointer;opacity:${r.n ? 1 : .55}"><span>${esc(r.l)}</span>${r.n ? `<b style="background:#dc2626;color:#fff;border-radius:12px;min-width:24px;padding:1px 8px;text-align:center">${r.n}</b>` : ''}</button>`).join('')}</div>`;
+  document.body.appendChild(w);
+  w.onclick = e => { const b = e.target.closest('[data-bd]'); if (b) { w.remove(); rows[+b.dataset.bd].go(); } else if (e.target === w) w.remove(); };
+}
+$('#bellBtn').onclick = e => {
+  e.preventDefault();
+  const go = k => { ui.bellTab = k; if (location.hash === '#/bell') viewBell(); else location.hash = '#/bell'; };
+  const c = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets, inst: BC.inst, auto: AB().length };
+  const rows = BELL.map(([k, l]) => ({ l, n: +c[k] || 0, go: () => go(k) }));
+  rows.push({ l: '📵 ما ردوش بعد 3 تنبيهات', n: +BC.nr || 0, go: () => go('msgs') });
+  if (BC.reps) rows.unshift({ l: '👤 مناديب مستنيين موافقتك', n: +BC.reps, go: () => { location.hash = '#/settings'; } });
+  bellDrop(rows);
+};
 async function viewBell() {
   setHeader('🔔 الإشعارات', false);
   const cnt = { orders: BC.orders, edits: BC.edits, msgs: BC.msgs, rets: BC.rets, inst: BC.inst, auto: AB().length };
@@ -1540,7 +1602,7 @@ async function viewBell() {
     const { data, error } = await sb.from('returns').select('*, teachers!inner(name,local_id,phone,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending').order('created_at').limit(50);
     if (error) { bb.innerHTML = `<div class="alert">${esc(errMsg(error))}</div>`; return; }
     bb.innerHTML = `<a class="btn owe" href="#/rets" style="display:block;text-align:center;margin-bottom:8px">↩️ كل المرتجعات (ومعاها اللي مستني تستلمه) ←</a>` + (retGroups(data) || '<div class="card empty">مفيش طلبات مرتجع جديدة ✅</div>');
-    bindRets(bb, data, () => { if (location.hash === '#/bell') viewBell(); }); return;
+    bindRets(bb, data, () => { if (location.hash.startsWith('#/bell')) viewBell(); }); return;
   }
   if (ui.bellTab === 'orders') {
     const { data, error } = await sb.from('orders').select('*, teachers!inner(name,local_id,rep_id)').eq('teachers.rep_id', me.id).eq('status', 'pending').order('created_at').limit(50);
@@ -1623,6 +1685,9 @@ function warnBtns(s, why) {
   const msg = `السلام عليكم يا ${s.name || ''} 👋\n⚠️ ${why}.\nخلّي بالك من الاستهلاك 🙏`;
   return `<span style="display:flex;gap:4px;flex:none"><a class="btn sm" href="tel:${esc(s.phone)}" onclick="event.stopPropagation()">📞</a><a class="btn sm ok" href="https://wa.me/${esc(d)}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬</a></span>`;
 }
+// مهمة 3: كل مندوب يشوف استهلاكه هنا (المالك بيشوفه فوق إعداداته)
+const usageCard = () => '<div class="card"><h3 style="margin:0 0 6px">📊 استهلاكك</h3><div id="usageBox"><div class="loading">جاري التحميل…</div></div></div>';
+function viewRepSettings() { setHeader('⚙️ الإعدادات', false); app.innerHTML = usageCard(); drawUsage(); }
 async function viewSettings() {
   setHeader('⚙️ إعدادات المالك', false); app.innerHTML = '<div class="loading">جاري التحميل…</div>';
   const { data, error } = await sb.rpc('usage_stats');
@@ -1634,7 +1699,7 @@ async function viewSettings() {
   const dbPct = data.db_bytes / (lim * MB) * 100;
   // 2026-11-16 (طلب شريف): دوسة على «مساحة القاعدة» ← كل مندوب (وانت) استخدم قد إيه من نصيبه
   const qOf = s => +s.quota_mb || quota;
-  app.innerHTML = `<details class="card"><summary style="cursor:pointer;list-style:none"><h3 style="margin:0">${dot(dbPct)} مساحة القاعدة <span class="small muted">(دوس تشوف المناديب)</span></h3>${(data.db_bytes / MB).toFixed(1)} من ${lim} ميجا (${dbPct.toFixed(1)}%)${meter(dbPct)}</summary>
+  app.innerHTML = `${usageCard()}<details class="card"><summary style="cursor:pointer;list-style:none"><h3 style="margin:0">${dot(dbPct)} مساحة القاعدة <span class="small muted">(دوس تشوف المناديب)</span></h3>${(data.db_bytes / MB).toFixed(1)} من ${lim} ميجا (${dbPct.toFixed(1)}%)${meter(dbPct)}</summary>
     <div style="margin-top:8px">${data.staff.filter(s => s.role === 'admin' || s.active).map(s => { const mb = s.bytes / MB, p = mb / qOf(s) * 100; return `<div class="kv" style="display:block;padding:6px 0"><div style="display:flex;justify-content:space-between;gap:6px;align-items:center"><b>${dot(p)} ${esc(s.name || 'مندوب')}${s.role === 'admin' ? ' 👑' : ''}</b><span class="small">${mb.toFixed(1)} من ${qOf(s)} ميجا (${p.toFixed(0)}%)</span>${warnBtns(s, `مساحتك في البرنامج وصلت ${p.toFixed(0)}% من نصيبك`)}</div>${meter(p)}</div>`; }).join('')}</div></details>
   ${data.eg_total != null ? (() => { const egL = +(data.settings.eg_limit_mb || 5000), egP = data.eg_total / (egL * MB) * 100;
     // 🧭 مهمة 2 — المرحلة 7: الباقة (تقديري من موبايلات المناديب والمدرسين) — الدوسة بتفتح كل مندوب + 📞 💬 للتحذير
@@ -1661,7 +1726,7 @@ async function viewSettings() {
     <div class="field"><label>النصيب العادي لأي مندوب جديد (ميجا)</label><input id="quo" type="number" value="${quota}"></div></div>
     ${data.staff.filter(s => s.role === 'admin' || s.active).map(s => `<div class="kv" style="gap:8px"><span style="flex:1"><b>${esc(s.name || 'مندوب')}</b>${s.role === 'admin' ? ' 👑 (انت)' : ''}<br><span class="small muted">مستخدم ${(s.bytes / MB).toFixed(1)} ميجا</span></span><input data-q="${s.id}" type="number" min="1" value="${s.quota_mb || ''}" placeholder="${quota}" style="width:90px"> <span class="small">ميجا</span></div>`).join('')}
     <button class="btn pri" id="saveLim" style="width:100%;margin-top:8px">💾 حفظ</button></details>`;
-  loadRepsCard(); loadInstCard(data.staff);
+  drawUsage(); loadRepsCard(); loadInstCard(data.staff);
   const appUrl = location.href.split('#')[0].replace(/admin\.html.*$/, '');
   const repMsg = s => `رقمك السري في برنامج سلاح التلميذ:\n${s.rep_code}\n\nافتح البرنامج: ${appUrl}admin.html\nواكتب الرقم زي ما هو بالظبط ودوس «دخول». بتكتبه مرة واحدة بس، وبيشتغل على موبايل واحد.`;
   $('#upPr').onclick = async () => {

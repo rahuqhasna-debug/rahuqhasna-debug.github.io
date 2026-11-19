@@ -1980,15 +1980,65 @@ function grpLink(how){
   try{ navigator.clipboard.writeText(txt).then(()=>toast('اتنسخ ✅ الصقه في الجروب'),()=>prompt('انسخ:',txt)); }catch(e){ prompt('انسخ:',txt); }
 }
 function dupsCard(){
-  const gs=dupGroups();
-  if(!gs.length) return `<div class="card" id="dups"><h3 class="sec-t">📞 أرقام متكررة</h3><div class="ok-t" style="color:var(--ok);font-weight:700">✅ مفيش أرقام متكررة</div></div>`;
+  const gs=dupGroups(), srv=srvDupsPart();
+  if(!gs.length) return `<div class="card" id="dups"><h3 class="sec-t">📞 أرقام متكررة</h3><div class="ok-t" style="color:var(--ok);font-weight:700">✅ مفيش أرقام متكررة في البرنامج</div>${srv}</div>`;
   const ec={}, sc={}; for(const e of db.entries) if(e.s==='d') ec[e.t]=(ec[e.t]||0)+e.q; for(const s of db.sales) sc[s.t]=(sc[s.t]||0)+1;
   return `<div class="card" id="dups"><h3 class="sec-t">📞 أرقام متكررة (${gs.length})</h3>
     <p class="hint" style="margin-top:0">المدرس اللي رقمه متكرر ممنوع يتسلّمله أو يتباعله لحد ما تمسح المتكرر.</p>
     <button class="btn danger" style="width:100%;margin-bottom:8px" data-act="del-dups-all">🗑️ امسح المتكرر كله (يسيب أول واحد من كل رقم)</button>
     ${gs.map(([p,l])=>`<div class="dupg"><b dir="ltr">📞 ${esc(p)}</b>${l.map((t,i)=>`<div class="hrow"><div class="grow"><a href="#/t/${encodeURIComponent(t.id)}"><b>${esc(t.name)}</b></a>${i===0?' <span class="pill new">الأول</span>':''}
       <div class="small muted">${esc(t.area||'—')} • ${ec[t.id]||0} تسليم • ${sc[t.id]||0} بيع/طلب</div></div>
-      <button class="btn sm danger" data-act="del-dup" data-id="${esc(t.id)}" title="امسح">🗑️ امسح</button></div>`).join('')}</div>`).join('')}</div>`;
+      <button class="btn sm danger" data-act="del-dup" data-id="${esc(t.id)}" title="امسح">🗑️ امسح</button></div>`).join('')}</div>`).join('')}${srv}</div>`;
+}
+
+/* مهمة 3: المتكرر في المراسلات جزء من كارت «📞 أرقام متكررة» — كل مندوب بيشوف مدرسينه هو ويمسحهم واحد واحد */
+let srvDupRows=[];
+function srvDupsPart(){
+  if(!sbHas()) return '';
+  return `<div id="srvDups" style="border-top:1px dashed var(--line);margin-top:12px;padding-top:10px"><b>💬 المتكرر في المراسلات</b>
+    <p class="hint" style="margin-top:4px">حسابات مدرسينك اللي ليها نفس الرقم، والحسابات الموقوفة. المسح من هنا نهائي ومش بيرجع.</p>
+    <button class="btn pri" style="width:100%" data-act="srv-dups">🔍 اعرض المتكرر</button><div id="srvDupL"></div></div>`;
+}
+async function srvDupsLoad(){
+  const box=$('#srvDupL'); if(!box) return;
+  if(!navigator.onLine){ toast('محتاج نت'); return; }
+  box.innerHTML='<div class="small muted" style="margin-top:8px">⏳ بندوّر…</div>';
+  try{
+    const S=await sbSession(); if(!S) throw new Error('login');
+    const U=S.c.SUPABASE_URL+'/rest/v1/';
+    const get=async(q,h)=>{ const r=await fetch(U+q,{headers:{...S.h,...(h||{})}}); if(!r.ok) throw new Error('http '+r.status); return r.json(); };
+    let all=[]; for(let i=0;;i+=1000){ const p=await get('teachers?select=id,name,phone,enabled,local_id,rep_id,last_seen&order=id',{Range:`${i}-${i+999}`}); all=all.concat(p); if(p.length<1000) break; }
+    const reps={}; (await get('staff?select=id,name').catch(()=>[])).forEach(s=>reps[s.id]=s.name);
+    const by={}; all.forEach(t=>{ const k=phK(t.phone); if(k.length===10) (by[k] ||= []).push(t); });
+    const rows=[]; for(const k in by) if(by[k].length>1) by[k].forEach(t=>rows.push({...t, g:k}));
+    all.forEach(t=>{ if(!t.enabled && !rows.some(r=>r.id===t.id)) rows.push({...t, g:''}); });
+    const cnt={}; for(let i=0;i<rows.length;i+=100){ (await get('messages?select=teacher_id&teacher_id=in.('+rows.slice(i,i+100).map(r=>r.id).join(',')+')')).forEach(m=>cnt[m.teacher_id]=(cnt[m.teacher_id]||0)+1); }
+    rows.forEach(r=>{ r.msgs=cnt[r.id]||0; r.rep=reps[r.rep_id]||'—'; });
+    srvDupRows=rows; srvDupsDraw();
+  }catch(e){ box.innerHTML='<div class="small" style="color:var(--bad);margin-top:8px">⚠️ مش قادر أجيب القايمة دلوقتي — جرّب تاني</div>'; }
+}
+function srvDupsDraw(){
+  const box=$('#srvDupL'); if(!box) return;
+  if(!srvDupRows.length){ box.innerHTML='<div class="ok-t" style="color:var(--ok);font-weight:700;margin-top:8px">✅ مفيش حسابات متكررة</div>'; return; }
+  const gs={}; srvDupRows.forEach(r=>(gs[r.g] ||= []).push(r));
+  const row=r=>`<div class="hrow"><div class="grow"><b>${esc(r.name||'من غير اسم')}</b> ${r.enabled?'<span class="pill new">شغال</span>':'<span class="pill dup">⛔ موقوف</span>'}${r.keep?' <span class="pill abc">الأساسي</span>':''}
+    <div class="small muted">${isOwnerApp()?esc(r.rep)+' • ':''}${r.msgs} رسالة • ${r.last_seen?'فتح التطبيق':'ما فتحش التطبيق'}</div></div>
+    <button class="btn sm danger" data-act="srv-del" data-id="${esc(r.id)}">🗑️ امسح</button></div>`;
+  box.innerHTML=Object.keys(gs).sort((a,b)=>(a?0:1)-(b?0:1)).map(k=>{ const l=gs[k];
+    if(k){ const on=l.filter(r=>r.enabled), best=(on.find(r=>r.local_id)||on[0]); if(best) best.keep=true; }
+    return `<div class="dupg" style="margin-top:8px"><b dir="ltr">${k?'📞 0'+esc(k):''}</b>${k?'':'<b>⛔ حسابات موقوفة</b>'}${l.map(row).join('')}</div>`; }).join('');
+}
+async function srvDupDel(id){
+  const x=srvDupRows.find(r=>r.id===id); if(!x) return;
+  if(!confirm(`تمسح «${x.name}» نهائي؟\n${isOwnerApp()?`• المندوب: ${x.rep}\n`:''}• ${x.msgs} رسالة هتتمسح معاه\n${x.keep?'• ⚠️ ده الحساب الأساسي للرقم ده\n':''}\nالمسح مش بيرجع.`)) return;
+  try{
+    const S=await sbSession(); if(!S) throw new Error('login');
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/rpc/delete_my_teacher',{method:'POST',headers:{...S.h,'Content-Type':'application/json'},body:JSON.stringify({p_id:id})});
+    if(!r.ok || (await r.json())!==true) throw new Error('no');
+    toast('🗑️ اتمسح '+x.name);
+    if(x.local_id && tById(x.local_id)) alert(`«${x.name}» لسه موجود في قايمة المدرسين على الموبايل ده.\nلو عايز تشيله خالص افتحه وامسحه من ✏️ تعديل ← 🗑️، وإلا هيرجع يتبعت للمراسلات تاني.`);
+    srvDupsLoad();
+  }catch(e){ alert('⚠️ ما اتمسحش — اتأكد إن النت شغال وإنك داخل «💬 المراسلات» بحسابك، وإن الرقم لسه متكرر.'); }
 }
 
 /* ================= فورم المدرس ================= */
@@ -2132,6 +2182,8 @@ document.addEventListener('click', e=>{
       if(!applySpec(t, bar)) break;
       forceCls=false; save(); render(); toast(Object.keys(sel).length ? '✅ التخصص اتحفظ — دوس «سلّمت» تاني' : '✅ التخصص اتحفظ'); break; }
     case 'show-cls-change': openSpec(); break;    case 'go-dups': e.preventDefault(); goDups(); break;
+    case 'srv-dups': srvDupsLoad(); break;
+    case 'srv-del': srvDupDel(el.dataset.id); break;
     case 'del-dup': { const t=tById(el.dataset.id); if(!t) break;
       const n=db.entries.filter(x=>x.t===t.id).length, s=db.sales.filter(x=>x.t===t.id).length;
       if(!confirm(`تمسح «${t.name}»${n?` و ${n} تسليم`:''}${s?` و ${s} بيع/طلب`:''}؟`)) break;
@@ -3322,7 +3374,8 @@ async function sbRetsPull(force){
 }
 function retsHtml(){
   const list=myRets(), off=!navigator.onLine;
-  const note=off?'<div class="warnbox">📡 مفيش نت — دي آخر قايمة محفوظة. «📦 استلمت» محتاج نت.</div>':'';
+  const nw=+(sbParts||{}).rets||0;
+  const note=`<a class="btn owe" href="admin.html#/rets" style="display:block;text-align:center;margin-bottom:8px">📝 طلبات المرتجع الجديدة${nw?` (${nw})`:''} — وافق أو ارفض ←</a>`+(off?'<div class="warnbox">📡 مفيش نت — دي آخر قايمة محفوظة. «📦 استلمت» محتاج نت.</div>':'');
   if(!list.length) return note+'<div class="card empty">مفيش مرتجعات مستنية تستلمها ✅<div class="small muted" style="margin-top:6px">المرتجع بيظهر هنا بعد ما توافق عليه في 💬 المراسلات، وبيتخصم من حساب المدرس لما تدوس «📦 استلمت».</div></div>';
   const by=new Map(); for(const r of list){ const id=r.teachers.local_id; if(!by.has(id)) by.set(id,[]); by.get(id).push(r); }
   const sbOf=b=>String(b).split('-')[1], lb=i=>i.l||bookLabel(i.b), nb=list.reduce((a,r)=>a+(r.items||[]).reduce((s,i)=>s+(+i.q||0),0),0);
@@ -5331,7 +5384,7 @@ function editInvoice(sid){
 const pendReqs = () => (db.reqs||[]).filter(r=>!r.done && tById(r.t));
 function updateBell(){ const n=pendReqs().length+remoteReqs.length+sbBell, el=$('#bellN'); if(el){ el.textContent=n||''; el.hidden=!n; } }
 /* إشعارات «💬 المراسلات» (Supabase): بنقرا جلسة admin.html المحفوظة على نفس الموقع */
-var sbBell=0, sbSid=null;
+var sbBell=0, sbSid=null, sbParts={};
 async function sbStaffId(S){ if(sbSid && sbSid.u===S.s.user.id) return sbSid.id;
   const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/staff?select=id&user_id=eq.'+S.s.user.id,{headers:S.h}); const j=r.ok?await r.json():[];
   if(!j[0]) return null; sbSid={u:S.s.user.id, id:j[0].id}; return sbSid.id; }
@@ -5349,6 +5402,7 @@ async function pullSbBell(){
         [j.edits, j.orders, j.msgs, j.rets]=await Promise.all([cnt('edit_requests'+s+'&status=eq.pending'), cnt('orders'+s+'&status=eq.pending'),
           cnt('messages'+s+'&from_teacher=is.true&read_at=is.null'), cnt('returns'+s+'&status=eq.pending')]); } }catch(e){}
     const n=(+j.edits||0)+(+j.orders||0)+(+j.msgs||0)+(+j.reps||0)+(+j.rets||0);
+    sbParts=j;
     if(n>sbBell){ try{ navigator.vibrate && navigator.vibrate([300,120,300]); }catch(e){} msgPop(); }   // نغمة الجرس للمدرسين بس
     const was=sbBell; sbBell=n; updateBell();
     if(n!==was && location.hash.replace(/^#\/?/,'')==='' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName||'')) { const y=scrollY; render(); scrollTo(0,y); }   // عدّاد أيقونة «📬 الرسائل»
@@ -5372,6 +5426,19 @@ var rseenAt=0; function rSeen(){ try{ if(document.hidden || !CLOUD_URL || Date.n
 setTimeout(rSeen, 2500); document.addEventListener('visibilitychange', rSeen);
 setTimeout(()=>sbBellTick(0), 3000); setInterval(()=>sbBellTick(5*60000), 60000); document.addEventListener('visibilitychange', ()=>sbBellTick(60000));
 setTimeout(()=>migratePhotos().catch(()=>{}), 1500);
+// شريط الجرس: كل الإشعارات سطر تحت سطر، واللي فيه جديد جنبه رقمه
+function bellDrop(){
+  const old=document.getElementById('bellDrop'); if(old){ old.remove(); return; }
+  const P=sbParts||{}, A=k=>()=>{ location.href='admin.html#/bell/'+k; };
+  const rows=[{l:'💬 رسايل جديدة', n:+P.msgs||0, go:A('msgs')}, {l:'🛒 طلبات المدرسين', n:+P.orders||0, go:A('orders')}, {l:'↩️ مرتجعات', n:+P.rets||0, go:A('rets')},
+    {l:'📝 تعديل الملفات (مستني موافقتك)', n:+P.edits||0, go:A('edits')}, {l:'📍 اتغيّر لوحده (مكان / مواعيد / صورة)', n:0, go:A('auto')}, {l:'📲 ثبّتوا التطبيق', n:0, go:A('inst')},
+    {l:'📋 طلبات وتحديثات من البرنامج', n:pendReqs().length+remoteReqs.length, go:bellModal}];
+  if(+P.reps) rows.unshift({l:'👤 مناديب مستنيين موافقتك', n:+P.reps, go:()=>{ location.href='admin.html#/settings'; }});
+  const w=document.createElement('div'); w.id='bellDrop'; w.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.25)';
+  w.innerHTML=`<div style="position:absolute;top:58px;left:8px;right:8px;max-width:460px;margin:0 auto;background:#fff;color:#111;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:6px;max-height:75vh;overflow:auto">${rows.map((r,i)=>`<button type="button" data-bd="${i}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:13px 12px;border:0;border-bottom:1px solid #eee;background:${r.n?'#f0fdfa':'transparent'};color:#111;font:inherit;font-size:16px;font-weight:${r.n?800:500};text-align:start;cursor:pointer;opacity:${r.n?1:.55}"><span>${esc(r.l)}</span>${r.n?`<b style="background:#dc2626;color:#fff;border-radius:12px;min-width:24px;padding:1px 8px;text-align:center">${r.n}</b>`:''}</button>`).join('')}</div>`;
+  document.body.appendChild(w);
+  w.addEventListener('click', e=>{ e.stopPropagation(); const b=e.target.closest('[data-bd]'); if(b){ w.remove(); rows[+b.dataset.bd].go(); } else if(e.target===w) w.remove(); });
+}
 function bellModal(){
   document.getElementById('bellM')?.remove();
   const l=pendReqs().sort((a,b)=>b.at.localeCompare(a.at));
@@ -5737,7 +5804,7 @@ document.addEventListener('click', e=>{
   const el=e.target.closest('[data-act]'); if(!el) return;
   switch(el.dataset.act){
     case 'reg-visit': regVisit(el.dataset.k); break;
-    case 'bell': bellModal(); break;
+    case 'bell': bellDrop(); break;
     case 'rreq-ok': rreqAct(el.dataset.id, true); break;
     case 'rreq-no': rreqAct(el.dataset.id, false); break;
     case 'sent-f': sentF[el.dataset.k]=el.dataset.v; renderSent(); break;
