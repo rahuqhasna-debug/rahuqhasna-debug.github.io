@@ -201,6 +201,11 @@ body:has(.savebar.sb2) .back2{display:none}
 .ordcard .oc{border:0;border-radius:16px;padding:8px 4px;font:800 14px inherit;font-family:inherit;color:#fff;cursor:pointer;box-shadow:0 4px 10px -5px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;gap:2px}
 .ordcard .oc b{font-size:24px;line-height:1}
 .hm .ttiles.five:has(.ordcard){grid-template-rows:auto 100px 100px}
+.ordcard .oc-b2{grid-template-columns:1fr 1fr}.ordcard .oc-l{background:linear-gradient(140deg,#4ade80,#15803d)}.ordcard .oc-s{background:linear-gradient(140deg,#a78bfa,#7c3aed)}
+.lrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid #eee}.lrow:first-of-type{border-top:0}.lrow .lr-t{flex:1;min-width:0}.lrow.miss{background:#fef2f2;border-radius:10px}
+.lstep{display:flex;align-items:center;gap:4px;flex:none}.lstep button{width:36px;height:36px;border-radius:10px;border:1.5px solid #c4b5fd;background:#f5f3ff;font-size:20px;font-weight:800;color:#5b21b6;cursor:pointer}
+.lstep input{width:56px;height:36px;text-align:center;font-size:18px;font-weight:800;border:1.5px solid #c4b5fd;border-radius:10px}
+.stusum{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}.stusum div{background:#fff;border-radius:12px;padding:6px 2px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}.stusum span{display:block;font-size:11.5px;color:#666}.stusum b{font-size:16px}
 .ordcard .oc-o{background:linear-gradient(140deg,#f472b6,#db2777)}.ordcard .oc-i{background:linear-gradient(140deg,#38bdf8,#2563eb)}.ordcard .oc-r{background:linear-gradient(140deg,#fb923c,#dc2626)}
 .back2{position:fixed;left:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:31;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:0;border-radius:22px;padding:9px 18px;font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.28);white-space:nowrap}
 body:has(#tabs[hidden]) .back2{bottom:calc(14px + env(safe-area-inset-bottom))}
@@ -347,6 +352,7 @@ function saveD(data) { try { const o = LS.get(DKEY()) || {}; LS.set(DKEY(), { v:
 async function tVer() { try { const { data, error } = await sb.rpc('t_ver', { p_code: code }); return error ? undefined : data; } catch (e) { return undefined; } }
 async function afterLoad(first, fresh) {
   loadNews();
+  if (fresh || !LEFT) loadLeft();   // مهمة 6: الكتب اللي معايا (بيظهر لو عنده فاتورة)
   egFlush(async d => !(await sb.rpc('t_eg', { p_code: code, p_bytes: d })).error);   // مهمة 2 — المرحلة 7: عدّاد الباقة
   if (fresh) {
     // طلب تحديث جديد من آخر مرة ← صوت
@@ -446,15 +452,16 @@ function render() {
   const n = D.updates.length + (D.pending && D.pending.status === 'question' ? 1 : 0);
   $('#homeCnt').hidden = !n; $('#homeCnt').textContent = n;
   $('#msgCnt').hidden = !msgBadge(); $('#msgCnt').textContent = msgBadge();
-  $('#title').textContent = { me: '👤 بياناتي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', inv: '🧾 فواتيري', ret: '↩️ مرتجعات', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد' }[view] || 'أهلًا ' + tName(D.name);
+  $('#title').textContent = { me: '👤 بياناتي', msgs: '💬 الرسائل', books: '📚 كتبي', prices: '💰 أسعار الكتب', order: '🛒 اطلب كتبك بسعر مميز', inv: '🧾 فواتيري', ret: '↩️ مرتجعات', recv: '📦 استلمت مننا إيه', news: '🆕 اعرف الجديد', left: '📚 الكتب اللي معايا', stu: '📒 دفتر الطلبة' }[view] || 'أهلًا ' + tName(D.name);
   if (view !== 'news') newsSub = null;
-  if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else if (view === 'inv') renderInv(); else if (view === 'ret') renderRet(); else renderHome();
+  if (view === 'left') renderLeft(); else if (view === 'stu') renderStu(); else if (view === 'news') renderNews(); else if (view === 'recv') renderRecv(); else if (view === 'me') renderMe(); else if (view === 'msgs') renderMsgs(); else if (view === 'books') renderBooks(); else if (view === 'prices') renderPrices(); else if (view === 'order') renderOrder(); else if (view === 'inv') renderInv(); else if (view === 'ret') renderRet(); else renderHome();
 }
 const fieldsTxt = keys => keys.map(k => FIELD_LABEL[k] || k).join('، ');
 const valsList = o => Object.keys(o || {}).map(k => `<div class="kv"><span>${FIELD_LABEL[k] || k}</span><span>${fmtVal(k, o[k])}</span></div>`).join('');
 
 function renderHome() {
   const v = vals();
+  if (!LEFT && code) LEFT = LS.get(LKEY(), null);
   // متابعة 7: اتشال الشريط الأبيض (اسم المدرس) — الرئيسية 6 مربعات قد بعض بأيقونات كرتونية ملوّنة
   const HI = { or: '🛒', ms: '💬', pr: '📚', nw: '📢', rv: '📦' };   // متابعة 8: أيقونات ملوّنة زي أيقونات الشريط اللي تحت
   let h = `<div class="promo"><div class="pr-t">كتب سلاح التلميذ <b>بسعر مميز</b></div>
@@ -462,7 +469,8 @@ function renderHome() {
     <div class="pr-s">سلاح التلميذ.. معاك في القمة</div></div>`;
   // 2026-11-18 (طلب شريف): كارت مدوّر فيه 3 زراير (اطلب كتبك · فواتيري · مرتجعات) بدل زرار «كتبك بخصم خاص» — واتشالوا من جوه الصفحات
   h += `<div class="ttiles five"><div class="ordcard"><div class="oc-t">اطلب كتبك بسعر مميز من سلاح التلميذ</div>
-      <div class="oc-b"><button class="oc oc-o" data-v="order"><b>🛒</b>اطلب كتبك</button><button class="oc oc-i" data-v="inv"><b>🧾</b>فواتيري</button><button class="oc oc-r" data-v="ret"><b>↩️</b>مرتجعات</button></div></div>
+      <div class="oc-b"><button class="oc oc-o" data-v="order"><b>🛒</b>اطلب كتبك</button><button class="oc oc-i" data-v="inv"><b>🧾</b>فواتيري</button><button class="oc oc-r" data-v="ret"><b>↩️</b>مرتجعات</button></div>
+      ${leftHas() ? `<div class="oc-b oc-b2"><button class="oc oc-l" data-v="left"><b>📚</b>الكتب اللي معايا</button><button class="oc oc-s" data-v="stu"><b>📒</b>دفتر الطلبة</button></div>` : ''}</div>
     <button class="tt h-ms" data-v="msgs"><span class="tti">${HI.ms}</span><span class="ttl">الرسائل</span>${msgBadge() ? `<span class="ttb">${msgBadge()}</span>` : ''}</button>
     <button class="tt h-nw" data-v="news"><span class="tti">${HI.nw}</span><span class="ttl">اعرف الجديد</span>${newsTotal() ? `<span class="ttb">${newsTotal()}</span>` : ''}</button>
     <button class="tt h-rv ${RV && RV.open ? '' : 'lock'}" data-v="recv"><span class="tti">${HI.rv}</span><span class="ttl">استلمت مننا إيه</span>${!(RV && RV.open) ? '<span class="tts">🔒</span>' : ''}</button></div>`;
@@ -470,6 +478,9 @@ function renderHome() {
   if (notif !== 'granted' && notif !== 'unsupported') h += `<div class="icard"><div class="ic-t">🔔 فعّل الإشعارات</div>
     <div class="ic-s">عشان توصلك رسائل سلاح التلميذ ومواعيد تسليم النسخ المجانية.</div>
     <button class="gobtn" id="setup">🔔 فعّل الإشعارات</button></div>`;
+  // مهمة 6: «باقي معاك كام؟» — بيظهر لو عنده فاتورة وما حدّثش من يومين (ومش بيستخدم دفتر الطلبة)
+  if (leftHas() && leftOld() && !leftNow().book) h += `<div class="note"><h3 style="margin:0 0 6px">📚 باقي معاك كام كتاب لسه ما اتباعش؟</h3><div class="small">اكتب العدد قدام كل كتاب — بياخد دقيقة.</div>
+    <div class="acts"><button class="btn ok" onclick="go('left')">حدّث الأعداد ←</button><button class="btn ghost" onclick="go('stu')">📒 دفتر الطلبة</button></div></div>`;
   if (D.unread) h += `<div class="alert"><h3>💬 عندك ${D.unread} رسالة جديدة</h3><button class="btn danger" onclick="go('msgs')">افتح الرسائل ←</button></div>`;
   for (const u of D.updates) h += `<div class="alert"><h3>📝 مطلوب تحديث بياناتك</h3>${esc(fieldsTxt(u.fields || []))}${u.note ? `<div style="margin-top:6px">«${esc(u.note)}»</div>` : ''}
     <div class="acts"><button class="btn danger" onclick="go('me')">حدّث دلوقتي ←</button></div></div>`;
@@ -1341,6 +1352,123 @@ function renderNews() {
     v.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;color:#fff"><b style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${esc(x.n)}</b><button class="btn sm" id="nvx">✕ قفل</button></div>
       <iframe src="https://drive.google.com/file/d/${encodeURIComponent(x.id)}/preview" allow="autoplay; fullscreen" allowfullscreen style="flex:1;border:0;width:100%;background:#fff"></iframe>`;
     document.body.appendChild(v); $('#nvx', v).onclick = () => v.remove();
+  });
+}
+
+/* ---------- مهمة 6: 📚 الكتب اللي معايا + 📒 دفتر الطلبة ----------
+   بيظهروا بس للمدرس اللي خد فاتورة كتب (t_left_get ← books مش فاضية).
+   «الكتب اللي معايا»: لكل كتاب خدت كام ورجّعت كام، والمدرس يكتب باقي معاه كام لسه ما اتباعش ← t_left_set ← بيظهر عند المندوب.
+   «دفتر الطلبة»: كل طالب: اسمه، الكتب، المبلغ، دفع كام ← لمّ كام وفاضل على مين. لو الدفتر فيه طلبة، الباقي بيتحسب لوحده (خدت − رجّعت − بعت للطلبة). */
+const LKEY = () => 'selah-trial-left-' + code;
+let LEFT = null, STU = [];
+const leftHas = () => !!(LEFT && (LEFT.books || []).length);
+const SUB_N = { ar: 'عربي', math: 'رياضة', en: 'إنجليزي', sci: 'علوم', stu: 'دراسات' };
+const nfm = n => (Math.round((+n || 0) * 100) / 100).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
+async function loadLeft() {
+  if (!LEFT) LEFT = LS.get(LKEY(), null);
+  try {
+    const { data, error } = await sb.rpc('t_left_get', { p_code: code });
+    if (error || !data) return LEFT;
+    const ch = JSON.stringify(data) !== JSON.stringify(LEFT); LEFT = data; LS.set(LKEY(), data);
+    if (ch && view === 'home') renderHome();
+  } catch (e) { }
+  return LEFT;
+}
+// الباقي اللي هيتعرض: من الدفتر لو فيه طلبة، وإلا اللي المدرس كتبه
+function leftNow() {
+  const o = {}, stu = (LEFT && LEFT.stu) || {}, sold = stu.sold || {}, L = (LEFT && LEFT.left) || {}, book = (stu.n || 0) > 0 && LEFT.src !== 'manual';
+  for (const x of (LEFT && LEFT.books) || []) { const mx = Math.max(0, x.n - x.r); o[x.b] = book ? Math.max(0, mx - (+sold[x.b] || 0)) : (L[x.b] != null ? +L[x.b] : null); }
+  return { o, book };
+}
+const leftOld = () => !LEFT || !LEFT.at || Date.now() - new Date(LEFT.at).getTime() > 47 * 3600e3;
+const notYet = () => `<div class="card empty" style="text-align:center;padding:24px">الصفحة دي بتظهر بعد أول فاتورة كتب من المندوب 📚</div>`;
+async function renderLeft() {
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#16a34a,#0f766e)">📚 الكتب اللي معايا<div class="small">اكتب باقي معاك كام من كل كتاب لسه ما اتباعش</div></div><div class="loading">جاري التحميل…</div>`;
+  await loadLeft(); if (view !== 'left') return;
+  if (!leftHas()) { app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#16a34a,#0f766e)">📚 الكتب اللي معايا</div>` + notYet(); return; }
+  const { o, book } = leftNow(), bk = [...LEFT.books].sort((a, b) => a.b.localeCompare(b.b)), subs = [...new Set(bk.map(x => x.b.split('-')[1]))];
+  app.innerHTML = `<div class="phead" style="background:linear-gradient(135deg,#16a34a,#0f766e)">📚 الكتب اللي معايا<div class="small">${LEFT.at ? 'آخر تحديث: ' + esc(fmtDate(LEFT.at)) : 'لسه ما كتبتش الأعداد'}</div></div>
+    ${book ? `<div class="note" style="margin-bottom:10px">📒 الأعداد دي اتحسبت لوحدها من <b>دفتر الطلبة</b> (خدت − رجّعت − بعت للطلبة). لو مختلفة عن الحقيقة عدّلها وابعت.</div>` : `<div class="note" style="margin-bottom:10px">✍️ عدّ الكتب اللي لسه معاك وما اتباعتش، واكتب العدد قدام كل كتاب. <b>المندوب بيشوف الأعداد دي بس.</b></div>`}
+    ${subs.map(s => `<div class="card" style="margin-bottom:10px"><h3 style="margin:0 0 6px;color:${['#1D4ED8', '#15803D', '#92400E', '#7E22CE', '#EA580C'][['ar', 'math', 'stu', 'en', 'sci'].indexOf(s)] || '#111'}">${esc(SUB_N[s] || s)}</h3>
+      ${bk.filter(x => x.b.split('-')[1] === s).map(x => { const mx = Math.max(0, x.n - x.r); return `<div class="lrow" data-b="${esc(x.b)}" data-mx="${mx}"><div class="lr-t"><b>${esc(x.l || bookLabel(x.b))}</b><div class="small muted">خدت ${x.n}${x.r ? ` • رجّعت ${x.r}` : ''} • معاك بالكتير ${mx}</div></div>
+        <div class="lstep"><button type="button" data-st="-">−</button><input inputmode="numeric" value="${o[x.b] != null ? o[x.b] : ''}" placeholder="؟"><button type="button" data-st="+">+</button></div></div>`; }).join('')}</div>`).join('')}
+    <div class="card" id="ltot" style="text-align:center;margin-bottom:10px"></div>
+    <button class="gobtn" id="lsave">✅ ابعت للمندوب</button>
+    <button class="btn" style="width:100%;margin-top:10px" onclick="go('stu')">📒 دفتر الطلبة — سجّل اللي بعته</button>`;
+  const rows = $$('.lrow'), num = s => +toEnNum(s).replace(/\D/g, '');
+  const tot = () => { let n = 0, e = 0; rows.forEach(r => { const v = $('input', r).value.trim(); if (v === '') e++; else n += num(v); }); $('#ltot').innerHTML = `باقي معاك <b>${n}</b> كتاب${e ? ` <div class="small" style="color:#b45309">⚠️ فيه ${e} كتاب لسه ما كتبتش عدده</div>` : ''}`; };
+  rows.forEach(r => { const mx = +r.dataset.mx, i = $('input', r);
+    const set = v => { v = Math.max(0, Math.min(mx, v)); i.value = v; tot(); };
+    $$('[data-st]', r).forEach(b => b.onclick = () => set((i.value === '' ? (b.dataset.st === '+' ? -1 : 1) : num(i.value)) + (b.dataset.st === '+' ? 1 : -1)));
+    i.oninput = () => { if (i.value.trim() === '') return tot(); const v = num(i.value); if (v > mx) { toast(`معاك ${mx} بالكتير من الكتاب ده`); i.value = mx; } tot(); }; });
+  tot();
+  $('#lsave').onclick = async () => {
+    const out = {}, miss = [];
+    rows.forEach(r => { const v = $('input', r).value.trim(); if (v === '') miss.push(r); else out[r.dataset.b] = Math.min(+r.dataset.mx, num(v)); });
+    if (miss.length) { miss[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); miss.forEach(r => r.classList.add('miss')); return toast('اكتب العدد قدام كل الكتب (لو مفيش معاك اكتب 0)', 4000); }
+    const b = $('#lsave'); b.disabled = true; b.textContent = 'جاري الإرسال…';
+    const { error } = await sb.rpc('t_left_set', { p_code: code, p_left: out });
+    if (error) { b.disabled = false; b.textContent = '✅ ابعت للمندوب'; return toast(errMsg(error)); }
+    const n = Object.values(out).reduce((a, x) => a + x, 0);
+    window.pushNotifyRep && window.pushNotifyRep(`📚 ${D.name}: باقي معاه ${n} كتاب لسه ما اتباعش`);
+    toast('✅ اتبعت — جزاك الله خيرًا', 3500); await loadLeft(); go('home');
+  };
+}
+async function renderStu() {
+  const head = `<div class="phead" style="background:linear-gradient(135deg,#7c3aed,#db2777)">📒 دفتر الطلبة<div class="small">مين خد كتب منك، ودفع كام، وفاضل عليه كام</div></div>`;
+  app.innerHTML = head + '<div class="loading">جاري التحميل…</div>';
+  const [r] = await Promise.all([sb.rpc('t_stu_list', { p_code: code }).catch(() => ({})), loadLeft()]);
+  if (view !== 'stu') return;
+  if (!leftHas()) { app.innerHTML = head + notYet(); return; }
+  if (r && r.error) { app.innerHTML = head + `<div class="alert">${esc(errMsg(r.error))}</div>`; return; }
+  STU = (r && r.data) || [];
+  const coll = STU.reduce((a, s) => a + (+s.paid || 0), 0), owe = STU.reduce((a, s) => a + Math.max(0, (+s.total || 0) - (+s.paid || 0)), 0), sold = {};
+  for (const s of STU) for (const i of s.items || []) sold[i.b] = (sold[i.b] || 0) + (+i.q || 0);
+  const ns = Object.values(sold).reduce((a, n) => a + n, 0), { o } = leftNow();
+  app.innerHTML = head + `<div class="stusum"><div><span>👨‍🎓 الطلبة</span><b>${STU.length}</b></div><div><span>📚 بعت</span><b>${ns}</b></div><div><span>💵 لمّيت</span><b style="color:#15803d">${nfm(coll)}</b></div><div><span>⏳ عليهم</span><b style="color:#b91c1c">${nfm(owe)}</b></div></div>
+    <button class="gobtn" id="snew" style="margin-bottom:10px">➕ طالب جديد</button>
+    ${STU.length ? `<input id="sq" type="search" placeholder="🔎 دوّر باسم الطالب" style="width:100%;margin-bottom:10px">` : ''}
+    <div id="slist">${STU.length ? STU.map(s => { const rest = Math.max(0, (+s.total || 0) - (+s.paid || 0));
+      return `<div class="card stc" data-n="${esc(String(s.name || '').toLowerCase())}" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(s.name)}</b>${rest ? `<b style="color:#b91c1c">باقي ${nfm(rest)} ج</b>` : '<b style="color:#15803d">✅ خالص</b>'}</div>
+        <div class="small">${(s.items || []).map(i => `${esc(bookLabel(i.b))} × ${i.q}`).join('، ') || '<span class="muted">من غير كتب</span>'}</div>
+        <div class="small muted">المبلغ ${nfm(s.total)} ج • دفع ${nfm(s.paid)} ج${s.phone ? ` • <span dir="ltr">${esc(s.phone)}</span>` : ''}${s.note ? ` • ${esc(s.note)}` : ''}</div>
+        <div class="acts" style="margin-top:6px">${rest ? `<button class="btn sm ok" data-pay="${esc(s.id)}">💵 دفع</button>` : ''}<button class="btn sm" data-ed="${esc(s.id)}">✏️ تعديل</button><button class="btn sm danger" data-del="${esc(s.id)}">🗑️</button></div></div>`; }).join('')
+      : '<div class="card empty" style="text-align:center;padding:20px">لسه ما سجلتش طلبة. دوس «➕ طالب جديد» وسجّل اللي خد منك كتب.</div>'}</div>
+    ${ns ? `<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px">📚 الكتب</h3>${LEFT.books.filter(x => sold[x.b] || o[x.b] != null).map(x => `<div class="kv"><span>${esc(x.l || bookLabel(x.b))}</span><span>بعت <b>${sold[x.b] || 0}</b> • فاضل معاك <b>${o[x.b] != null ? o[x.b] : '؟'}</b></span></div>`).join('')}</div>` : ''}`;
+  $('#snew').onclick = () => stuForm(null);
+  const sq = $('#sq'); sq && (sq.oninput = () => { const w = sq.value.trim().toLowerCase(); $$('.stc').forEach(c => c.hidden = !!w && !c.dataset.n.includes(w)); });
+  $$('[data-ed]').forEach(b => b.onclick = () => stuForm(STU.find(s => s.id === b.dataset.ed)));
+  $$('[data-del]').forEach(b => b.onclick = async () => { const s = STU.find(x => x.id === b.dataset.del); if (!s || !confirm(`تمسح «${s.name}» من الدفتر؟`)) return;
+    const { error } = await sb.rpc('t_stu_del', { p_code: code, p_id: s.id }); if (error) return toast(errMsg(error)); toast('اتمسح'); renderStu(); });
+  $$('[data-pay]').forEach(b => b.onclick = () => { const s = STU.find(x => x.id === b.dataset.pay); if (!s) return; const rest = Math.max(0, s.total - s.paid);
+    modal(`<h3>💵 ${esc(s.name)} دفع كام؟</h3><div class="small muted" style="margin-bottom:8px">باقي عليه ${nfm(rest)} ج</div><input id="pv" inputmode="decimal" value="${rest}" style="width:100%;font-size:20px;text-align:center"><div class="acts" style="margin-top:10px"><button class="btn ok" id="pok">حفظ</button><button class="btn ghost" data-close>رجوع</button></div>`, (box, close) => {
+      $('#pok', box).onclick = async () => { const v = +toEnNum($('#pv', box).value).replace(/[^\d.]/g, ''); if (!(v > 0)) return toast('اكتب المبلغ');
+        const { error } = await sb.rpc('t_stu_save', { p_code: code, p_id: s.id, p_row: { ...s, paid: Math.min(+s.total || 0, (+s.paid || 0) + v) } }); if (error) return toast(errMsg(error)); close(); toast('✅ اتسجّل'); renderStu(); }; }); });
+}
+function stuForm(s) {
+  const q = {}; for (const i of (s && s.items) || []) q[i.b] = i.q;
+  const { o } = leftNow(), bk = [...LEFT.books].sort((a, b) => a.b.localeCompare(b.b));
+  modal(`<h3>${s ? '✏️ تعديل' : '➕ طالب جديد'}</h3>
+    <label class="small">اسم الطالب <span style="color:#b91c1c">*</span></label><input id="sn" value="${esc((s && s.name) || '')}" style="width:100%;margin-bottom:8px">
+    <label class="small">تليفون (مش إجباري)</label><input id="sp" inputmode="tel" dir="ltr" value="${esc((s && s.phone) || '')}" style="width:100%;margin-bottom:8px">
+    <label class="small">الكتب اللي خدها</label>
+    ${bk.map(x => `<div class="lrow" data-b="${esc(x.b)}"><div class="lr-t"><b>${esc(x.l || bookLabel(x.b))}</b>${o[x.b] != null ? `<div class="small muted">فاضل معاك ${o[x.b]}</div>` : ''}</div><div class="lstep"><button type="button" data-st="-">−</button><input inputmode="numeric" value="${q[x.b] || ''}" placeholder="0"><button type="button" data-st="+">+</button></div></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><label class="small">المبلغ كله (ج)</label><input id="st" inputmode="decimal" value="${s ? s.total : ''}" style="width:100%"></div><div style="flex:1"><label class="small">دفع كام (ج)</label><input id="sd" inputmode="decimal" value="${s ? s.paid : ''}" style="width:100%"></div></div>
+    <label class="small">ملاحظة (مش إجباري)</label><input id="so" value="${esc((s && s.note) || '')}" style="width:100%">
+    <div class="acts" style="margin-top:12px"><button class="btn ok" id="sok">✅ حفظ</button><button class="btn ghost" data-close>رجوع</button></div>`, (box, close) => {
+    const num = v => +toEnNum(v).replace(/[^\d.]/g, '') || 0;
+    $$('.lrow', box).forEach(r => { const i = $('input', r); $$('[data-st]', r).forEach(b => b.onclick = () => { i.value = Math.max(0, num(i.value) + (b.dataset.st === '+' ? 1 : -1)) || ''; }); });
+    setTimeout(() => $('#sn', box).focus(), 60);
+    $('#sok', box).onclick = async () => {
+      const name = $('#sn', box).value.trim(); if (!name) return toast('اكتب اسم الطالب');
+      const items = $$('.lrow', box).map(r => ({ b: r.dataset.b, q: num($('input', r).value) })).filter(i => i.q > 0);
+      const total = num($('#st', box).value), paid = num($('#sd', box).value);
+      if (paid > total) return toast('اللي دفعه أكتر من المبلغ كله');
+      const btn = $('#sok', box); btn.disabled = true;
+      const { error } = await sb.rpc('t_stu_save', { p_code: code, p_id: s ? s.id : null, p_row: { name, phone: toEnNum($('#sp', box).value), items, total, paid, note: $('#so', box).value } });
+      if (error) { btn.disabled = false; return toast(errMsg(error)); }
+      close(); toast('✅ اتسجّل'); await loadLeft(); renderStu();
+    };
   });
 }
 

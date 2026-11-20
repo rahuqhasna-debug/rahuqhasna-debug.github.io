@@ -27,7 +27,9 @@
   const scope = new URL(BASE).pathname;   // /books/
   let who = null;
   const ready = new Promise(res => OneSignalDeferred.push(async OS => {
-    try { await OS.init({ appId: C.ONESIGNAL_APP_ID, serviceWorkerPath: scope.slice(1) + 'sw.js', serviceWorkerParam: { scope }, notifyButton: { enable: false } }); } catch (e) { }
+    // مهمة 6 (طلب شريف): الدوسة على الإشعار تودّي على صفحته حتى لو البرنامج مفتوح على صفحة تانية (زي البيع):
+    // origin = أي نافذة مفتوحة من البرنامج، navigate = تتنقل للينك الإشعار (بدل ما تتفتح قدام بس من غير ما تروح)
+    try { await OS.init({ appId: C.ONESIGNAL_APP_ID, serviceWorkerPath: scope.slice(1) + 'sw.js', serviceWorkerParam: { scope }, notifyButton: { enable: false }, notificationClickHandlerMatch: 'origin', notificationClickHandlerAction: 'navigate' }); } catch (e) { }
     try { OS.Notifications.addEventListener('permissionChange', g => { if (g && who) OS.login(who).catch(() => { }); }); } catch (e) { }
     // 🧭 مهمة 2: إشعار وصل والبرنامج مفتوح ← البرنامج يسأل القاعدة دلوقتي بس (بدل السؤال كل شوية)
     try { OS.Notifications.addEventListener('foregroundWillDisplay', () => { try { window.dispatchEvent(new Event('silah-push')); } catch (e) { } }); } catch (e) { }

@@ -233,8 +233,11 @@ textarea{width:100%;min-height:70px;border-radius:10px;border:1.5px solid var(--
 .mstrip span{display:block;font-size:11.5px;color:var(--muted)}.mstrip b{font-size:15px}
 .pmrow{display:flex;gap:6px;margin:2px 0 10px}.pmrow button{flex:1;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:8px 2px;font-size:14px;cursor:pointer;color:var(--ink)}
 .pmrow button.on{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:800}
+/* أقسام البيع الستة ظاهرين كلهم: 3 فوق و3 تحت */
+.chips.sgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:visible}
+.chips.sgrid .chip{white-space:normal;text-align:center;padding:7px 3px;font-size:13.5px;line-height:1.3;min-height:40px}
 .pertabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.pertabs .chip{padding:5px 10px;font-size:13.5px}
-.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}.kgrid .chip{text-align:center;padding:7px 2px;font-size:13px;white-space:normal}
+.kgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px}.kgrid .chip{text-align:center;padding:7px 2px;font-size:13px;white-space:normal}
 .gtab{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;color:#111}.gtab th,.gtab td{border:1px solid #9ca3af;padding:5px 3px;text-align:center}
 .gtab thead th{background:#6d28d9;color:#fff;font-size:12.5px}.gtab tfoot td,.gtab tfoot th{background:#ede9fe;font-weight:800;color:#4c1d95}.gtab .rl{text-align:right;font-weight:800}
 .dayh{margin:14px 2px 6px;font-weight:800;color:var(--brand);display:flex;justify-content:space-between;gap:8px;border-bottom:2px solid var(--brand-soft);padding-bottom:4px}
@@ -3450,8 +3453,11 @@ function mvData(){
   const pays=db.payments.filter(p=>p.k==='pay' && tById(p.t) && inR(p.d)).map(p=>({k:'pay', t:p.t, d:p.d, id:p.id, v:+p.amt||0, m:pmOf(p)}));
   const mpays=db.merchPays.filter(p=>inR(p.d)).map(p=>({v:+p.amt||0, m:pmOfM(p), name:p.m, d:p.d}));
   const pend=pendList().map(x=>({k:'pend', t:x.t, d:x.d, items:x.items.map(i=>({b:i.b, q:i.q, v:(unitOf(x.t,i.b)||0)*i.q})), n:x.items.reduce((a,i)=>a+i.q,0), v:pendVal(x), src:x.src, id:x.id}));
+  // 📚 الباقي عند المدرسين (آخر رقم كتبه كل مدرس — مش بالفترة)
+  const left=Object.entries(sbLeft).filter(([id])=>tById(id)).map(([id,L])=>{ const items=Object.entries(L.q||{}).filter(([,q])=>+q>0).map(([b,q])=>({b, q:+q, v:(unitOf(id,b)||0)*q}));
+    return {k:'left', t:id, d:L.at, items, n:items.reduce((a,i)=>a+i.q,0), v:items.reduce((a,i)=>a+i.v,0), src:L.src, stu:L.stu}; }).filter(x=>x.n>0);
   const by=a=>a.sort((x,y)=>(y.d||'').localeCompare(x.d||''));
-  return {f, e, sales:by(sales), rets:by(rets), pays:by(pays), mpays, pend:by(pend)};
+  return {f, e, sales:by(sales), rets:by(rets), pays:by(pays), mpays, pend:by(pend), left:by(left)};
 }
 // جدول الشبكة: المواد نازلة والصفوف فوق، في كل خانة العدد، وفي الآخر الإجمالي (عدد + قيمة)
 function gridData(list){
@@ -3470,9 +3476,9 @@ function gridHtml(G){
     <tbody>${G.rows.map((r,i)=>`<tr style="${i%2?'background:#f3f4f6':''}"><td class="rl" style="color:#${SUBJ_COLOR[r.sb]}">${esc(r.label)}</td>${r.cells.map(n=>`<td>${n||''}</td>`).join('')}<td><b>${r.tq}</b></td><td>${fmtN(r.tv)}</td></tr>`).join('')}</tbody>
     <tfoot><tr><th>الإجمالي</th>${G.colT.map(n=>`<td>${n||''}</td>`).join('')}<td>${G.tq}</td><td>${fmtM(G.tv)}</td></tr></tfoot></table></div>`;
 }
-const MVK_T={sale:'🛒 بيع', ret:'↩️ مرتجع استلمته', pay:'💵 دفعات', pend:'⏳ لسه ما استلمتهوش'};
+const MVK_T={sale:'🛒 بيع', ret:'↩️ مرتجع استلمته', pay:'💵 دفعات', pend:'⏳ لسه ما استلمتهوش', left:'📚 باقي عند المدرسين'};
 function mvCard(x){ const t=tById(x.t); if(!t) return '';
-  const col=x.k==='sale'?'#1d4ed8':x.k==='ret'?'#ea580c':x.k==='pay'?'#15803d':'#b45309';
+  const col=x.k==='sale'?'#1d4ed8':x.k==='ret'?'#ea580c':x.k==='pay'?'#15803d':x.k==='left'?'#0f766e':'#b45309';
   const f=x.k==='sale'?`inv:${x.s.id}`:x.k==='ret'?`ret:${x.key}`:x.k==='pay'?`pay:${x.id}`:'';
   let tags='';
   if(x.k==='sale'){ tags = x.s.from==='teacher-app' ? '<span class="tagm">📲 كان طلب من حساب المدرس</span>' : x.s.ord ? '<span class="tagr">✍️ طلب سجلته إنت</span>' : '';
@@ -3481,6 +3487,7 @@ function mvCard(x){ const t=tById(x.t); if(!t) return '';
     if(ch.length) tags+=`<div class="small" style="color:var(--owe)">${ch.map(esc).join('<br>')}</div>`; }
   if(x.k==='ret' || x.k==='pend') tags = x.src==='t' ? '<span class="tagm">📲 طلبه من برنامجه</span>' : x.src==='r' ? '<span class="tagr">✍️ سجلته إنت</span>' : '';
   if(x.k==='pay') tags=`<span class="tagr">${PAYM[x.m]}</span> <span class="small muted">فاضل عليه ${fmtM(ACC[t.id]?.owe||0)}</span>`;
+  if(x.k==='left') tags = x.src==='book' ? `<span class="tagm">📒 من دفتر الطلبة${x.stu?` (${x.stu.n} طالب)`:''}</span>` : '<span class="tagr">✍️ كتبها بإيده</span>';
   return `<div class="card scard ${tStC(t)}" style="${tUpdSt(t)};border-inline-start:6px solid ${col};cursor:pointer" data-act="${x.k==='pend'?'sales-tab':'mv-open'}" data-k="rets" data-t="${esc(t.id)}" data-f="${esc(f)}" data-hay="${esc(hayT(t)+' '+normText((x.items||[]).map(i=>bookLabel(i.b)).join(' ')))}">
     <div class="hd"><span class="thd">${tAv(t)}<b>${esc(t.name)}</b>${nameTags(t)}</span><span class="small muted">${fmtDT(x.d)}</span></div>
     ${x.items?`<div class="small">${itemsLine(x.items)}</div>`:''}
@@ -3497,22 +3504,25 @@ function moveHtml(){
     <div class="small muted" style="margin:-2px 0 6px">${PM_KEYS.map(k=>`${PAYM[k]}: <b>${fmtN(byM[k])}</b>`).join(' • ')}</div>
     <div class="kv"><span>🛒 بعت</span><b>${Ss.n} كتاب — ${fmtM(Ss.v)}</b></div>
     <div class="kv"><span>↩️ استلمت مرتجع</span><b style="color:#ea580c">${Rs.n} كتاب — ${fmtM(Rs.v)}</b></div>
-    <div class="kv"><span>⏳ لسه مستني مرتجع (كله)</span><b style="color:var(--owe)">${Ps.n} كتاب</b></div></div>`;
+    <div class="kv"><span>⏳ لسه مستني مرتجع (كله)</span><b style="color:var(--owe)">${Ps.n} كتاب</b></div>
+    ${D.left.length?`<div class="kv"><span>📚 لسه ما اتباعش عند المدرسين</span><b style="color:#0f766e">${D.left.reduce((a,x)=>a+x.n,0)} كتاب</b></div>`:''}</div>`;
   h+=`<div class="kgrid">${Object.keys(MVK_T).map(k=>`<button class="chip ${mvK===k?'on':''}" data-act="mv-k" data-k="${k}">${MVK_T[k]}</button>`).join('')}</div>`;
-  const list = mvK==='sale'?D.sales : mvK==='ret'?D.rets : mvK==='pay'?D.pays : D.pend;
+  const list = mvK==='sale'?D.sales : mvK==='ret'?D.rets : mvK==='pay'?D.pays : mvK==='left'?D.left : D.pend;
   const nT=new Set(list.map(x=>x.t)).size;
   if(mvK==='pay'){
     h+=`<div class="sumline">💵 حصّلت من <b>${nT}</b> مدرس • <b>${fmtM(paid)}</b></div>`;
     if(list.length) h+=`<div class="tscroll" style="margin-bottom:10px"><table class="gtab"><thead><tr><th>المدرس</th><th>اليوم والساعة</th><th>المبلغ</th><th>الطريقة</th><th>فاضل عليه</th></tr></thead><tbody>${list.map((x,i)=>`<tr style="${i%2?'background:#f3f4f6':''}"><td class="rl">${esc(tById(x.t).name)}</td><td>${fmtDT(x.d)}</td><td><b>${fmtN(x.v)}</b></td><td>${PAYM[x.m]}</td><td style="color:${(ACC[x.t]?.owe||0)>0?'#b91c1c':'#15803d'}"><b>${fmtN(ACC[x.t]?.owe||0)}</b></td></tr>`).join('')}</tbody>
       <tfoot>${PM_KEYS.filter(k=>byM[k]).map(k=>`<tr><th colspan="2">${PAYM[k]}</th><td>${fmtN(byM[k])}</td><td colspan="2"></td></tr>`).join('')}<tr><th colspan="2">الإجمالي</th><td>${fmtM(paid)}</td><td colspan="2"></td></tr></tfoot></table></div>`;
   } else {
-    const s=sum(list), what = mvK==='sale'?'🛒 بعت لـ':mvK==='ret'?'↩️ استلمت مرتجع من':'⏳ مستني تستلم من';
-    h+=`<div class="sumline">${what} <b>${nT}</b> مدرس • <b>${s.n}</b> كتاب • <b>${fmtM(s.v)}</b>${mvK==='pend'?' <span class="small muted">(كل اللي لسه ما استلمتهوش — مش بالفترة)</span>':''}</div>`;
+    const s=sum(list), what = mvK==='sale'?'🛒 بعت لـ':mvK==='ret'?'↩️ استلمت مرتجع من':mvK==='left'?'📚 لسه ما اتباعش عند':'⏳ مستني تستلم من';
+    h+=`<div class="sumline">${what} <b>${nT}</b> مدرس • <b>${s.n}</b> كتاب • حوالي <b>${fmtM(s.v)}</b>${mvK==='pend'?' <span class="small muted">(كل اللي لسه ما استلمتهوش — مش بالفترة)</span>':mvK==='left'?' <span class="small muted">(آخر رقم كتبه كل مدرس في تطبيقه — مش بالفترة)</span>':''}</div>`;
+    if(mvK==='left' && !sbHas()) h+='<div class="warnbox">الأرقام دي بتيجي من تطبيق المدرس — افتح «💬 المراسلات» مرة والنت شغال.</div>';
     h+=`<div class="card" style="margin-bottom:10px;padding:8px"><b>📚 الإجمالي لكل مادة وصف</b>${gridHtml(gridData(list))}</div>`;
   }
   h+=`<button class="btn" data-act="mv-img" style="width:100%;margin-bottom:10px">📤 ابعت الصفحة دي صورة</button>`;
   if(!list.length) return h+`<div class="card empty">مفيش ${esc(MVK_T[mvK])} في الفترة دي.</div>`;
   if(mvK==='pend') return h+'<div class="small muted" style="margin-bottom:6px">تفصيلي لكل مدرس — دوس عشان تستلم أو تعدّل:</div>'+list.map(mvCard).join('');
+  if(mvK==='left') return h+'<div class="small muted" style="margin-bottom:6px">تفصيلي لكل مدرس (الأحدث تحديث فوق) — دوس يفتح حسابه:</div>'+list.map(mvCard).join('');
   h+='<div class="small muted" style="margin-bottom:6px">تفصيلي لكل مدرس (الأحدث فوق) — دوس على الكارت يفتح حسابه على الحركة دي:</div>';
   if(!multi) return h+list.map(mvCard).join('');
   const days=new Map(); for(const x of list){ const k=dk(x.d); if(!days.has(k)) days.set(k,[]); days.get(k).push(x); }
@@ -3534,8 +3544,8 @@ function moneyHtml(){
 }
 // الصور: نفس شكل جداول الحساب (acc.js ← SilahAcc.grid)
 function mvShare(){
-  const D=mvData(), list=mvK==='sale'?D.sales:mvK==='ret'?D.rets:mvK==='pay'?D.pays:D.pend, tbl=[];
-  const title=`${MVK_T[mvK]} — ${mvK==='pend'?'لحد النهارده':perTxt([D.f,D.e])}`;
+  const D=mvData(), list=mvK==='sale'?D.sales:mvK==='ret'?D.rets:mvK==='pay'?D.pays:mvK==='left'?D.left:D.pend, tbl=[];
+  const title=`${MVK_T[mvK]} — ${mvK==='pend'||mvK==='left'?'لحد النهارده':perTxt([D.f,D.e])}`;
   if(mvK==='pay'){ const byM={}; for(const k of PM_KEYS) byM[k]=0; for(const x of list) byM[x.m]+=x.v;
     tbl.push({head:['المدرس','اليوم والساعة','المبلغ','الطريقة','فاضل عليه'], w:[2.2,2.2,1.2,1.6,1.3], rows:list.map(x=>[tById(x.t).name, fmtDT(x.d), fmtN(x.v), PAYM[x.m].replace(/^\S+\s/,''), fmtN(ACC[x.t]?.owe||0)]),
       foot:[...PM_KEYS.filter(k=>byM[k]).map(k=>[PAYM[k].replace(/^\S+\s/,''),'',fmtN(byM[k]),'','']), ['الإجمالي','',fmtM(list.reduce((a,x)=>a+x.v,0)),'','']]}); }
@@ -3558,13 +3568,13 @@ function renderSales(sub, focus){
   if(sub==='inv') sub='move';
   if(['move','orders','acc','merch','rets','money'].includes(sub)) salesTab=sub;
   const sbOn=sbHas();
-  if(sbOn) sbRetsPull();   // ⏳ المرتجعات اللي وافقت عليها ولسه ما استلمتهاش (من المراسلات)
+  if(sbOn){ sbRetsPull(); sbLeftPull(); }   // ⏳ المرتجعات اللي وافقت عليها ولسه ما استلمتهاش + 📚 الباقي عند المدرسين (من المراسلات)
   const orders=db.sales.filter(s=>s.st==='order').sort((a,b)=>b.d.localeCompare(a.d));
   const tab=(k,txt)=>`<button class="chip ${salesTab===k?'on':''}" data-act="sales-tab" data-k="${k}">${txt}</button>`;
   const np=pendList().length;
   let html=moneyStrip()+`<button class="btn pri" data-act="new-sale" style="width:100%;font-size:18px;padding:14px;margin-bottom:8px">➕ بيع / طلب جديد</button>
-    <button class="btn ok" data-act="my-stock" style="width:100%;margin-bottom:12px;font-size:17px">📦 الكتب المتاحة معايا — اختار الكتب وشوف الفاضل من كل تاجر</button>
-    <div class="stickbar"><div class="chips">${tab('move','📅 الحركة')}${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('rets',`⏳ مرتجع مستني${np?` (${np})`:''}`)}${tab('acc','🧾 حسابات المدرسين')}${tab('money','💰 الفلوس')}${tab('merch','🏪 التجار')}</div>`;
+    <button class="btn ok" data-act="my-stock" style="width:100%;margin-bottom:12px;font-size:17px;white-space:normal;line-height:1.4">📦 الكتب المتاحة معايا<div class="small" style="font-weight:600">اختار الكتب وشوف الفاضل من كل تاجر</div></button>
+    <div class="stickbar"><div class="chips sgrid">${tab('move','📅 الحركة')}${tab('orders',`🛒 طلبات (${orders.length})`)}${tab('rets',`⏳ مرتجع مستني${np?` (${np})`:''}`)}${tab('acc','🧾 حسابات المدرسين')}${tab('money','💰 الفلوس')}${tab('merch','🏪 التجار')}</div>`;
   const sid='sq_'+salesTab;
   html += searchBar(sid, salesTab==='merch'?'🔎 دوّر باسم التاجر (أو اسم مدرس خد من بضاعته)':undefined) + '</div><div id="slist">' +
     (salesTab==='move' ? moveHtml() : salesTab==='orders' ? ordersHtml(orders) : salesTab==='rets' ? retsHtml() : salesTab==='acc' ? accHtml() : salesTab==='money' ? moneyHtml() : merchHtml()) + '</div>';
@@ -3605,6 +3615,31 @@ async function ledgerPush(){
 }
 window.addEventListener('online', ()=>ledgerSoon(3000));
 setTimeout(()=>ledgerSoon(1000), 9000);
+/* مهمة 6: «📚 باقي معاك كام؟» — اللي المدرس كتبه في تطبيقه (أو اتحسب من دفتر الطلبة) بيوصل هنا.
+   sbLeft = {local_id: {q:{كتاب:عدد}, at, src:'manual'|'book', stu:{n,ns,coll,owe}}} — محفوظ على الموبايل وبيتحدّث كل 3 دقايق في صفحة البيع */
+var sbLeft=(()=>{ try{ return JSON.parse(localStorage.getItem('selah-trial-left')||'{}')||{}; }catch(e){ return {}; } })(), sbLeftAt=0;
+async function sbLeftPull(force){
+  try{
+    if(!sbHas() || !navigator.onLine) return;
+    if(!force && Date.now()-sbLeftAt<180000) return; sbLeftAt=Date.now();
+    const S=await sbSession(); if(!S) return;
+    const r=await fetch(S.c.SUPABASE_URL+'/rest/v1/teachers?select=local_id,left_q,left_at,left_src,stu_sum&left_at=not.is.null',{headers:{...S.h, Range:'0-2999'}});
+    if(!r.ok) return; const j=await r.json(); if(!Array.isArray(j)) return;
+    const o={}; for(const x of j) if(x.local_id) o[x.local_id]={q:x.left_q||{}, at:x.left_at, src:x.left_src||'manual', stu:x.stu_sum||null};
+    if(JSON.stringify(o)===JSON.stringify(sbLeft)) return;
+    sbLeft=o; try{ localStorage.setItem('selah-trial-left', JSON.stringify(o)); }catch(e){}
+    if(/^#\/sales/.test(location.hash) && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName||'') && !document.querySelector('.modal,.inv-wrap')){ const y=scrollY; render(); scrollTo(0,y); }
+  }catch(e){}
+}
+const leftN = L => Object.values((L&&L.q)||{}).reduce((a,n)=>a+(+n||0),0);
+const agoTxt = iso => { const d=Math.floor((Date.now()-new Date(iso).getTime())/864e5); return d<=0?'النهارده':d===1?'من يوم':d===2?'من يومين':`من ${d} أيام`; };
+function leftAsk(tid){
+  const t=tById(tid), id=sbIds[tid]; if(!t) return;
+  if(!id){ alert('المدرس ده لسه ما عندوش حساب في التطبيق.'); return; }
+  if(!navigator.onLine){ alert('📡 محتاج نت.'); return; }
+  fetch(CLOUD_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({k:'push', to:['t-'+id], title:'📚 سلاح التلميذ', body:`المندوب بيسألك: باقي معاك كام كتاب لسه ما اتباعش؟ ادخل حدّث الأعداد 🙏`, url:new URL('teacher.html#v=left', location.href).href, ring:false})}).catch(()=>{});
+  toast(`📩 اتبعت لـ ${t.name}`);
+}
 async function sbRetsPull(force){
   try{
     if(!sbHas() || !navigator.onLine) return;
@@ -3777,9 +3812,10 @@ function accHtml(){
       <div><span>رجّع</span><b>${fmtM(a.ret)}</b></div><div><span>عليه</span><b style="color:${a.owe>0?'var(--bad)':'var(--ok)'}">${fmtM(a.owe)}</b></div></div>
     <div class="small" style="margin-top:6px">📚 خد <b>${a.n}</b> كتاب • رجّع <b>${a.rn}</b> • فضل معاه <b>${a.n-a.rn}</b></div>
     ${a.noPrice?'<div class="small muted" style="margin-top:6px">⚠️ فيه كتب السعر بتاعها لسه ما اتحددش</div>':''}
+    ${sbLeft[t.id]?`<div class="small" style="margin-top:6px;color:var(--sel-ink)">📚 قال إن باقي معاه <b>${leftN(sbLeft[t.id])}</b> كتاب لسه ما اتباعش (${agoTxt(sbLeft[t.id].at)})${sbLeft[t.id].src==='book'&&sbLeft[t.id].stu?` • 📒 من دفتر الطلبة: باع لـ ${sbLeft[t.id].stu.n} طالب`:''}</div>`:''}
     ${st.last?`<div class="small muted" style="margin-top:6px">🕒 آخر حركة: <b>${fmtDT(st.last)}</b> • ${st.inv} ${st.inv>2&&st.inv<11?'فواتير':'فاتورة'}${st.ret.size?` • ${st.ret.size} مرتجع`:''}${st.pay?` • ${st.pay} ${st.pay>2&&st.pay<11?'دفعات':'دفعة'}`:''}</div>`:''}
     <div class="mlinks">${merchLines(t.id)}</div>
-    <div class="acts"><a class="btn sm pri" href="#/sale-t/${encodeURIComponent(t.id)}">📂 صفحته</a><button class="btn sm" data-act="invoice" data-id="${esc(t.id)}">🧾 الفاتورة</button><button class="btn sm ok" data-act="pay" data-id="${esc(t.id)}">💵 دفعة</button><button class="btn sm ghost" data-act="ret" data-id="${esc(t.id)}">↩️ مرتجع</button></div></div>`;
+    <div class="acts"><a class="btn sm pri" href="#/sale-t/${encodeURIComponent(t.id)}">📂 صفحته</a><button class="btn sm" data-act="invoice" data-id="${esc(t.id)}">🧾 الفاتورة</button><button class="btn sm ok" data-act="pay" data-id="${esc(t.id)}">💵 دفعة</button><button class="btn sm ghost" data-act="ret" data-id="${esc(t.id)}">↩️ مرتجع</button>${sbIds[t.id]?`<button class="btn sm ghost" data-act="left-ask" data-id="${esc(t.id)}">📩 اسأله باقي كام</button>`:''}</div></div>`;
   const coll=list.reduce((s,x)=>s+(x.a.paid||0),0);
   return `<div class="sumline">برة عند المدرسين <b style="color:var(--bad)">${fmtM(out)}</b> • حصّلت <b style="color:var(--ok)">${fmtM(coll)}</b></div>
     <div class="pertabs"><span class="small muted" style="align-self:center">رتّب:</span><button class="chip ${accSort!=='last'?'on':''}" data-act="acc-sort" data-k="">💰 الأكتر عليه فوق</button><button class="chip ${accSort==='last'?'on':''}" data-act="acc-sort" data-k="last">🕒 الأحدث حركة فوق</button></div>` + open.map(card).join('') +
@@ -6487,6 +6523,7 @@ document.addEventListener('click', e=>{
     case 'tret-got': pretGot('t', id, el); break;
     case 'pret-got': pretGot(el.dataset.src, id, el); break;
     case 'pret-new': pretPick(); break;
+    case 'left-ask': leftAsk(id); break;
     case 'pret-edit': { const p=(db.pret||[]).find(x=>x.id===id); if(p) retForm(p.t, {mode:'pend-edit', pid:id, init:qtyMap(p.items)}); break; }
     case 'pret-del': { const p=(db.pret||[]).find(x=>x.id===id); if(p && confirm('تلغي المرتجع المستني ده؟ (مفيش حاجة اتخصمت من حساب المدرس)')) withUndo('🗑️ المرتجع المستني اتلغى', ()=>{ db.pret=db.pret.filter(x=>x.id!==id); }); break; }
     case 'mv-per': mvPer={k:el.dataset.k, f:mvPer.f, to:mvPer.to}; mvKeep(); render(); break;
