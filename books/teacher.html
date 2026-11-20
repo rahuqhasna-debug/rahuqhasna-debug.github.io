@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#6d28d9">
 <title>سلاح التلميذ - المدرس</title>
 <link rel="manifest" href="teacher.webmanifest">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="teacher-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500&display=swap">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="teacher-192.png">
 <link rel="stylesheet" href="common.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -590,7 +590,7 @@ function renderGate() {
   $('#title').textContent = 'أهلًا ' + tName(D.name);
   app.innerHTML = `<div class="icard gate">${installedNow ? `<div class="ic-t">✅ اتثبّت!</div><div class="ic-s">اقفل المتصفح وافتح «سلاح التلميذ» من الشاشة الرئيسية لموبايلك.</div>${PICS.home}
     ${'Notification' in window && Notification.permission !== 'granted' ? '<button class="gobtn" id="gN">🔔 فعّل الإشعارات</button>' : '<div class="ic-s">🔔 الإشعارات متفعّلة ✅</div>'}` : `
-    <div class="ins-c"><img src="icon-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
+    <div class="ins-c"><img src="teacher-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
       <div class="sub">ثبّته على موبايلك وهتوصلك رسايل وتحديثات سلاح التلميذ فور وصولها.</div>
       <button class="ins-b" id="inst">📲 ثبّت التطبيق الآن</button>
       ${IOS ? '<button class="iosbtn" id="iosb" style="margin-top:10px">🍎 لو معاك آيفون اضغط هنا</button>' : ''}
@@ -624,7 +624,7 @@ function apkGuide() {
     ['#16a34a', '📲', 'دوس «تثبيت»', 'استنى ثواني لحد ما يخلص.'],
     ['#ef4444', '🛡️', 'لو ظهرت «تم حظر التطبيق»', 'دوس <b>المزيد</b> ← بعدين <b>تثبيت على أي حال</b>. ده عادي لأن التطبيق من خارج متجر جوجل.', 1],
     ['#6d28d9', '✅', 'دوس «فتح»', 'وبعدها هنظبط معاك الإشعارات في دقيقة.']];
-  g.innerHTML = `<div class="pm-hero"><img src="icon-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
+  g.innerHTML = `<div class="pm-hero"><img src="teacher-192.png" alt=""><h2>تطبيق سلاح التلميذ</h2>
       <p>ثبّته على موبايلك وهتوصلك رسايل وتحديثات سلاح التلميذ فور وصولها 🔔</p>
       <div class="chips"><span>✔ تطبيق رسمي</span><span>✔ مخصوص لرسايل سلاح التلميذ</span><span>✔ تحذيرات أندرويد عادية</span></div></div>
     <div class="vid-t">🎬 شاهد التثبيت بالفيديو</div>
@@ -657,7 +657,7 @@ function apkGuideOld() {
     ['لأمانك', ['الموبايل مش مسموح له يثبت من هنا', 'الإعدادات', 'إلغاء'], 1], ['التثبيت من هذا المصدر', ['السماح من هذا المصدر'], 0, 1],
     ['سلاح التلميذ', ['هل تريد تثبيت التطبيق؟', 'تثبيت', 'إلغاء'], 1], ['Play Protect', ['تم حظر التطبيق', 'المزيد', 'إلغاء'], 1],
     ['Play Protect', ['تثبيت على أي حال', 'عدم التثبيت'], 0], ['تم التثبيت', ['✅ تم تثبيت التطبيق', 'فتح', 'تم'], 1]];
-  g.innerHTML = `<div class="icard step"><div style="display:flex;align-items:center;gap:12px;justify-content:center"><img src="icon-192.png" alt="" style="width:64px;height:64px;border-radius:16px"><div style="text-align:start"><div class="ic-t" style="margin:0">سلاح التلميذ</div><div class="small muted">تطبيق رسمي · آمن على موبايلك</div></div></div>
+  g.innerHTML = `<div class="icard step"><div style="display:flex;align-items:center;gap:12px;justify-content:center"><img src="teacher-192.png" alt="" style="width:64px;height:64px;border-radius:16px"><div style="text-align:start"><div class="ic-t" style="margin:0">سلاح التلميذ</div><div class="small muted">تطبيق رسمي · آمن على موبايلك</div></div></div>
     <div class="ic-s" style="margin-top:8px">تطبيق «سلاح التلميذ» مخصوص لرسايل وتحديثات سلاح التلميذ ومواعيد الكتب، وبيخلّي الإشعار يرن عندك حتى والشاشة مقفولة 🔔.<br>هتشوف كام رسالة تحذير من أندرويد، <b>دي عادية</b> لأن التطبيق مش من متجر جوجل. اعمل زي الفيديو بالظبط:</div>
     ${animGuide(F)}
     <div class="ic-s" style="text-align:start;line-height:2.1">1️⃣ دوس <b>تنزيل</b> لو ظهرت رسالة الملف.<br>2️⃣ افتح الملف من الإشعار (أو من «التنزيلات»).<br>3️⃣ لو قالك «غير مسموح»: دوس <b>الإعدادات</b> ← شغّل <b>السماح من هذا المصدر</b> ← ارجع بالسهم.<br>4️⃣ دوس <b>تثبيت</b>.<br>5️⃣ لو ظهرت «تم حظر التطبيق»: دوس <b>المزيد</b> ← <b>تثبيت على أي حال</b>.<br>6️⃣ دوس <b>فتح</b> ✅</div>
@@ -772,7 +772,7 @@ function renderPerm() {
     if (!ok && k === 't' && PG_TEST) box += '<div class="pbx-x"><button class="pbtn" id="pgYes" style="background:#16a34a">✅ رنّ</button><button class="btn owe" id="pgNo">❌ مارنّش</button></div>';
     return box;
   };
-  app.innerHTML = `<div class="pm-top"><img src="icon-192.png" alt=""><div class="pm-bar"><span style="width:${Math.round(done / steps.length * 100)}%"></span></div><b>${done}/${steps.length}</b></div>
+  app.innerHTML = `<div class="pm-top"><img src="teacher-192.png" alt=""><div class="pm-bar"><span style="width:${Math.round(done / steps.length * 100)}%"></span></div><b>${done}/${steps.length}</b></div>
     <div class="pbx-list">${order.map(k => card(k)).join('')}</div>`;
   const back = () => document.addEventListener('visibilitychange', function f() { if (!document.hidden) { document.removeEventListener('visibilitychange', f); setTimeout(render, 500); } });
   $$('[data-pg]').forEach(b => b.onclick = () => {
@@ -1321,7 +1321,7 @@ function renderNews() {
     const subs = ['ar', 'math', 'en', 'sci', 'stu'];
     const tile = (st, s) => { const ch = NEWS_CHS[st][s];
       const nw = ch ? newsNewCh(ch) : 0;
-      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]};position:relative">${nw ? `<span class="pill bad" style="position:absolute;top:4px;inset-inline-start:4px;z-index:2;font-weight:800">${nw}</span>` : ''}<span class="nci">${NCOVIMG[st][s] ? `<img class="covi" src="cov-${NCOVIMG[st][s]}" alt="${NEWS_L[s]}" loading="lazy">` : `<span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="icon-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span>`}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
+      return `<button class="nch" data-st="${st}" data-s="${s}" style="--ac:${NBG[s].split(',')[1]};position:relative">${nw ? `<span class="pill bad" style="position:absolute;top:4px;inset-inline-start:4px;z-index:2;font-weight:800">${nw}</span>` : ''}<span class="nci">${NCOVIMG[st][s] ? `<img class="covi" src="cov-${NCOVIMG[st][s]}" alt="${NEWS_L[s]}" loading="lazy">` : `<span class="cov" style="--c1:${NCOV[s][0]};--c2:${NCOV[s][1]}"><span class="ct"><img src="teacher-192.png" alt="">سلاح التلميذ</span><span class="cm">${NCOV[s][2]}</span><span class="cb">${NEWS_L[s]}</span><span class="cg">${st === 'prim' ? 'ب' : 'ع'}</span></span>`}</span><span class="ncl">${NEWS_L[s]}</span>${ch ? '<span class="nct">تليجرام</span>' : '<span class="nct soon">قريبًا</span>'}</button>`; };
     const sec = st => `<div class="nhd" style="--c:${NSTAGE[st][1]}">المرحلة ${NSTAGE[st][0]}</div><div class="ngrid">${subs.map(s => tile(st, s)).join('')}</div>`;
     // ملفات الدرايف (عام + كل مادة) ليها زراير لوحدها تحت القنوات
     const fileN = s => { const seen = LS.get('selah-news-seen', {}); return NEWS.items.filter(x => x.s === s && !x.c && newsIsNew(x, seen)).length; };
@@ -1507,7 +1507,7 @@ function renderMe() {
   $$('[data-go]', f).forEach(b => b.onclick = () => { const x = $(`.field[data-f="${b.dataset.go}"]`, f); x && x.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   $$('.phIn').forEach(inp => inp.onchange = async e => {
     const files = [...e.target.files]; e.target.value = '';
-    for (const fl of files) { try { newPhotos.push(await compressImage(fl, 1280, 60000)); drawPhotos(); } catch (er) { toast(errMsg(er)); } }
+    for (const fl of files) { try { newPhotos.push(await compressImage(fl, 1280, 60000)); drawPhotos(); } catch (er) { toast(errMsg(er), 7000); } }
   });
   $('#save').onclick = async () => {
     // الخانات بتبدأ فاضية ← نبعت اللي المدرس كتبه بس (الفاضي ما يمسحش بياناته اللي عندنا)

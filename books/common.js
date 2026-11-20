@@ -155,24 +155,41 @@ function errMsg(e) {
 }
 
 /* ضغط صورة لحد ما الحجم ≤ maxBytes تقريبًا */
+// 2026-11-20 (شكوى مدرس «الصورة مش مقروءة»): بنجرّب 3 طرق نفتح بيها الصورة قبل ما نقول إنها مش مقروءة:
+// 1) createImageBitmap (أقوى، وبيلف الصورة صح)  2) <img> العادي  3) نقرا الملف بايتات ونفتحه كـ JPEG (ملفات من غير نوع في تطبيق الأندرويد)
+// ولو فشلت: رسالة واضحة — صورة HEIC (موبايلات كتير بتحفظ بيها) أو صورة ما وصلتش.
 function compressImage(file, maxDim, maxBytes) {
-  return new Promise((res, rej) => {
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let dim = maxDim, out = '';
-      for (let tries = 0; tries < 8; tries++) {
-        const sc = Math.min(1, dim / Math.max(img.width, img.height));
-        const c = document.createElement('canvas'); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-        const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
-        for (let q = 0.8; q >= 0.4; q -= 0.1) { out = c.toDataURL('image/jpeg', q); if (out.length * 0.75 <= maxBytes) return res(out); }
-        dim = Math.round(dim * 0.8);
-      }
-      res(out);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('الصورة مش مقروءة')); };
+  const info = file ? ((file.type || '') + ' ' + (file.name || '')) : '';
+  const heic = /hei[cf]/i.test(info);
+  const fail = () => new Error(!file || !file.size ? 'الصورة ما وصلتش — جرّب تختارها تاني من «🖼️ المعرض»'
+    : heic ? 'الصورة دي بصيغة HEIC والموبايل مش بيفتحها هنا — صوّرها من زرار «📷 كاميرا»، أو ابعتها لنفسك على الواتساب واحفظها وارجع اختارها'
+      : 'الصورة مش مقروءة — جرّب صورة تانية، أو صوّرها من زرار «📷 كاميرا»');
+  const encode = (src, w, h) => {
+    let dim = maxDim, out = '';
+    for (let tries = 0; tries < 8; tries++) {
+      const sc = Math.min(1, dim / Math.max(w, h));
+      const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(src, 0, 0, c.width, c.height);
+      for (let q = 0.8; q >= 0.4; q -= 0.1) { out = c.toDataURL('image/jpeg', q); if (out.length * 0.75 <= maxBytes) return out; }
+      dim = Math.round(dim * 0.8);
+    }
+    return out;
+  };
+  const viaImg = blob => new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob), img = new Image();
+    img.onload = () => { try { const o = encode(img, img.naturalWidth || img.width, img.naturalHeight || img.height); URL.revokeObjectURL(url); o && o.length > 30 ? res(o) : rej(fail()); } catch (e) { URL.revokeObjectURL(url); rej(fail()); } };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(fail()); };
     img.src = url;
   });
+  return (async () => {
+    if (!file || !file.size) throw fail();
+    if (window.createImageBitmap) {
+      try { const b = await createImageBitmap(file, { imageOrientation: 'from-image' }); const o = encode(b, b.width, b.height); try { b.close(); } catch (e) { } if (o && o.length > 30) return o; } catch (e) { }
+    }
+    try { return await viaImg(file); } catch (e) { }
+    try { const buf = await file.arrayBuffer(); return await viaImg(new Blob([buf], { type: 'image/jpeg' })); } catch (e) { }
+    throw fail();
+  })();
 }
 
 /* ---------- نموذج الملف ----------

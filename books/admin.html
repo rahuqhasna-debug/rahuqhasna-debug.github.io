@@ -566,7 +566,7 @@ async function loadAll() {
   // 🧭 مهمة 2 (توفير الباقة): الفلترة بقت في القاعدة نفسها (مدرسيني أنا بس) بدل ما ننزّل مدرسين كل المناديب ونرمي الباقي هنا
   const ownQ = (tb, cols) => sb.from(tb).select(cols + ',teachers!inner(rep_id)').eq('teachers.rep_id', me.id);
   let [t, n, p, s, u] = await Promise.all([
-    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at').eq('rep_id', me.id).order('name')),
+    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at,left_q,left_at,left_src,stu_sum').eq('rep_id', me.id).order('name')),
     fetchAll(() => ownQ('teacher_notes', 'teacher_id,body')),
     fetchAll(() => ownQ('edit_requests', 'teacher_id').eq('status', 'pending')),
     isAdmin() ? fetchAll(() => sb.from('staff').select('id,name,role,active').order('created_at')) : Promise.resolve([me]),
@@ -1002,7 +1002,24 @@ function tItem(t) {
     ${lm ? `<div class="tc-l">💬 ${esc(lm.b.slice(0, 70))}</div>` : ''}
     <div class="tc-tags">${tags}${instPill(t)}${mTot[t.id] ? ` <span class="pill ${mTot[t.id] > 20 ? 'bad' : mTot[t.id] > 10 ? 'owe' : 'new'}" title="عدد الرسايل في صندوقه">📦 ${mTot[t.id]} رسالة</span>` : ''}${nn ? ` <span class="pill new">📌${nn}</span>` : ''}</div>
     ${t.phone || (s && s.lv) ? `<div class="tc-i">${t.phone ? `<span>📞 <span dir="ltr">${esc(t.phone)}</span></span>` : ''}${s && s.lv ? `<span>🕘 آخر زيارة: ${esc(s.lv)}</span>` : ''}</div>` : ''}
+    ${leftLine(t)}
     <div class="tc-f">${icos4(t)}${recv ? `<span>${recv}</span>` : ''}</div></div>`;
+}
+/* مهمة 6: «📚 باقي معاه» — اللي المدرس كتبه في تطبيقه (أو اتحسب من دفتر الطلبة) */
+const leftSum = t => Object.values(t.left_q || {}).reduce((a, n) => a + (+n || 0), 0);
+const leftAgo = iso => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5); return d <= 0 ? 'النهارده' : d === 1 ? 'من يوم' : d === 2 ? 'من يومين' : `من ${d} أيام`; };
+function leftLine(t) {
+  if (!t.left_at) return '';
+  const st = t.stu_sum || {};
+  return `<div class="tc-i" style="color:#0f766e;font-weight:700">📚 باقي معاه ${leftSum(t)} كتاب لسه ما اتباعش (${leftAgo(t.left_at)})${t.left_src === 'book' && st.n ? ` • 📒 باع لـ ${st.n} طالب` : ''}</div>`;
+}
+function leftCard(t) {
+  if (!t.left_at) return '';
+  const q = t.left_q || {}, ks = Object.keys(q).sort(), st = t.stu_sum || {};
+  return `<div class="card"><h3>📚 الكتب اللي لسه معاه وما اتباعتش <span class="small muted">(${leftAgo(t.left_at)} • ${t.left_src === 'book' ? '📒 من دفتر الطلبة' : '✍️ كتبها بإيده'})</span></h3>
+    ${ks.map(b => `<div class="kv"><span>${esc(bookLabel(b))}</span><b>${+q[b] || 0}</b></div>`).join('')}
+    <div class="kv" style="border-top:2px solid #ddd"><b>الإجمالي</b><b>${leftSum(t)} كتاب</b></div>
+    ${st.n ? `<div class="small muted" style="margin-top:6px">📒 دفتر الطلبة: ${st.n} طالب • باع ${st.ns || 0} كتاب • لمّ ${st.coll || 0} ج • عليهم ${st.owe || 0} ج</div>` : ''}</div>`;
 }
 // شريط المحددين: يظهر لما تحدد مدرس. 📦 بيتغيّر اسمه: كله مفتوح ← «قفل»، غير كده (أو خليط) ← «فعّل» (والخليط بيفعّل المقفولين بس)
 function drawSelbar() {
@@ -1358,6 +1375,7 @@ async function viewTeacher(id) {
       ${inGreen ? `<a class="btn ghost" style="text-align:center" href="index.html#/t/${encodeURIComponent(t.local_id)}">📒 صفحته في البرنامج</a>` : '<span></span>'}
       ${isAdmin() && staffList.filter(s => s.active).length > 1 ? '<button class="btn ghost" id="tr" style="grid-column:1/-1">🔁 نقل لمندوب تاني</button>' : ''}</div></div>
   ${uR.data.length ? `<div class="alert"><h3>طلبات تحديث مفتوحة</h3>${uR.data.map(u => `<div class="kv"><span>${esc(u.fields.map(k => FIELD_LABEL[k] || k).join('، '))}${u.note ? ' — ' + esc(u.note) : ''}<br><span class="small">${fmtDate(u.created_at)}</span></span><button class="btn sm ghost" data-ucancel="${u.id}">إلغاء</button></div>`).join('')}</div>` : ''}
+  ${leftCard(t)}
   <div id="reqs">${eR.data.map(e => reviewCard({ ...e, teachers: { name: t.name, avatar: t.avatar, local_id: t.local_id } }, true)).join('')}${oR.data.map(o => orderCard({ ...o, teachers: { name: t.name, local_id: t.local_id } }, true)).join('')}</div>
   <div class="card"><h3>📌 رسائل المدرس <span class="small muted">(ليك بس، المدرس مش بيشوفها)</span></h3>
     <textarea id="nt" placeholder="اكتب ملاحظة تتحفظ في سجل المدرس…"></textarea>

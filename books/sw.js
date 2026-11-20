@@ -11,7 +11,7 @@ try {
   };
 } catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v71';
+const CACHE = 'books-v72';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
 const FRESH = new Map(), FRESH_MS = 10 * 60000, NET_WAIT = 2500;
 const FILES = ['./', './index.html', './ret.js', './acc.js', './manifest.json', './icon-192.png', './icon-512.png'];
