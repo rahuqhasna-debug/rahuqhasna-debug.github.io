@@ -201,6 +201,7 @@ body:has(.savebar.sb2) .back2{display:none}
 .ordcard .oc{border:0;border-radius:16px;padding:8px 4px;font:800 14px inherit;font-family:inherit;color:#fff;cursor:pointer;box-shadow:0 4px 10px -5px rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;gap:2px}
 .ordcard .oc b{font-size:24px;line-height:1}
 .hm .ttiles.five:has(.ordcard){grid-template-rows:auto 100px 100px}
+.soon{display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:10px;padding:1px 8px;font-weight:800;font-size:13px}
 .ordcard .oc-b2{grid-template-columns:1fr 1fr}.ordcard .oc-l{background:linear-gradient(140deg,#4ade80,#15803d)}.ordcard .oc-s{background:linear-gradient(140deg,#a78bfa,#7c3aed)}
 .lrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid #eee}.lrow:first-of-type{border-top:0}.lrow .lr-t{flex:1;min-width:0}.lrow.miss{background:#fef2f2;border-radius:10px}
 .lstep{display:flex;align-items:center;gap:4px;flex:none}.lstep button{width:36px;height:36px;border-radius:10px;border:1.5px solid #c4b5fd;background:#f5f3ff;font-size:20px;font-weight:800;color:#5b21b6;cursor:pointer}
@@ -1016,11 +1017,12 @@ function qtyCalc(box) {
   $$('[data-b]', box).forEach(r => {
     const inp = $('input', r); if (!inp) return;
     const q = Math.max(0, parseInt(inp.value, 10) || 0), p = priceOfB(r.dataset.b), ln = $('.qline', r); N += q;
-    if (p && ln) { const a = q * (p.pre || p.post), b = q * p.post; A += a; B += b;
+    if (HIDE_PRICES) { if (ln) ln.innerHTML = SOON; }
+    else if (p && ln) { const a = q * (p.pre || p.post), b = q * p.post; A += a; B += b;
       ln.innerHTML = `سعر النسخة: ${p.pre && p.pre > p.post ? `<s>${money(p.pre)}</s> ` : ''}<b>${money(p.post)}</b>${q ? ` · إجمالي الصنف: ${a > b ? `<s>${money(a)}</s> ` : ''}<b>${money(b)}</b>` : ''}`; }
   });
   let t = box.nextElementSibling; if (!t || !t.classList.contains('qtot')) { t = document.createElement('div'); t.className = 'qtot'; box.after(t); }
-  t.innerHTML = N ? `🧾 <b>إجمالي الفاتورة</b>: ${N} نسخة<div>${A > B ? `قبل الخصم <s>${money(A)}</s> ← ` : ''}${B ? `بعد الخصم <b class="big">${money(B)}</b>` : ''}</div>${A > B ? `<div class="save">✅ وفّرت ${money(A - B)}</div>` : ''}` : '';
+  t.innerHTML = !N ? '' : HIDE_PRICES ? `🧾 <b>الطلب</b>: ${N} نسخة<div>${SOON}</div>` : `🧾 <b>إجمالي الفاتورة</b>: ${N} نسخة<div>${A > B ? `قبل الخصم <s>${money(A)}</s> ← ` : ''}${B ? `بعد الخصم <b class="big">${money(B)}</b>` : ''}</div>${A > B ? `<div class="save">✅ وفّرت ${money(A - B)}</div>` : ''}`;
 }
 // نفس qtyRow بس السطر التاني HTML جاهز (للسعر قبل/بعد الخصم)
 function qtyRowH(b, l, q, priceHtml) {
@@ -1034,16 +1036,28 @@ function bindQty(box) {
 const readQty = box => $$('[data-b]', box).map(r => ({ b: r.dataset.b, q: Math.max(0, parseInt(($('input', r) || {}).value, 10) || 0) }));
 /* ---------- 💰 أسعار الكتب + 🛒 اطلب كتبك بسعر مميز (كل الكتب، والإنجليزي لمدرس الإنجليزي بس) ---------- */
 const money = n => (Math.round((+n || 0) * 100) / 100).toLocaleString('ar-EG', { maximumFractionDigits: 2 }) + ' ج';   // الكسور زي ما هي — التقريب لقرشين في العرض بس
-const myPrices = () => prices().filter(p => p.post && bookAllowed(p.b, D.profile));
+// 2026-11-21 (طلب شريف): الأسعار مستخبية عند المدرسين ومكانها «الأسعار قريبًا» — الطلب شغال عادي (العدد بس). عشان ترجع: خليها false
+const HIDE_PRICES = true;
+const SOON = '<span class="soon">💰 الأسعار قريبًا</span>';
+// لو شيت الأسعار فاضي والأسعار مستخبية: كتب البيع كلها (إنجليزي ابتدائي + إعدادي) عشان الطلب يفضل شغال
+const myPrices = () => { const ps = prices(); const src = HIDE_PRICES && !ps.length ? recvBooks().filter(b => /^m-|-en-/.test(b)).map(b => ({ b, l: bookLabel(b) })) : ps;
+  return src.filter(p => (HIDE_PRICES || p.post) && bookAllowed(p.b, D.profile)); };
 const SUBJ_COL = { ar: '#2563eb', math: '#16a34a', stu: '#b45309', en: '#7c3aed', sci: '#ea580c' };
 function bookHead(p) {
   const sb = String(p.b).split('-')[1];
   return `<div class="bk-n"><span class="bk-dot" style="background:${SUBJ_COL[sb] || '#6d28d9'}"></span>${esc(p.l || bookLabel(p.b))}</div>
-    <div class="bk-p">${p.pre ? `<s>${money(p.pre)}</s> ` : ''}<b>${money(p.post)}</b>${p.pre && p.pre > p.post ? ` <span class="off">خصم ${Math.round((1 - p.post / p.pre) * 100)}%</span>` : ''}</div>`;
+    <div class="bk-p">${HIDE_PRICES ? SOON : `${p.pre ? `<s>${money(p.pre)}</s> ` : ''}<b>${money(p.post)}</b>${p.pre && p.pre > p.post ? ` <span class="off">خصم ${Math.round((1 - p.post / p.pre) * 100)}%</span>` : ''}`}</div>`;
 }
 function renderPrices() {
   const ps = myPrices();
   app.className = 'wrap prv';
+  if (HIDE_PRICES) {
+    app.innerHTML = `<div class="phead">💰 أسعار الكتب</div>
+      <div class="card" style="text-align:center;padding:22px 14px;margin-bottom:10px"><div style="font-size:40px">⏳</div><h3 style="margin:6px 0">الأسعار قريبًا إن شاء الله</h3><div class="small muted">تقدر تطلب كتبك دلوقتي، والمندوب هيبلّغك بالأسعار.</div></div>
+      ${ps.length ? `<div class="bklist">${ps.map(p => `<div class="bk">${bookHead(p)}</div>`).join('')}</div>` : ''}
+      <div class="savebar"><button class="gobtn" id="toOrd">🛒 اطلب كتبك</button></div>`;
+    $('#toOrd').onclick = () => go('order'); return;
+  }
   app.innerHTML = `<div class="phead">💰 أسعار الكتب<div class="small">سعر النسخة قبل الخصم وبعده</div></div>
     ${ps.length ? `<div class="bklist">${ps.map(p => `<div class="bk">${bookHead(p)}</div>`).join('')}</div>` : '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'}
     <div class="savebar"><button class="gobtn" id="toOrd">🛒 اطلب كتبك بسعر مميز</button></div>`;
@@ -1131,7 +1145,7 @@ function renderOrder() {
   const ps = myPrices();
   if (!ps.length) { app.innerHTML = '<div class="card empty">الأسعار لسه مش متاحة — اسأل المندوب</div>'; return; }
   app.className = 'wrap ordv';
-  app.innerHTML = `<div class="phead hot">🎁 كتبك بخصم خاص<div class="small">ده سعر كل كتاب قبل وبعد الخصم — اكتب العدد جنب اللي عايزه، والحساب بيطلع لوحده</div></div>
+  app.innerHTML = `<div class="phead hot">🎁 كتبك بخصم خاص<div class="small">${HIDE_PRICES ? 'اكتب العدد جنب الكتاب اللي عايزه وابعت الطلب — الأسعار قريبًا' : 'ده سعر كل كتاب قبل وبعد الخصم — اكتب العدد جنب اللي عايزه، والحساب بيطلع لوحده'}</div></div>
     <div class="oscr"><div class="bklist" id="ol">${ps.map(p => `<div class="bk" data-b="${esc(p.b)}"><div>${bookHead(p)}</div>
       <span class="qty"><button type="button" data-d="1">+</button><input type="number" inputmode="numeric" min="0" value="${ordQ[p.b] || ''}" placeholder="0"><button type="button" data-d="-1">−</button></span>
       <div class="bk-sum"></div></div>`).join('')}</div>
@@ -1143,11 +1157,12 @@ function renderOrder() {
     let A = 0, B = 0, N = 0;
     $$('.bk', ol).forEach(r => {
       const p = ps.find(x => x.b === r.dataset.b), q = Math.max(0, parseInt($('input', r).value, 10) || 0); ordQ[p.b] = q;
-      const a = q * (p.pre || p.post), b = q * p.post; A += a; B += b; N += q;
-      $('.bk-sum', r).innerHTML = q ? `${q} نسخة = ${a > b ? `<s>${money(a)}</s> ` : ''}<b>${money(b)}</b>${a > b ? ` · <span class="save">وفّرت ${money(a - b)}</span>` : ''}` : '';
+      const a = q * (p.pre || p.post || 0), b = q * (p.post || 0); A += a; B += b; N += q;
+      $('.bk-sum', r).innerHTML = !q ? '' : HIDE_PRICES ? `<b>${q} نسخة</b>` : `${q} نسخة = ${a > b ? `<s>${money(a)}</s> ` : ''}<b>${money(b)}</b>${a > b ? ` · <span class="save">وفّرت ${money(a - b)}</span>` : ''}`;
       r.classList.toggle('on', q > 0);
     });
-    $('#tot').innerHTML = N ? `<div>${N} نسخة · ${A > B ? `<s>${money(A)}</s> ← ` : ''}<b>${money(B)}</b></div>${A > B ? `<div class="save">وفّرت ${money(A - B)}</div>` : ''}` : '<div class="small">لسه ما اخترتش كتب</div>';
+    $('#tot').innerHTML = !N ? '<div class="small">لسه ما اخترتش كتب</div>' : HIDE_PRICES ? `<div><b>${N} نسخة</b></div><div class="small">${SOON}</div>`
+      : `<div>${N} نسخة · ${A > B ? `<s>${money(A)}</s> ← ` : ''}<b>${money(B)}</b></div>${A > B ? `<div class="save">وفّرت ${money(A - B)}</div>` : ''}`;
   };
   ol.addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (!b) return; const i = $('input', b.parentNode); i.value = Math.max(0, (parseInt(i.value, 10) || 0) + +b.dataset.d) || ''; calc(); });
   ol.addEventListener('input', calc); calc();
