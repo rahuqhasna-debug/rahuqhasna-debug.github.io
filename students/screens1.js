@@ -23,7 +23,7 @@ SCREENS.group = p => {
     ${mnav(mk)}${rows.length ? rows.map((r, i) => `<button class="row" style="animation-delay:${Math.min(i, 15) * 25}ms" data-go="student" data-id="${r.s.id}">${avatar(r.s)}
       <div class="t"><b>${esc(r.s.name)}</b><small style="color:${lvlColor(r.t.lvl)}">${lvlName(r.t.lvl)} · حضور ${pct(r.t.att)} · ${ar(r.t.pts)} نقطة</small></div>
       <div style="display:flex;gap:3px">${r.t.list.slice(-3).map(({ x }) => smallChip(x.marks[r.s.id])).join('')}</div></button>`).join('')
-      : empty('🎒', 'مفيش طلاب في المجموعة دي', '<p>دوس ＋ وضيف الطلاب، أو دخّلهم من شيت الإكسل</p><button class="btn g" data-go="import">' + ic('import') + ' استيراد شيت</button>')}
+      : empty('🎒', 'مفيش طلاب في المجموعة دي', '<p>دوس ＋ وضيف الطلاب، أو دخّلهم من شيت الإكسل</p><button class="btn g" data-act="pickXlsx">' + ic('import') + ' استيراد شيت</button>')}
     <button class="fab" data-act="addStudent" data-gid="${g.id}">${ic('plus')}</button>`;
 };
 
@@ -70,8 +70,8 @@ ACT.sfilter = a => { cur().p.f = a.dataset.f; refresh(); };
 function studentRows(p) {
   const q = norm(p.q), qd = (p.q || '').replace(/\D/g, '').replace(/^0/, '');
   const list = S.students.filter(s => (!p.f || s.gid === p.f) && (!q || norm(s.name).includes(q) || (qd.length > 3 && (s.phone || '').includes(qd)))).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-  if (!list.length) return empty('🔍', 'مفيش نتايج');
-  return list.slice(0, 300).map((s, i) => { const g = grp(s.gid), o = owedTotal(s);
+  if (!list.length) return p.lim ? '<p class="muted c" style="margin:6px 0 14px">مفيش طالب بالاسم ده</p>' : empty('🔍', 'مفيش نتايج');
+  return list.slice(0, p.lim || 300).map((s, i) => { const g = grp(s.gid), o = owedTotal(s);
     return `<button class="row" style="animation-delay:${Math.min(i, 12) * 20}ms" data-go="student" data-id="${s.id}">${avatar(s)}<div class="t"><b>${esc(s.name)}</b><small>${esc(g ? g.name : '')}${s.phone ? ' · ' + showPhone(s.phone) : ''}</small></div>${o ? `<span class="chip" style="background:#ffe4e6;color:#be123c">${money(o)}</span>` : ''}</button>`;
   }).join('');
 }
@@ -135,15 +135,14 @@ SCREENS.student = p => {
     <div class="card"><b>حصص ${monthName(mk)}</b><div class="tl" style="margin-top:10px">${t.list.map(({ x }) => `<div class="d">${smallChip(x.marks[st.id])}${ar(pdate(x.date).getDate())}/${ar(pdate(x.date).getMonth() + 1)}</div>`).join('') || '<span class="muted">مفيش حصص متسجلة الشهر ده</span>'}</div></div>
     <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>اشتراك ${monthName(mk)}</b>${payBtn(st, mk)}</div>
     ${ow.length ? `<p class="bad b9" style="margin:8px 0 0">عليه ${money(ow.reduce((a, x) => a + x.due, 0))} (${ow.map(x => MONTHS[+x.k.slice(5) - 1]).join('، ')})</p>` : '<p class="ok b9" style="margin:8px 0 0">مفيش عليه حاجة ✅</p>'}</div>
-    <div class="btns"><button class="btn wa" data-act="sendReport" data-id="${st.id}" data-mk="${mk}">${ic('send')} ابعت تقرير الشهر</button>${ow.length ? `<button class="btn g" data-act="sendFee" data-id="${st.id}">${ic('bell')} فكّره بالفلوس</button>` : ''}</div>`;
+    <div class="btns"><button class="btn wa" data-act="sendReport" data-id="${st.id}" data-mk="${mk}">${ic('send')} ابعت تقرير الشهر</button></div>`;
 };
 
 /* ---------- إرسال رسالة لولي الأمر ---------- */
 function msgSheet(st, text, key) {
   openSheet(`<h3>رسالة لولي أمر ${esc(st.name)}</h3><div class="msgbox">${esc(text)}</div>
-    <div class="btns" style="margin-top:12px">${st.phone ? `<a class="btn wa" href="${waLink(st.phone, text)}" target="_blank" rel="noopener" data-act="markSent" data-id="${st.id}" data-k="${key}">${ic('chat')} واتساب</a><a class="btn g" href="${smsLink(st.phone, text)}" data-act="markSent" data-id="${st.id}" data-k="${key}">${ic('sms')} SMS</a>` : '<p class="bad b9" style="width:100%">مفيش رقم ولي أمر للطالب ده</p>'}<button class="btn g" data-act="copyMsg">نسخ</button></div>`);
+    <div class="btns" style="margin-top:12px">${st.phone ? `<a class="btn wa" href="${waLink(st.phone, text)}" target="_blank" rel="noopener" data-act="markSent" data-id="${st.id}" data-k="${key}">${ic('chat')} واتساب</a><a class="btn g" href="${smsLink(st.phone, text)}" data-act="markSent" data-id="${st.id}" data-k="${key}">${ic('sms')} رسالة نصية</a>` : '<p class="bad b9" style="width:100%">مفيش رقم ولي أمر للطالب ده</p>'}<button class="btn g" data-act="copyMsg">نسخ</button></div>`);
   ACT.copyMsg = () => { try { navigator.clipboard.writeText(text).then(() => toast('اتنسخت ✓'), () => toast('مقدرتش أنسخ')); } catch (e) { toast('مقدرتش أنسخ'); } };
 }
 ACT.markSent = a => { S.sent[a.dataset.k + ':' + a.dataset.id] = Date.now(); save(); };
 ACT.sendReport = a => { const st = stu(a.dataset.id), mk = a.dataset.mk || monthKey(today()); msgSheet(st, reportText(st.id, mk), 'r' + mk); };
-ACT.sendFee = a => { const st = stu(a.dataset.id); msgSheet(st, feeText(st.id), 'f' + monthKey(today())); };

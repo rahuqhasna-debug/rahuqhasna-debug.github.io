@@ -2,14 +2,23 @@
 'use strict';
 
 /* ---------- اختيار الحصة ---------- */
-SCREENS.pickSession = () => {
-  const tg = todayGroups(), rest = S.groups.filter(g => !tg.includes(g));
-  const card = (g, i) => { const n = groupStudents(g.id).length, d = bestDate(g), x = sessionOn(g.id, d), done = x ? Object.keys(x.marks).length : 0;
-    return `<button class="row" style="animation-delay:${i * 35}ms" data-go="session" data-gid="${g.id}" data-date="${d}"><div class="av" style="background:${gradOf(g)}">${ic('check').replace('<svg', '<svg width="22" height="22"')}</div>
-      <div class="t"><b>${esc(g.name)}</b><small>${fmtDay(d)}${g.time ? ' · ⏰ ' + esc(g.time) : ''} · ${ar(n)} طالب</small></div>${done ? `<span class="chip" style="background:#dcfce7;color:#166534">${ar(done)}/${ar(n)}</span>` : ''}</button>`; };
-  return bar('تحضير الحصة', 'اختار المجموعة') + (tg.length ? `<div class="sec">النهارده</div>${tg.map(card).join('')}` : '') +
-    (rest.length ? `<div class="sec">باقي المجموعات</div>${rest.map((g, i) => card(g, i + tg.length)).join('')}` : '') + (S.groups.length ? '' : empty('👥', 'اعمل مجموعة الأول'));
+const weekStart = (d, w = 0) => addDays(addDays(d, -((dow(d) + 1) % 7)), w * 7); // الأسبوع بيبدأ السبت
+const groupsOn = d => S.groups.filter(g => isGroupDay(g, d) || sessionOn(g.id, d)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+SCREENS.pickSession = p => {
+  const t = today(), w = +p.w || 0, sel = p.d || t, days = Array.from({ length: 7 }, (_, i) => addDays(weekStart(t, w), i));
+  const card = (g, i, d) => { const n = groupStudents(g.id).length, x = sessionOn(g.id, d), done = x ? Object.keys(x.marks).length : 0;
+    return `<button class="row" style="animation-delay:${i * 35}ms" data-go="session" data-gid="${g.id}" data-date="${d}"><div class="av" style="background:${gradOf(g)}">${done && done >= n ? '✓' : icS('check')}</div>
+      <div class="t"><b>${esc(g.name)}</b><small>${g.time ? '⏰ ' + esc(g.time) + ' · ' : ''}${ar(n)} طالب</small></div>${done ? `<span class="chip" style="background:#dcfce7;color:#166534">${ar(done)}/${ar(n)}</span>` : ''}</button>`; };
+  const gs = groupsOn(sel), rest = S.groups.filter(g => !gs.includes(g)), pd = pdate(sel);
+  return bar('تحضير الحصة', 'اختار اليوم والمجموعة') +
+    `<div class="wk"><button class="ib" data-act="wkMove" data-d="-1">${ic('back')}</button><div class="wd">${days.map(d => { const n = groupsOn(d).length;
+      return `<button class="${d === sel ? 'on' : ''}${d === t ? ' now' : ''}" data-act="wkDay" data-d="${d}"><small>${DAYS[dow(d)].replace(/^ال/, '')}</small><b>${ar(pdate(d).getDate())}</b><i>${'•'.repeat(Math.min(n, 3))}</i></button>`; }).join('')}</div><button class="ib" data-act="wkMove" data-d="1">${ic('next')}</button></div>
+    <div class="sec">${sel === t ? 'النهارده' : DAYS[dow(sel)] + ' ' + ar(pd.getDate()) + ' ' + MONTHS[pd.getMonth()]} <small>${gs.length ? nOf(gs.length, 'مجموعة', 'مجموعات') : 'مفيش حصص'}</small></div>` +
+    (gs.length ? gs.map((g, i) => card(g, i, sel)).join('') : `<div class="card c muted">مفيش مجموعات ليها حصة اليوم ده 😴</div>`) +
+    (rest.length ? `<div class="sec">مجموعة تانية؟ <small>حصة تعويض في اليوم ده</small></div>${rest.map((g, i) => card(g, i + gs.length, sel)).join('')}` : '') + (S.groups.length ? '' : empty('👥', 'اعمل مجموعة الأول'));
 };
+ACT.wkDay = a => { cur().p.d = a.dataset.d; refresh(); };
+ACT.wkMove = a => { const p = cur().p, t = today(); p.w = (+p.w || 0) + +a.dataset.d; p.d = p.w ? weekStart(t, p.w) : t; refresh(); };
 
 /* ---------- شاشة الحصة ---------- */
 SCREENS.session = p => {
@@ -33,7 +42,7 @@ SCREENS.session = p => {
     ${sts.length ? sts.map(s => { const c = marks[s.id], k = CODE(c), fee = feeOf(s), pd = paidIn(s.id, mk);
       return `<div class="row" id="r-${s.id}" data-act="pickCode" data-sid="${s.id}" role="button">${avatar(s)}<div class="t"><b>${esc(s.name)}</b><small>${k ? esc(k.name) : 'لسه ما اتسجلش'}</small></div>
       ${k && k.att === 'x' && x.max ? `<input class="score" type="number" inputmode="decimal" data-sid="${s.id}" value="${has(x.scores[s.id]) ? x.scores[s.id] : ''}" placeholder="الدرجة">` : ''}${feeDue(s) ? `<button class="pay${pd >= fee ? ' on' : ''}" data-act="togglePay" data-id="${s.id}" data-mk="${mk}">${pd >= fee ? '✓ دفع' : '💰 ' + ar(fee - pd)}</button>` : ''}${codeChip(c)}</div>`; }).join('')
-      : empty('🎒', 'مفيش طلاب في المجموعة', `<div class="btns" style="justify-content:center;margin-top:12px"><button class="btn" data-act="addStudent" data-gid="${g.id}">${ic('plus')} ضيف طالب</button><button class="btn g" data-go="import">${ic('import')} دخّلهم من شيت الإكسل</button></div>`)}
+      : empty('🎒', 'مفيش طلاب في المجموعة', `<div class="btns" style="justify-content:center;margin-top:12px"><button class="btn" data-act="addStudent" data-gid="${g.id}">${ic('plus')} ضيف طالب</button><button class="btn g" data-act="pickXlsx">${ic('import')} دخّلهم من شيت الإكسل</button></div>`)}
     <div class="sumbar"><div class="in"><div class="mini"><span>✅ ${ar(cnt.p + cnt.x)}</span><span style="color:var(--bad)">❌ ${ar(cnt.a)}</span><span>⏳ ${ar(sts.length - done)}</span>${nDue ? `<span style="color:var(--ok)">💰 ${ar(nPaid)}</span>` : ''}</div>
     ${cnt.a ? `<button class="btn sm wa" data-go="msgs" data-gid="${g.id}" data-type="abs" data-date="${date}">${ic('chat')} بلّغ الغايبين</button>` : `<button class="btn sm g" data-go="msgs" data-gid="${g.id}">${ic('chat')} التقارير</button>`}</div></div>`;
 };
@@ -74,16 +83,6 @@ ACT.allCode = a => {
   dropEmptySessions();
   if (c === 'غ') return toast('كل الطلاب متسجلين خلاص');
   ask('كل الطلاب متسجلين', 'تحب تخلي «' + c + '» للكل وتمسح اللي متسجل؟', 'أيوه للكل', () => apply(sts));
-};
-
-/* ---------- جدول الأسبوع ---------- */
-SCREENS.week = () => {
-  const t = today(), sat = addDays(t, -((dow(t) + 1) % 7));
-  return bar('جدول الأسبوع', 'من السبت للجمعة') + `<div class="week">${Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(sat, i), gs = S.groups.filter(g => isGroupDay(g, d) || sessionOn(g.id, d)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-    return `<div class="dy up ${d === t ? 'now' : ''}" style="animation-delay:${i * 50}ms"><h4><span>${DAYS[dow(d)]}${d === t ? ' · النهارده' : ''}</span><small class="muted">${ar(pdate(d).getDate())} ${MONTHS[pdate(d).getMonth()]}</small></h4>
-      ${gs.length ? gs.map(g => { const x = sessionOn(g.id, d); return `<button class="row" style="margin-bottom:6px" data-go="session" data-gid="${g.id}" data-date="${d}"><div class="av" style="background:${gradOf(g)};width:36px;height:36px;border-radius:12px">${x ? '✓' : ''}</div><div class="t"><b>${esc(g.name)}</b><small>${g.time ? '⏰ ' + esc(g.time) : 'من غير ميعاد'}</small></div></button>`; }).join('') : '<span class="muted" style="font-size:14px">أجازة 😴</span>'}</div>`;
-  }).join('')}</div>`;
 };
 
 /* ---------- الامتحانات ---------- */

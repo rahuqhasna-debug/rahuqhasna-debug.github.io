@@ -116,35 +116,50 @@ ACT.mprev = () => { const p = cur().p; p.mk = addMonth(p.mk || monthKey(today())
 ACT.mnext = () => { const p = cur().p; p.mk = addMonth(p.mk || monthKey(today()), 1); refresh(); };
 const empty = (emo, t, s) => `<div class="empty"><div>${emo}</div><b>${t}</b>${s || ''}</div>`;
 const money = n => ar(n) + ' ج';
+const nOf = (n, one, few) => ar(n) + ' ' + (n >= 3 && n <= 10 ? few : one); // ٤ طلاب · ١٥ طالب
 
 /* ---------- الصفحة الرئيسية ---------- */
+const icS = (n, s = 22) => ic(n).replace('<svg', `<svg width="${s}" height="${s}"`);
 const APPS = [
   ['pickSession', 'تحضير الحصة', 'check', '#10b981', '#047857'], ['groups', 'المجموعات', 'users', '#6366f1', '#4338ca'], ['students', 'الطلاب', 'cap', '#8b5cf6', '#6d28d9'],
-  ['money', 'الفلوس', 'wallet', '#f59e0b', '#ea580c'], ['board', 'لوحة الشرف', 'trophy', '#fbbf24', '#d97706'],
-  ['reports', 'الإحصائيات', 'chart', '#22d3ee', '#0369a1'], ['msgs', 'رسايل الأهالي', 'chat', '#34d399', '#128c7e'], ['week', 'جدول الأسبوع', 'cal', '#f472b6', '#be185d'],
-  ['exams', 'الامتحانات', 'exam', '#c084fc', '#7e22ce'], ['codes', 'دليل الرموز', 'tag', '#e879f9', '#a21caf'], ['excel', 'ملف إكسل', 'grid', '#4ade80', '#15803d'],
-  ['import', 'استيراد شيت', 'import', '#2dd4bf', '#0f766e'], ['backup', 'نسخة احتياطية', 'shield', '#60a5fa', '#1d4ed8'], ['settings', 'الإعدادات', 'gear', '#94a3b8', '#334155']
+  ['money', 'الفلوس', 'wallet', '#f59e0b', '#ea580c'], ['msgs', 'رسايل الأهالي', 'chat', '#34d399', '#128c7e'], ['board', 'لوحة الشرف', 'trophy', '#fbbf24', '#d97706'],
+  ['reports', 'الإحصائيات', 'chart', '#22d3ee', '#0369a1'], ['files', 'الإكسل والحفظ', 'grid', '#60a5fa', '#1d4ed8'], ['settings', 'الإعدادات', 'gear', '#94a3b8', '#334155']
 ];
 SCREENS.home = () => {
   if (!S.groups.length) return welcome();
   const h = new Date().getHours(), greet = h < 12 ? 'صباح الخير' : h < 18 ? 'نهارك سعيد' : 'مساء الخير', wx = h >= 5 && h < 17 ? '☀️' : '🌙';
-  const mk = monthKey(today()), tg = todayGroups(), debtors = S.students.filter(s => owedTotal(s) > 0).length;
+  const t = today(), mk = monthKey(t), tg = todayGroups(), debtors = S.students.filter(s => owedTotal(s) > 0).length;
   const name = S.settings.teacher.replace(/^مستر\s*/, '').split(' ')[0];
-  const old = Date.now() - (S.settings.lastBackup || 0) > 7 * 864e5;
   const late = S.students.filter(s => owed(s).some(x => x.k < mk)).length; // متأخرين من شهور فاتت بس
-  const badges = { money: late, pickSession: tg.filter(g => !sessionOn(g.id, today())).length };
-  return `<div class="hero"><div class="top"><div class="logo">${LOGO}</div><div><h1>${greet} يا مستر ${esc(name)}</h1><p>${fmtDay(today())} · ${esc(S.settings.subject)}</p></div><div class="wx">${wx}</div></div>
-    <div class="kpis"><div class="kpi"><b>${ar(S.students.length)}</b><small>طالب</small></div><div class="kpi"><b>${ar(tg.length)}</b><small>حصص النهارده</small></div>
-    <div class="kpi"><b>${ar(monthIncome(mk))}</b><small>جنيه اتحصّل</small></div><div class="kpi" data-go="debts" role="button"><b>${ar(debtors)}</b><small>عليهم فلوس</small></div></div></div>
-    ${old ? `<div class="banner">💾 بقالك أكتر من أسبوع من غير نسخة احتياطية<button class="btn sm" data-go="backup">اعملها</button></div>` : ''}
-    ${tg.length ? `<div class="sec">حصص النهارده <small>${ar(tg.length)} مجموعة</small></div><div class="today">${tg.map(g => {
-      const n = groupStudents(g.id).length, x = sessionOn(g.id, today()), done = x ? Object.keys(x.marks).length : 0;
-      return `<button class="tcard up" style="background:${gradOf(g)}" data-go="session" data-gid="${g.id}" data-date="${today()}">${ring(n ? done / n : 0, 54)}<h3>${esc(g.name)}</h3><p>${g.time ? '⏰ ' + esc(g.time) + ' · ' : ''}${ar(n)} طالب</p><span class="go">${done ? (done >= n ? 'خلصت ✓' : 'كمّل التحضير') : 'ابدأ التحضير'} ${ic('next').replace('<svg', '<svg width="16" height="16"')}</span></button>`;
-    }).join('')}</div>` : ''}
+  const badges = { money: late, pickSession: tg.filter(g => !sessionOn(g.id, t)).length };
+  MOUNT = () => { const i = $('#hq'); i.oninput = () => { $('#hres').innerHTML = i.value.trim() ? studentRows({ q: i.value, lim: 6 }) : ''; }; };
+  // تنبيهات ذكية: بتظهر بس لما يكون فيه حاجة محتاجة تتعمل
+  const alerts = [];
+  if (Date.now() - (S.settings.lastBackup || 0) > 7 * 864e5) alerts.push(['', '💾', 'بقالك أكتر من أسبوع من غير نسخة احتياطية', 'اعملها', 'data-go="files"']);
+  const gone = lastAbsent(2);
+  if (gone.length) alerts.push(['red', '📵', `${nOf(gone.length, 'طالب', 'طلاب')} غابوا آخر حصتين ورا بعض`, 'شوفهم', 'data-act="absSheet"']);
+  if (pdate(t).getDate() >= 25) {
+    const rep = S.students.filter(s => s.phone && S.sessions.some(x => x.marks[s.id] && x.date.startsWith(mk))), sent = rep.filter(s => S.sent['r' + mk + ':' + s.id]).length;
+    if (rep.length && sent < rep.length) alerts.push(['vio', '📨', `آخر الشهر قرّب: ابعت تقرير ${monthName(mk)} للأهالي · اتبعت ${ar(sent)} من ${ar(rep.length)}`, 'ابدأ', 'data-go="msgs"']);
+  }
+  let next = '';
+  if (!tg.length) for (let i = 1; i <= 7; i++) { const d = addDays(t, i), gs = S.groups.filter(g => isGroupDay(g, d)); if (gs.length) { next = `<div class="card nextc up"><span>😴</span><div><b>النهارده مفيش حصص</b><small>الجاية ${i === 1 ? 'بكرة' : 'يوم ' + DAYS[dow(d)]}: ${gs.map(g => esc(g.name)).join('، ')}</small></div></div>`; break; } }
+  return `<div class="hero"><div class="top"><div class="logo">${LOGO}</div><div><h1>${greet} يا مستر ${esc(name)}</h1><p>${fmtDay(t)} · ${esc(S.settings.subject)}</p></div><div class="wx">${wx}</div></div>
+    <div class="kpis"><div class="kpi" data-go="students" role="button"><b>${ar(S.students.length)}</b><small>طالب</small></div><div class="kpi" data-go="pickSession" role="button"><b>${ar(tg.length)}</b><small>حصص النهارده</small></div>
+    <div class="kpi" data-go="money" role="button"><b>${ar(monthIncome(mk))}</b><small>جنيه اتحصّل</small></div><div class="kpi" data-go="debts" role="button"><b>${ar(debtors)}</b><small>عليهم فلوس</small></div></div>
+    <div class="hsearch">${ic('search')}<input id="hq" placeholder="دوّر على أي طالب بالاسم أو الرقم" autocomplete="off" enterkeyhint="search"></div></div>
+    <div id="hres"></div>
+    ${alerts.map(([c, e, m, b, at]) => `<div class="banner ${c}"><span class="be">${e}</span><span>${m}</span><button class="btn sm" ${at}>${b}</button></div>`).join('')}
+    ${tg.length ? `<div class="sec">حصص النهارده <small>${nOf(tg.length, 'مجموعة', 'مجموعات')}</small></div><div class="today">${tg.map(g => {
+      const n = groupStudents(g.id).length, x = sessionOn(g.id, t), done = x ? Object.keys(x.marks).length : 0;
+      return `<button class="tcard up" style="background:${gradOf(g)}" data-go="session" data-gid="${g.id}" data-date="${t}">${ring(n ? done / n : 0, 54)}<h3>${esc(g.name)}</h3><p>${g.time ? '⏰ ' + esc(g.time) + ' · ' : ''}${ar(n)} طالب</p><span class="go">${done ? (done >= n ? 'خلصت ✓' : 'كمّل التحضير') : 'ابدأ التحضير'} ${icS('next', 16)}</span></button>`;
+    }).join('')}</div>` : next}
     <div class="sec">كل حاجة في مكان واحد</div>
-    <div class="apps">${APPS.map(([k, t, i, a, b], n) => `<button class="app" style="animation-delay:${n * 40}ms" data-go="${k}">${badges[k] ? `<span class="bd">${ar(badges[k])}</span>` : ''}<div class="ic" style="background:linear-gradient(145deg,${a},${b});box-shadow:0 12px 22px -10px ${b}">${ic(i)}</div><span>${t}</span></button>`).join('')}</div>
+    <div class="apps">${APPS.map(([k, tt, i, a, b], n) => `<button class="app" style="animation-delay:${n * 45}ms" data-go="${k}">${badges[k] ? `<span class="bd">${ar(badges[k])}</span>` : ''}<div class="ic" style="background:linear-gradient(145deg,${a},${b});box-shadow:0 12px 22px -10px ${b}">${ic(i)}</div><span>${tt}</span></button>`).join('')}</div>
     <p class="c muted" style="font-size:12.5px;margin-top:28px">🔒 كل البيانات محفوظة على الموبايل ده بس · شغال من غير نت</p>`;
 };
+ACT.absSheet = () => openSheet(`<h3>📵 غابوا آخر حصتين ورا بعض</h3><p class="muted" style="margin-top:0">اطمّن عليهم أو كلّم ولي الأمر</p>` + lastAbsent(2).map(({ s, dates }) =>
+  `<div class="row">${avatar(s)}<div class="t" data-go="student" data-id="${s.id}"><b>${esc(s.name)}</b><small>${esc((grp(s.gid) || {}).name || '')} · ${dates.map(d => ar(pdate(d).getDate()) + '/' + ar(pdate(d).getMonth() + 1)).join(' و ')}</small></div>${s.phone ? `<a class="ib" href="tel:+${s.phone}">${ic('phone')}</a><a class="ib" style="color:#128c7e" href="https://wa.me/${s.phone}" target="_blank" rel="noopener">${ic('chat')}</a>` : ''}</div>`).join(''));
 function welcome() {
   return `<div style="min-height:92vh;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:14px">
     <div style="width:120px;height:120px;margin:0 auto;border-radius:38px;background:var(--grad);padding:14px;box-shadow:0 24px 48px -18px rgba(162,28,175,.8);animation:pop .7s both">${LOGO}</div>

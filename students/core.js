@@ -165,10 +165,11 @@ function reportText(sid, mk) {
   return L.join('\n');
 }
 const absenceText = (sid, date) => ['السلام عليكم ورحمة الله وبركاته', 'نحيط علم حضرتك إن الطالب/ة: ' + stu(sid).name, 'غاب/ت عن حصة ' + S.settings.subject + ' النهارده ' + fmtSheet(date) + ' ❌', 'برجاء المتابعة 🌹', LINE, S.settings.sign].join('\n');
-function feeText(sid) {
-  const st = stu(sid), o = owed(st);
-  return ['السلام عليكم ورحمة الله وبركاته', 'برجاء التكرم بسداد اشتراك ' + o.map(x => 'شهر ' + MONTHS[+x.k.slice(5) - 1]).join(' و') + ' للطالب/ة: ' + st.name,
-    'المبلغ المطلوب: ' + o.reduce((a, x) => a + x.due, 0) + ' جنيه', 'وشكراً لحضراتكم 🌹', LINE, S.settings.sign].join('\n');
+// الطلاب اللي غابوا آخر n حصص ورا بعض
+function lastAbsent(n = 2) {
+  const by = {};
+  S.sessions.slice().sort(byDate).forEach(x => { for (const sid in x.marks) { const k = CODE(x.marks[sid]); if (k) (by[sid] = by[sid] || []).push({ d: x.date, a: k.att === 'a' }); } });
+  return S.students.filter(s => { const l = by[s.id]; return l && l.length >= n && l.slice(-n).every(r => r.a); }).map(s => ({ s, dates: by[s.id].slice(-n).map(r => r.d) }));
 }
 
 /* ---------- استيراد الشيت بتاع المستر ---------- */

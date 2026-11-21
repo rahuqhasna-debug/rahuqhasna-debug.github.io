@@ -1,6 +1,6 @@
 // طلابي — يخلّي البرنامج يفتح من غير نت
 // اسم الكاش لازم يبدأ بـ shell- عشان برنامج الكتب (نفس الموقع) ما يمسحوش
-const CACHE = 'shell-students-v2';
+const CACHE = 'shell-students-v3';
 const FONTS = 'fonts-v1';
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap';
 const FILES = ['./', './index.html', './app.css', './xlsx.js', './core.js', './ui.js', './screens1.js', './screens2.js',

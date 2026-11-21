@@ -8,20 +8,26 @@ async function shareFile(blob, name, title) {
   download(blob, name); return true;
 }
 
-/* ---------- ملف إكسل ---------- */
-SCREENS.excel = p => {
-  const mk = p.mk || monthKey(today());
-  return bar('ملف إكسل', 'بنفس شكل الشيت بتاعك') + mnav(mk) + `<div class="card up"><b>الملف هيبقى فيه:</b>
-    <p style="margin:8px 0 0;line-height:2">📋 دليل الرموز<br>👥 شيت لكل مجموعة: الرموز بالألوان + الحضور + المستوى + النقاط + نص التقرير<br>💰 فلوس ${MONTHS[+mk.slice(5) - 1]}: مين دفع ومين لأ والإجمالي<br>🏆 لوحة الشرف</p></div>
-    <div class="btns"><button class="btn" data-act="xlsDown">${ic('down')} نزّل الملف</button><button class="btn wa" data-act="xlsShare">${ic('share')} ابعته (واتساب/درايف)</button></div>`;
+/* ---------- الإكسل والحفظ: كل حاجة في شاشة واحدة ---------- */
+SCREENS.files = p => {
+  const mk = p.mk || monthKey(today()), lb = S.settings.lastBackup, days = lb ? Math.floor((Date.now() - lb) / 864e5) : null;
+  const head = (icn, a, b, t, s) => `<div class="fh"><span class="fi" style="background:linear-gradient(135deg,${a},${b})">${icS(icn, 26)}</span><div><b>${t}</b><small>${s}</small></div></div>`;
+  return bar('الإكسل والحفظ', 'طلّع ودخّل واحفظ بياناتك') +
+    `<div class="card up">${head('grid', '#4ade80', '#15803d', 'شيت إكسل بنفس شكل شيتك', 'ورقة لكل مجموعة بالرموز والألوان والحضور والنقاط ونص التقرير، وورقة للفلوس ولوحة الشرف')}
+      ${mnav(mk)}<div class="btns"><button class="btn" data-act="xlsDown">${ic('down')} نزّله</button><button class="btn wa" data-act="xlsShare">${ic('share')} ابعته</button></div></div>
+    <div class="card up" style="animation-delay:.06s">${head('import', '#2dd4bf', '#0f766e', 'دخّل شيت إكسل', 'كل ورقة فيها «اسم الطالب» بتبقى مجموعة، وعمود «رقم ولي الأمر» بيتاخد، وأي عمود عنوانه تاريخ بيتسجل حصة برموزها')}
+      <button class="btn g w" data-act="pickXlsx">${ic('import')} اختار ملف الإكسل</button></div>
+    <div class="card up" style="animation-delay:.12s">${head('shield', '#60a5fa', '#1d4ed8', 'النسخة الاحتياطية', (lb ? (days ? 'آخر نسخة من ' + ar(days) + ' يوم' : 'عملت نسخة النهارده ✓') : 'لسه ما عملتش نسخة') + ' · لو الموبايل ضاع أو اتمسح بترجّع كل حاجة')}
+      <div class="btns"><button class="btn wa" data-act="bkShare">${ic('share')} ابعتها لنفسك</button><button class="btn g" data-act="bkDown">${ic('down')} احفظها</button></div>
+      <button class="btn g w" style="margin-top:10px" data-act="restorePick">${ic('import')} رجّع نسخة قديمة</button></div>
+    <p class="muted c" style="font-size:13px">💡 ابعت النسخة لنفسك على الواتساب مرة كل أسبوع</p>`;
 };
+SCREENS.excel = SCREENS.import = SCREENS.backup = SCREENS.files;
 const xlsName = mk => 'متابعة_الطلاب_' + MONTHS[+mk.slice(5) - 1] + '_' + mk.slice(0, 4) + '.xlsx';
 ACT.xlsDown = () => { const mk = cur().p.mk || monthKey(today()); toast('بجهّز الملف…'); setTimeout(() => { download(exportBook(mk), xlsName(mk)); toast('✅ الملف نزل في التنزيلات'); }, 60); };
 ACT.xlsShare = async () => { const mk = cur().p.mk || monthKey(today()); await shareFile(exportBook(mk), xlsName(mk), 'متابعة الطلاب'); };
 
 /* ---------- استيراد شيت ---------- */
-SCREENS.import = () => bar('استيراد شيت', 'من ملف إكسل') + `<div class="card up"><b>إزاي؟</b><p style="margin:8px 0 0;line-height:1.9">اختار ملف الإكسل (زي «شيت متابعة الطلاب»). كل ورقة فيها «اسم الطالب» هتبقى مجموعة، وعمود «رقم ولي الأمر» هيتاخد، وأي عمود عنوانه تاريخ (زي «الثلاثاء 3/11/2026») هيتسجل كحصة برموزها. ولو فيه ورقة «دليل الرموز» هتتاخد رسايلها ونقطها.</p></div>
-  <button class="btn w" data-act="pickXlsx">${ic('import')} اختار ملف الإكسل</button>`;
 ACT.pickXlsx = () => pickFile('.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', async f => {
   toast('بقرا الملف…');
   try {
@@ -41,12 +47,6 @@ ACT.pickXlsx = () => pickFile('.xlsx,application/vnd.openxmlformats-officedocume
 /* ---------- النسخة الاحتياطية ---------- */
 const backupBlob = () => new Blob([JSON.stringify({ app: 'tlaby', v: 1, at: Date.now(), data: S })], { type: 'application/json' });
 const backupName = () => 'طلابي_نسخة_' + today() + '.json';
-SCREENS.backup = () => {
-  const lb = S.settings.lastBackup, days = lb ? Math.floor((Date.now() - lb) / 864e5) : null;
-  return bar('النسخة الاحتياطية', 'عشان بياناتك ما تضيعش') + `<div class="hero" style="background:linear-gradient(135deg,#2563eb,#7c3aed);margin-top:4px"><div class="top"><div><h1>${lb ? (days ? 'آخر نسخة من ' + ar(days) + ' يوم' : 'عملت نسخة النهارده ✓') : 'لسه ما عملتش نسخة'}</h1><p>البيانات كلها على الموبايل ده. لو الموبايل ضاع أو اتمسح، النسخة بترجّع كل حاجة.</p></div><div class="wx">🛡️</div></div></div>
-    <div class="btns" style="flex-direction:column"><button class="btn wa w" data-act="bkShare">${ic('share')} ابعت النسخة لنفسك على واتساب أو درايف</button><button class="btn w" data-act="bkDown">${ic('down')} احفظها على الموبايل</button><button class="btn g w" data-act="restorePick">${ic('import')} رجّع نسخة قديمة</button></div>
-    <p class="muted c" style="font-size:13px">💡 نصيحة: ابعتها لنفسك على واتساب كل أسبوع</p>`;
-};
 const markBackup = () => { S.settings.lastBackup = Date.now(); save(); };
 ACT.bkShare = async () => { if (await shareFile(backupBlob(), backupName(), 'نسخة طلابي')) { markBackup(); refresh(); toast('✅ تمام'); } };
 ACT.bkDown = () => { download(backupBlob(), backupName()); markBackup(); refresh(); toast('✅ النسخة نزلت في التنزيلات'); };
@@ -74,9 +74,10 @@ SCREENS.settings = () => {
     <label class="f">التوقيع في آخر رسايل الأهالي</label><input data-set="sign" value="${esc(s.sign)}"></div>
     <div class="card up"><b>سعر الشهر</b>${Object.entries(STAGES).map(([k, v]) => `<label class="f">${v.n}</label><input type="number" inputmode="numeric" data-set="fee.${k}" value="${s.fees[k]}">`).join('')}
     <label class="f">بداية حساب الاشتراكات من شهر</label><input type="month" data-set="startMonth" value="${s.startMonth}"></div>
+    <button class="row up" data-go="codes"><div class="av" style="background:linear-gradient(135deg,#e879f9,#a21caf)">${icS('tag')}</div><div class="t"><b>دليل الرموز</b><small>معنى كل رمز ونقطه ورسالته لولي الأمر</small></div><span class="chev">${ic('next')}</span></button>
     <div class="card up"><b>الشكل</b><select data-set="theme" style="margin-top:10px"><option value="auto" ${s.theme === 'auto' ? 'selected' : ''}>تلقائي مع الموبايل</option><option value="light" ${s.theme === 'light' ? 'selected' : ''}>فاتح ☀️</option><option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>غامق 🌙</option></select></div>
     ${tg('sound', '🔔 أصوات خفيفة مع التسجيل')}    <button class="btn bad w" style="margin-top:16px" data-act="wipe">${ic('trash')} مسح كل البيانات</button>
-    <p class="muted c" style="font-size:12.5px;margin-top:18px">طلابي · نسخة ١ · شغال من غير نت 💜</p>`;
+    <p class="muted c" style="font-size:12.5px;margin-top:18px">طلابي · نسخة ٢ · شغال من غير نت 💜</p>`;
 };
 ACT.wipe = () => {
   openSheet(`<h3>مسح كل البيانات ⚠️</h3><p class="muted" style="margin-top:0">كل المجموعات والطلاب والحصص والفلوس هتتمسح من الموبايل. اعمل نسخة احتياطية الأول. اكتب كلمة <b>امسح</b> للتأكيد:</p><input id="wipeTxt" placeholder="امسح"><div class="btns" style="margin-top:14px"><button class="btn bad" data-act="wipeOk">امسح نهائي</button><button class="btn g" data-act="closeSheet">رجوع</button></div>`);
