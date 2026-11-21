@@ -75,8 +75,7 @@ SCREENS.settings = () => {
     <div class="card up"><b>سعر الشهر</b>${Object.entries(STAGES).map(([k, v]) => `<label class="f">${v.n}</label><input type="number" inputmode="numeric" data-set="fee.${k}" value="${s.fees[k]}">`).join('')}
     <label class="f">بداية حساب الاشتراكات من شهر</label><input type="month" data-set="startMonth" value="${s.startMonth}"></div>
     <div class="card up"><b>الشكل</b><select data-set="theme" style="margin-top:10px"><option value="auto" ${s.theme === 'auto' ? 'selected' : ''}>تلقائي مع الموبايل</option><option value="light" ${s.theme === 'light' ? 'selected' : ''}>فاتح ☀️</option><option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>غامق 🌙</option></select></div>
-    ${tg('sound', '🔔 أصوات خفيفة مع التسجيل')}${tg('payInReport', '💰 حالة الاشتراك في آخر تقرير الشهر')}
-    <button class="btn bad w" style="margin-top:16px" data-act="wipe">${ic('trash')} مسح كل البيانات</button>
+    ${tg('sound', '🔔 أصوات خفيفة مع التسجيل')}    <button class="btn bad w" style="margin-top:16px" data-act="wipe">${ic('trash')} مسح كل البيانات</button>
     <p class="muted c" style="font-size:12.5px;margin-top:18px">طلابي · نسخة ١ · شغال من غير نت 💜</p>`;
 };
 ACT.wipe = () => {

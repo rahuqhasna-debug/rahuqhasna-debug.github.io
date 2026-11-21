@@ -17,6 +17,7 @@ SCREENS.session = p => {
   if (!p.date) p.date = bestDate(g);
   const date = p.date, x = sessionOn(g.id, date), marks = x ? x.marks : {}, sts = groupStudents(g.id), done = sts.filter(s => marks[s.id]).length;
   const cnt = { p: 0, a: 0, x: 0 }; sts.forEach(s => { const k = CODE(marks[s.id]); if (k) cnt[k.att]++; });
+  const mk = monthKey(date), feeDue = s => feeOf(s) > 0 && dueMonths(s).includes(mk), nDue = sts.filter(feeDue).length, nPaid = sts.filter(s => feeDue(s) && paidIn(s.id, mk) >= feeOf(s)).length;
   const exam = x && Object.values(x.marks).some(c => CODE(c) && CODE(c).att === 'x');
   MOUNT = () => {
     document.querySelectorAll('.score').forEach(inp => { inp.onchange = () => { const v = inp.value.trim(); if (v === '') delete x.scores[inp.dataset.sid]; else x.scores[inp.dataset.sid] = +v; save(); }; });
@@ -26,14 +27,14 @@ SCREENS.session = p => {
   return bar(esc(g.name), (date === today() ? 'النهارده · ' : '') + fmtDay(date), `<button class="ib" data-act="sesDate">${ic('cal')}</button>`) +
     `<div class="mnav"><button class="ib" data-act="sesMove" data-d="-1">${ic('back')}</button><b>${fmtDay(date)}</b><button class="ib" data-act="sesMove" data-d="1">${ic('next')}</button></div>
     <div class="card" style="padding:14px"><div style="display:flex;align-items:center;gap:12px">${ring(sts.length ? done / sts.length : 0, 60, '#7c3aed', 'var(--line)')}
-      <div style="flex:1"><b>اتسجل ${ar(done)} من ${ar(sts.length)}</b><div class="muted" style="font-size:13px">دوس على الطالب واختار الرمز، وهينقلك على اللي بعده لوحده ⚡</div></div></div>
+      <div style="flex:1"><b>اتسجل ${ar(done)} من ${ar(sts.length)}</b><div class="muted" style="font-size:13px">دوس على الطالب واختار الرمز، وهينقلك على اللي بعده لوحده ⚡ ولو دفع الشهر دوس 💰 اللي جنب اسمه</div></div></div>
       <div class="chips" style="margin-top:10px;padding-bottom:0"><button class="chip" data-act="allCode" data-c="ح">✅ الكل ح</button><button class="chip" data-act="allCode" data-c="حش">📖 الكل حش</button><button class="chip" data-act="allCode" data-c="حت">✍️ الكل حت</button><button class="chip" data-act="allCode" data-c="أ">📝 امتحان</button><button class="chip" data-act="allCode" data-c="غ">❌ الباقي غايب</button></div></div>
     ${exam ? `<div class="card" style="display:flex;align-items:center;gap:10px"><b style="flex:1">📝 حصة امتحان${avgScore != null ? ` · المتوسط ${ar(Math.round(avgScore * 10) / 10)}` : ''}</b><span class="muted">الدرجة من</span><input id="exMax" class="score" type="number" inputmode="numeric" value="${x.max || ''}" placeholder="20"></div>` : ''}
-    ${sts.length ? sts.map(s => { const c = marks[s.id], k = CODE(c);
+    ${sts.length ? sts.map(s => { const c = marks[s.id], k = CODE(c), fee = feeOf(s), pd = paidIn(s.id, mk);
       return `<div class="row" id="r-${s.id}" data-act="pickCode" data-sid="${s.id}" role="button">${avatar(s)}<div class="t"><b>${esc(s.name)}</b><small>${k ? esc(k.name) : 'لسه ما اتسجلش'}</small></div>
-      ${k && k.att === 'x' && x.max ? `<input class="score" type="number" inputmode="decimal" data-sid="${s.id}" value="${has(x.scores[s.id]) ? x.scores[s.id] : ''}" placeholder="الدرجة">` : ''}${codeChip(c)}</div>`; }).join('')
-      : empty('🎒', 'مفيش طلاب في المجموعة', `<button class="btn" data-act="addStudent" data-gid="${g.id}">${ic('plus')} ضيف طالب</button>`)}
-    <div class="sumbar"><div class="in"><div class="mini"><span>✅ ${ar(cnt.p + cnt.x)}</span><span style="color:var(--bad)">❌ ${ar(cnt.a)}</span><span>⏳ ${ar(sts.length - done)}</span></div>
+      ${k && k.att === 'x' && x.max ? `<input class="score" type="number" inputmode="decimal" data-sid="${s.id}" value="${has(x.scores[s.id]) ? x.scores[s.id] : ''}" placeholder="الدرجة">` : ''}${feeDue(s) ? `<button class="pay${pd >= fee ? ' on' : ''}" data-act="togglePay" data-id="${s.id}" data-mk="${mk}">${pd >= fee ? '✓ دفع' : '💰 ' + ar(fee - pd)}</button>` : ''}${codeChip(c)}</div>`; }).join('')
+      : empty('🎒', 'مفيش طلاب في المجموعة', `<div class="btns" style="justify-content:center;margin-top:12px"><button class="btn" data-act="addStudent" data-gid="${g.id}">${ic('plus')} ضيف طالب</button><button class="btn g" data-go="import">${ic('import')} دخّلهم من شيت الإكسل</button></div>`)}
+    <div class="sumbar"><div class="in"><div class="mini"><span>✅ ${ar(cnt.p + cnt.x)}</span><span style="color:var(--bad)">❌ ${ar(cnt.a)}</span><span>⏳ ${ar(sts.length - done)}</span>${nDue ? `<span style="color:var(--ok)">💰 ${ar(nPaid)}</span>` : ''}</div>
     ${cnt.a ? `<button class="btn sm wa" data-go="msgs" data-gid="${g.id}" data-type="abs" data-date="${date}">${ic('chat')} بلّغ الغايبين</button>` : `<button class="btn sm g" data-go="msgs" data-gid="${g.id}">${ic('chat')} التقارير</button>`}</div></div>`;
 };
 ACT.sesMove = a => {

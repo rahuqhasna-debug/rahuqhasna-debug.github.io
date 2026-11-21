@@ -23,7 +23,7 @@ SCREENS.group = p => {
     ${mnav(mk)}${rows.length ? rows.map((r, i) => `<button class="row" style="animation-delay:${Math.min(i, 15) * 25}ms" data-go="student" data-id="${r.s.id}">${avatar(r.s)}
       <div class="t"><b>${esc(r.s.name)}</b><small style="color:${lvlColor(r.t.lvl)}">${lvlName(r.t.lvl)} · حضور ${pct(r.t.att)} · ${ar(r.t.pts)} نقطة</small></div>
       <div style="display:flex;gap:3px">${r.t.list.slice(-3).map(({ x }) => smallChip(x.marks[r.s.id])).join('')}</div></button>`).join('')
-      : empty('🎒', 'مفيش طلاب في المجموعة دي', '<p>دوس ＋ وضيف الطلاب</p>')}
+      : empty('🎒', 'مفيش طلاب في المجموعة دي', '<p>دوس ＋ وضيف الطلاب، أو دخّلهم من شيت الإكسل</p><button class="btn g" data-go="import">' + ic('import') + ' استيراد شيت</button>')}
     <button class="fab" data-act="addStudent" data-gid="${g.id}">${ic('plus')}</button>`;
 };
 

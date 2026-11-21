@@ -68,7 +68,7 @@ const KEY = 'tlaby-db-v1';
 let S = null;
 function blank() {
   return { v: 1, savedAt: 0, settings: { teacher: 'مستر شريف حشيش', subject: 'دراسات اجتماعية', sign: 'متابعة مستر شريف حشيش', fees: { p: 90, m: 100, s: 150 },
-    theme: 'auto', payInReport: true, lastBackup: 0, startMonth: monthKey(today()), sound: true }, codes: DEFAULT_CODES.map(c => ({ ...c })),
+    theme: 'auto', lastBackup: 0, startMonth: monthKey(today()), sound: true }, codes: DEFAULT_CODES.map(c => ({ ...c })),
     groups: [], students: [], sessions: [], pays: [], sent: {} };
 }
 function migrate(d) {
@@ -161,10 +161,6 @@ function reportText(sid, mk) {
   const ss = S.sessions.filter(x => x.marks[sid] && x.date.startsWith(mk)).sort(byDate);
   if (!ss.length) L.push('• لم تُسجّل حصص لهذا الشهر بعد');
   ss.forEach(x => { const k = CODE(x.marks[sid]); let m = k ? k.msg : 'غير محدد'; if (k && k.att === 'x' && x.max && has(x.scores[sid])) m += ' — الدرجة: ' + x.scores[sid] + ' من ' + x.max; L.push('• ' + fmtSheet(x.date) + ': ' + m); });
-  if (S.settings.payInReport) {
-    const fee = feeOf(st);
-    if (fee) { const p = paidIn(sid, mk), [, m] = mk.split('-').map(Number); L.push(LINE, 'اشتراك شهر ' + MONTHS[m - 1] + ': ' + (p >= fee ? 'تم الدفع ✅ شكراً لحضرتك' : p > 0 ? 'مدفوع ' + p + ' من ' + fee + ' جنيه' : fee + ' جنيه — لم يُدفع بعد')); }
-  }
   L.push(LINE, S.settings.sign);
   return L.join('\n');
 }
@@ -208,15 +204,20 @@ function parseSheetFile(sheets) {
     if (hr < 0) { const g = parseGuide(rows); if (g) codes = g; continue; }
     const dateCols = [];
     (rows[hr] || []).forEach((v, i) => { const d = parseHdrDate(v); if (d) dateCols.push({ i, d }); });
-    const students = [];
-    for (let r = hr + 1; r < rows.length; r++) {
-      const row = rows[r]; if (!row) continue;
-      let name = row[nameC]; if (typeof name !== 'string' || !name.trim()) continue;
-      name = name.replace(/^[.\-\s]+/, '').replace(/\s+/g, ' ').trim(); if (!name) continue;
-      const marks = {};
-      dateCols.forEach(({ i, d }) => { const c = row[i]; if (typeof c === 'string' && c.trim() && c.trim().length <= 4) marks[d] = c.trim(); });
-      students.push({ name, phone: phoneC >= 0 ? normPhone(row[phoneC]) : '', marks });
-    }
+    const readNames = col => { const out = [];
+      for (let r = hr + 1; r < rows.length; r++) {
+        const row = rows[r]; if (!row) continue;
+        let name = row[col]; if (typeof name !== 'string' || !name.trim()) continue;
+        name = name.replace(/^[.\-\s]+/, '').replace(/\s+/g, ' ').trim(); if (!/[a-zء-ي]/i.test(name)) continue;
+        const marks = {};
+        dateCols.forEach(({ i, d }) => { const c = row[i]; if (typeof c === 'string' && c.trim() && c.trim().length <= 4) marks[d] = c.trim(); });
+        out.push({ name, phone: phoneC >= 0 ? normPhone(row[phoneC]) : '', marks });
+      }
+      return out; };
+    let students = readNames(nameC);
+    // لو الأسامي مش تحت عنوان «اسم الطالب» بالظبط (خلية مدموجة مثلاً) يدوّر عليها في الأعمدة اللي قبل التواريخ
+    const lastC = dateCols.length ? Math.min(...dateCols.map(x => x.i)) : 8;
+    for (let c = 0; !students.length && c < lastC; c++) if (c !== nameC && c !== phoneC) students = readNames(c);
     if (!students.length && !dateCols.length) continue;
     const days = [...new Set(dateCols.map(x => dow(x.d)))].sort();
     groups.push({ name: sh.name.trim(), stage: guessStage(sh.name + ' ' + ((rows[0] || [])[0] || '')), days, students, first: dateCols.length ? dateCols.map(x => x.d).sort()[0] : '' });

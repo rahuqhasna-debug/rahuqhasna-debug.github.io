@@ -120,7 +120,7 @@ const money = n => ar(n) + ' ج';
 /* ---------- الصفحة الرئيسية ---------- */
 const APPS = [
   ['pickSession', 'تحضير الحصة', 'check', '#10b981', '#047857'], ['groups', 'المجموعات', 'users', '#6366f1', '#4338ca'], ['students', 'الطلاب', 'cap', '#8b5cf6', '#6d28d9'],
-  ['money', 'الفلوس', 'wallet', '#f59e0b', '#ea580c'], ['debts', 'عليهم فلوس', 'bell', '#fb7185', '#e11d48'], ['board', 'لوحة الشرف', 'trophy', '#fbbf24', '#d97706'],
+  ['money', 'الفلوس', 'wallet', '#f59e0b', '#ea580c'], ['board', 'لوحة الشرف', 'trophy', '#fbbf24', '#d97706'],
   ['reports', 'الإحصائيات', 'chart', '#22d3ee', '#0369a1'], ['msgs', 'رسايل الأهالي', 'chat', '#34d399', '#128c7e'], ['week', 'جدول الأسبوع', 'cal', '#f472b6', '#be185d'],
   ['exams', 'الامتحانات', 'exam', '#c084fc', '#7e22ce'], ['codes', 'دليل الرموز', 'tag', '#e879f9', '#a21caf'], ['excel', 'ملف إكسل', 'grid', '#4ade80', '#15803d'],
   ['import', 'استيراد شيت', 'import', '#2dd4bf', '#0f766e'], ['backup', 'نسخة احتياطية', 'shield', '#60a5fa', '#1d4ed8'], ['settings', 'الإعدادات', 'gear', '#94a3b8', '#334155']
@@ -131,10 +131,11 @@ SCREENS.home = () => {
   const mk = monthKey(today()), tg = todayGroups(), debtors = S.students.filter(s => owedTotal(s) > 0).length;
   const name = S.settings.teacher.replace(/^مستر\s*/, '').split(' ')[0];
   const old = Date.now() - (S.settings.lastBackup || 0) > 7 * 864e5;
-  const badges = { debts: debtors, pickSession: tg.filter(g => !sessionOn(g.id, today())).length };
+  const late = S.students.filter(s => owed(s).some(x => x.k < mk)).length; // متأخرين من شهور فاتت بس
+  const badges = { money: late, pickSession: tg.filter(g => !sessionOn(g.id, today())).length };
   return `<div class="hero"><div class="top"><div class="logo">${LOGO}</div><div><h1>${greet} يا مستر ${esc(name)}</h1><p>${fmtDay(today())} · ${esc(S.settings.subject)}</p></div><div class="wx">${wx}</div></div>
     <div class="kpis"><div class="kpi"><b>${ar(S.students.length)}</b><small>طالب</small></div><div class="kpi"><b>${ar(tg.length)}</b><small>حصص النهارده</small></div>
-    <div class="kpi"><b>${ar(monthIncome(mk))}</b><small>جنيه اتحصّل</small></div><div class="kpi"><b>${ar(debtors)}</b><small>عليهم فلوس</small></div></div></div>
+    <div class="kpi"><b>${ar(monthIncome(mk))}</b><small>جنيه اتحصّل</small></div><div class="kpi" data-go="debts" role="button"><b>${ar(debtors)}</b><small>عليهم فلوس</small></div></div></div>
     ${old ? `<div class="banner">💾 بقالك أكتر من أسبوع من غير نسخة احتياطية<button class="btn sm" data-go="backup">اعملها</button></div>` : ''}
     ${tg.length ? `<div class="sec">حصص النهارده <small>${ar(tg.length)} مجموعة</small></div><div class="today">${tg.map(g => {
       const n = groupStudents(g.id).length, x = sessionOn(g.id, today()), done = x ? Object.keys(x.marks).length : 0;

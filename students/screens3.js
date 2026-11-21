@@ -11,9 +11,10 @@ SCREENS.money = p => {
   const exp = sts.reduce((a, s) => a + feeOf(s), 0), got = sts.reduce((a, s) => a + paidIn(s.id, mk), 0);
   const isPaid = s => { const f = feeOf(s); return !f || paidIn(s.id, mk) >= f; }, nPaid = sts.filter(isPaid).length;
   const list = sts.filter(s => show === 'all' || (show === 'paid') === isPaid(s));
+  const owing = S.students.filter(s => !p.f || s.gid === p.f).map(owedTotal).filter(t => t > 0);
   return bar('الفلوس', monthName(mk)) + mnav(mk) +
     `<div class="card donut up">${ring(exp ? got / exp : 0, 112, '#16a34a', 'var(--line)')}<div class="legend"><div><i style="background:#16a34a"></i>اتحصّل: <b>${money(got)}</b></div><div><i style="background:#e11d48"></i>باقي: <b>${money(Math.max(0, exp - got))}</b></div><div><i style="background:var(--line)"></i>المتوقع: <b>${money(exp)}</b></div><div class="muted" style="font-size:13px">دفعوا ${ar(nPaid)} من ${ar(sts.length)} طالب</div></div></div>
-    ${filterChips(p)}<div class="seg" style="margin-bottom:12px">${[['all', 'الكل'], ['no', 'لسه ما دفعوش'], ['paid', 'دفعوا']].map(([v, t]) => `<button class="${show === v ? 'on' : ''}" data-act="pshow" data-v="${v}">${t}</button>`).join('')}</div>
+    ${owing.length ? `<div class="banner">💸 عليهم فلوس من كل الشهور: ${ar(owing.length)} طالب · ${money(owing.reduce((a, t) => a + t, 0))}<button class="btn sm" data-go="debts" data-f="${p.f || ''}">شوفهم</button></div>` : ''}${filterChips(p)}<div class="seg" style="margin-bottom:12px">${[['all', 'الكل'], ['no', 'لسه ما دفعوش'], ['paid', 'دفعوا']].map(([v, t]) => `<button class="${show === v ? 'on' : ''}" data-act="pshow" data-v="${v}">${t}</button>`).join('')}</div>
     ${p.f && nPaid < sts.length ? `<button class="btn g w" style="margin-bottom:12px" data-act="payGroup">✓ علّم «${esc((grp(p.f) || {}).name || '')}» كلها دفعت</button>` : ''}
     ${list.length ? list.slice(0, 300).map((s, i) => { const g = grp(s.gid), pd = paidIn(s.id, mk);
       return `<div class="row" style="animation-delay:${Math.min(i, 12) * 20}ms" data-act="payMenu" data-id="${s.id}" role="button">${avatar(s)}<div class="t"><b>${esc(s.name)}</b><small>${esc(g ? g.name : '')}${pd && pd < feeOf(s) ? ' · دفع ' + ar(pd) : ''}</small></div>${payBtn(s, mk)}</div>`; }).join('') : empty('🎉', show === 'no' ? 'كله دفع!' : 'مفيش حد هنا')}`;
