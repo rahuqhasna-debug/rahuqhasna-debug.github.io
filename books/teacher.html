@@ -446,6 +446,8 @@ function setBadge() {
 function render() {
   clearInterval(pollT); $('#cbar').innerHTML = ''; app.className = 'wrap'; updBell();
   if (!isApp) return renderGate();   // من المتصفح: شاشة التثبيت بس
+  // 2026-11-21: الإشعارات مش واصلة ← قفل لحد ما يصلّحها (قبل شاشة الأذونات: تجربة الرنة مش هتنجح غير بعد التصليح)
+  if (NATIVE && code && D) { setTimeout(() => pushCheck(false), 0); if (pcLocked() && pcPermOn()) return renderPushLock(); }
   if (NATIVE && !permOk()) return renderPerm();   // بند 50: مايدخلش غير لما يخلّص كل الأذونات
   if (!NATIVE && !webPermOk()) return renderWebPerm();   // نفس الفكرة للبرنامج المتثبّت من المتصفح
   $('#tabs').hidden = false;
@@ -482,6 +484,8 @@ function renderHome() {
   // مهمة 6: «باقي معاك كام؟» — بيظهر لو عنده فاتورة وما حدّثش من يومين (ومش بيستخدم دفتر الطلبة)
   if (leftHas() && leftOld() && !leftNow().book) h += `<div class="note"><h3 style="margin:0 0 6px">📚 باقي معاك كام كتاب لسه ما اتباعش؟</h3><div class="small">اكتب العدد قدام كل كتاب — بياخد دقيقة.</div>
     <div class="acts"><button class="btn ok" onclick="go('left')">حدّث الأعداد ←</button><button class="btn ghost" onclick="go('stu')">📒 دفتر الطلبة</button></div></div>`;
+  if (NATIVE && pcSoft()) h += `<div class="alert"><h3>🔕 رسايل سلاح التلميذ لسه مش بتوصل لموبايلك</h3><div class="small">كلّم مسؤول الدعاية يساعدك تصلّحها.</div>
+    <div class="acts"><button class="btn danger" onclick="callRep()">📞 كلّم مسؤول الدعاية الأستاذ ${esc(D.rep || '')}</button></div></div>`;
   if (D.unread) h += `<div class="alert"><h3>💬 عندك ${D.unread} رسالة جديدة</h3><button class="btn danger" onclick="go('msgs')">افتح الرسائل ←</button></div>`;
   for (const u of D.updates) h += `<div class="alert"><h3>📝 مطلوب تحديث بياناتك</h3>${esc(fieldsTxt(u.fields || []))}${u.note ? `<div style="margin-top:6px">«${esc(u.note)}»</div>` : ''}
     <div class="acts"><button class="btn danger" onclick="go('me')">حدّث دلوقتي ←</button></div></div>`;
@@ -793,6 +797,104 @@ function renderPerm() {
   const y = $('#pgYes'); y && (y.onclick = () => { LS.set(RING_OK, 1); LS.set(RING_FAIL, 0); PG_TEST = false; PG_TRIED = {}; toast('🎉 تمام! أهلًا بحضرتك', 2500); render(); });
   // مارنّش ← نرجّعه يراجع الإشعارات والتشغيل التلقائي
   const no = $('#pgNo'); no && (no.onclick = () => { LS.set(RING_FAIL, 1); LS.set(AUTO_OK, 0); PG_TEST = false; PG_TRIED = {}; render(); scrollTo(0, 0); });
+}
+/* 2026-11-21 (طلب شريف): الإشعارات بتقف لو المدرس مسح التطبيق ونزّله تاني — أندرويد بيرجّع بيانات قديمة من نسخة جوجل الاحتياطية،
+   ومنها رقم تسجيل الإشعارات القديم اللي اتلغى، فالتطبيق فاكر نفسه متسجل وهو مش متسجل.
+   الفحص (جوه تطبيق الأندرويد بس): أول ما يخش (بعد 20 ثانية) وبعدها مرة في الأسبوع ← نسأل جوجل (?k=pchk) «الموبايل ده متسجل؟».
+   «مش متسجل» مرتين ورا بعض (بينهم 30 ثانية) ← قفل. النت فاصل / عطل / رد مش واضح ← مفيش قفل خالص.
+   نسخة 4 من التطبيق (فيها resetPush): بتصلّح نفسها لوحدها الأول (تمسح بيانات الإشعارات بس وتفتح تاني)، ولو مانفعش مرتين ← القفل.
+   مسح البيانات ومابرضه مش متسجل (أو موبايل هواوي/أونر) ← مفيش قفل، كارت «كلّم مسؤول الدعاية» في الرئيسية بس.
+   الحالة بتتكتب في القاعدة (t_push_state) لما تتغيّر بس ← «🔕» على كارت المدرس عند المندوب. */
+const PCHK = 'selah-pchk';   // {ok: آخر مرة متسجل, last: آخر سؤال, bad: من إمتى مش واصلة, soft: من غير قفل, fix: [أوقات التصليح الأوتوماتيك], rep: آخر حالة اتكتبت في القاعدة}
+let PCHK_RUN = false, PL_T = null, PL_N = 0;
+const pcSt = () => LS.get(PCHK, {}) || {};
+const pcSet = o => LS.set(PCHK, { ...pcSt(), ...o });
+const pcLocked = () => { const s = pcSt(); return !!s.bad && !s.soft; };
+const pcSoft = () => { const s = pcSt(); return !!s.bad && !!s.soft; };
+const appV4 = () => !!(window.SilahApp && SilahApp.resetPush);
+const pcPermOn = () => { try { return !!SilahApp.pushOn() && !!ringState(); } catch (e) { return false; } };   // الإشعارات مسموحة من الموبايل (والتطبيق مش النسخة الأولى)
+const pcWait = ms => new Promise(r => setTimeout(r, ms));
+function pcDue(s, now) {
+  if (s.bad) return now - (s.last || 0) > (s.soft ? 6 * 36e5 : 6e4);   // مقفول: كل دقيقة والشاشة قدامه · من غير قفل: كل 6 ساعات
+  if (s.ok && now - s.ok < 7 * 864e5) return false;   // متسجل: مرة في الأسبوع
+  return now - (s.last || 0) > 10 * 6e4;   // أول مرة، أو آخر سؤال ماجاوبش ← بعد 10 دقايق
+}
+async function pcAsk() {
+  const u = (window.SILAH_CONFIG || {}).CLOUD_URL; if (!u || !navigator.onLine || !D || !D.id) return '?';
+  pcSet({ last: Date.now() });
+  try {
+    let sid = ''; if (appV4() && SilahApp.pushId) { try { sid = JSON.parse(SilahApp.pushId() || '{}').id || ''; } catch (e) { } }
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 25000);
+    const j = await (await fetch(u + '?k=pchk&x=t-' + encodeURIComponent(D.id) + (sid ? '&sid=' + encodeURIComponent(sid) : ''), { signal: ctl.signal })).json(); clearTimeout(to);
+    if (!j || !j.ok) return '?';
+    if (j.lock === false) return 'off';   // شريف وقّف القفل من شيت «إعدادات»
+    return j.st === 'ok' || j.st === 'no' ? j.st : '?';
+  } catch (e) { return '?'; }
+}
+async function pushCheck(force) {
+  if (!NATIVE || !code || !D || PCHK_RUN || document.hidden || !pcPermOn()) return;
+  let s = pcSt(); if (!force && !pcDue(s, Date.now())) return;
+  PCHK_RUN = true;
+  try {
+    if (!s.bad) await pcWait(20000);   // أول ما يخش: نستنى تسجيل الإشعارات يخلص (بياخد ثواني)
+    let r = await pcAsk();
+    if (r === 'no') { await pcWait(30000); r = await pcAsk(); }   // نتأكد مرة تانية قبل القفل
+    if (r === 'ok') return pcGood();
+    if (r === 'off') { s = pcSt(); if (s.bad) { pcSet({ bad: 0, soft: 0 }); render(); } return; }
+    if (r === 'no') await pcBad();
+  } finally { PCHK_RUN = false; }
+}
+function pcGood() {
+  const s = pcSt();
+  pcSet({ ok: Date.now(), bad: 0, soft: 0, fix: [] });
+  if (s.rep !== 'ok') sb.rpc('t_push_state', { p_code: code, p_bad: false }).then(({ error }) => { if (!error) pcSet({ rep: 'ok' }); }).catch(() => { });
+  if (s.bad) { toast('🎉 تمام! رسايل سلاح التلميذ بقت توصل لموبايلك', 3500); render(); }
+}
+async function pcBad() {
+  const s = pcSt(), now = Date.now();
+  // نسخة 4: تصلّح نفسها لوحدها الأول (مرتين بالكتير في اليوم) — بتمسح بيانات الإشعارات بس، والمدرس مابيخرجش من حسابه
+  const fx = (s.fix || []).filter(t => now - t < 864e5);
+  if (appV4() && fx.length < 2) {
+    pcSet({ fix: fx.concat(now), ok: 0, last: 0 });
+    toast('🔧 بنظبط الإشعارات… التطبيق هيقفل ويفتح تاني لوحده', 4000);
+    setTimeout(() => { try { SilahApp.resetPush(); } catch (e) { } }, 2500);
+    return;
+  }
+  let prev = null;
+  if (s.rep !== 'bad') { try { const { data, error } = await sb.rpc('t_push_state', { p_code: code, p_bad: true }); if (!error) { prev = data; pcSet({ rep: 'bad' }); } } catch (e) { } }
+  // كانت مش واصلة من قبل كده، والمدرس مسح البيانات (البيانات اللي على الموبايل جديدة) وبرضه مش واصلة ← التصليح مانفعش في موبايله: مانقفلش تاني
+  const tried = !s.bad && prev && now - new Date(prev).getTime() > 10 * 6e4;
+  const soft = !!s.soft || !!tried || /huawei|honor/.test((ringState() || {}).brand || '');
+  pcSet({ bad: s.bad || now, ok: 0, soft: soft ? 1 : 0 });
+  render();
+}
+// رابط المدرس — بيتنسخ قبل مسح البيانات، ولما يفتح التطبيق تاني renderPasteCode بتقراه وبيدخل لوحده
+function myLink() { const c = LS.get(TCFG); return location.origin + location.pathname + '#c=' + encodeURIComponent(code) + (c && c.url && c.key ? '&p=' + encodeCfg(c.url, c.key) : ''); }
+async function callRep() {
+  const p = await repWa();
+  if (!p) return toast('⚠️ رقم الأستاذ ' + (D.rep || '') + ' مش متسجّل — كلّمه من الواتساب', 5000);
+  location.href = 'tel:+' + waNum(p);
+}
+function renderPushLock() {
+  $('#tabs').hidden = true; $('#cbar').innerHTML = ''; $('#title').textContent = 'سلاح التلميذ'; app.className = 'wrap';
+  const b = (ringState() || {}).brand || '', X = /xiaomi|redmi|poco/.test(b), S = /samsung/.test(b), O = /oppo|realme|oneplus/.test(b);
+  const st = X ? ['«التخزين»', '«مسح البيانات»', '«مسح كل البيانات»', '«موافق»'] : S ? ['«التخزين»', '«مسح البيانات»', '«حذف»'] : O ? ['«استخدام التخزين»', '«مسح البيانات»', '«حذف»']
+    : ['«التخزين» أو «مساحة التخزين»', '«مسح البيانات» أو «مسح التخزين»', '«موافق»'];
+  const pic = DLG(X ? 'مسح كل البيانات؟' : 'مسح بيانات التطبيق؟', X ? 'موافق' : S || O ? 'حذف' : 'موافق', '<text x="90" y="152" font-size="10" text-anchor="middle" fill="#64748b">سلاح التلميذ</text><text x="48" y="196" font-size="11" text-anchor="middle" fill="#64748b">إلغاء</text>');
+  app.innerHTML = `<div class="icard gate"><div class="ic-ico">⚠️</div><div class="ic-t">لازم تصلّح الإشعارات الأول عشان تكمل</div>
+    <div class="ic-s">رسايل وتحديثات سلاح التلميذ مش بتوصل لموبايلك دلوقتي. التصليح بياخد دقيقة واحدة:</div>
+    <button class="gobtn" id="plFix">🛠️ دوس هنا وصلّحها</button>
+    ${pic}
+    <div class="ic-s" style="text-align:start;line-height:2.1">1️⃣ دوس «🛠️ دوس هنا وصلّحها» ← هتفتح صفحة «سلاح التلميذ» في الإعدادات.<br>2️⃣ دوس ${st.join(' ← ')}.<br>3️⃣ افتح «سلاح التلميذ» تاني ← هيدخل لوحده.<br><span class="small muted">لو مادخلش لوحده: دوس «📋 الصق» وبعدين «دخول».</span></div>
+    <button class="btn ghost" id="plCall" style="width:100%;margin-top:10px">📞 كلّم مسؤول الدعاية الأستاذ ${esc(D.rep || '')}</button></div>`;
+  $('#plFix').onclick = async () => {
+    if (!SilahApp.pushOn()) return SilahApp.openNotif();   // الإشعارات نفسها مقفولة من الموبايل ← صفحة الإشعارات
+    await copyText(myLink());
+    setTimeout(() => SilahApp.openApp(), 900);
+  };
+  $('#plCall').onclick = callRep;
+  // يمكن التسجيل كان متأخر شوية: نسأل تاني كل دقيقة والشاشة دي قدامه (5 مرات بالكتير) — ولو اتسجّل القفل بيتشال لوحده
+  clearTimeout(PL_T); if (PL_N < 5) PL_T = setTimeout(() => { PL_N++; if (pcLocked()) pushCheck(false); }, 61000);
 }
 /* بند 50 (نسخة المتصفح — اختيار شريف النهائي): البرنامج بيتثبّت من المتصفح على طول، ولما يفتحه: «دخول» ← الأذونات الأول.
    الإشعارات بتتطلب وتتأكد لوحدها. البطارية والتشغيل التلقائي (لـ Chrome، هو اللي بيستقبل الإشعار) = رسمة + «عملتها» لأن المتصفح مايقدرش يفتحهم ولا يعرفهم.
