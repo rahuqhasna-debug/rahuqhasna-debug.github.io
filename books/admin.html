@@ -258,7 +258,8 @@ function icos4(t) {
 }
 // 🔄 في أي مكان بيفتح طلب التحديث للمدرس ده بس (قبل أي حاجة تانية في الصفحة)
 document.addEventListener('click', e => { const b = e.target.closest('[data-ru]'); if (!b) return; e.preventDefault(); e.stopPropagation(); reqUpdateDlg([b.dataset.ru]); }, true);
-const instPill = t => t.app_at ? '<span class="pill ok" title="ثبّت التطبيق">📲 مثبّت</span>' : '<span class="pill new" title="لسه ما فتحش من التطبيق المتثبّت">🌐 مش مثبّت</span>';
+const instPill = t => (t.app_at ? '<span class="pill ok" title="ثبّت التطبيق">📲 مثبّت</span>' : '<span class="pill new" title="لسه ما فتحش من التطبيق المتثبّت">🌐 مش مثبّت</span>')
+  + (t.push_bad ? ' <span class="pill bad" title="تطبيق المدرس بيقول إن الإشعارات مش واصلة لموبايله — كلّمه يصلّحها">🔕 الإشعارات مش واصلة</span>' : '');   // 2026-11-21
 // صور المدرسين للدايرة اللي بره: نسخة صغيرة 72px متخزنة على الموبايل، وبتتحدّث لوحدها لما المدرس يغيّر صورته
 let AVC = LS.get('selah-trial-av') || {};
 async function loadAvatars() {
@@ -566,7 +567,7 @@ async function loadAll() {
   // 🧭 مهمة 2 (توفير الباقة): الفلترة بقت في القاعدة نفسها (مدرسيني أنا بس) بدل ما ننزّل مدرسين كل المناديب ونرمي الباقي هنا
   const ownQ = (tb, cols) => sb.from(tb).select(cols + ',teachers!inner(rep_id)').eq('teachers.rep_id', me.id);
   let [t, n, p, s, u] = await Promise.all([
-    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at,left_q,left_at,left_src,stu_sum').eq('rep_id', me.id).order('name')),
+    fetchAll(() => sb.from('teachers').select('id,name,phone,rep_id,enabled,invite_code,profile,last_seen,created_at,local_id,books,recv_open,app_at,left_q,left_at,left_src,stu_sum,push_bad').eq('rep_id', me.id).order('name')),
     fetchAll(() => ownQ('teacher_notes', 'teacher_id,body')),
     fetchAll(() => ownQ('edit_requests', 'teacher_id').eq('status', 'pending')),
     isAdmin() ? fetchAll(() => sb.from('staff').select('id,name,role,active').order('created_at')) : Promise.resolve([me]),
