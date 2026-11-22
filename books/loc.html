@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- © 2026 شريف حشيش — جميع الحقوق محفوظة. ممنوع النسخ أو التعديل أو إعادة الاستخدام بدون إذن كتابي. -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -20,48 +21,7 @@ body{background:#f5f3ff}
 </head>
 <body>
 <div class="lw" id="app"><div class="card" style="text-align:center">⏳ لحظة…</div></div>
-<script>
-"use strict";
-// 2026-11-15 (طلب شريف): لينك خفيف للمدرس ← يحدد موقع مكان الدرس + أيام وساعات تواجده، ويتبعت للمندوب (بيتعتمد لوحده في المراسلات)
-const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode';
-const h = new URLSearchParams(location.hash.slice(1));
-if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
-const code = (h.get('c') || '').trim() || LS.get(TCODE);
-if (h.get('c')) LS.set(TCODE, code);   // لو فتح تطبيق المدرس بعدين يلاقي ملفه
-const sb = makeClient(false, TCFG), app = $('#app'), st = {};
-function done(name) {
-  app.innerHTML = `<div class="card lok"><div class="i">✅</div><h2>شكرًا يا أ/ ${esc(name || '')} 🌹</h2>
-    <p>الموقع والمواعيد وصلوا لـ «سلاح التلميذ».<br>هنتواصل مع حضرتك قريب إن شاء الله.</p></div>`;
-}
-async function start() {
-  if (!code) { app.innerHTML = '<div class="card">⚠️ الرابط ناقص — اطلب من المندوب يبعتهولك تاني.</div>'; return; }
-  let D;
-  try { const r = await sb.rpc('t_get', { p_code: code }); if (r.error) throw r.error; D = r.data; }
-  catch (e) { app.innerHTML = `<div class="card">⚠️ ${esc(errMsg(e))}<div class="acts"><button class="btn pri" onclick="location.reload()">🔄 جرّب تاني</button></div></div>`; return; }
-  if (!D) { app.innerHTML = '<div class="card">⚠️ الرابط ده مش شغال — اطلب من المندوب يبعتهولك تاني.</div>'; return; }
-  const pr = D.profile || {};
-  app.innerHTML = `<div class="lh"><h1>📍 أهلًا أ/ ${esc(D.name || '')}</h1><p>إنت كده هتحدّد <b>موقع مكان الدرس</b><br>وأيام ومواعيد تواجدك فيه، عشان نوصّل لحضرتك لحد مكانك 🚚</p></div>
-    <form id="lf" class="card" onsubmit="return false">${profileForm(pr, { only: ['loc', 'days'], remind: true, noWarn: true })}
-      <div class="acts"><button class="btn ok" id="lsend" style="width:100%;font-size:18px;padding:12px">✅ ابعت</button></div></form>`;
-  const f = $('#lf'); bindProfileForm(f, st, { remind: true });
-  $('#lsend').onclick = async () => {
-    const v = readProfileForm(f, st), out = {};
-    if (st.loc) out.loc = st.loc;
-    if (v.days && Object.keys(v.days).length) {
-      if (Object.values(v.days).some(d => !d.f || !d.t)) return toast('اكتب من الساعة كام لحد كام لكل يوم علّمت عليه', 4000);
-      out.days = v.days;
-    }
-    if (!out.loc) return toast('دوس الأول على زرار «📍» وإنت في مكان الدرس', 4000);
-    if (!out.days) return toast('علّم على الأيام اللي بتكون موجود فيها ومن الساعة كام لكام', 4000);
-    const b = $('#lsend'); b.disabled = true; b.textContent = '⏳ بنبعت…';
-    // مهمة 2 — المرحلة 3: الموقع والمواعيد بيتحفظوا من غير موافقة (t_submit_now)، ولو لسه مش في القاعدة ← t_submit زي الأول
-    let { error } = await sb.rpc('t_submit_now', { p_code: code, p_values: out });
-    if (error) ({ error } = await sb.rpc('t_submit', { p_code: code, p_values: out, p_photos: [], p_reply: null }));
-    if (error) { b.disabled = false; b.textContent = '✅ ابعت'; return toast(errMsg(error), 5000); }
-    done(D.name);
-  };
-}
-start();
-</script>
+<script>/*! © 2026 شريف حشيش — جميع الحقوق محفوظة. ممنوع النسخ أو التعديل أو إعادة الاستخدام بدون إذن كتابي. */
+"use strict";const TCFG="selah-trial-tcfg",TCODE="selah-trial-tcode";const h=new URLSearchParams(location.hash.slice(1));if(h.get("p")){const t=decodeCfg(h.get("p"));if(t)LS.set(TCFG,t)}const code=(h.get("c")||"").trim()||LS.get(TCODE);if(h.get("c"))LS.set(TCODE,code);const sb=makeClient(false,TCFG),app=$("#app"),st={};function done(t){app.innerHTML=`<div class="card lok"><div class="i">✅</div><h2>شكرًا يا أ/ ${esc(t||"")} 🌹</h2>\n    <p>الموقع والمواعيد وصلوا لـ «سلاح التلميذ».<br>هنتواصل مع حضرتك قريب إن شاء الله.</p></div>`}async function start(){if(!code){app.innerHTML='<div class="card">⚠️ الرابط ناقص — اطلب من المندوب يبعتهولك تاني.</div>';return}let t;try{const e=await sb.rpc("t_get",{p_code:code});if(e.error)throw e.error;t=e.data}catch(t){app.innerHTML=`<div class="card">⚠️ ${esc(errMsg(t))}<div class="acts"><button class="btn pri" onclick="location.reload()">🔄 جرّب تاني</button></div></div>`;return}if(!t){app.innerHTML='<div class="card">⚠️ الرابط ده مش شغال — اطلب من المندوب يبعتهولك تاني.</div>';return}const e=t.profile||{};app.innerHTML=`<div class="lh"><h1>📍 أهلًا أ/ ${esc(t.name||"")}</h1><p>إنت كده هتحدّد <b>موقع مكان الدرس</b><br>وأيام ومواعيد تواجدك فيه، عشان نوصّل لحضرتك لحد مكانك 🚚</p></div>\n    <form id="lf" class="card" onsubmit="return false">${profileForm(e,{only:["loc","days"],remind:true,noWarn:true})}\n      <div class="acts"><button class="btn ok" id="lsend" style="width:100%;font-size:18px;padding:12px">✅ ابعت</button></div></form>`;const s=$("#lf");bindProfileForm(s,st,{remind:true});$("#lsend").onclick=async()=>{const e=readProfileForm(s,st),r={};if(st.loc)r.loc=st.loc;if(e.days&&Object.keys(e.days).length){if(Object.values(e.days).some((t=>!t.f||!t.t)))return toast("اكتب من الساعة كام لحد كام لكل يوم علّمت عليه",4e3);r.days=e.days}if(!r.loc)return toast("دوس الأول على زرار «📍» وإنت في مكان الدرس",4e3);if(!r.days)return toast("علّم على الأيام اللي بتكون موجود فيها ومن الساعة كام لكام",4e3);const a=$("#lsend");a.disabled=true;a.textContent="⏳ بنبعت…";let{error:n}=await sb.rpc("t_submit_now",{p_code:code,p_values:r});if(n)({error:n}=await sb.rpc("t_submit",{p_code:code,p_values:r,p_photos:[],p_reply:null}));if(n){a.disabled=false;a.textContent="✅ ابعت";return toast(errMsg(n),5e3)}done(t.name)}}start();</script>
 </body>
 </html>

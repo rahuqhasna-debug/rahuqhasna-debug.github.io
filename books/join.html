@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- © 2026 شريف حشيش — جميع الحقوق محفوظة. ممنوع النسخ أو التعديل أو إعادة الاستخدام بدون إذن كتابي. -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -31,45 +32,7 @@ body{background:#f5f3ff}
     <div id="msg"></div>
   </div>
 </div>
-<script>
-"use strict";
-// 2026-11-15 (طلب شريف): لينك واحد للمندوب في جروبات الواتس — المدرس يكتب رقمه ← لو متسجل يتحول على رابطه الخاص (teacher.html#c=)
-const TCFG = 'selah-trial-tcfg', TCODE = 'selah-trial-tcode';
-const h = new URLSearchParams(location.hash.slice(1));
-if (h.get('p')) { const c = decodeCfg(h.get('p')); if (c) LS.set(TCFG, c); }
-const REP = h.get('r') || '', RN = h.get('n') || 'المندوب', RP = (h.get('ph') || '').replace(/\D/g, '');
-const sb = makeClient(false, TCFG);
-if (REP) LS.set('selah-trial-join', location.href);   // لو الكود باظ بعدين، التطبيق يرجّعه هنا
-const dev = deviceId();
-const msg = html => $('#msg').innerHTML = html;
-function notFound() {
-  msg(`<div class="nf">⚠️ الرقم ده مش متسجل عندنا.<br>اتأكد من الرقم وجرّب تاني، أو جرّب رقم تاني ليك، أو كلّم <b>أ/ ${esc(RN)}</b>${RP ? ` <span dir="ltr">${esc(RP)}</span>` : ''}.
-    ${RP ? `<div class="acts"><a class="btn pri" href="tel:${esc(RP)}">📞 اتصل</a><a class="btn ok" target="_blank" rel="noopener" href="${waLink(RP, 'السلام عليكم يا أ/ ' + RN + '، أنا مدرس وعايز أدخل على برنامج سلاح التلميذ ورقمي مش متسجل: ' + $('#ph').value.trim())}">واتساب</a></div>` : ''}</div>`);
-}
-// أرقام أي لغة (عربي ٠١٢، فارسي ۰۱۲، هندي ०१२، … وإنجليزي) تتحول لإنجليزي قبل ما نشيل أي حاجة مش رقم
-const isD = cp => /\p{Nd}/u.test(String.fromCodePoint(cp));
-const enDigits = s => String(s || '').replace(/\p{Nd}/gu, ch => { const cp = ch.codePointAt(0); let z = cp; while (z > 0 && isD(z - 1)) z--; return String((cp - z) % 10); });
-async function go() {
-  const p = enDigits($('#ph').value).replace(/\D/g, '');
-  if (!REP) return msg('<div class="nf">⚠️ الرابط ناقص — اطلب الرابط تاني من المندوب.</div>');
-  if (p.length < 10) return msg('<div class="nf">اكتب الرقم كامل (11 رقم)</div>');
-  const b = $('#go'); b.disabled = true; b.textContent = '⏳ لحظة…'; msg('');
-  try {
-    const { data, error } = await sb.rpc('t_join', { p_rep: REP, p_phone: p, p_dev: dev });
-    if (error) throw error;
-    if (data && data.c) {
-      LS.set(TCODE, data.c);
-      msg('<div class="nf" style="background:#dcfce7;border-color:#86efac">✅ تمام! بنفتح لحضرتك البرنامج…</div>');
-      location.href = 'teacher.html#c=' + encodeURIComponent(data.c) + (h.get('p') ? '&p=' + h.get('p') : '');
-      return;
-    }
-    if (data && data.err === 'many') msg('<div class="nf">⚠️ محاولات كتير — استنى 10 دقايق وجرّب تاني، أو كلّم المندوب.</div>');
-    else notFound();
-  } catch (e) { msg(`<div class="nf">⚠️ ${esc(errMsg(e))}</div>`); }
-  b.disabled = false; b.textContent = 'دخول';
-}
-$('#go').onclick = go;
-$('#ph').onkeydown = e => { if (e.key === 'Enter') go(); };
-</script>
+<script>/*! © 2026 شريف حشيش — جميع الحقوق محفوظة. ممنوع النسخ أو التعديل أو إعادة الاستخدام بدون إذن كتابي. */
+"use strict";const TCFG="selah-trial-tcfg",TCODE="selah-trial-tcode";const h=new URLSearchParams(location.hash.slice(1));if(h.get("p")){const e=decodeCfg(h.get("p"));if(e)LS.set(TCFG,e)}const REP=h.get("r")||"",RN=h.get("n")||"المندوب",RP=(h.get("ph")||"").replace(/\D/g,"");const sb=makeClient(false,TCFG);if(REP)LS.set("selah-trial-join",location.href);const dev=deviceId();const msg=e=>$("#msg").innerHTML=e;function notFound(){msg(`<div class="nf">⚠️ الرقم ده مش متسجل عندنا.<br>اتأكد من الرقم وجرّب تاني، أو جرّب رقم تاني ليك، أو كلّم <b>أ/ ${esc(RN)}</b>${RP?` <span dir="ltr">${esc(RP)}</span>`:""}.\n    ${RP?`<div class="acts"><a class="btn pri" href="tel:${esc(RP)}">📞 اتصل</a><a class="btn ok" target="_blank" rel="noopener" href="${waLink(RP,"السلام عليكم يا أ/ "+RN+"، أنا مدرس وعايز أدخل على برنامج سلاح التلميذ ورقمي مش متسجل: "+$("#ph").value.trim())}">واتساب</a></div>`:""}</div>`)}const isD=e=>/\p{Nd}/u.test(String.fromCodePoint(e));const enDigits=e=>String(e||"").replace(/\p{Nd}/gu,(e=>{const t=e.codePointAt(0);let n=t;while(n>0&&isD(n-1))n--;return String((t-n)%10)}));async function go(){const e=enDigits($("#ph").value).replace(/\D/g,"");if(!REP)return msg('<div class="nf">⚠️ الرابط ناقص — اطلب الرابط تاني من المندوب.</div>');if(e.length<10)return msg('<div class="nf">اكتب الرقم كامل (11 رقم)</div>');const t=$("#go");t.disabled=true;t.textContent="⏳ لحظة…";msg("");try{const{data:t,error:n}=await sb.rpc("t_join",{p_rep:REP,p_phone:e,p_dev:dev});if(n)throw n;if(t&&t.c){LS.set(TCODE,t.c);msg('<div class="nf" style="background:#dcfce7;border-color:#86efac">✅ تمام! بنفتح لحضرتك البرنامج…</div>');location.href="teacher.html#c="+encodeURIComponent(t.c)+(h.get("p")?"&p="+h.get("p"):"");return}if(t&&t.err==="many")msg('<div class="nf">⚠️ محاولات كتير — استنى 10 دقايق وجرّب تاني، أو كلّم المندوب.</div>');else notFound()}catch(e){msg(`<div class="nf">⚠️ ${esc(errMsg(e))}</div>`)}t.disabled=false;t.textContent="دخول"}$("#go").onclick=go;$("#ph").onkeydown=e=>{if(e.key==="Enter")go()};</script>
 </body>
 </html>
