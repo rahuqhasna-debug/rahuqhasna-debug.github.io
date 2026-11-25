@@ -17,7 +17,10 @@
   --ok:#4ade80;--ok-soft:#12301d;--owe:#fbbf24;--owe-soft:#38290b;--bad:#f87171;--bad-soft:#3a1515;
   --sel:#1e3358;--sel-ink:#93c5fd;--shadow:none}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+/* ⚡ 2026-11-25: الزرار بيتضغط تحت صباعك فوراً */
+.btn,.chip{transition:transform .06s,filter .06s}
+.btn:active,.chip:active,.titem:active{transform:scale(.96);filter:brightness(.92)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,"Noto Sans Arabic","Noto Naskh Arabic",Arial,sans-serif;font-size:16px;line-height:1.5}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--brand)}

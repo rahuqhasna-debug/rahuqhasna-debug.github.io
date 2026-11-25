@@ -21,9 +21,9 @@ try {
   };
 } catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v93';
+const CACHE = 'books-v95';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
-const FRESH = new Map(), FRESH_MS = 10 * 60000, NET_WAIT = 2500;
+const FRESH = new Map(), FRESH_MS = 10 * 60000;
 const FILES = ['./', './index.html', './ret.js', './acc.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -33,7 +33,11 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== FONTS && !k.startsWith('shell-') && !k.startsWith('lessons-')).map(k => caches.delete(k)))));
+  e.waitUntil(caches.keys().then(keys => {
+    const old = keys.filter(k => k !== CACHE && k !== FONTS && !k.startsWith('shell-') && !k.startsWith('lessons-'));
+    if (old.some(k => k.startsWith('books-'))) notifyUpd();   // نسخة جديدة اترفعت ← «⬆️ فيه تحديث»
+    return Promise.all(old.map(k => caches.delete(k)));
+  }));
   self.clients.claim();
 });
 
@@ -49,19 +53,29 @@ self.addEventListener('fetch', e => {
   }
   if (url.origin !== location.origin) return;
   if (/\.(mp4|webm|apk)$/i.test(url.pathname)) return;   // الفيديو والتطبيق ماينفعش يعدّوا من الـ SW (طلبات Range)
-  // 2026-11-19: البرنامج مايعلّقش لو النت بطيء أو الموبايل لسه صاحي من النوم:
-  // • الملف اتحدّث من النت في آخر 10 دقايق ← يفتح من المحفوظ على طول (الرجوع من المراسلات بيبقى فوري)
-  // • غير كده: النت الأول (علشان التحديثات توصل)، ولو ما ردّش في ثانيتين ونص يفتح المحفوظ ويتحدّث في الخلفية
+  // ⚡ 2026-11-25 (شريف: «عايزه ياخد الأمر على طول»): الصفحة بتفتح من المحفوظ على طول — من غير ما تستنى النت خالص
+  // (قبل كده كان بيستنى النت لحد ثانيتين ونص كل مرة البرنامج يتفتح أو ترجع من المراسلات).
+  // النسخة الجديدة بتتجاب في الخلفية (مرة كل 10 دقايق بالكتير)، ولو الملف اتغيّر ← الصفحة بيوصلها «upd» وبتعرض «⬆️ فيه تحديث».
   e.respondWith((async () => {
     const c = await caches.open(CACHE), key = url.pathname;
     const hit = await caches.match(e.request, {ignoreSearch: true});
-    if (hit && Date.now() - (FRESH.get(key) || 0) < FRESH_MS) return hit;
-    const net = fetch(e.request.url, {cache: 'no-store'}).then(r => {
-      if (r.ok) { FRESH.set(key, Date.now()); const copy = r.clone(); c.put(e.request, copy).catch(() => {}); }
+    const stamp = r => r && (r.headers.get('etag') || r.headers.get('last-modified')) || '';
+    const refresh = () => fetch(e.request.url, {cache: 'no-store'}).then(async r => {
+      if (r.ok) {
+        FRESH.set(key, Date.now());
+        const was = stamp(hit), now = stamp(r);
+        await c.put(e.request, r.clone()).catch(() => {});
+        if (hit && was && now && was !== now && /(\.html|\.js|\.css|\/)$/.test(key)) notifyUpd();
+      }
       return r;
     });
-    if (!hit) return net.catch(() => caches.match('./index.html').then(r => r || new Response('', {status: 504})));
-    e.waitUntil(net.catch(() => {}));
-    return Promise.race([net.then(r => r.ok ? r : hit).catch(() => hit), new Promise(ok => setTimeout(() => ok(hit), NET_WAIT))]);
+    if (!hit) return refresh().catch(() => caches.match('./index.html').then(r => r || new Response('', {status: 504})));
+    if (Date.now() - (FRESH.get(key) || 0) >= FRESH_MS) e.waitUntil(refresh().catch(() => {}));
+    return hit;
   })());
 });
+let updT = 0;
+function notifyUpd() {   // مرة واحدة حتى لو كذا ملف اتغيّر
+  clearTimeout(updT);
+  updT = setTimeout(() => self.clients.matchAll({type: 'window'}).then(cs => cs.forEach(w => w.postMessage({t: 'upd'}))).catch(() => {}), 1500);
+}
