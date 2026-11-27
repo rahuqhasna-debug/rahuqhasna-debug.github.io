@@ -21,14 +21,15 @@ try {
   };
 } catch (e) {}
 try { importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js'); } catch (e) {}
-const CACHE = 'books-v109';
+const CACHE = 'books-v110';
 const FONTS = 'fonts-v1';   // خط Cairo من Google Fonts
 const FRESH = new Map(), FRESH_MS = 10 * 60000;
 const FILES = ['./', './index.html', './ret.js', './acc.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   // كل ملف لوحده: لو ملف ناقص ما يوقفش الباقي
-  e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => {})))));
+  // cache:'reload' ← يجيب النسخة الجديدة من النت مش من ذاكرة المتصفح (عشان بعد «⬆️ فيه تحديث» يفتح بالجديد على طول)
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, {cache: 'reload'})).catch(() => {})))));
   self.skipWaiting();
 });
 
@@ -55,18 +56,14 @@ self.addEventListener('fetch', e => {
   if (/\.(mp4|webm|apk)$/i.test(url.pathname)) return;   // الفيديو والتطبيق ماينفعش يعدّوا من الـ SW (طلبات Range)
   // ⚡ 2026-11-25 (شريف: «عايزه ياخد الأمر على طول»): الصفحة بتفتح من المحفوظ على طول — من غير ما تستنى النت خالص
   // (قبل كده كان بيستنى النت لحد ثانيتين ونص كل مرة البرنامج يتفتح أو ترجع من المراسلات).
-  // النسخة الجديدة بتتجاب في الخلفية (مرة كل 10 دقايق بالكتير)، ولو الملف اتغيّر ← الصفحة بيوصلها «upd» وبتعرض «⬆️ فيه تحديث».
+  // النسخة الجديدة بتتجاب في الخلفية (مرة كل 10 دقايق بالكتير) وبتتحفظ بهدوء.
+  // 2026-11-27 (شريف: «كل شوية يجيلي تم التحديث وأنا ما حدثتش»): «⬆️ فيه تحديث» بقت بتظهر بس لما نسخة البرنامج (CACHE هنا) تتغيّر — في activate.
+  // قبل كده كانت بتظهر لما «ختم» الملف (etag) يتغيّر، وده بيتغيّر لوحده كل ما أي ملف في الموقع يترفع حتى لو البرنامج ما اتغيّرش.
   e.respondWith((async () => {
     const c = await caches.open(CACHE), key = url.pathname;
     const hit = await caches.match(e.request, {ignoreSearch: true});
-    const stamp = r => r && (r.headers.get('etag') || r.headers.get('last-modified')) || '';
     const refresh = () => fetch(e.request.url, {cache: 'no-store'}).then(async r => {
-      if (r.ok) {
-        FRESH.set(key, Date.now());
-        const was = stamp(hit), now = stamp(r);
-        await c.put(e.request, r.clone()).catch(() => {});
-        if (hit && was && now && was !== now && /(\.html|\.js|\.css|\/)$/.test(key)) notifyUpd();
-      }
+      if (r.ok) { FRESH.set(key, Date.now()); await c.put(e.request, r.clone()).catch(() => {}); }
       return r;
     });
     if (!hit) return refresh().catch(() => caches.match('./index.html').then(r => r || new Response('', {status: 504})));
